@@ -1,6 +1,8 @@
 import os
+import random
 import argparse
 from pathlib import Path
+from typing import List, Tuple
 import numpy as np
 import sklearn.model_selection
 import tensorflow as tf
@@ -9,32 +11,33 @@ from .utils import task_solver
 from ..datasets import icentia11k
 from ..evaluation import CustomCheckpoint, f1
 from ..models.utils import build_input_tensor_from_shape
-from ..utils import (
-    matches_spec, load_pkl, save_pkl
-)
+from ..utils import matches_spec, load_pkl, save_pkl
 
-def _create_dataset_from_generator(patient_ids, samples_per_patient=None):
-    samples_per_patient = samples_per_patient or args.samples_per_patient
-    if args.task == 'rhythm':
+def _create_dataset_from_generator(task:str, db_path: str, patient_ids: List[int], frame_size: int, samples_per_patient: int = 1):
+    if task == 'rhythm':
         dataset = datasets.rhythm_dataset(
-            db_dir=str(args.train), patient_ids=patient_ids, frame_size=args.frame_size,
-            unzipped=args.unzipped, samples_per_patient=samples_per_patient)
-    elif args.task == 'beat':
+            db_path=db_path, patient_ids=patient_ids, frame_size=frame_size,
+            samples_per_patient=samples_per_patient
+        )
+    elif task == 'beat':
         dataset = datasets.beat_dataset(
-            db_dir=str(args.train), patient_ids=patient_ids, frame_size=args.frame_size,
-            unzipped=args.unzipped, samples_per_patient=samples_per_patient)
-    elif args.task == 'hr':
+            db_path=db_path, patient_ids=patient_ids, frame_size=frame_size,
+            samples_per_patient=samples_per_patient
+        )
+    elif task == 'hr':
         dataset = datasets.heart_rate_dataset(
-            db_dir=str(args.train), patient_ids=patient_ids, frame_size=args.frame_size,
-            unzipped=args.unzipped, samples_per_patient=samples_per_patient)
-    elif args.task == 'cpc':
+            db_path=db_path, patient_ids=patient_ids, frame_size=frame_size,
+            samples_per_patient=samples_per_patient
+        )
+    elif task == 'cpc':
         dataset = datasets.cpc_dataset(
-            db_dir=str(args.train), patient_ids=patient_ids, frame_size=args.frame_size,
+            db_path=db_path, patient_ids=patient_ids, frame_size=frame_size,
             context_size=args.context_size, ns=args.ns, context_overlap=args.context_overlap,
             positive_offset=args.positive_offset, num_buffered_patients=16,
-            unzipped=args.unzipped, samples_per_patient=samples_per_patient)
+            samples_per_patient=samples_per_patient
+        )
     else:
-        raise ValueError('unknown task: {}'.format(args.task))
+        raise ValueError('unknown task: {}'.format(task))
     return dataset
 
 
@@ -58,12 +61,11 @@ def _create_dataset_from_data(data):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--job-dir', type=Path, required=True, help='Job output directory.')
-    parser.add_argument('--task', required=True, help='Training task: `rhythm`, `beat`, `hr`, `cpc`.')
+    parser.add_argument('--task', required=True, help='Training task: `rhythm`, `beat`, `hr`, `cpc`.', default='rhythm')
     parser.add_argument('--train', type=Path, required=True, help='Path to the train directory or a pickled file.')
     parser.add_argument('--val-file', type=Path, help='Path to the pickled validation file.\nOverrides --val-size.')
     parser.add_argument('--cache-val', type=Path, help='Path to where the newly created validation set will be cached.')
     parser.add_argument('--weights-file', type=Path, help='Path to a checkpoint to load the weights from.')
-    parser.add_argument('--unzipped', action='store_true', help='Whether files in the train directory are unzipped.')
     parser.add_argument('--val-patients', type=float, default=None,
                         help='Number of patients or proportion of patients '
                              'that will be moved from train to validation.')
@@ -101,6 +103,7 @@ if __name__ == '__main__':
     seed = args.seed or np.random.randint(2 ** 16)
     print('Setting random state {}'.format(seed))
     np.random.seed(seed)
+    random.seed(seed)
 
     if args.val_samples_per_patient is None:
         args.val_samples_per_patient = args.samples_per_patient
@@ -117,61 +120,71 @@ if __name__ == '__main__':
         val = None
         validation_data = None
 
-    if args.train.is_file():
-        print('Loading train data from file {} ...'.format(args.train))
-        train = load_pkl(str(args.train))
-        if val:
-            # remove training examples of patients who belong to the validation set
-            train_mask = np.isin(train['patient_ids'], val['patient_ids'], invert=True)
-            train = {key: array[train_mask] for key, array in train.items()}
-        elif args.val_patients:
-            if args.task == 'cpc':
-                print('--val-patients is ignored when train is a pickled file because the negative samples '
-                      'in the validation set cannot be guaranteed to come from only the validation patients.')
-            else:
-                print('Splitting data into train and validation')
-                _, val_patients_ids = sklearn.model_selection.train_test_split(
-                    np.unique(train['patient_ids']), test_size=args.val_patients)
-                val_mask = np.isin(train['patient_ids'], val_patients_ids)
-                val = {key: array[val_mask] for key, array in train.items()}
-                validation_data = _create_dataset_from_data(val)
-                train_mask = ~val_mask
-                train = {key: array[train_mask] for key, array in train.items()}
-        train_size = len(train['y'])
-        steps_per_epoch = None
-        train_data = _create_dataset_from_data(train).shuffle(train_size)
+    # if args.train.is_file():
+    #     print('Loading train data from file {} ...'.format(args.train))
+    #     train = load_pkl(str(args.train))
+    #     if val:
+    #         # remove training examples of patients who belong to the validation set
+    #         train_mask = np.isin(train['patient_ids'], val['patient_ids'], invert=True)
+    #         train = {key: array[train_mask] for key, array in train.items()}
+    #     elif args.val_patients:
+    #         if args.task == 'cpc':
+    #             print('--val-patients is ignored when train is a pickled file because the negative samples '
+    #                   'in the validation set cannot be guaranteed to come from only the validation patients.')
+    #         else:
+    #             print('Splitting data into train and validation')
+    #             _, val_patients_ids = sklearn.model_selection.train_test_split(
+    #                 np.unique(train['patient_ids']), test_size=args.val_patients)
+    #             val_mask = np.isin(train['patient_ids'], val_patients_ids)
+    #             val = {key: array[val_mask] for key, array in train.items()}
+    #             validation_data = _create_dataset_from_data(val)
+    #             train_mask = ~val_mask
+    #             train = {key: array[train_mask] for key, array in train.items()}
+    #     train_size = len(train['y'])
+    #     steps_per_epoch = None
+    #     train_data = _create_dataset_from_data(train).shuffle(train_size)
+    # else:
+    print('Building train data generators')
+    train_patient_ids = icentia11k.ds_patient_ids
+    if val:
+        # remove patients who belong to the validation set from train data
+        train_patient_ids = np.setdiff1d(train_patient_ids, val['patient_ids'])
+    elif args.val_patients:
+        print('Splitting patients into train and validation')
+        train_patient_ids, val_patient_ids = sklearn.model_selection.train_test_split(
+            train_patient_ids, test_size=args.val_patients)
+        # validation size is one validation epoch by default
+        val_size = args.val_size or (len(val_patient_ids) * args.val_samples_per_patient)
+        print('Collecting {} validation samples ...'.format(val_size))
+        validation_data = _create_dataset_from_generator(
+            task=args.task, db_path=str(args.train), patient_ids=val_patient_ids,
+            frame_size=args.frame_size, samples_per_patient=args.val_samples_per_patient
+        )
+        val_x, val_y = next(validation_data.batch(val_size).as_numpy_iterator())
+        val = {'x': val_x, 'y': val_y, 'patient_ids': val_patient_ids}
+        if args.cache_val:
+            print('Caching the validation set in {} ...'.format(args.cache_val))
+            save_pkl(str(args.cache_val), x=val_x, y=val_y, patient_ids=val_patient_ids)
+        validation_data = _create_dataset_from_data(val)
+    steps_per_epoch = args.steps_per_epoch
+    if args.data_parallelism > 1:
+        split = len(train_patient_ids) // args.data_parallelism
+        train_patient_ids = tf.convert_to_tensor(train_patient_ids)
+        train_data = tf.data.Dataset.range(args.data_parallelism).interleave(
+            lambda i: _create_dataset_from_generator(
+                task=args.task, db_path=str(args.train),
+                patient_ids=train_patient_ids[i * split:(i + 1) * split], frame_size=args.frame_size,
+                samples_per_patient=args.samples_per_patient
+            ),
+            num_parallel_calls=tf.data.experimental.AUTOTUNE)
     else:
-        print('Building train data generators')
-        train_patient_ids = icentia11k.ds_patient_ids
-        if val:
-            # remove patients who belong to the validation set from train data
-            train_patient_ids = np.setdiff1d(train_patient_ids, val['patient_ids'])
-        elif args.val_patients:
-            print('Splitting patients into train and validation')
-            train_patient_ids, val_patient_ids = sklearn.model_selection.train_test_split(
-                train_patient_ids, test_size=args.val_patients)
-            # validation size is one validation epoch by default
-            val_size = args.val_size or (len(val_patient_ids) * args.val_samples_per_patient)
-            print('Collecting {} validation samples ...'.format(val_size))
-            validation_data = _create_dataset_from_generator(val_patient_ids, args.val_samples_per_patient)
-            val_x, val_y = next(validation_data.batch(val_size).as_numpy_iterator())
-            val = {'x': val_x, 'y': val_y, 'patient_ids': val_patient_ids}
-            if args.cache_val:
-                print('Caching the validation set in {} ...'.format(args.cache_val))
-                save_pkl(str(args.cache_val), x=val_x, y=val_y, patient_ids=val_patient_ids)
-            validation_data = _create_dataset_from_data(val)
-        steps_per_epoch = args.steps_per_epoch
-        if args.data_parallelism > 1:
-            split = len(train_patient_ids) // args.data_parallelism
-            train_patient_ids = tf.convert_to_tensor(train_patient_ids)
-            train_data = tf.data.Dataset.range(args.data_parallelism).interleave(
-                lambda i: _create_dataset_from_generator(train_patient_ids[i * split:(i + 1) * split],
-                                                         args.samples_per_patient),
-                num_parallel_calls=tf.data.experimental.AUTOTUNE)
-        else:
-            train_data = _create_dataset_from_generator(train_patient_ids, args.samples_per_patient)
-        buffer_size = 16 * args.samples_per_patient  # data from 16 patients
-        train_data = train_data.prefetch(tf.data.experimental.AUTOTUNE).shuffle(buffer_size)
+        train_data = _create_dataset_from_generator(
+            task=args.task, db_path=str(args.train),
+            patient_ids=train_patient_ids, frame_size=args.frame_size,
+            samples_per_patient=args.samples_per_patient
+        )
+    buffer_size = 16 * args.samples_per_patient  # data from 16 patients
+    train_data = train_data.prefetch(tf.data.experimental.AUTOTUNE).shuffle(buffer_size)
 
     train_data = train_data.batch(args.batch_size)
 
@@ -226,5 +239,7 @@ if __name__ == '__main__':
 
         logger = tf.keras.callbacks.CSVLogger(str(args.job_dir / 'history.csv'))
 
-        model.fit(train_data, steps_per_epoch=steps_per_epoch, verbose=2, epochs=args.epochs,
-                  validation_data=validation_data, callbacks=[checkpoint, logger])
+        model.fit(
+            train_data, steps_per_epoch=steps_per_epoch, verbose=2, epochs=args.epochs,
+            validation_data=validation_data, callbacks=[checkpoint, logger]
+        )
