@@ -2,9 +2,11 @@ import os
 import random
 import argparse
 from pathlib import Path
-from typing import List, Tuple
+from typing import List
 import numpy as np
 import sklearn.model_selection
+import wandb
+from wandb.keras import WandbCallback
 import tensorflow as tf
 from . import datasets
 from .utils import task_solver
@@ -13,7 +15,7 @@ from ..evaluation import CustomCheckpoint, f1
 from ..models.utils import build_input_tensor_from_shape
 from ..utils import matches_spec, load_pkl, save_pkl
 
-def _create_dataset_from_generator(task:str, db_path: str, patient_ids: List[int], frame_size: int, samples_per_patient: int = 1):
+def _create_dataset_from_generator(task: str, db_path: str, patient_ids: List[int], frame_size: int, samples_per_patient: int = 1):
     if task == 'rhythm':
         dataset = datasets.rhythm_dataset(
             db_path=db_path, patient_ids=patient_ids, frame_size=frame_size,
@@ -120,6 +122,8 @@ if __name__ == '__main__':
         val = None
         validation_data = None
 
+    wandb.init(project="ecg-arrhythmia", entity="ambiq", dir=str(args.job_dir / 'wandb'))
+
     # if args.train.is_file():
     #     print('Loading train data from file {} ...'.format(args.train))
     #     train = load_pkl(str(args.train))
@@ -210,6 +214,7 @@ if __name__ == '__main__':
         model(inputs)
 
         print('# model parameters: {:,d}'.format(model.count_params()))
+        model.summary()
 
         if args.weights_file:
             print('Loading weights from file {} ...'.format(args.weights_file))
@@ -241,5 +246,6 @@ if __name__ == '__main__':
 
         model.fit(
             train_data, steps_per_epoch=steps_per_epoch, verbose=2, epochs=args.epochs,
-            validation_data=validation_data, callbacks=[checkpoint, logger]
+            validation_data=validation_data,
+            callbacks=[checkpoint, logger, WandbCallback()]
         )

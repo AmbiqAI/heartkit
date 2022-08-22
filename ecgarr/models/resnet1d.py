@@ -98,9 +98,11 @@ class BottleneckBlock(tf.keras.layers.Layer):
 
 
 class ResNet(tf.keras.Model):
-    def __init__(self, num_outputs=1, blocks=(2, 2, 2, 2),
-                 filters=(64, 128, 256, 512), kernel_size=(3, 3, 3, 3),
-                 block_fn=ResidualBlock, include_top=True, **kwargs):
+    def __init__(
+            self, num_outputs=1, blocks=(2, 2, 2, 2),
+            filters=(64, 128, 256, 512), kernel_size=(3, 3, 3, 3),
+            block_fn=ResidualBlock, include_top=True, **kwargs
+        ):
         super().__init__(**kwargs)
         self.conv1 = conv1d(64, 7, 2)
         self.bn1 = batch_norm()

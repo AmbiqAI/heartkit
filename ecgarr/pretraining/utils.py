@@ -35,7 +35,7 @@ def task_solver(task, arch='resnet18', stages=None, return_feature_extractor=Fal
     else:
         raise ValueError('Feature extractor is not a residual network')
     if task == 'rhythm':
-        num_classes = len(icentia11k.ds_rhythm_names)
+        num_classes = len(icentia11k.ds_rhythm_map)
         model = tf.keras.Sequential([
             feature_extractor,
             tf.keras.layers.Dense(num_classes),

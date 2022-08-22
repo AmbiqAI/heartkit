@@ -4,11 +4,11 @@ import zipfile
 import tempfile
 import dataclasses
 from enum import IntEnum
+from multiprocessing import Pool
 from typing import Dict, List, Optional, Tuple
 import h5py
 import numpy as np
 import numpy.typing as npt
-from tqdm import tqdm
 
 class IcentiaRhythm(IntEnum):
     noise=0
@@ -21,12 +21,12 @@ class IcentiaRhythm(IntEnum):
     @classmethod
     @property
     def hi_priority(cls) -> List[int]:
-        return [cls.afib.value, cls.aflut.value, cls.unknown.value]
+        return [cls.afib.value, cls.aflut.value]
 
     @classmethod
     @property
     def lo_priority(cls) -> List[int]:
-        return [cls.noise.value, cls.normal.value, cls.end.value]
+        return [cls.noise.value, cls.normal.value, cls.end.value, cls.unknown.value]
 
 class IcentiaBeat(IntEnum):
     undefined=0
@@ -53,6 +53,7 @@ class IcentiaHeartRate(IntEnum):
 
 ds_beat_names =  {b.name: b.value for b in IcentiaBeat}
 ds_rhythm_names = {r.name: r.value for r in IcentiaRhythm}
+ds_rhythm_map = {IcentiaRhythm.normal.value: 0, IcentiaRhythm.afib.value: 1, IcentiaRhythm.aflut.value: 2}
 
 @dataclasses.dataclass
 class IcentiaStats:
@@ -61,9 +62,7 @@ class IcentiaStats:
     mean = 0.0018 # mean over entire dataset
     std = 1.3711 # std over entire dataset
 
-# ds_segment_size = 2 ** 20 + 1   # 1,048,577
-# ds_frame_size = 2 ** 11 + 1   # 2,049
-ds_patient_ids = np.arange(100) # TODO: Set back to 11000 np.arange(11000)
+ds_patient_ids = np.arange(11000)
 ds_sampling_rate = 250
 ds_mean = 0.0018  # mean over entire dataset
 ds_std = 1.3711   # std over entire dataset
@@ -86,7 +85,7 @@ def rhythm_data_generator(patient_generator, frame_size: int = 2048, samples_per
             This is done in order to decrease the number of i/o operations.
     @return: Generator of: input data of shape (frame_size, 1), output data as the corresponding rhythm label.
     """
-    for _, segments in patient_generator:
+    for pt, segments in patient_generator:
 
         # Group patient rhythms by type (segment, start, stop)
         segment_label_map: Dict[str, List[Tuple[str, int, int]]] = {}
@@ -105,7 +104,9 @@ def rhythm_data_generator(patient_generator, frame_size: int = 2048, samples_per
         if not segment_label_map:
             continue
 
-        for _ in range(samples_per_patient):
+        num_samples = 0
+        num_attempts = 0
+        while num_samples < samples_per_patient:
             label = np.random.choice(list(segment_label_map.keys()))
             seg_key, rhy_start, rhy_end = random.choice(segment_label_map[label])
             segment = segments[seg_key]
@@ -121,8 +122,15 @@ def rhythm_data_generator(patient_generator, frame_size: int = 2048, samples_per
                 rhythm_bounds, rhythm_labels, frame_start, frame_end
             )
             y = get_rhythm_label(frame_rhythm_durations, frame_rhythm_labels)
-            yield x, y
-        # END FOR
+            if y in ds_rhythm_map:
+                num_samples += 1
+                yield x, ds_rhythm_map[y]
+            else:
+                if num_attempts == samples_per_patient:
+                    print(pt)
+                    num_samples = samples_per_patient
+                num_attempts += 1
+        # END WHILE
     # END FOR
 
 def rhythm_data_generator_v1(patient_generator, frame_size: int = 2048, samples_per_patient: int = 1):
@@ -336,13 +344,14 @@ def uniform_patient_generator(
     """
     if shuffle:
         patient_ids = np.copy(patient_ids)
-    with h5py.File(db_path, mode='r') as h5:
         while True:
             if shuffle:
                 np.random.shuffle(patient_ids)
             for patient_id in patient_ids:
-                patient_data = h5[f'p{patient_id:05d}']
-                yield patient_id, patient_data
+                pt_key = f'p{patient_id:05d}'
+                with h5py.File(os.path.join(db_path, f'{pt_key}.h5'), mode='r') as h5:
+                    patient_data = h5[pt_key]
+                    yield patient_id, patient_data
             # END FOR
             if not repeat:
                 break
@@ -435,6 +444,10 @@ def get_rhythm_durations(indices, labels=None, start=0, end=None):
     or only rhythm durations if labels are not provided.
     """
     indices = indices.copy()
+    labels = labels.copy()
+    keep_indices = np.where(labels%5 != 0)[0]
+    indices = indices[keep_indices]
+    labels = labels[keep_indices]
     if end is None:
         end = indices[-1]
     if start >= end:
@@ -448,7 +461,7 @@ def get_rhythm_durations(indices, labels=None, start=0, end=None):
     # find the first rhythm label after or exactly at the end of the frame
     end_index = np.searchsorted(indices, end, side='left')
     if end >= indices[-1]:
-        end_index = indices[-1]
+        end_index = len(indices)
     elif end_index%2 == 1:
         indices[end_index] = end
         end_index += 1
@@ -618,18 +631,20 @@ def _choose_random_segment(patients, size=None, segment_p=None):
             indices.append((patient_index, segment_index))
         return indices
 
-def convert_zip_to_hdf5(zip_path: str, h5_path: str):
+def convert_pt_zip_to_hdf5(patient: int, zip_path: str, h5_path: str):
     import wfdb
-
+    import re
+    print(f'Processing patient {patient}')
     sym_map = {'Q': 0, 'N': 1, 'S': 2, 'a': 3, 'V': 4}
     rhy_map = {'': 0, '(N': 1, '(AFIB': 2, '(AFL': 3, ')': 4}
 
+    pt_id = f'p{patient:05d}'
     zp = zipfile.ZipFile(zip_path, mode='r')
-    h5 = h5py.File(h5_path, mode='w')
+    h5 = h5py.File(os.path.join(h5_path, f'{pt_id}.h5'), mode='w')
 
-    # Find all .dat file indices
-    zp_rec_names = [f.filename for f in zp.filelist if f.filename.endswith('.dat')][:100*50]
-    for zp_rec_name in tqdm(zp_rec_names):
+    # Find all patient .dat file indices
+    zp_rec_names = filter(lambda f: re.match(f'{pt_id}_[A-z0-9]+.dat', os.path.basename(f)), (f.filename for f in zp.filelist))
+    for zp_rec_name in zp_rec_names:
         try:
             zp_hdr_name = zp_rec_name.replace('.dat', '.hea')
             zp_atr_name = zp_rec_name.replace('.dat', '.atr')
@@ -658,11 +673,25 @@ def convert_zip_to_hdf5(zip_path: str, h5_path: str):
             continue
     h5.close()
 
+def convert_zip_to_hdf5(zip_path: str, h5_path: str):
+    import functools
+    f = functools.partial(convert_pt_zip_to_hdf5, zip_path=zip_path, h5_path=h5_path)
+    with Pool(processes=10) as pool:
+        print('Started')
+        pool.map(f, ds_patient_ids)
+        print('Finished')
+
+
 if __name__ == "__main__":
-    import time
-    pt_gen = uniform_patient_generator(db_path='/Users/adampage/Ambiq/ecg-arr/db/icentia11k/icentia11k.h5', patient_ids=np.arange(100), repeat=False)
+    zip_path = '/Users/adampage/Ambiq/ecg-arr/db/icentia11k/icentia11k.zip'
+    h5_dir = '/Users/adampage/Ambiq/ecg-arr/db/icentia11k/patients'
+    db_path = h5_dir
+
+    # convert_zip_to_hdf5(zip_path=zip_path, h5_dir=h5_dir)
+
+    pt_gen = uniform_patient_generator(db_path=db_path, patient_ids=ds_patient_ids, repeat=False)
     results = []
-    ds = rhythm_data_generator_v2(pt_gen, samples_per_patient=10)
+    ds = rhythm_data_generator(pt_gen, samples_per_patient=10*250)
     for sample in ds:
         results += [sample[1]]
     print(results)
