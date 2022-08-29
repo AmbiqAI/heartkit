@@ -53,11 +53,18 @@ extern "C"
 {
 #endif
 
+typedef enum
+{
+    NS_I2C_STATUS_SUCCESS,
+    NS_I2C_STATUS_ERROR
+} ns_i2c_status_t;
+
 typedef struct {
     uint32_t device;
     uint32_t speed;
 } ns_i2c_config_t;
 
+int ns_io_i2c_init(ns_i2c_config_t *cfg);
 int ns_io_i2c_write_read(ns_i2c_config_t *cfg, uint16_t addr, const void *write_buf, size_t num_write, void *read_buf, size_t num_read);
 int ns_io_i2c_read(ns_i2c_config_t *cfg, uint8_t *buf, uint32_t num_bytes, uint16_t addr);
 int ns_io_i2c_write(ns_i2c_config_t *cfg, const uint8_t *buf, uint32_t num_bytes, uint16_t addr);

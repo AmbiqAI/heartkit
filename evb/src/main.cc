@@ -50,21 +50,18 @@
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/micro/system_setup.h"
 #include "tensorflow/lite/schema/schema_generated.h"
-//
+//***
 //*****************************************************************************
 
 //*****************************************************************************
-// NeuralSPOT Includes
+//*** NeuralSPOT Includes
 #include "ns_ambiqsuite_harness.h"
 #ifdef RINGBUFFER_MODE
     #include "ns_ipc_ring_buffer.h"
 #endif
 #include "ns_peripherals_button.h"
 #include "ns_peripherals_power.h"
-#ifdef AUDIODEBUG
-    #include "SEGGER_RTT.h"
-#endif
-//
+//***
 //*****************************************************************************
 
 #include "model.h"
@@ -81,16 +78,14 @@
 #define NUM_ELEMENTS (3)
 //*****************************************************************************
 
+//*****************************************************************************
+//*** Model-specific Stuff
+static const char *rhythm_labels[] = { "normal", "afib", "aflut" };
+static const char *beat_labels[] = { "normal", "pac", "aberrated", "pvc" };
 static uint8_t sensorBuffer[MAX86150_FIFO_DEPTH*NUM_ELEMENTS*3] = { 0 };
 static uint32_t ecgData[INF_WINDOW_LEN];
 static const uint16_t MAX86150_ADDR = 0x5E;
 int captureButtonPressed = 0;
-
-//*****************************************************************************
-//*** Model-specific Stuff
-
-static const char *rhythm_labels[] = { "normal", "afib", "aflut" };
-static const char *beat_labels[] = { "normal", "pac", "aberrated", "pvc" };
 //***
 //*****************************************************************************
 
@@ -110,11 +105,6 @@ alignas(16) uint8_t tensorArena[kTensorArenaSize];
 
 //*****************************************************************************
 //*** Peripheral Configs
-
-/**
- * @brief Button Peripheral Config Struct
- *
- */
 ns_button_config_t button_config = {
     .button_0_enable = true,
     .button_1_enable = false,
@@ -136,14 +126,13 @@ static inline int max86150_read(uint8_t *buf, uint32_t num_bytes, uint16_t addr)
 static inline int max86150_write(const uint8_t *buf, uint32_t num_bytes, uint16_t addr) {
     ns_io_i2c_write(&i2cConfig, buf, num_bytes, addr);
 }
-
 max86150_context_t maxCtx = {
     .addr = MAX86150_ADDR,
     .i2c_write_read = max86150_write_read,
     .i2c_read = max86150_read,
     .i2c_write = max86150_write,
 };
-
+//***
 //*****************************************************************************
 
 enum AppState {
@@ -156,9 +145,9 @@ enum AppState {
     FailState
 }; typedef enum AppState AppState;
 
-void sensor_init(void) {
+void init_ecg_sensor(void) {
     /**
-     * @brief Initialize and configure ECG sensor
+     * @brief Initialize and configure ECG sensor (MAX86150)
      *
      */
     max86150_reset(&maxCtx);
@@ -173,21 +162,29 @@ void sensor_init(void) {
     max86150_set_ppg_sample_rate(&maxCtx, 4);           // 100 Samples/sec
     max86150_set_ppg_pulse_width(&maxCtx, 1);           // 100 us
     // max86150_set_proximity_threshold(&i2c_dev, MAX86150_ADDR, 0x1F); // Disabled
-    max86150_set_led_current_range(&maxCtx, 0, 0);      // 50 mA
-    max86150_set_led_current_range(&maxCtx, 1, 0);      // 50 mA
-    max86150_set_led_pulse_amplitude(&maxCtx, 0, 0x64); // 20 mA
-    max86150_set_led_pulse_amplitude(&maxCtx, 1, 0x64); // 20 mA
+    max86150_set_led_current_range(&maxCtx, 0, 0);      // IR LED 50 mA
+    max86150_set_led_current_range(&maxCtx, 1, 0);      // RED LED 50 mA
+    max86150_set_led_pulse_amplitude(&maxCtx, 0, 0x64); // IR LED 20 mA
+    max86150_set_led_pulse_amplitude(&maxCtx, 1, 0x64); // RED LED 20 mA
     max86150_set_ecg_sample_rate(&maxCtx, 3);           // Fs = 200 Hz
     max86150_set_ecg_ia_gain(&maxCtx, 1);               // 9.5 V/V
     max86150_set_ecg_pga_gain(&maxCtx, 3);              // 8 V/V
 }
 
-void start_sensor(void) {
+void start_ecg_sensor(void) {
+    /**
+     * @brief Takes ECG sensor out of low-power mode and enables FIFO
+     *
+     */
     max86150_powerup(&maxCtx);
     max86150_set_fifo_enable(&maxCtx, 1);
 }
 
-void stop_sensor(void) {
+void stop_ecg_sensor(void) {
+    /**
+     * @brief Puts ECG sensor in low-power mode
+     *
+     */
     max86150_set_fifo_enable(&maxCtx, 0);
     max86150_shutdown(&maxCtx);
 }
@@ -202,8 +199,7 @@ void model_init(void) {
 
     tflite::InitializeTarget();
 
-    // Map the model into a usable data structure. This doesn't involve any
-    // copying or parsing, it's a very lightweight operation.
+    // Map the model into a usable data structure.
     model = tflite::GetModel(slu_model_tflite);
     if (model->version() != TFLITE_SCHEMA_VERSION) {
         TF_LITE_REPORT_ERROR(errorReporter,
@@ -257,7 +253,7 @@ int main(void) {
 #endif
 
     // Initialize everything else
-    sensor_init();
+    // init_ecg_sensor();
     model_init();
     ns_peripheral_button_init(&button_config);
     ns_printf("Press button to capture ECG...\n");
@@ -279,11 +275,11 @@ int main(void) {
         case StartCaptureState:
             ns_printf("Starting ECG capture.\n");
             numSamples = 0;
-            start_sensor();
+            start_ecg_sensor();
             state = CapturingState;
             break;
         case CapturingState:
-            numSensorSamples = max86150_read_fifo_samples(&maxCtx, &sensorBuffer[0]);
+            numSensorSamples = max86150_read_fifo_samples(&maxCtx, &sensorBuffer[0], 3);
             for (size_t i = 0; i < numSensorSamples && numSamples < INF_WINDOW_LEN; i++) {
                 memcpy(&ecgData[numSamples++], &sensorBuffer[3*NUM_ELEMENTS*i], 3);
             }
@@ -296,19 +292,23 @@ int main(void) {
             break;
         case StopCaptureState:
             ns_printf("Finished ECG capture.\n");
-            stop_sensor();
+            stop_ecg_sensor();
             state = InferenceState;
             break;
         case InferenceState:
+            ns_printf("Running inference\n");
             // Copy sensor data to input buffer
             invokeStatus = interpreter->Invoke();
             if (invokeStatus != kTfLiteOk) {
                 ns_printf("Invoke failed\n");
                 state = FailState;
             }
-            //
+            state = DisplayState;
             break;
         case DisplayState:
+            captureButtonPressed = 0;
+            state = IdleState;
+            ns_printf("Done\n");
             break;
         case FailState:
             // Report error and reset state

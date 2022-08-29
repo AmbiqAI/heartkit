@@ -33,30 +33,29 @@ static const uint8_t MAX86150_ECG_CONFIG3 = 0x3E;
 static const uint8_t MAX86150_PART_ID = 0xFF;
 static const uint8_t MAX86150_PART_ID_VAL = 0x1E;
 
-uint16_t max86150_get_register(const max86150_context_t *ctx, uint8_t reg, uint8_t mask = NULL) {
+uint16_t max86150_get_register(const max86150_context_t *ctx, uint8_t reg, uint8_t mask) {
     /**
      * @brief Read register field
      * @return Register value
      */
     uint8_t value = 0;
     ctx->i2c_write_read(ctx->addr, &reg, 1, &value, 1);
-    if (mask != NULL) { value &= mask; }
+    if (mask != 0xFF) { value &= mask; }
     return value;
 }
 
-int max86150_set_register(const max86150_context_t *ctx, uint8_t reg, uint8_t value, uint8_t mask = NULL) {
+int max86150_set_register(const max86150_context_t *ctx, uint8_t reg, uint8_t value, uint8_t mask) {
     /**
      * @brief Set register field
      * @return 0 if successful
      */
     int err = 0;
-    static uint8_t i2c_buffer[2] = { 0x00 };
-    i2c_buffer[0] = reg;
-    if (mask != NULL) {
+    uint16_t i2c_buffer;
+    if (mask != 0xFF) {
         value = max86150_get_register(ctx, reg, ~mask) | (value & mask);
     }
-    i2c_buffer[1] = value;
-    err = ctx->i2c_write(i2c_buffer, 2, ctx->addr);
+    i2c_buffer = (reg << 4) | (value && 0x00FF);
+    err = ctx->i2c_write((uint8_t *)&i2c_buffer, 2, ctx->addr);
     return err;
 }
 
@@ -69,7 +68,7 @@ uint8_t max86150_get_int1(const max86150_context_t *ctx) {
      * @param  ctx Device context
      * @return register value
      */
-    return max86150_get_register(ctx, MAX86150_INT_STAT1);
+    return max86150_get_register(ctx, MAX86150_INT_STAT1, 0xFF);
 }
 
 uint8_t max86150_get_int2(const max86150_context_t *ctx) {
@@ -79,7 +78,7 @@ uint8_t max86150_get_int2(const max86150_context_t *ctx) {
      * @param  ctx Device context
      * @return register value
      */
-    return max86150_get_register(ctx, MAX86150_INT_STAT2);
+    return max86150_get_register(ctx, MAX86150_INT_STAT2, 0xFF);
 }
 
 void max86150_set_alm_full_int_flag(const max86150_context_t *ctx, bool enable) {
@@ -159,26 +158,26 @@ void max86150_set_fifo_wr_pointer(const max86150_context_t *ctx, uint8_t value) 
     max86150_set_register(ctx, MAX86150_FIFO_WR_PTR, value, 0x1F);
 }
 
-uint8_t max86150_set_fifo_slot(const max86150_context_t *ctx, uint8_t slot, Max86150SlotType type) {
+void max86150_set_fifo_slot(const max86150_context_t *ctx, uint8_t slot, Max86150SlotType type) {
     uint8_t reg = slot & 0x02 ? MAX86150_FIFO_CONTROL2 : MAX86150_FIFO_CONTROL1;
     uint8_t value = slot & 0x01 ? type << 4 : type;
     uint8_t mask = slot & 0x01 ? 0xF0 : 0x0F;
     max86150_set_register(ctx, reg, value, mask);
 }
 
-uint8_t max86150_set_fifo_slots(const max86150_context_t *ctx, Max86150SlotType slot0, Max86150SlotType slot1, Max86150SlotType slot2, Max86150SlotType slot3) {
+void max86150_set_fifo_slots(const max86150_context_t *ctx, Max86150SlotType slot0, Max86150SlotType slot1, Max86150SlotType slot2, Max86150SlotType slot3) {
     max86150_set_fifo_slot(ctx, 0, slot0);
     max86150_set_fifo_slot(ctx, 1, slot1);
     max86150_set_fifo_slot(ctx, 2, slot2);
     max86150_set_fifo_slot(ctx, 3, slot3);
 }
 
-uint8_t max86150_disable_slots(const max86150_context_t *ctx) {
-     max86150_set_register(ctx, MAX86150_FIFO_CONTROL1, 0x00);
-     max86150_set_register(ctx, MAX86150_FIFO_CONTROL2, 0x00);
+void max86150_disable_slots(const max86150_context_t *ctx) {
+     max86150_set_register(ctx, MAX86150_FIFO_CONTROL1, 0x00, 0xFF);
+     max86150_set_register(ctx, MAX86150_FIFO_CONTROL2, 0x00, 0xFF);
 }
 
-uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint8_t *buffer, uint8_t elementsPerSample = 3) {
+uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint8_t *buffer, uint8_t elementsPerSample) {
     /**
      * @brief Reads all data available in FIFO
      * @param  ctx Device context
@@ -317,7 +316,7 @@ uint8_t max86150_get_part_id(const max86150_context_t *ctx) {
      *
      * @return return
      */
-    return max86150_get_register(ctx, MAX86150_PART_ID);
+    return max86150_get_register(ctx, MAX86150_PART_ID, 0xFF);
 }
 
 #pragma endregion
@@ -373,7 +372,7 @@ void max86150_set_proximity_threshold(const max86150_context_t *ctx, uint8_t val
      * @param  ctx Device context
      *
      */
-    max86150_set_register(ctx, MAX86150_PPG_PROX_INT_THRESH, value);
+    max86150_set_register(ctx, MAX86150_PPG_PROX_INT_THRESH, value, 0xFF);
 }
 
 #pragma endregion
@@ -402,7 +401,7 @@ void max86150_set_led_pulse_amplitude(const max86150_context_t *ctx, uint8_t led
         default:
             break;
     }
-    max86150_set_register(ctx, reg, value);
+    max86150_set_register(ctx, reg, value & 0x7F, 0xFF);
 }
 
 void max86150_set_led_current_range(const max86150_context_t *ctx, uint8_t led, uint8_t value) {

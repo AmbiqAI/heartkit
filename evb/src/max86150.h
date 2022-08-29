@@ -28,8 +28,8 @@ typedef struct {
     pfnI2cWrite i2c_write;
 } max86150_context_t;
 
-uint16_t max86150_get_register(const max86150_context_t *ctx, uint16_t addr, uint8_t reg, uint8_t mask = NULL);
-int max86150_set_register(const max86150_context_t *ctx, uint8_t reg, uint8_t value, uint8_t mask = NULL);
+uint16_t max86150_get_register(const max86150_context_t *ctx, uint16_t addr, uint8_t reg, uint8_t mask);
+int max86150_set_register(const max86150_context_t *ctx, uint8_t reg, uint8_t value, uint8_t mask);
 
 // Interrupts
 uint8_t max86150_get_int1(const max86150_context_t *ctx);
@@ -44,10 +44,10 @@ void max86150_set_ecg_rdy_int_flag(const max86150_context_t *ctx, bool enable);
 
 uint8_t max86150_get_fifo_wr_pointer(const max86150_context_t *ctx);
 void max86150_set_fifo_wr_pointer(const max86150_context_t *ctx, uint8_t value);
-uint8_t max86150_set_fifo_slot(const max86150_context_t *ctx, uint8_t slot, Max86150SlotType type);
-uint8_t max86150_set_fifo_slots(const max86150_context_t *ctx, Max86150SlotType slot0, Max86150SlotType slot1, Max86150SlotType slot2, Max86150SlotType slot3);
-uint8_t max86150_disable_slots(const max86150_context_t *ctx);
-uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint8_t *buffer, uint8_t elementsPerSample = 3);
+void max86150_set_fifo_slot(const max86150_context_t *ctx, uint8_t slot, Max86150SlotType type);
+void max86150_set_fifo_slots(const max86150_context_t *ctx, Max86150SlotType slot0, Max86150SlotType slot1, Max86150SlotType slot2, Max86150SlotType slot3);
+void max86150_disable_slots(const max86150_context_t *ctx);
+uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint8_t *buffer, uint8_t elementsPerSample);
 uint8_t max86150_get_fifo_overflow_counter(const max86150_context_t *ctx);
 uint8_t max86150_get_fifo_rd_pointer(const max86150_context_t *ctx);
 void max86150_set_fifo_rd_pointer(const max86150_context_t *ctx, uint8_t value);
