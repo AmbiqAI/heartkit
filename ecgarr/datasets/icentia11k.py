@@ -19,12 +19,10 @@ class IcentiaRhythm(IntEnum):
     unknown=5
 
     @classmethod
-    @property
     def hi_priority(cls) -> List[int]:
         return [cls.afib.value, cls.aflut.value]
 
     @classmethod
-    @property
     def lo_priority(cls) -> List[int]:
         return [cls.noise.value, cls.normal.value, cls.end.value, cls.unknown.value]
 
@@ -53,7 +51,8 @@ class IcentiaHeartRate(IntEnum):
 
 ds_beat_names =  {b.name: b.value for b in IcentiaBeat}
 ds_rhythm_names = {r.name: r.value for r in IcentiaRhythm}
-ds_rhythm_map = {IcentiaRhythm.normal.value: 0, IcentiaRhythm.afib.value: 1, IcentiaRhythm.aflut.value: 2}
+ds_rhythm_map = {IcentiaRhythm.normal.value: 0, IcentiaRhythm.afib.value: 1, IcentiaRhythm.aflut.value: 1}
+ds_rhythm_weights = {0: 0.5, 1: 40}
 
 @dataclasses.dataclass
 class IcentiaStats:
@@ -518,14 +517,14 @@ def get_rhythm_label(durations, labels):
     summed_durations = np.zeros(len(ds_rhythm_names))
     for rhythm in IcentiaRhythm:
         summed_durations[rhythm.value] = durations[labels == rhythm.value].sum()
-    longest_hp_rhythm = np.argmax(summed_durations[IcentiaRhythm.hi_priority])
-    if summed_durations[IcentiaRhythm.hi_priority][longest_hp_rhythm] > 0:
-        y = IcentiaRhythm.hi_priority[longest_hp_rhythm]
+    longest_hp_rhythm = np.argmax(summed_durations[IcentiaRhythm.hi_priority()])
+    if summed_durations[IcentiaRhythm.hi_priority()][longest_hp_rhythm] > 0:
+        y = IcentiaRhythm.hi_priority()[longest_hp_rhythm]
     else:
-        longest_lp_rhythm = np.argmax(summed_durations[IcentiaRhythm.lo_priority])
+        longest_lp_rhythm = np.argmax(summed_durations[IcentiaRhythm.lo_priority()])
         # handle the case of no detected rhythm
-        if summed_durations[IcentiaRhythm.lo_priority][longest_lp_rhythm] > 0:
-            y = IcentiaRhythm.lo_priority[longest_lp_rhythm]
+        if summed_durations[IcentiaRhythm.lo_priority()][longest_lp_rhythm] > 0:
+            y = IcentiaRhythm.lo_priority()[longest_lp_rhythm]
         else:
             y = 0  # undefined rhythm
     return y
@@ -540,14 +539,14 @@ def get_beat_label(labels):
     """
     # calculate the count of each beat type in the frame
     beat_counts = np.bincount(labels, minlength=len(ds_beat_names))
-    most_hp_beats = np.argmax(beat_counts[IcentiaBeat.hi_priority])
-    if beat_counts[IcentiaBeat.hi_priority][most_hp_beats] > 0:
-        y = IcentiaBeat.hi_priority[most_hp_beats]
+    most_hp_beats = np.argmax(beat_counts[IcentiaBeat.hi_priority()])
+    if beat_counts[IcentiaBeat.hi_priority()][most_hp_beats] > 0:
+        y = IcentiaBeat.hi_priority()[most_hp_beats]
     else:
-        most_lp_beats = np.argmax(beat_counts[IcentiaBeat.lo_priority])
+        most_lp_beats = np.argmax(beat_counts[IcentiaBeat.lo_priority()])
         # handle the case of no detected beats
-        if beat_counts[IcentiaBeat.lo_priority][most_lp_beats] > 0:
-            y = IcentiaBeat.lo_priority[most_lp_beats]
+        if beat_counts[IcentiaBeat.lo_priority()][most_lp_beats] > 0:
+            y = IcentiaBeat.lo_priority()[most_lp_beats]
         else:
             y = 0  # undefined beat
     return y
@@ -684,7 +683,7 @@ def convert_zip_to_hdf5(zip_path: str, h5_path: str):
 
 if __name__ == "__main__":
     zip_path = '/Users/adampage/Ambiq/ecg-arr/db/icentia11k/icentia11k.zip'
-    h5_dir = '/Users/adampage/Ambiq/ecg-arr/db/icentia11k/patients'
+    h5_dir = '/media/adamp/ankmax/ecg/icentia11k/patients'
     db_path = h5_dir
 
     # convert_zip_to_hdf5(zip_path=zip_path, h5_dir=h5_dir)

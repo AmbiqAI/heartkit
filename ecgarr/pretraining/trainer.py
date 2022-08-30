@@ -8,6 +8,8 @@ import sklearn.model_selection
 import wandb
 from wandb.keras import WandbCallback
 import tensorflow as tf
+import matplotlib.pyplot as plt
+import seaborn as sns
 from . import datasets
 from .utils import task_solver
 from ..datasets import icentia11k
@@ -122,7 +124,7 @@ if __name__ == '__main__':
         val = None
         validation_data = None
 
-    wandb.init(project="ecg-arrhythmia", entity="ambiq", dir=str(args.job_dir / 'wandb'))
+    # wandb.init(project="ecg-arrhythmia", entity="ambiq", dir=str(args.job_dir / 'wandb'))
 
     # if args.train.is_file():
     #     print('Loading train data from file {} ...'.format(args.train))
@@ -246,6 +248,28 @@ if __name__ == '__main__':
 
         model.fit(
             train_data, steps_per_epoch=steps_per_epoch, verbose=2, epochs=args.epochs,
-            validation_data=validation_data,
-            callbacks=[checkpoint, logger, WandbCallback()]
+            validation_data=validation_data, class_weight=icentia11k.ds_rhythm_weights,
+            callbacks=[
+                checkpoint,
+                logger,
+                # WandbCallback()
+            ]
         )
+
+        test_labels = []
+        for _, label in validation_data:
+            test_labels.append(label.numpy())
+        y_true = np.concatenate(test_labels)
+
+        y_pred = np.argmax(model.predict(validation_data), axis=1)
+
+        test_acc = np.sum(y_pred == y_true) / len(y_true)
+        print(f'Test set accuracy: {test_acc:.0%}')
+
+        confusion_mtx = tf.math.confusion_matrix(y_true, y_pred)
+        label_names = ['NORMAL', 'AFIB']
+        plt.figure(figsize=(10, 8))
+        sns.heatmap(confusion_mtx, xticklabels=label_names, yticklabels=label_names, annot=True, fmt='g')
+        plt.xlabel('Prediction')
+        plt.ylabel('Label')
+        plt.savefig(str(args.job_dir / 'confusion_matrix.png'))
