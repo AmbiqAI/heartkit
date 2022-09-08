@@ -2,38 +2,44 @@ import os
 import random
 import argparse
 from pathlib import Path
-from typing import List
+from typing import Any, List
 import numpy as np
 import sklearn.model_selection
 import wandb
 from wandb.keras import WandbCallback
 import tensorflow as tf
 import matplotlib.pyplot as plt
+import numpy.typing as npt
 import seaborn as sns
 from . import datasets
 from .utils import task_solver
 from ..datasets import icentia11k
 from ..evaluation import CustomCheckpoint, f1
 from ..models.utils import build_input_tensor_from_shape
-from ..utils import matches_spec, load_pkl, save_pkl
+from ..utils import EcgTask, matches_spec, load_pkl, save_pkl
+
+def _split_train_test_patients(task: EcgTask, patient_ids: npt.NDArray, test_size: float) -> List[List[Any]]:
+    if task == EcgTask.rhythm:
+        return icentia11k.train_test_split_patients(patient_ids, test_size=test_size, task=task)
+    return sklearn.model_selection.train_test_split(patient_ids, test_size=test_size)
 
 def _create_dataset_from_generator(task: str, db_path: str, patient_ids: List[int], frame_size: int, samples_per_patient: int = 1):
-    if task == 'rhythm':
+    if task == EcgTask.rhythm:
         dataset = datasets.rhythm_dataset(
             db_path=db_path, patient_ids=patient_ids, frame_size=frame_size,
             samples_per_patient=samples_per_patient
         )
-    elif task == 'beat':
+    elif task == EcgTask.beat:
         dataset = datasets.beat_dataset(
             db_path=db_path, patient_ids=patient_ids, frame_size=frame_size,
             samples_per_patient=samples_per_patient
         )
-    elif task == 'hr':
+    elif task == EcgTask.hr:
         dataset = datasets.heart_rate_dataset(
             db_path=db_path, patient_ids=patient_ids, frame_size=frame_size,
             samples_per_patient=samples_per_patient
         )
-    elif task == 'cpc':
+    elif task == EcgTask.cpc:
         dataset = datasets.cpc_dataset(
             db_path=db_path, patient_ids=patient_ids, frame_size=frame_size,
             context_size=args.context_size, ns=args.ns, context_overlap=args.context_overlap,
@@ -47,10 +53,10 @@ def _create_dataset_from_generator(task: str, db_path: str, patient_ids: List[in
 
 def _create_dataset_from_data(data):
     x, y = data['x'], data['y']
-    if args.task in ['rhythm', 'beat', 'hr']:
+    if args.task in [EcgTask.rhythm, EcgTask.beat, EcgTask.hr]:
         spec = (tf.TensorSpec((None, args.frame_size, 1), tf.float32),
                 tf.TensorSpec((None,), tf.int32))
-    elif args.task == 'cpc':
+    elif args.task == EcgTask.cpc:
         spec = ({'context': tf.TensorSpec((None, args.context_size, args.frame_size, 1), tf.float32),
                  'samples': tf.TensorSpec((None, args.ns + 1, args.frame_size, 1), tf.float32)},
                 tf.TensorSpec((None,), tf.int32))
@@ -157,15 +163,27 @@ if __name__ == '__main__':
         train_patient_ids = np.setdiff1d(train_patient_ids, val['patient_ids'])
     elif args.val_patients:
         print('Splitting patients into train and validation')
-        train_patient_ids, val_patient_ids = sklearn.model_selection.train_test_split(
-            train_patient_ids, test_size=args.val_patients)
+        train_patient_ids, val_patient_ids = _split_train_test_patients(
+            task=args.task, patient_ids=train_patient_ids, test_size=args.val_patients
+        )
         # validation size is one validation epoch by default
         val_size = args.val_size or (len(val_patient_ids) * args.val_samples_per_patient)
         print('Collecting {} validation samples ...'.format(val_size))
-        validation_data = _create_dataset_from_generator(
-            task=args.task, db_path=str(args.train), patient_ids=val_patient_ids,
-            frame_size=args.frame_size, samples_per_patient=args.val_samples_per_patient
-        )
+        if args.data_parallelism > 1:
+            split = len(val_patient_ids) // args.data_parallelism
+            val_patient_ids = tf.convert_to_tensor(val_patient_ids)
+            validation_data = tf.data.Dataset.range(args.data_parallelism).interleave(
+                lambda i: _create_dataset_from_generator(
+                    task=args.task, db_path=str(args.train),
+                    patient_ids=val_patient_ids[i * split:(i + 1) * split], frame_size=args.frame_size,
+                    samples_per_patient=args.val_samples_per_patient
+                ),
+                num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        else:
+            validation_data = _create_dataset_from_generator(
+                task=args.task, db_path=str(args.train), patient_ids=val_patient_ids,
+                frame_size=args.frame_size, samples_per_patient=args.val_samples_per_patient
+            )
         val_x, val_y = next(validation_data.batch(val_size).as_numpy_iterator())
         val = {'x': val_x, 'y': val_y, 'patient_ids': val_patient_ids}
         if args.cache_val:
@@ -248,8 +266,7 @@ if __name__ == '__main__':
 
         model.fit(
             train_data, steps_per_epoch=steps_per_epoch, verbose=2, epochs=args.epochs,
-            validation_data=validation_data, class_weight=icentia11k.ds_rhythm_weights,
-            callbacks=[
+            validation_data=validation_data, callbacks=[
                 checkpoint,
                 logger,
                 # WandbCallback()

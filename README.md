@@ -59,3 +59,42 @@ Dataset consists of ECG records from 290 subjects: 148 diagnosed as MI, 52 healt
 
 * [Protocentral MAX86150](https://protocentral.com/product/protocentral-max86150-ppg-and-ecg-breakout-with-qwiic-v2/)
 * [MAX86150 Eval Sys](https://www.mouser.com/ProductDetail/Maxim-Integrated/MAX86150EVSYS?qs=chTDxNqvsylQl7eFGURvdw%3D%3D&gclid=Cj0KCQjwlK-WBhDjARIsAO2sErRwZ1A4Pl8LggiOEdglcysa__Eg1f1dHl_KnadjWswq8q6ttpaA72IaAocyEALw_wcB)
+
+## Project Milestones
+
+### 09/05
+
+* EVB: Incorporate ECG sensor (get physical HW working)
+* EVB: Finish pipeline/ app state machine
+
+### 09/12
+
+* EVB: Implement pre-processing stage (window filter, normalize)
+* EVB: Integrate eRPC for CLI (trigger, data, results)
+
+### 09/19
+
+* EVB: Integrate V1 model (verify stimulus sets produce ~same~ outputs)
+* TFL: Quantization and HPO
+
+### 09/26
+
+* Makefile: train, deploy, inference
+* CI/CD
+
+### 10/03
+
+* Documentation: Python, C, notebook examples
+* Dockerize: install, train, deploy, inference
+
+### 10/10
+
+* Documentation
+* Demo UI
+
+## EVB Inference Pipeline
+
+1. We trigger using either button or eRPC command.
+2. Data collection from either sensor or data sent over eRPC
+3. Model inference is performed
+4. Results are displayed w/ display or via eRPC to Python UI

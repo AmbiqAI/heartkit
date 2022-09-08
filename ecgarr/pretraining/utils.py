@@ -1,3 +1,4 @@
+from enum import Enum
 import os
 import functools
 import multiprocessing
@@ -9,7 +10,6 @@ from ..models.resnet1d import ResidualBlock, BottleneckBlock
 from ..models.transformer import Encoder
 from ..models.utils import build_input_tensor_from_shape
 from ..tasks.cpc import CPCSolver
-
 
 def unzip_icentia11k(db_dir, patient_ids, out_dir, num_workers=1, patients_per_worker=1, verbose=False):
     os.makedirs(out_dir, exist_ok=True)

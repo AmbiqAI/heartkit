@@ -64,6 +64,7 @@
 //***
 //*****************************************************************************
 
+#include "SEGGER_RTT.h"
 #include "model.h"
 #include "max86150.h"
 #include "ns_io_i2c.h"
@@ -73,22 +74,40 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
+// #define EMULATION
 #define SAMPLE_RATE 250
 #define INF_WINDOW_LEN (SAMPLE_RATE*5) // 5 seconds
 #define NUM_ELEMENTS (3)
+#define ECG_BUFFER_LEN (INF_WINDOW_LEN+SAMPLE_RATE)
+#define MAX86150_ADDR (0x5E)
 //*****************************************************************************
 
+#define RTT_PORT 1
+#define RTT_BUFFER_LEN (2*INF_WINDOW_LEN)
+
+enum AppState {
+    IDLE_STATE,
+    START_CAPTURE_STATE,
+    CAPTURING_STATE,
+    STOP_CAPTURE_STATE,
+    INFERENCE_STATE,
+    DISPLAY_STATE,
+    FAIL_STATE
+}; typedef enum AppState AppState;
+
 //*****************************************************************************
-//*** Model-specific Stuff
+//*** Application globals
 static const char *rhythm_labels[] = { "normal", "afib", "aflut" };
 static const char *beat_labels[] = { "normal", "pac", "aberrated", "pvc" };
-static uint8_t sensorBuffer[MAX86150_FIFO_DEPTH*NUM_ELEMENTS*3] = { 0 };
-static uint32_t ecgData[INF_WINDOW_LEN];
-static const uint16_t MAX86150_ADDR = 0x5E;
+uint8_t rttBuffer[RTT_BUFFER_LEN];
+static uint32_t sensorBuffer[MAX86150_FIFO_DEPTH*NUM_ELEMENTS] = { 0 };
+static uint32_t ecgBuffer[ECG_BUFFER_LEN];
 int captureButtonPressed = 0;
+AppState state = IDLE_STATE;
+uint32_t numSamples;
+
 //***
 //*****************************************************************************
-
 
 //*****************************************************************************
 //*** Tensorflow Globals
@@ -97,8 +116,7 @@ const tflite::Model *model = nullptr;
 tflite::MicroInterpreter *interpreter = nullptr;
 TfLiteTensor *modelInput = nullptr;
 TfLiteTensor *modelOutput = nullptr;
-
-constexpr int kTensorArenaSize = 1024 * 70; // TODO: Determine based of model size
+constexpr int kTensorArenaSize = 1024 * 70;
 alignas(16) uint8_t tensorArena[kTensorArenaSize];
 //***
 //*****************************************************************************
@@ -113,18 +131,19 @@ ns_button_config_t button_config = {
 };
 
 ns_i2c_config_t i2cConfig = {
-    .device = 0,
+    .i2cBus = 0,
+    .device = 1,
     .speed = 100000,
 };
 
-static inline int max86150_write_read(uint16_t addr, const void *write_buf, size_t num_write, void *read_buf, size_t num_read) {
-    ns_io_i2c_write_read(&i2cConfig, addr, write_buf, num_write, read_buf, num_read);
+static int max86150_write_read(uint16_t addr, const void *write_buf, size_t num_write, void *read_buf, size_t num_read) {
+    return ns_io_i2c_write_read(&i2cConfig, addr, write_buf, num_write, read_buf, num_read);
 }
-static inline int max86150_read(uint8_t *buf, uint32_t num_bytes, uint16_t addr) {
-    ns_io_i2c_read(&i2cConfig, buf, num_bytes, addr);
+static int max86150_read(const void *buf, uint32_t num_bytes, uint16_t addr) {
+    return ns_io_i2c_read(&i2cConfig, buf, num_bytes, addr);
 }
-static inline int max86150_write(const uint8_t *buf, uint32_t num_bytes, uint16_t addr) {
-    ns_io_i2c_write(&i2cConfig, buf, num_bytes, addr);
+static int max86150_write(const void *buf, uint32_t num_bytes, uint16_t addr) {
+    return ns_io_i2c_write(&i2cConfig, buf, num_bytes, addr);
 }
 max86150_context_t maxCtx = {
     .addr = MAX86150_ADDR,
@@ -135,21 +154,16 @@ max86150_context_t maxCtx = {
 //***
 //*****************************************************************************
 
-enum AppState {
-    IdleState,
-    StartCaptureState,
-    CapturingState,
-    StopCaptureState,
-    InferenceState,
-    DisplayState,
-    FailState
-}; typedef enum AppState AppState;
 
 void init_ecg_sensor(void) {
     /**
      * @brief Initialize and configure ECG sensor (MAX86150)
      *
      */
+#ifdef EMULATION
+    // Do nothing
+#else
+    ns_io_i2c_init(&i2cConfig);
     max86150_reset(&maxCtx);
     ns_delay_us(10000);
     max86150_set_fifo_slots(
@@ -157,18 +171,21 @@ void init_ecg_sensor(void) {
         Max86150SlotEcg, Max86150SlotPpgLed1,
         Max86150SlotPpgLed2, Max86150SlotOff
     );
+    max86150_set_almost_full_rollover(&maxCtx, 1);      // !FIFO rollover: should decide
     max86150_set_ppg_sample_average(&maxCtx, 2);        // Avg 4 samples
-    max86150_set_ppg_adc_range(&maxCtx, 3);             // 16,384 nA Scale
+    max86150_set_ppg_adc_range(&maxCtx, 2);             // 16,384 nA Scale
     max86150_set_ppg_sample_rate(&maxCtx, 4);           // 100 Samples/sec
-    max86150_set_ppg_pulse_width(&maxCtx, 1);           // 100 us
+    max86150_set_ppg_pulse_width(&maxCtx, 3);           // 400 us
     // max86150_set_proximity_threshold(&i2c_dev, MAX86150_ADDR, 0x1F); // Disabled
     max86150_set_led_current_range(&maxCtx, 0, 0);      // IR LED 50 mA
     max86150_set_led_current_range(&maxCtx, 1, 0);      // RED LED 50 mA
     max86150_set_led_pulse_amplitude(&maxCtx, 0, 0x64); // IR LED 20 mA
     max86150_set_led_pulse_amplitude(&maxCtx, 1, 0x64); // RED LED 20 mA
+    max86150_set_led_pulse_amplitude(&maxCtx, 2, 0x64); // RED LED 20 mA
     max86150_set_ecg_sample_rate(&maxCtx, 3);           // Fs = 200 Hz
     max86150_set_ecg_ia_gain(&maxCtx, 1);               // 9.5 V/V
-    max86150_set_ecg_pga_gain(&maxCtx, 3);              // 8 V/V
+    max86150_set_ecg_pga_gain(&maxCtx, 2);              // 4 V/V
+#endif
 }
 
 void start_ecg_sensor(void) {
@@ -176,8 +193,12 @@ void start_ecg_sensor(void) {
      * @brief Takes ECG sensor out of low-power mode and enables FIFO
      *
      */
+#ifdef EMULATION
+    // Do nothing
+#else
     max86150_powerup(&maxCtx);
     max86150_set_fifo_enable(&maxCtx, 1);
+#endif
 }
 
 void stop_ecg_sensor(void) {
@@ -185,8 +206,37 @@ void stop_ecg_sensor(void) {
      * @brief Puts ECG sensor in low-power mode
      *
      */
+#ifdef EMULATION
+    // Do nothing
+#else
     max86150_set_fifo_enable(&maxCtx, 0);
     max86150_shutdown(&maxCtx);
+#endif
+}
+
+uint32_t capture_ecg_sensor(uint32_t* buffer, uint32_t size) {
+    uint32_t numSamples;
+    uint32_t val;
+#ifdef EMULATION
+    numSamples = 8;
+    for (size_t i = 0; i < numSamples; i++) {
+        buffer[i] = (rand() % (255 - 0 + 1)) + 0;
+        SEGGER_RTT_Write(RTT_PORT, (uint8_t *)&val, 4);
+        ns_delay_us(4000);
+    }
+
+#else
+    numSamples = max86150_read_fifo_samples(&maxCtx, sensorBuffer, NUM_ELEMENTS);
+    if (numSamples == 0) {
+        ns_delay_us(2500);
+    }
+    for (size_t i = 0; i < numSamples; i++) {
+        buffer[i] = sensorBuffer[NUM_ELEMENTS*i];
+        SEGGER_RTT_Write(RTT_PORT, &buffer[i], 4);
+        ns_delay_us(5000);
+    }
+#endif
+    return numSamples;
 }
 
 void model_init(void) {
@@ -213,10 +263,10 @@ void model_init(void) {
     // static tflite::MicroMutableOpResolver<1> resolver;
     static tflite::AllOpsResolver resolver;
     // Build an interpreter to run the model with.
-    static tflite::MicroInterpreter staticInterpreter(
+    static tflite::MicroInterpreter static_interpreter(
         model, resolver, tensorArena, kTensorArenaSize, errorReporter
     );
-    interpreter = &staticInterpreter;
+    interpreter = &static_interpreter;
 
     // Allocate memory from the tensorArena for the model's tensors.
     TfLiteStatus allocate_status = interpreter->AllocateTensors();
@@ -225,23 +275,40 @@ void model_init(void) {
         return;
     }
 
+    size_t bytesUsed = interpreter->arena_used_bytes();
+    if (bytesUsed > kTensorArenaSize) {
+        TF_LITE_REPORT_ERROR(errorReporter,
+            "Model requires %d bytes for arena but given only %d bytes.",
+            bytesUsed, kTensorArenaSize
+        );
+    }
+
     // Obtain pointers to the model's input and output tensors.
     modelInput = interpreter->input(0);
     modelOutput = interpreter->output(0);
 }
 
+int model_run() {
+    // Copy sensor data to input buffer
+    int8_t y;
+    TfLiteStatus invokeStatus = interpreter->Invoke();
+    if (invokeStatus != kTfLiteOk) {
+        return -1;
+    } else {
+        for (size_t i = 0; i < modelOutput->dims->data[0]; i++) {
+            y = modelOutput->data.int8[i];
+        }
+        return y;
+    }
+}
 
-int main(void) {
+static void setup() {
     /**
-     * @brief Main function - infinite loop listening and inferring
-     * @return int
+     * @brief Application setup
+     *
      */
-
-    TfLiteStatus invokeStatus;
-    uint32_t numSamples = 0;
-    uint32_t numSensorSamples = 0;
-    AppState state = IdleState;
     ns_itm_printf_enable();
+    am_hal_interrupt_master_enable();
 
 #ifdef ENERGYMODE
     ns_uart_printf_enable();
@@ -251,9 +318,11 @@ int main(void) {
     ns_debug_printf_enable(); // Leave crypto on for ease of debugging
     ns_power_config(&ns_development_default);
 #endif
-
-    // Initialize everything else
-    // init_ecg_sensor();
+    SEGGER_RTT_Init();
+    SEGGER_RTT_ConfigUpBuffer(RTT_PORT, "DATA", rttBuffer, RTT_BUFFER_LEN, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
+    ns_delay_us(20);
+    // am_bsp_itm_printf_disable();
+    init_ecg_sensor();
     model_init();
     ns_peripheral_button_init(&button_config);
     ns_printf("Press button to capture ECG...\n");
@@ -261,61 +330,78 @@ int main(void) {
 #ifdef ENERGYMODE
     ns_power_set_monitor_state(AM_AI_DATA_COLLECTION);
 #endif
+}
 
-    while (1) {
-        switch (state) {
-        case IdleState:
-            if (captureButtonPressed) {
-                state = StartCaptureState;
-            } else {
-                ns_delay_us(1000);
-                state = IdleState;
-            }
-            break;
-        case StartCaptureState:
-            ns_printf("Starting ECG capture.\n");
-            numSamples = 0;
-            start_ecg_sensor();
-            state = CapturingState;
-            break;
-        case CapturingState:
-            numSensorSamples = max86150_read_fifo_samples(&maxCtx, &sensorBuffer[0], 3);
-            for (size_t i = 0; i < numSensorSamples && numSamples < INF_WINDOW_LEN; i++) {
-                memcpy(&ecgData[numSamples++], &sensorBuffer[3*NUM_ELEMENTS*i], 3);
-            }
-            if (numSamples >= INF_WINDOW_LEN) {
-                state = StopCaptureState;
-            } else {
-                state = CapturingState;
-                ns_delay_us(100);
-            }
-            break;
-        case StopCaptureState:
-            ns_printf("Finished ECG capture.\n");
-            stop_ecg_sensor();
-            state = InferenceState;
-            break;
-        case InferenceState:
-            ns_printf("Running inference\n");
-            // Copy sensor data to input buffer
-            invokeStatus = interpreter->Invoke();
-            if (invokeStatus != kTfLiteOk) {
-                ns_printf("Invoke failed\n");
-                state = FailState;
-            }
-            state = DisplayState;
-            break;
-        case DisplayState:
-            captureButtonPressed = 0;
-            state = IdleState;
-            ns_printf("Done\n");
-            break;
-        case FailState:
-            // Report error and reset state
-            state = IdleState;
-            break;
-        default:
-            break;
+static void loop() {
+    /**
+     * @brief Application loop
+     *
+     */
+    int result;
+    switch (state) {
+    case IDLE_STATE:
+        if (captureButtonPressed) {
+            state = START_CAPTURE_STATE;
+        } else {
+            ns_delay_us(1000);
+            state = IDLE_STATE;
         }
+        break;
+
+    case START_CAPTURE_STATE:
+        ns_printf("Started ECG capture.\n");
+        numSamples = 0;
+        start_ecg_sensor();
+        state = CAPTURING_STATE;
+        break;
+
+    case CAPTURING_STATE:
+        numSamples += capture_ecg_sensor(&ecgBuffer[numSamples], ECG_BUFFER_LEN-numSamples);
+        if (numSamples >= INF_WINDOW_LEN) {
+            state = STOP_CAPTURE_STATE;
+        } else {
+            state = CAPTURING_STATE;
+        }
+        break;
+
+    case STOP_CAPTURE_STATE:
+        ns_printf("Finished ECG capture.\n");
+        stop_ecg_sensor();
+        state = INFERENCE_STATE;
+        break;
+
+    case INFERENCE_STATE:
+        ns_printf("Running inference\n");
+        result = model_run();
+        if (result == -1) {
+            state = FAIL_STATE;
+        } else {
+            state = DISPLAY_STATE;
+        }
+        break;
+
+    case DISPLAY_STATE:
+        captureButtonPressed = 0;
+        state = START_CAPTURE_STATE;
+        ns_printf("Done\n");
+        break;
+
+    case FAIL_STATE:
+        // Report error and reset state
+        state = IDLE_STATE;
+        break;
+
+    default:
+        state = IDLE_STATE;
+        break;
     }
+}
+
+int main(void) {
+    /**
+     * @brief Main function
+     * @return int
+     */
+    setup();
+    while (1) { loop(); }
 }

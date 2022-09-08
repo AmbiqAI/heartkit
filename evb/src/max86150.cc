@@ -1,5 +1,8 @@
 #include <ctype.h>
+#include <string.h>
+
 #include "max86150.h"
+#include <am_util_stdio.h>
 
 // Status Registers
 static const uint8_t MAX86150_INT_STAT1 = 0x00;
@@ -33,13 +36,17 @@ static const uint8_t MAX86150_ECG_CONFIG3 = 0x3E;
 static const uint8_t MAX86150_PART_ID = 0xFF;
 static const uint8_t MAX86150_PART_ID_VAL = 0x1E;
 
-uint16_t max86150_get_register(const max86150_context_t *ctx, uint8_t reg, uint8_t mask) {
+uint8_t max86150_get_register(const max86150_context_t *ctx, uint8_t reg, uint8_t mask) {
     /**
      * @brief Read register field
      * @return Register value
      */
-    uint8_t value = 0;
-    ctx->i2c_write_read(ctx->addr, &reg, 1, &value, 1);
+    int err;
+    uint32_t regAddr = reg;
+    uint32_t regVal;
+    uint8_t value;
+    err = ctx->i2c_write_read(ctx->addr, &regAddr, 1, &regVal, 1);
+    value = regVal & 0x00FF;
     if (mask != 0xFF) { value &= mask; }
     return value;
 }
@@ -49,13 +56,15 @@ int max86150_set_register(const max86150_context_t *ctx, uint8_t reg, uint8_t va
      * @brief Set register field
      * @return 0 if successful
      */
-    int err = 0;
-    uint16_t i2c_buffer;
+    int err;
+    uint32_t regAddr = reg;
+    uint8_t i2cBuffer[4];
     if (mask != 0xFF) {
         value = max86150_get_register(ctx, reg, ~mask) | (value & mask);
     }
-    i2c_buffer = (reg << 4) | (value && 0x00FF);
-    err = ctx->i2c_write((uint8_t *)&i2c_buffer, 2, ctx->addr);
+    i2cBuffer[0] = reg;
+    i2cBuffer[1] = value;
+    err = ctx->i2c_write(&(i2cBuffer[0]), 2, ctx->addr);
     return err;
 }
 
@@ -159,6 +168,13 @@ void max86150_set_fifo_wr_pointer(const max86150_context_t *ctx, uint8_t value) 
 }
 
 void max86150_set_fifo_slot(const max86150_context_t *ctx, uint8_t slot, Max86150SlotType type) {
+    /**
+     * @brief Configure FIFO for given slot (element)
+     * @param  ctx Device context
+     * @param slot Element 0-based index corresponding to FD1, FD2, FD3, FD4
+     * @param type Data source to feed
+     *
+     */
     uint8_t reg = slot & 0x02 ? MAX86150_FIFO_CONTROL2 : MAX86150_FIFO_CONTROL1;
     uint8_t value = slot & 0x01 ? type << 4 : type;
     uint8_t mask = slot & 0x01 ? 0xF0 : 0x0F;
@@ -166,6 +182,15 @@ void max86150_set_fifo_slot(const max86150_context_t *ctx, uint8_t slot, Max8615
 }
 
 void max86150_set_fifo_slots(const max86150_context_t *ctx, Max86150SlotType slot0, Max86150SlotType slot1, Max86150SlotType slot2, Max86150SlotType slot3) {
+    /**
+     * @brief Configure all FIFO slots
+     * @param   ctx Device context
+     * @param slot0 Element (FD1) data source
+     * @param slot1 Element (FD2) data source
+     * @param slot2 Element (FD3) data source
+     * @param slot3 Element (FD4) data source
+     *
+     */
     max86150_set_fifo_slot(ctx, 0, slot0);
     max86150_set_fifo_slot(ctx, 1, slot1);
     max86150_set_fifo_slot(ctx, 2, slot2);
@@ -173,11 +198,16 @@ void max86150_set_fifo_slots(const max86150_context_t *ctx, Max86150SlotType slo
 }
 
 void max86150_disable_slots(const max86150_context_t *ctx) {
-     max86150_set_register(ctx, MAX86150_FIFO_CONTROL1, 0x00, 0xFF);
-     max86150_set_register(ctx, MAX86150_FIFO_CONTROL2, 0x00, 0xFF);
+    /**
+     * @brief Disables all FIFO slots data sources
+     * @param  ctx Device context
+     *
+     */
+    max86150_set_register(ctx, MAX86150_FIFO_CONTROL1, 0x00, 0xFF);
+    max86150_set_register(ctx, MAX86150_FIFO_CONTROL2, 0x00, 0xFF);
 }
 
-uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint8_t *buffer, uint8_t elementsPerSample) {
+uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint32_t *buffer, uint8_t elementsPerSample) {
     /**
      * @brief Reads all data available in FIFO
      * @param  ctx Device context
@@ -186,13 +216,26 @@ uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint8_t *buff
      * @return Number of samples read
      *
      */
+    uint8_t ovrCnt = max86150_get_fifo_overflow_counter(ctx);
     uint8_t rdPtr = max86150_get_fifo_rd_pointer(ctx);
     uint8_t wrPtr = max86150_get_fifo_wr_pointer(ctx);
-    uint32_t numSamples = rdPtr < wrPtr ? wrPtr - rdPtr : MAX86150_FIFO_DEPTH - rdPtr + wrPtr;
+    uint32_t regAddr = MAX86150_FIFO_DATA;
+    uint32_t numSamples = ovrCnt > 0 ? MAX86150_FIFO_DEPTH : rdPtr <= wrPtr ? wrPtr - rdPtr : MAX86150_FIFO_DEPTH - rdPtr + wrPtr;
     uint32_t bytesPerSample = 3*elementsPerSample;
-    uint32_t numBytes = bytesPerSample*numSamples;
+    uint8_t temp[4];
+    uint32_t tempLong;
+    if (numSamples == 0) { return numSamples; }
+    ctx->i2c_write(&regAddr, 1, ctx->addr);
     for (size_t i = 0; i < numSamples; i++){
-        ctx->i2c_write_read(ctx->addr, &MAX86150_FIFO_DATA, 1, &buffer[i*bytesPerSample], bytesPerSample);
+        for (size_t j = 0; j < elementsPerSample; j++){
+            temp[3] = 0;
+            ctx->i2c_read(&(temp[2]), 1, ctx->addr);
+            ctx->i2c_read(&(temp[1]), 1, ctx->addr);
+            ctx->i2c_read(&(temp[0]), 1, ctx->addr);
+            memcpy(&tempLong, temp, 4);
+            tempLong &= 0x7FFFF;
+            buffer[i*elementsPerSample+j] = tempLong;
+        }
     }
     return numSamples;
 }

@@ -6,9 +6,99 @@ import dataclasses
 from enum import IntEnum
 from multiprocessing import Pool
 from typing import Dict, List, Optional, Tuple
+from tqdm import tqdm
 import h5py
 import numpy as np
 import numpy.typing as npt
+import sklearn.model_selection
+from ..utils import EcgTask, filter_ecg_signal
+
+# Patients containing AFIB events
+afib_patients = [
+    16,    20,    53,    60,    65,    75,    84,    91,   119,
+    139,   148,   159,   166,   177,   198,   230,   247,   268,
+    271,   281,   287,   292,   295,   299,   303,   323,   328,
+    337,   365,   404,   417,   418,   434,   446,   456,   457,
+    462,   464,   471,   484,   487,   499,   507,   508,   529,
+    534,   535,   580,   584,   591,   614,   618,   636,   680,
+    719,   809,   825,   831,   832,   836,   843,   886,   903,
+    907,   911,   922,   957,   963,   967,   1022,  1034,  1041,
+    1066,  1100,  1117,  1124,  1162,  1163,  1166,  1215,  1219,
+    1221,  1231,  1233,  1251,  1271,  1281,  1293,  1325,  1331,
+    1340,  1342,  1361,  1386,  1397,  1416,  1420,  1443,  1461,
+    1503,  1528,  1530,  1543,  1556,  1562,  1609,  1620,  1624,
+    1628,  1634,  1645,  1673,  1679,  1680,  1693,  1698,  1705,
+    1738,  1744,  1749,  1753,  1781,  1807,  1809,  1824,  1836,
+    1847,  1848,  1850,  1892,  1894,  1904,  1933,  1934,  1949,
+    1964,  1975,  1978,  1980,  1989,  2001,  2015,  2017,  2050,
+    2093,  2108,  2125,  2134,  2140,  2155,  2166,  2188,  2224,
+    2231,  2240,  2252,  2255,  2269,  2298,  2361,  2362,  2404,
+    2428,  2478,  2479,  2496,  2499,  2508,  2521,  2541,  2569,
+    2590,  2601,  2643,  2648,  2650,  2653,  2664,  2679,  2680,
+    2690,  2701,  2710,  2712,  2748,  2753,  2760,  2767,  2773,
+    2837,  2842,  2844,  2845,  2860,  2862,  2867,  2869,  2871,
+    2878,  2884,  2903,  2906,  2908,  2917,  2959,  2968,  2991,
+    3017,  3024,  3039,  3047,  3058,  3059,  3066,  3076,  3085,
+    3086,  3126,  3169,  3179,  3183,  3210,  3217,  3218,  3232,
+    3235,  3264,  3266,  3283,  3287,  3288,  3293,  3324,  3330,
+    3348,  3369,  3370,  3386,  3400,  3404,  3410,  3424,  3426,
+    3456,  3458,  3468,  3484,  3485,  3490,  3499,  3523,  3528,
+    3531,  3560,  3594,  3638,  3648,  3650,  3662,  3666,  3677,
+    3693,  3698,  3706,  3720,  3725,  3728,  3730,  3745,  3749,
+    3751,  3765,  3834,  3871,  3881,  3882,  3905,  3909,  3910,
+    3927,  3946,  3949,  3956,  3982,  3985,  3991,  4007,  4025,
+    4030,  4035,  4041,  4050,  4068,  4086,  4096,  4103,  4122,
+    4128,  4152,  4226,  4240,  4248,  4263,  4267,  4282,  4283,
+    4294,  4301,  4308,  4314,  4324,  4331,  4333,  4341,  4353,
+    4354,  4355,  4396,  4397,  4401,  4411,  4417,  4424,  4429,
+    4455,  4459,  4488,  4497,  4506,  4516,  4538,  4561,  4567,
+    4568,  4572,  4574,  4617,  4618,  4620,  4621,  4629,  4647,
+    4652,  4661,  4685,  4687,  4716,  4721,  4753,  4759,  4773,
+    4776,  4793,  4815,  4834,  4838,  4862,  4884,  4892,  4915,
+    4936,  4983,  4986,  5007,  5065,  5081,  5087,  5094,  5103,
+    5111,  5125,  5160,  5162,  5163,  5184,  5223,  5234,  5296,
+    5297,  5300,  5306,  5348,  5354,  5355,  5361,  5380,  5407,
+    5447,  5453,  5469,  5476,  5488,  5555,  5559,  5595,  5599,
+    5604,  5621,  5629,  5670,  5672,  5708,  5715,  5716,  5719,
+    5739,  5741,  5824,  5827,  5839,  5845,  5856,  5865,  5867,
+    5895,  5901,  5902,  5922,  5934,  5935,  5963,  5968,  5982,
+    6002,  6026,  6041,  6043,  6072,  6074,  6081,  6083,  6084,
+    6120,  6122,  6129,  6172,  6212,  6218,  6248,  6249,  6266,
+    6270,  6292,  6294,  6298,  6355,  6360,  6373,  6375,  6381,
+    6389,  6408,  6441,  6446,  6447,  6492,  6493,  6503,  6504,
+    6521,  6523,  6535,  6542,  6575,  6594,  6597,  6606,  6665,
+    6671,  6681,  6697,  6716,  6722,  6753,  6754,  6755,  6756,
+    6763,  6776,  6803,  6845,  6895,  6900,  6923,  6947,  6949,
+    6969,  6978,  6994,  7024,  7040,  7043,  7072,  7073,  7075,
+    7095,  7116,  7139,  7152,  7153,  7175,  7186,  7188,  7189,
+    7192,  7198,  7211,  7232,  7236,  7249,  7271,  7277,  7308,
+    7328,  7359,  7368,  7378,  7380,  7390,  7391,  7434,  7459,
+    7462,  7489,  7503,  7508,  7512,  7553,  7570,  7571,  7589,
+    7612,  7638,  7653,  7668,  7684,  7686,  7710,  7713,  7715,
+    7721,  7730,  7749,  7786,  7790,  7804,  7809,  7822,  7825,
+    7839,  7846,  7863,  7893,  7897,  7905,  7950,  7964,  7968,
+    7984,  8008,  8009,  8025,  8092,  8098,  8101,  8106,  8114,
+    8141,  8144,  8162,  8193,  8195,  8212,  8222,  8233,  8241,
+    8282,  8289,  8295,  8329,  8335,  8353,  8357,  8392,  8398,
+    8412,  8455,  8473,  8500,  8514,  8532,  8547,  8559,  8582,
+    8599,  8600,  8640,  8651,  8689,  8718,  8736,  8773,  8820,
+    8836,  8838,  8840,  8851,  8853,  8866,  8900,  8975,  9026,
+    9123,  9157,  9158,  9160,  9164,  9173,  9183,  9210,  9216,
+    9234,  9254,  9257,  9282,  9284,  9302,  9309,  9318,  9322,
+    9331,  9351,  9366,  9383,  9400,  9420,  9468,  9475,  9476,
+    9484,  9493,  9495,  9536,  9574,  9600,  9635,  9704,  9705,
+    9741,  9747,  9764,  9779,  9784,  9788,  9795,  9803,  9839,
+    9849,  9855,  9867,  9868,  9909,  9915,  9942,  9965,  9968,
+    9976,  9977,  10034, 10048, 10070, 10103, 10112, 10151, 10160,
+    10172, 10184, 10188, 10195, 10198, 10201, 10206, 10211, 10212,
+    10224, 10228, 10248, 10259, 10268, 10274, 10284, 10293, 10303,
+    10339, 10340, 10344, 10375, 10390, 10396, 10397, 10402, 10430,
+    10449, 10450, 10462, 10476, 10491, 10519, 10528, 10541, 10544,
+    10573, 10576, 10600, 10602, 10605, 10615, 10619, 10620, 10629,
+    10672, 10687, 10694, 10702, 10726, 10750, 10759, 10760, 10764,
+    10778, 10784, 10812, 10813, 10839, 10852, 10853, 10915, 10949,
+    10951, 10958, 10961, 10966, 10969, 10974, 10979, 10994, 10995
+]
 
 class IcentiaRhythm(IntEnum):
     noise=0
@@ -52,7 +142,7 @@ class IcentiaHeartRate(IntEnum):
 ds_beat_names =  {b.name: b.value for b in IcentiaBeat}
 ds_rhythm_names = {r.name: r.value for r in IcentiaRhythm}
 ds_rhythm_map = {IcentiaRhythm.normal.value: 0, IcentiaRhythm.afib.value: 1, IcentiaRhythm.aflut.value: 1}
-ds_rhythm_weights = {0: 0.5, 1: 40}
+ds_rhythm_weights = {0: 1, 1: 1} # {0: 0.52, 1: 40}
 
 @dataclasses.dataclass
 class IcentiaStats:
@@ -73,6 +163,42 @@ ds_hr_names = {
     IcentiaHeartRate.noise.value: 'noise'
 }
 
+def train_test_split_patients(patient_ids: npt.NDArray, test_size: float, task: EcgTask = EcgTask.rhythm):
+    if task == EcgTask.rhythm:
+        afib_pt_ids = np.array(afib_patients)
+        norm_pt_ids = np.setdiff1d(patient_ids, afib_pt_ids)
+        norm_train_pt_ids, norm_val_pt_ids = sklearn.model_selection.train_test_split(norm_pt_ids, test_size=test_size)
+        afib_train_pt_ids, afib_val_pt_ids = sklearn.model_selection.train_test_split(afib_pt_ids, test_size=test_size)
+        train_pt_ids = np.concatenate((norm_train_pt_ids, afib_train_pt_ids))
+        val_pt_ids = np.concatenate((norm_val_pt_ids, afib_val_pt_ids))
+        return train_pt_ids, val_pt_ids
+    # END IF
+    return sklearn.model_selection.train_test_split(patient_ids, test_size=test_size)
+
+def get_dataset_statistics(db_path: str, save_path: str):
+    import pandas as pd
+    pt_gen = uniform_patient_generator(db_path=db_path, patient_ids=ds_patient_ids, repeat=False)
+    stats = []
+    for pt, segments in tqdm(pt_gen, total=len(ds_patient_ids)):
+        # Group patient rhythms by type (segment, start, stop)
+        segment_label_map: Dict[str, List[Tuple[str, int, int]]] = {}
+        for seg_key, segment in segments.items():
+            rlabels = segment['rlabels'][:]
+            if rlabels.shape[0] == 0:
+                continue # Segment has no rhythm labels
+            rlabels = rlabels[rlabels != 0]
+            for i, l in enumerate(rlabels[::2,1]):
+                if l in [IcentiaRhythm.normal, IcentiaRhythm.afib, IcentiaRhythm.aflut]:
+                    rhy_start, rhy_stop = rlabels[i*2+0,0], rlabels[i*2+1,0]
+                    stats.append(dict(pt=pt, rc=seg_key, rhythm=l, start=rhy_start, stop=rhy_stop, dur=rhy_stop-rhy_start))
+                    segment_label_map[l] = segment_label_map.get(l, []) + [(seg_key, rlabels[i*2+0,0], rlabels[i*2+1,0])]
+                # END IF
+            # END FOR
+        # END FOR
+    # END FOR
+    df = pd.DataFrame(stats)
+    df.to_parquet(save_path)
+
 def rhythm_data_generator(patient_generator, frame_size: int = 2048, samples_per_patient: int = 1):
     """
     Generate a stream of short signals and their corresponding rhythm label. These short signals are uniformly sampled
@@ -85,50 +211,48 @@ def rhythm_data_generator(patient_generator, frame_size: int = 2048, samples_per
     @return: Generator of: input data of shape (frame_size, 1), output data as the corresponding rhythm label.
     """
     for pt, segments in patient_generator:
-
+        print('.', end='')
         # Group patient rhythms by type (segment, start, stop)
-        segment_label_map: Dict[str, List[Tuple[str, int, int]]] = {}
+        seg_label_map: Dict[str, List[Tuple[str, int, int]]] = {}
         for seg_key, segment in segments.items():
             rlabels = segment['rlabels'][:]
             if rlabels.shape[0] == 0:
                 continue # Segment has no rhythm labels
+            rlabels = rlabels[np.where(rlabels[:, 1] != 0)[0]]
             for i, l in enumerate(rlabels[::2,1]):
-                if l in [IcentiaRhythm.normal, IcentiaRhythm.afib, IcentiaRhythm.aflut]:
-                    segment_label_map[l] = segment_label_map.get(l, []) + [(seg_key, rlabels[i*2+0,0], rlabels[i*2+1,0])]
+                xs, xe = rlabels[i*2+0,0], rlabels[i*2+1,0]
+                seg_frame_size = xe - xs + 1
+                if l in [IcentiaRhythm.normal, IcentiaRhythm.afib] and seg_frame_size > frame_size:
+                    seg_label_map[l] = seg_label_map.get(l, []) + [(seg_key, xs, xe)]
                 # END IF
             # END FOR
         # END FOR
 
-        # Skip patient if no labels
-        if not segment_label_map:
-            continue
-
+        # Grab all arrhythmia instances
+        afib_segments = seg_label_map.get(IcentiaRhythm.afib, [])
         num_samples = 0
-        num_attempts = 0
+        for seg_key, rhy_start, rhy_end in afib_segments:
+            for frame_start in range(rhy_start, rhy_end - frame_size + 1, frame_size):
+                frame_end = frame_start + frame_size
+                x: npt.NDArray = segment['data'][frame_start:frame_end]
+                num_samples += 1
+                yield x, ds_rhythm_map[IcentiaRhythm.afib]
+            # END FOR
+        # END FOR
+
+        # Grab normal instances
+        norm_segments = seg_label_map.get(IcentiaRhythm.normal, [])
+        if not norm_segments:
+            continue
         while num_samples < samples_per_patient:
-            label = np.random.choice(list(segment_label_map.keys()))
-            seg_key, rhy_start, rhy_end = random.choice(segment_label_map[label])
+            seg_key, rhy_start, rhy_end = random.choice(norm_segments)
             segment = segments[seg_key]
             segment_size: int = segment['data'].shape[0]
-            frame_start = max(min(np.random.randint(rhy_start, rhy_end), segment_size-frame_size), 0)
+            frame_start = np.random.randint(rhy_start, rhy_end - frame_size + 1)
             frame_end = frame_start + frame_size
             x: npt.NDArray = segment['data'][frame_start:frame_end]
-            # calculate the durations of each rhythm in the frame and determine the final label
-            if segment['rlabels'].shape[0] == 0:
-                continue
-            rhythm_bounds, rhythm_labels = segment['rlabels'][:, 0], segment['rlabels'][:, 1]
-            frame_rhythm_durations, frame_rhythm_labels = get_rhythm_durations(
-                rhythm_bounds, rhythm_labels, frame_start, frame_end
-            )
-            y = get_rhythm_label(frame_rhythm_durations, frame_rhythm_labels)
-            if y in ds_rhythm_map:
-                num_samples += 1
-                yield x, ds_rhythm_map[y]
-            else:
-                if num_attempts == samples_per_patient:
-                    print(pt)
-                    num_samples = samples_per_patient
-                num_attempts += 1
+            num_samples += 1
+            yield x, ds_rhythm_map[IcentiaRhythm.normal]
         # END WHILE
     # END FOR
 
@@ -577,19 +701,22 @@ def get_heart_rate_label(qrs_indices, fs=None):
         return IcentiaHeartRate.noise.value
 
 
-def normalize(array, inplace=False):
+def normalize(array: npt.NDArray, inplace=False, local=True):
     """
     Normalize an array using the mean and standard deviation calculated over the entire dataset.
     @param array: Numpy array to normalize.
     @param inplace: Whether to perform the normalization steps in-place.
     @return: Normalized array.
     """
+    filt_array = array
+    # filt_array = filter_ecg_signal(array, lowcut=0.5, highcut=25, sample_rate=ds_sampling_rate, order=2)
+    mu = np.mean(filt_array) if local else ds_mean
+    std = np.std(filt_array) if local else ds_std
+
+    filt_array = (filt_array - mu) / std
     if inplace:
-        array -= ds_mean
-        array /= ds_std
-    else:
-        array = (array - ds_mean) / ds_std
-    return array
+        array[:] = filt_array
+    return filt_array
 
 
 def _choose_random_segment(patients, size=None, segment_p=None):
@@ -671,6 +798,31 @@ def convert_pt_zip_to_hdf5(patient: int, zip_path: str, h5_path: str):
             print(f'Failed processing {zp_rec_name}', err)
             continue
     h5.close()
+
+def gen_mini_dataset(src_path: str, dst_path: str):
+    # Filter using butterworth bandpass
+    # Standardize via z-score on moving window
+
+    pt_gen = uniform_patient_generator(db_path=db_path, patient_ids=ds_patient_ids, repeat=False)
+    stats = []
+    for pt, segments in tqdm(pt_gen, total=len(ds_patient_ids)):
+        # Group patient rhythms by type (segment, start, stop)
+        segment_label_map: Dict[str, List[Tuple[str, int, int]]] = {}
+        for seg_key, segment in segments.items():
+            rlabels = segment['rlabels'][:]
+            if rlabels.shape[0] == 0:
+                continue # Segment has no rhythm labels
+            rlabels = rlabels[rlabels != 0]
+            for i, l in enumerate(rlabels[::2,1]):
+                if l in [IcentiaRhythm.normal, IcentiaRhythm.afib, IcentiaRhythm.aflut]:
+                    rhy_start, rhy_stop = rlabels[i*2+0,0], rlabels[i*2+1,0]
+                    stats.append(dict(pt=pt, rc=seg_key, rhythm=l, start=rhy_start, stop=rhy_stop, dur=rhy_stop-rhy_start))
+                    segment_label_map[l] = segment_label_map.get(l, []) + [(seg_key, rlabels[i*2+0,0], rlabels[i*2+1,0])]
+                # END IF
+            # END FOR
+        # END FOR
+    # END FOR
+
 
 def convert_zip_to_hdf5(zip_path: str, h5_path: str):
     import functools

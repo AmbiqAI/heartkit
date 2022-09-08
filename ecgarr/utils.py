@@ -1,7 +1,16 @@
 import gzip
 import pickle
+from enum import Enum
+from scipy.signal import butter, sosfiltfilt
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
+
+class EcgTask(str, Enum):
+    rhythm = 'rhythm'
+    beat = 'beat'
+    hr = 'hr'
+    cpc = 'cpc'
 
 
 def pad_sequences(x, max_len=None, padding='pre'):
@@ -192,3 +201,26 @@ def save_pkl(file, compress=True, **kwargs):
 def is_multiclass(labels):
     """ Return true if this is a multiclass task otherwise false. """
     return labels.squeeze().ndim == 2 and any(labels.sum(axis=1) != 1)
+
+
+def rolling_standardize(x: np.ndarray, win_len: int):
+    x_roll = np.lib.stride_tricks.sliding_window_view(x, win_len)
+    x_roll_std = np.std(x_roll, axis=-1)
+    x_roll_mu = np.mean(x_roll, axis=-1)
+    x_std = np.concatenate((np.repeat(x_roll_std[0], x.shape[0] - x_roll_std.shape[0]), x_roll_std))
+    x_mu = np.concatenate((np.repeat(x_roll_mu[0], x.shape[0] - x_roll_mu.shape[0]), x_roll_mu))
+    x_norm = (x - x_mu)/x_std
+    return x_norm
+
+def filter_ecg_signal(data: npt.NDArray, lowcut: float, highcut: float, sample_rate: float, order: int = 2):
+    nyq = 0.5 * sample_rate
+    low = lowcut / nyq
+    high = highcut / nyq
+    sos = butter(order, [low, high], btype='band', output='sos')
+    try:
+        print('FILTER1: ', data.shape, data.dtype)
+        f_data = sosfiltfilt(sos, data, axis=0)
+        print('FILTER2: ', data.shape, data.dtype, f_data.dtype)
+    except Exception as err:
+        print(err)
+    return f_data

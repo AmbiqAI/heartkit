@@ -15,11 +15,8 @@ enum Max86150SlotType {
 static const uint8_t MAX86150_FIFO_DEPTH = 32;
 
 typedef int (*pfnI2cWriteRead)(uint16_t addr, const void *write_buf, size_t num_write, void *read_buf, size_t num_read);
-typedef int (*pfnI2cRead)(uint8_t *buf, uint32_t num_bytes, uint16_t addr);
-typedef int (*pfnI2cWrite)(const uint8_t *buf, uint32_t num_bytes, uint16_t addr);
-
-//function pointer use to perform arithmetic operation
-typedef float (*pfnCalculator)(float,float);
+typedef int (*pfnI2cRead)(const void *buf, uint32_t num_bytes, uint16_t addr);
+typedef int (*pfnI2cWrite)(const void *buf, uint32_t num_bytes, uint16_t addr);
 
 typedef struct {
     uint32_t addr;
@@ -28,7 +25,7 @@ typedef struct {
     pfnI2cWrite i2c_write;
 } max86150_context_t;
 
-uint16_t max86150_get_register(const max86150_context_t *ctx, uint16_t addr, uint8_t reg, uint8_t mask);
+uint8_t max86150_get_register(const max86150_context_t *ctx, uint8_t reg, uint8_t mask);
 int max86150_set_register(const max86150_context_t *ctx, uint8_t reg, uint8_t value, uint8_t mask);
 
 // Interrupts
@@ -47,7 +44,7 @@ void max86150_set_fifo_wr_pointer(const max86150_context_t *ctx, uint8_t value);
 void max86150_set_fifo_slot(const max86150_context_t *ctx, uint8_t slot, Max86150SlotType type);
 void max86150_set_fifo_slots(const max86150_context_t *ctx, Max86150SlotType slot0, Max86150SlotType slot1, Max86150SlotType slot2, Max86150SlotType slot3);
 void max86150_disable_slots(const max86150_context_t *ctx);
-uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint8_t *buffer, uint8_t elementsPerSample);
+uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint32_t *buffer, uint8_t elementsPerSample);
 uint8_t max86150_get_fifo_overflow_counter(const max86150_context_t *ctx);
 uint8_t max86150_get_fifo_rd_pointer(const max86150_context_t *ctx);
 void max86150_set_fifo_rd_pointer(const max86150_context_t *ctx, uint8_t value);
