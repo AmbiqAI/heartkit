@@ -19,7 +19,7 @@ def xxd_c_dump(src_path: str, dst_path: str, var_name: str = 'g_model', chunk_le
         src_path (str): Binary file source path
         dst_path (str): C file destination path
         var_name (str, optional): C variable name. Defaults to 'g_model'.
-        chunk_len (int, optional): # of elements per row.d Defaults to 12.
+        chunk_len (int, optional): # of elements per row. Defaults to 12.
     """
     var_len = 0;
     with open(src_path, 'rb') as rfp, open(dst_path, 'w') as wfp:
