@@ -1,20 +1,17 @@
 import tensorflow as tf
 
-
 def batch_norm():
     return tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-5)
 
-
 def relu():
-    return tf.keras.layers.ReLU()
-
+    return tf.keras.layers.Activation('swish')
+    # return tf.keras.layers.ReLU()
 
 def conv1d(filters, kernel_size=3, strides=1):
     return tf.keras.layers.Conv1D(
         filters, kernel_size, strides=strides, padding='same', use_bias=False,
         kernel_initializer=tf.keras.initializers.VarianceScaling()
     )
-
 
 class ResidualBlock(tf.keras.layers.Layer):
     def __init__(self, filters, kernel_size=3, strides=1, **kwargs):
@@ -96,7 +93,6 @@ class BottleneckBlock(tf.keras.layers.Layer):
         x = self.relu3(x + shortcut)
         return x
 
-
 class ResNet(tf.keras.Model):
     def __init__(
             self, num_outputs=1, blocks=(2, 2, 2, 2),
@@ -104,7 +100,8 @@ class ResNet(tf.keras.Model):
             block_fn=ResidualBlock, include_top=True, **kwargs
         ):
         super().__init__(**kwargs)
-        self.conv1 = conv1d(64, 7, 2)
+        # self.noise = tf.keras.layers.GaussianNoise(0.05)
+        self.conv1 = conv1d(32, 7, 2) # NOTE: 64
         self.bn1 = batch_norm()
         self.relu1 = relu()
         self.maxpool1 = tf.keras.layers.MaxPooling1D(3, 2, padding='same')
@@ -123,6 +120,7 @@ class ResNet(tf.keras.Model):
     def call(self, x, include_top=None, **kwargs):
         if include_top is None:
             include_top = self.include_top
+        # x = self.noise(x)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu1(x)

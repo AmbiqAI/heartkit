@@ -141,8 +141,7 @@ class IcentiaHeartRate(IntEnum):
 
 ds_beat_names =  {b.name: b.value for b in IcentiaBeat}
 ds_rhythm_names = {r.name: r.value for r in IcentiaRhythm}
-ds_rhythm_map = {IcentiaRhythm.normal.value: 0, IcentiaRhythm.afib.value: 1, IcentiaRhythm.aflut.value: 1}
-ds_rhythm_weights = {0: 1, 1: 1} # {0: 0.52, 1: 40}
+ds_rhythm_map = { IcentiaRhythm.normal.value: 0, IcentiaRhythm.afib.value: 1 }
 
 @dataclasses.dataclass
 class IcentiaStats:
@@ -151,10 +150,11 @@ class IcentiaStats:
     mean = 0.0018 # mean over entire dataset
     std = 1.3711 # std over entire dataset
 
-ds_patient_ids = np.arange(11000)
-ds_sampling_rate = 250
+ds_patient_ids = np.arange(10_000) # Reserve last 1000 for test only
+ds_test_patient_ids = np.arange(10_000, 11_000)
+ds_sampling_rate = 250 # Hz
 ds_mean = 0.0018  # mean over entire dataset
-ds_std = 1.3711   # std over entire dataset
+ds_std = 1.3711 # std over entire dataset
 
 ds_hr_names = {
     IcentiaHeartRate.tachycardia.value: 'tachy',
@@ -165,12 +165,14 @@ ds_hr_names = {
 
 def train_test_split_patients(patient_ids: npt.NDArray, test_size: float, task: EcgTask = EcgTask.rhythm):
     if task == EcgTask.rhythm:
-        afib_pt_ids = np.array(afib_patients)
+        afib_pt_ids = np.intersect1d(np.array(afib_patients), patient_ids)
         norm_pt_ids = np.setdiff1d(patient_ids, afib_pt_ids)
         norm_train_pt_ids, norm_val_pt_ids = sklearn.model_selection.train_test_split(norm_pt_ids, test_size=test_size)
         afib_train_pt_ids, afib_val_pt_ids = sklearn.model_selection.train_test_split(afib_pt_ids, test_size=test_size)
         train_pt_ids = np.concatenate((norm_train_pt_ids, afib_train_pt_ids))
         val_pt_ids = np.concatenate((norm_val_pt_ids, afib_val_pt_ids))
+        np.random.shuffle(train_pt_ids)
+        np.random.shuffle(val_pt_ids)
         return train_pt_ids, val_pt_ids
     # END IF
     return sklearn.model_selection.train_test_split(patient_ids, test_size=test_size)
@@ -212,6 +214,7 @@ def rhythm_data_generator(patient_generator, frame_size: int = 2048, samples_per
     """
     for pt, segments in patient_generator:
         print('.', end='')
+
         # Group patient rhythms by type (segment, start, stop)
         seg_label_map: Dict[str, List[Tuple[str, int, int]]] = {}
         for seg_key, segment in segments.items():
@@ -228,32 +231,33 @@ def rhythm_data_generator(patient_generator, frame_size: int = 2048, samples_per
             # END FOR
         # END FOR
 
+        seg_samples: List[Tuple[str, int, int, int]] = []
+
         # Grab all arrhythmia instances
         afib_segments = seg_label_map.get(IcentiaRhythm.afib, [])
-        num_samples = 0
         for seg_key, rhy_start, rhy_end in afib_segments:
             for frame_start in range(rhy_start, rhy_end - frame_size + 1, frame_size):
                 frame_end = frame_start + frame_size
-                x: npt.NDArray = segment['data'][frame_start:frame_end]
-                num_samples += 1
-                yield x, ds_rhythm_map[IcentiaRhythm.afib]
+                seg_samples.append((seg_key, frame_start, frame_end, ds_rhythm_map[IcentiaRhythm.afib]))
             # END FOR
         # END FOR
 
         # Grab normal instances
         norm_segments = seg_label_map.get(IcentiaRhythm.normal, [])
-        if not norm_segments:
-            continue
-        while num_samples < samples_per_patient:
+        while len(seg_samples) < samples_per_patient and norm_segments:
             seg_key, rhy_start, rhy_end = random.choice(norm_segments)
-            segment = segments[seg_key]
-            segment_size: int = segment['data'].shape[0]
             frame_start = np.random.randint(rhy_start, rhy_end - frame_size + 1)
             frame_end = frame_start + frame_size
-            x: npt.NDArray = segment['data'][frame_start:frame_end]
-            num_samples += 1
-            yield x, ds_rhythm_map[IcentiaRhythm.normal]
-        # END WHILE
+            seg_samples.append((seg_key, frame_start, frame_end, ds_rhythm_map[IcentiaRhythm.normal]))
+
+        # Shuffle frames
+        random.shuffle(seg_samples)
+
+        # Generator
+        for seg_key, frame_start, frame_end, label in seg_samples:
+            x: npt.NDArray = segments[seg_key]['data'][frame_start:frame_end]
+            yield x, label
+        # END FOR
     # END FOR
 
 def rhythm_data_generator_v1(patient_generator, frame_size: int = 2048, samples_per_patient: int = 1):
@@ -375,82 +379,6 @@ def signal_generator(patient_generator, frame_size=2048, samples_per_patient=1):
         # END FOR
     # END FOR
 
-
-def cpc_data_generator(buffered_patient_generator, context_size, ns, frame_size=2048, context_overlap=0,
-                       positive_offset=0, ns_same_segment_prob=None, samples_per_patient=1):
-    """
-    Generate a stream of input, output data for the Contrastive Predictive Coding
-    (Oord et al. (2018) https://arxiv.org/abs/1807.03748) representation learning approach.
-    The idea is to predict the positive sample from the future among distractors (negative samples)
-    based on some context. Note, that while we attempt to capture the idea of the proposed approach for 1D data,
-    our implementation deviates from the implementation described in the paper.
-    @param buffered_patient_generator: Generator that yields a buffer filled with patient data at each iteration.
-            Patient data may contain only signals, since labels are not used.
-    @param context_size: Number of frames that make up the context.
-    @param ns: Number of negative samples.
-    @param frame_size: Size of the frame that contains a short signal.
-    @param context_overlap: Size of the overlap between two consecutive frames.
-    @param positive_offset: Offset from the end of the context measured in frames, that describes the distance
-            between the context and the positive sample. If the offset is 0 then the positive sample comes directly
-            after the context.
-    @param ns_same_segment_prob: Probability, that a negative sample will come from the same segment as
-            the positive sample. If the probability is 0 then all negative samples are equally likely to come from
-            every segment in the buffer. If the probability is 1 then all negative samples come from the same segment
-            as the positive sample. By default, all segments have the same probability of being sampled.
-    @param samples_per_patient: Number of samples before the buffer is updated.
-            This is done in order to decrease the number of i/o operations.
-    @return: Generator of: input data as a dictionary {context, samples}, output data as the position
-    of the positive sample in the samples array. Context is an array of (optionally) overlapping frames.
-    Samples is an array of frames to predict from (1 positive sample and rest negative samples).
-    """
-    # compute context size measured in amplitude samples, adjust for the frame overlap
-    context_size = context_size * (frame_size - context_overlap)
-    for patients_buffer in buffered_patient_generator:
-        for _ in range(samples_per_patient):
-            # collect (optionally) overlapping frames that will form the context
-            # choose context start such that the positive sample will remain within the segment
-            patient_index, segment_index = _choose_random_segment(patients_buffer)
-            _, (signal, _) = patients_buffer[patient_index]
-            segment_size = signal.shape[1]
-            context_start = np.random.randint(segment_size - (context_size + frame_size * (positive_offset + 1)))
-            context_end = context_start + context_size
-            context = []
-            for context_frame_start in range(context_start, context_end, frame_size - context_overlap):
-                context_frame_end = context_frame_start + frame_size
-                context_frame = signal[segment_index, context_frame_start:context_frame_end]
-                context_frame = np.expand_dims(context_frame, axis=1)  # add channel dimension
-                context.append(context_frame)
-            context = np.array(context)
-            # collect positive sample from the future relative to the context
-            positive_sample_start = context_start + context_size + frame_size * positive_offset
-            positive_sample_end = positive_sample_start + frame_size
-            positive_sample = signal[segment_index, positive_sample_start:positive_sample_end]
-            positive_sample = np.expand_dims(positive_sample, axis=1)  # add channel dimension
-            # collect negative samples
-            #  note that if the patient buffer contains only 1 patient then
-            #  all negative samples will also come from this patient
-            samples = []
-            p = (patient_index, segment_index, ns_same_segment_prob) if ns_same_segment_prob else None
-            ns_indices = _choose_random_segment(patients_buffer, size=ns, segment_p=p)
-            for ns_patient_index, ns_segment_index in ns_indices:
-                _, (ns_signal, _) = patients_buffer[ns_patient_index]
-                ns_segment_size = ns_signal.shape[1]
-                negative_sample_start = np.random.randint(ns_segment_size - frame_size)
-                negative_sample_end = negative_sample_start + frame_size
-                negative_sample = ns_signal[ns_segment_index, negative_sample_start:negative_sample_end]
-                negative_sample = np.expand_dims(negative_sample, axis=1)  # add channel dimension
-                samples.append(negative_sample)
-            # randomly insert the positive sample among the negative samples
-            # the label references the position of the positive sample among all samples
-            y = np.random.randint(ns + 1)
-            samples.insert(y, positive_sample)
-            samples = np.array(samples)
-            x = {'context': context, 'samples': samples}
-            yield x, y
-        # END FOR
-    # END FOR
-
-
 def uniform_patient_generator(
         db_path: str,
         patient_ids: List[int],
@@ -470,6 +398,7 @@ def uniform_patient_generator(
         while True:
             if shuffle:
                 np.random.shuffle(patient_ids)
+                print('x', end='')
             for patient_id in patient_ids:
                 pt_key = f'p{patient_id:05d}'
                 with h5py.File(os.path.join(db_path, f'{pt_key}.h5'), mode='r') as h5:
@@ -709,7 +638,7 @@ def normalize(array: npt.NDArray, inplace=False, local=True):
     @return: Normalized array.
     """
     filt_array = array
-    # filt_array = filter_ecg_signal(array, lowcut=0.5, highcut=25, sample_rate=ds_sampling_rate, order=2)
+    # filt_array = filter_ecg_signal(array, lowcut=0.5, highcut=30, sample_rate=ds_sampling_rate, order=2)
     mu = np.mean(filt_array) if local else ds_mean
     std = np.std(filt_array) if local else ds_std
 
@@ -799,31 +728,6 @@ def convert_pt_zip_to_hdf5(patient: int, zip_path: str, h5_path: str):
             continue
     h5.close()
 
-def gen_mini_dataset(src_path: str, dst_path: str):
-    # Filter using butterworth bandpass
-    # Standardize via z-score on moving window
-
-    pt_gen = uniform_patient_generator(db_path=db_path, patient_ids=ds_patient_ids, repeat=False)
-    stats = []
-    for pt, segments in tqdm(pt_gen, total=len(ds_patient_ids)):
-        # Group patient rhythms by type (segment, start, stop)
-        segment_label_map: Dict[str, List[Tuple[str, int, int]]] = {}
-        for seg_key, segment in segments.items():
-            rlabels = segment['rlabels'][:]
-            if rlabels.shape[0] == 0:
-                continue # Segment has no rhythm labels
-            rlabels = rlabels[rlabels != 0]
-            for i, l in enumerate(rlabels[::2,1]):
-                if l in [IcentiaRhythm.normal, IcentiaRhythm.afib, IcentiaRhythm.aflut]:
-                    rhy_start, rhy_stop = rlabels[i*2+0,0], rlabels[i*2+1,0]
-                    stats.append(dict(pt=pt, rc=seg_key, rhythm=l, start=rhy_start, stop=rhy_stop, dur=rhy_stop-rhy_start))
-                    segment_label_map[l] = segment_label_map.get(l, []) + [(seg_key, rlabels[i*2+0,0], rlabels[i*2+1,0])]
-                # END IF
-            # END FOR
-        # END FOR
-    # END FOR
-
-
 def convert_zip_to_hdf5(zip_path: str, h5_path: str):
     import functools
     f = functools.partial(convert_pt_zip_to_hdf5, zip_path=zip_path, h5_path=h5_path)
@@ -831,18 +735,3 @@ def convert_zip_to_hdf5(zip_path: str, h5_path: str):
         print('Started')
         pool.map(f, ds_patient_ids)
         print('Finished')
-
-
-if __name__ == "__main__":
-    zip_path = '/Users/adampage/Ambiq/ecg-arr/db/icentia11k/icentia11k.zip'
-    h5_dir = '/media/adamp/ankmax/ecg/icentia11k/patients'
-    db_path = h5_dir
-
-    # convert_zip_to_hdf5(zip_path=zip_path, h5_dir=h5_dir)
-
-    pt_gen = uniform_patient_generator(db_path=db_path, patient_ids=ds_patient_ids, repeat=False)
-    results = []
-    ds = rhythm_data_generator(pt_gen, samples_per_patient=10*250)
-    for sample in ds:
-        results += [sample[1]]
-    print(results)

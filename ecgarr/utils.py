@@ -1,3 +1,4 @@
+import os
 import gzip
 import pickle
 from enum import Enum
@@ -10,7 +11,26 @@ class EcgTask(str, Enum):
     rhythm = 'rhythm'
     beat = 'beat'
     hr = 'hr'
-    cpc = 'cpc'
+
+def xxd_c_dump(src_path: str, dst_path: str, var_name: str = 'g_model', chunk_len: int = 12):
+    """ Generate C like char array of hex values from binary source. Equivalent to `xxd -i src_path > dst_path`
+        but with added features to provide # columns and variable name.
+    Args:
+        src_path (str): Binary file source path
+        dst_path (str): C file destination path
+        var_name (str, optional): C variable name. Defaults to 'g_model'.
+        chunk_len (int, optional): # of elements per row.d Defaults to 12.
+    """
+    var_len = 0;
+    with open(src_path, 'rb') as rfp, open(dst_path, 'w') as wfp:
+        wfp.write(f"const unsigned char {var_name}[] = {{{os.linesep}");
+        for chunk in iter(lambda: rfp.read(chunk_len), b''):
+            wfp.write("  " + ", ".join((f'0x{c:02x}' for c in chunk)) + f", {os.linesep}")
+            var_len += len(chunk)
+        # END FOR
+        wfp.write(f"}};{os.linesep}");
+        wfp.write(f"const unsigned int {var_name}_len = {var_len};{os.linesep}")
+    # END WITH
 
 
 def pad_sequences(x, max_len=None, padding='pre'):
@@ -217,10 +237,5 @@ def filter_ecg_signal(data: npt.NDArray, lowcut: float, highcut: float, sample_r
     low = lowcut / nyq
     high = highcut / nyq
     sos = butter(order, [low, high], btype='band', output='sos')
-    try:
-        print('FILTER1: ', data.shape, data.dtype)
-        f_data = sosfiltfilt(sos, data, axis=0)
-        print('FILTER2: ', data.shape, data.dtype, f_data.dtype)
-    except Exception as err:
-        print(err)
+    f_data = sosfiltfilt(sos, data, axis=0)
     return f_data

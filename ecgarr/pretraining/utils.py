@@ -9,7 +9,6 @@ from ..models.features import ecg_feature_extractor
 from ..models.resnet1d import ResidualBlock, BottleneckBlock
 from ..models.transformer import Encoder
 from ..models.utils import build_input_tensor_from_shape
-from ..tasks.cpc import CPCSolver
 
 def unzip_icentia11k(db_dir, patient_ids, out_dir, num_workers=1, patients_per_worker=1, verbose=False):
     os.makedirs(out_dir, exist_ok=True)
@@ -52,10 +51,6 @@ def task_solver(task, arch='resnet18', stages=None, return_feature_extractor=Fal
             feature_extractor,
             tf.keras.layers.Dense(num_classes)
         ])
-    elif task == 'cpc':
-        model = CPCSolver(signal_embedding=feature_extractor, transformer=Encoder(
-            num_layers=3, d_model=d_model, num_heads=8, dff=2 * d_model, dropout=0.
-        ))
     else:
         raise ValueError('unknown task: {}'.format(task))
     if return_feature_extractor:
@@ -68,10 +63,6 @@ def get_pretrained_weights(checkpoint_file, task, arch='resnet18', stages=None):
     model, feature_extractor = task_solver(task, arch, stages=stages, return_feature_extractor=True)
     if task in ['rhythm', 'beat', 'hr']:
         inputs = build_input_tensor_from_shape(tf.TensorShape((None, 1)))
-    elif task == 'cpc':
-        # exact shapes do not matter during the initialization
-        inputs = build_input_tensor_from_shape({'context': tf.TensorShape((1, 1, 1)),
-                                                'samples': tf.TensorShape((1, 1, 1))})
     else:
         raise ValueError('unknown task: {}'.format(task))
     model(inputs)
