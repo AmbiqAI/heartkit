@@ -87,6 +87,7 @@ def load_datasets(
         val_patients: Optional[float] = None,
         train_pt_samples: Optional[int] = None,
         val_pt_samples: Optional[int] = None,
+        train_file: Optional[str] = None,
         val_file: Optional[str] = None,
         num_workers: int = 1
     ) -> Tuple[tf.data.Dataset, tf.data.Dataset]:
@@ -103,12 +104,19 @@ def load_datasets(
     if train_patients is not None:
         num_pts = int(train_patients) if train_patients > 1 else int(train_patients*len(train_patient_ids))
         train_patient_ids = train_patient_ids[:num_pts]
+    np.random.shuffle(train_patient_ids)
+
+    # if train_file and os.path.isfile(train_file):
+    #     logger.info(f'Loading training data from file {train_file}')
+    #     train = load_pkl(train_file)
+    #     train_data = _create_dataset_from_data(train['x'], train['y'], task=task, frame_size=frame_size)
+    #     train_patient_ids = train['patient_ids']
 
     if val_file and os.path.isfile(val_file):
         logger.info(f'Loading validation data from file {val_file}')
         val = load_pkl(val_file)
         validation_data = _create_dataset_from_data(val['x'], val['y'], task=task, frame_size=frame_size)
-        val_patient_ids =  val['patient_ids']
+        val_patient_ids = val['patient_ids']
         # remove patients who belong to the validation set from train data
         train_patient_ids = np.setdiff1d(train_patient_ids, val_patient_ids)
     else:
@@ -120,7 +128,6 @@ def load_datasets(
         # validation size is one validation epoch by default
         val_size = len(val_patient_ids) * val_pt_samples
         logger.info(f'Collecting {val_size} validation samples')
-
         split = len(val_patient_ids) // num_workers
         val_patient_ids = tf.convert_to_tensor(val_patient_ids)
         validation_data = tf.data.Dataset.range(num_workers).interleave(lambda i: _create_dataset_from_generator(
@@ -128,19 +135,19 @@ def load_datasets(
             patient_ids=val_patient_ids[i * split:(i + 1) * split], frame_size=frame_size,
             samples_per_patient=val_pt_samples, repeat=False
         ), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        val_x, val_y = next(validation_data.batch(val_size).as_numpy_iterator())
+        validation_data = _create_dataset_from_data(val_x, val_y, task=task, frame_size=frame_size)
+        val = dict(x=val_x, y=val_y, patient_ids=val_patient_ids)
 
         # Cache validation set
-        if val_file and not os.path.isfile(val_file):
+        if val_file:
             os.makedirs(os.path.dirname(val_file), exist_ok=True)
             logger.info(f'Caching the validation set in {val_file}')
-            val_x, val_y = next(validation_data.batch(val_size).as_numpy_iterator())
-            # Create static dataset since we've already iterated entire validation set
-            validation_data = _create_dataset_from_data(val_x, val_y, task=task, frame_size=frame_size)
             save_pkl(val_file, x=val_x, y=val_y, patient_ids=val_patient_ids)
+        # END IF
     # END IF
 
     logger.info('Building train data generators')
-
     split = len(train_patient_ids) // num_workers
     train_patient_ids = tf.convert_to_tensor(train_patient_ids)
     train_data = tf.data.Dataset.range(num_workers).interleave(
@@ -151,7 +158,7 @@ def load_datasets(
         ),
         num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-    return train_data, validation_data
+    return train_data, validation_data, val
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -169,7 +176,7 @@ if __name__ == '__main__':
     parser.add_argument('--data-parallelism', type=int, default=1, help='# of data loaders running in parallel')
     # Model arguments
     parser.add_argument('--weights-file', type=Path, help='Path to a checkpoint weights to load')
-    parser.add_argument('--arch', default='resnet18', help='Network architecture: `resnet18`, `resnet34` or `resnet50`')
+    parser.add_argument('--arch', default='resnet12', help='Network architecture: `resnet12`, `resnet18`, `resnet34` or `resnet50`')
     parser.add_argument('--stages', type=int, default=None, help='# of resnet stages')
     parser.add_argument('--quantization', action=argparse.BooleanOptionalAction, help='Enable post quantization')
     # Training arguments
@@ -195,7 +202,7 @@ if __name__ == '__main__':
         wandb.config.update(args)
 
     # Load datasets
-    train_data, validation_data = load_datasets(
+    train_data, validation_data, val = load_datasets(
         db_path=str(args.db_path),
         frame_size=args.frame_size,
         train_patients=args.train_patients,
@@ -208,7 +215,7 @@ if __name__ == '__main__':
     # Shuffle and batch datasets for training
     train_data = train_data.prefetch(tf.data.experimental.AUTOTUNE).shuffle(args.buffer_size or 100)
     train_data = train_data.batch(args.batch_size)
-    validation_data = validation_data.batch(args.batch_size).cache()
+    validation_data = validation_data.batch(args.batch_size)
 
     strategy = tf.distribute.MirroredStrategy()
     with strategy.scope():
@@ -237,19 +244,19 @@ if __name__ == '__main__':
             logger.info(f'Loading weights from file {args.weights_file}')
             model.load_weights(str(args.weights_file))
 
-        if args.val_metric in ['loss', 'acc', 'f1']:
+        if args.val_metric in ['loss', 'acc']:
             checkpoint = tf.keras.callbacks.ModelCheckpoint(
                 filepath=str(args.job_dir / 'epoch_{epoch:02d}' / 'model.weights'),
                 monitor=f'val_{args.val_metric}',
                 save_best_only=False, save_weights_only=True,
                 mode='max' if args.val_metric == 'f1' else 'auto', verbose=1
             )
-        # elif args.val_metric == 'f1':
-        #     checkpoint = CustomCheckpoint(
-        #         filepath=str(args.job_dir / 'epoch_{epoch:02d}' / 'model.weights'),
-        #         data=(validation_data, val['y']),
-        #         score_fn=f1, save_best_only=False, verbose=1
-        #     )
+        elif args.val_metric == 'f1':
+            checkpoint = CustomCheckpoint(
+                filepath=str(args.job_dir / 'epoch_{epoch:02d}' / 'model.weights'),
+                data=(validation_data, val['y']),
+                score_fn=f1, save_best_only=False, verbose=1
+            )
         else:
             raise ValueError('Unknown metric: {}'.format(args.val_metric))
         tf_logger = tf.keras.callbacks.CSVLogger(str(args.job_dir / 'history.csv'))

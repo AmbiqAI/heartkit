@@ -224,6 +224,7 @@ def rhythm_data_generator(patient_generator, frame_size: int = 2048, samples_per
             rlabels = rlabels[np.where(rlabels[:, 1] != 0)[0]]
             for i, l in enumerate(rlabels[::2,1]):
                 xs, xe = rlabels[i*2+0,0], rlabels[i*2+1,0]
+                xs += random.randint(0, ds_sampling_rate)
                 seg_frame_size = xe - xs + 1
                 if l in [IcentiaRhythm.normal, IcentiaRhythm.afib] and seg_frame_size > frame_size:
                     seg_label_map[l] = seg_label_map.get(l, []) + [(seg_key, xs, xe)]
@@ -637,8 +638,8 @@ def normalize(array: npt.NDArray, inplace=False, local=True):
     @param inplace: Whether to perform the normalization steps in-place.
     @return: Normalized array.
     """
-    filt_array = array
-    # filt_array = filter_ecg_signal(array, lowcut=0.5, highcut=30, sample_rate=ds_sampling_rate, order=2)
+    # filt_array = array
+    filt_array = filter_ecg_signal(array, lowcut=0.5, highcut=30, sample_rate=ds_sampling_rate, order=2)
     mu = np.mean(filt_array) if local else ds_mean
     std = np.std(filt_array) if local else ds_std
 

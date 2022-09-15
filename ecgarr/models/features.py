@@ -2,14 +2,20 @@ import tensorflow as tf
 from .resnet1d import ResNet, BottleneckBlock
 
 def ecg_feature_extractor(arch=None, stages=None):
-    if arch is None or arch == 'resnet18':
+    if arch is None or arch == 'resnet12':
         resnet = ResNet(
             num_outputs=None,
-            # blocks=(2, 2, 2, 2)[:stages],
-            # kernel_size=(7, 5, 5, 3),
-            blocks=(1, 1, 1)[:stages],
-            filters=(32, 64, 128),
-            kernel_size=(5, 5, 3),
+            input_conv=(32, 7, 2),
+            blocks=(1, 1)[:stages],
+            filters=(32, 64),
+            kernel_size=(7, 5),
+            include_top=False
+        )
+    elif arch == 'resnet18':
+        resnet = ResNet(
+            num_outputs=None,
+            blocks=(2, 2, 2, 2)[:stages],
+            kernel_size=(7, 5, 5, 3),
             include_top=False
         )
     elif arch == 'resnet34':
