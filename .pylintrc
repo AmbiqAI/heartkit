@@ -1,0 +1,8 @@
+[MASTER]
+
+[MESSAGES CONTROL]
+
+disable=unused-argument,missing-module-docstring,too-few-public-methods,invalid-name
+
+[FORMAT]
+max-line-length=140

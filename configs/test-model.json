@@ -1,0 +1,10 @@
+{
+    "task": "rhythm",
+    "job_dir": ".cache/runs/rhythm-full-model",
+    "db_path": "./db/icentia11k",
+    "frame_size": 1250,
+    "samples_per_patient": 800,
+    "test_patients": 1000,
+    "data_parallelism": 8,
+    "model_file": ".cache/runs/rhythm-full-model/model.tf"
+}

@@ -1,0 +1,9 @@
+{
+    "task": "rhythm",
+    "job_dir": ".cache/runs/rhythm-full-model",
+    "db_path": "./db/icentia11k",
+    "frame_size": 1250,
+    "model_file": ".cache/runs/rhythm-full-model/model.tf",
+    "quantization": false,
+    "tflm_var_name": "g_afib_model"
+}

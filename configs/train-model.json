@@ -1,0 +1,19 @@
+{
+    "task": "rhythm",
+    "job_dir": ".cache/runs/rhythm-full-model",
+    "db_path": "./db/icentia11k",
+    "frame_size": 1250,
+    "samples_per_patient": 800,
+    "val_samples_per_patient": 800,
+    "train_patients": 4000,
+    "val_file": ".cache/val/rhythm-4000pt-5s-nfilt.pkl",
+    "val_patients": 0.15,
+    "data_parallelism": 8,
+    "arch": "resnet12",
+    "quantization": false,
+    "batch_size": 4096,
+    "buffer_size": 500000,
+    "epochs": 100,
+    "steps_per_epoch": 100,
+    "val_metric": "loss"
+}
