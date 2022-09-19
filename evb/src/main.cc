@@ -64,8 +64,8 @@
 //***
 //*****************************************************************************
 
+#include "constants.h"
 #include "SEGGER_RTT.h"
-#include "model.h"
 #include "max86150.h"
 #include "ns_io_i2c.h"
 
@@ -97,8 +97,11 @@ enum AppState {
 
 //*****************************************************************************
 //*** Application globals
-static const char *rhythm_labels[] = { "normal", "afib", "aflut" };
-static const char *beat_labels[] = { "normal", "pac", "aberrated", "pvc" };
+static const char *heart_rhythm_labels[] = { "normal", "afib", "aflut", "noise" };
+static const char *heart_beat_labels[] = { "normal", "pac", "aberrated", "pvc", "noise" };
+static const char *hear_rate_labels[] = { "normal", "tachycardia", "bradycardia", "noise" };
+
+
 uint8_t rttBuffer[RTT_BUFFER_LEN];
 static uint32_t sensorBuffer[MAX86150_FIFO_DEPTH*NUM_ELEMENTS] = { 0 };
 static uint32_t ecgBuffer[ECG_BUFFER_LEN];
@@ -116,7 +119,7 @@ const tflite::Model *model = nullptr;
 tflite::MicroInterpreter *interpreter = nullptr;
 TfLiteTensor *modelInput = nullptr;
 TfLiteTensor *modelOutput = nullptr;
-constexpr int kTensorArenaSize = 1024 * 70;
+constexpr int kTensorArenaSize = 1024 * 300;
 alignas(16) uint8_t tensorArena[kTensorArenaSize];
 //***
 //*****************************************************************************
@@ -250,7 +253,7 @@ void model_init(void) {
     tflite::InitializeTarget();
 
     // Map the model into a usable data structure.
-    model = tflite::GetModel(slu_model_tflite);
+    model = tflite::GetModel(g_afib_model);
     if (model->version() != TFLITE_SCHEMA_VERSION) {
         TF_LITE_REPORT_ERROR(errorReporter,
             "Model provided is schema version %d not equal to supported version %d.",

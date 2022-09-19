@@ -2,19 +2,24 @@ import os
 import random
 import zipfile
 import tempfile
-import dataclasses
+import functools
+import logging
 from enum import IntEnum
 from multiprocessing import Pool
 from typing import Dict, List, Optional, Tuple
-from tqdm import tqdm
 import h5py
 import numpy as np
 import numpy.typing as npt
+from tqdm import tqdm
 import sklearn.model_selection
-from ..utils import EcgTask, filter_ecg_signal
+from ..types import EcgTask, HeartBeat, HeartRhythm, HeartRate
+from ..utils import save_pkl
+from .utils import filter_ecg_signal
 
-# Patients containing AFIB events
-afib_patients = [
+logger = logging.getLogger('ecgarr.icentia')
+
+# Patients containing AFIB/AFLUT events
+arr_rhythm_patients = [
     16,    20,    53,    60,    65,    75,    84,    91,   119,
     139,   148,   159,   166,   177,   198,   230,   247,   268,
     271,   281,   287,   292,   295,   299,   303,   323,   328,
@@ -100,6 +105,7 @@ afib_patients = [
     10951, 10958, 10961, 10966, 10969, 10974, 10979, 10994, 10995
 ]
 
+
 class IcentiaRhythm(IntEnum):
     noise=0
     normal=1
@@ -110,11 +116,11 @@ class IcentiaRhythm(IntEnum):
 
     @classmethod
     def hi_priority(cls) -> List[int]:
-        return [cls.afib.value, cls.aflut.value]
+        return [cls.afib, cls.aflut]
 
     @classmethod
     def lo_priority(cls) -> List[int]:
-        return [cls.noise.value, cls.normal.value, cls.end.value, cls.unknown.value]
+        return [cls.noise, cls.normal, cls.end, cls.unknown]
 
 class IcentiaBeat(IntEnum):
     undefined=0
@@ -124,14 +130,12 @@ class IcentiaBeat(IntEnum):
     pvc=4
 
     @classmethod
-    @property
     def hi_priority(cls) -> List[int]:
-        return [cls.pac.value, cls.aberrated.value, cls.pvc.value]
+        return [cls.pac, cls.aberrated, cls.pvc]
 
     @classmethod
-    @property
     def lo_priority(cls) -> List[int]:
-        return [cls.undefined.value, cls.normal.value]
+        return [cls.undefined, cls.normal]
 
 class IcentiaHeartRate(IntEnum):
     tachycardia=0
@@ -139,67 +143,70 @@ class IcentiaHeartRate(IntEnum):
     normal=2
     noise=3
 
-ds_beat_names =  {b.name: b.value for b in IcentiaBeat}
-ds_rhythm_names = {r.name: r.value for r in IcentiaRhythm}
-ds_rhythm_map = { IcentiaRhythm.normal.value: 0, IcentiaRhythm.afib.value: 1 }
+##
+# These map Wfdb labels to icentia labels
+##
 
-@dataclasses.dataclass
-class IcentiaStats:
-    patient_ids: npt.NDArray = dataclasses.field(default=np.arange(11000))
-    sampling_rate: int = 250
-    mean = 0.0018 # mean over entire dataset
-    std = 1.3711 # std over entire dataset
-
-ds_patient_ids = np.arange(10_000) # Reserve last 1000 for test only
-ds_test_patient_ids = np.arange(10_000, 11_000)
-ds_sampling_rate = 250 # Hz
-ds_mean = 0.0018  # mean over entire dataset
-ds_std = 1.3711 # std over entire dataset
-
-ds_hr_names = {
-    IcentiaHeartRate.tachycardia.value: 'tachy',
-    IcentiaHeartRate.bradycardia.value: 'brady',
-    IcentiaHeartRate.normal.value: 'normal',
-    IcentiaHeartRate.noise.value: 'noise'
+WfdbRhythmMap = {
+    '':      0,
+    '(N':    1,
+    '(AFIB': 2,
+    '(AFL':  3,
+    ')':     4
 }
 
-def train_test_split_patients(patient_ids: npt.NDArray, test_size: float, task: EcgTask = EcgTask.rhythm):
+WfdbBeatMap = {
+    'Q': 0,
+    'N': 1,
+    'S': 2,
+    'a': 3,
+    'V': 4
+}
+
+##
+# These map Icentia specific labels to shared arrhythmia labels
+##
+
+HeartRhythmMap = {
+    IcentiaRhythm.noise: HeartRhythm.noise,
+    IcentiaRhythm.normal: HeartRhythm.normal,
+    IcentiaRhythm.afib: HeartRhythm.afib,
+    IcentiaRhythm.aflut: HeartRhythm.aflut,
+}
+
+HeartBeatMap = {
+    IcentiaBeat.undefined: HeartBeat.noise,
+    IcentiaBeat.normal: HeartBeat.normal,
+    IcentiaBeat.pac: HeartBeat.pac,
+    IcentiaBeat.aberrated: HeartBeat.aberrated,
+    IcentiaBeat.pvc: HeartBeat.pvc
+}
+
+
+ds_sampling_rate = 250 # Hz
+ds_patient_ids = np.arange(11_000)
+ds_mean = 0.0018
+ds_std = 1.3711
+
+def get_train_patient_ids():
+    return ds_patient_ids[:10_000]
+
+def get_test_patient_ids():
+    return ds_patient_ids[10_000:]
+
+def train_test_split_patients(patient_ids: npt.ArrayLike, test_size: float, task: EcgTask = EcgTask.rhythm):
     if task == EcgTask.rhythm:
-        afib_pt_ids = np.intersect1d(np.array(afib_patients), patient_ids)
-        norm_pt_ids = np.setdiff1d(patient_ids, afib_pt_ids)
+        arr_pt_ids = np.intersect1d(np.array(arr_rhythm_patients), patient_ids)
+        norm_pt_ids = np.setdiff1d(patient_ids, arr_pt_ids)
         norm_train_pt_ids, norm_val_pt_ids = sklearn.model_selection.train_test_split(norm_pt_ids, test_size=test_size)
-        afib_train_pt_ids, afib_val_pt_ids = sklearn.model_selection.train_test_split(afib_pt_ids, test_size=test_size)
-        train_pt_ids = np.concatenate((norm_train_pt_ids, afib_train_pt_ids))
+        arr_train_pt_ids, afib_val_pt_ids = sklearn.model_selection.train_test_split(arr_pt_ids, test_size=test_size)
+        train_pt_ids = np.concatenate((norm_train_pt_ids, arr_train_pt_ids))
         val_pt_ids = np.concatenate((norm_val_pt_ids, afib_val_pt_ids))
         np.random.shuffle(train_pt_ids)
         np.random.shuffle(val_pt_ids)
         return train_pt_ids, val_pt_ids
     # END IF
     return sklearn.model_selection.train_test_split(patient_ids, test_size=test_size)
-
-def get_dataset_statistics(db_path: str, save_path: str):
-    import pandas as pd
-    pt_gen = uniform_patient_generator(db_path=db_path, patient_ids=ds_patient_ids, repeat=False)
-    stats = []
-    for pt, segments in tqdm(pt_gen, total=len(ds_patient_ids)):
-        # Group patient rhythms by type (segment, start, stop)
-        segment_label_map: Dict[str, List[Tuple[str, int, int]]] = {}
-        for seg_key, segment in segments.items():
-            rlabels = segment['rlabels'][:]
-            if rlabels.shape[0] == 0:
-                continue # Segment has no rhythm labels
-            rlabels = rlabels[rlabels != 0]
-            for i, l in enumerate(rlabels[::2,1]):
-                if l in [IcentiaRhythm.normal, IcentiaRhythm.afib, IcentiaRhythm.aflut]:
-                    rhy_start, rhy_stop = rlabels[i*2+0,0], rlabels[i*2+1,0]
-                    stats.append(dict(pt=pt, rc=seg_key, rhythm=l, start=rhy_start, stop=rhy_stop, dur=rhy_stop-rhy_start))
-                    segment_label_map[l] = segment_label_map.get(l, []) + [(seg_key, rlabels[i*2+0,0], rlabels[i*2+1,0])]
-                # END IF
-            # END FOR
-        # END FOR
-    # END FOR
-    df = pd.DataFrame(stats)
-    df.to_parquet(save_path)
 
 def rhythm_data_generator(patient_generator, frame_size: int = 2048, samples_per_patient: int = 1):
     """
@@ -212,22 +219,24 @@ def rhythm_data_generator(patient_generator, frame_size: int = 2048, samples_per
             This is done in order to decrease the number of i/o operations.
     @return: Generator of: input data of shape (frame_size, 1), output data as the corresponding rhythm label.
     """
+    tgt_rhythm_labels = (IcentiaRhythm.normal, IcentiaRhythm.afib)
+    arr_rhythm_labels = (IcentiaRhythm.afib, )
+
     for pt, segments in patient_generator:
         print('.', end='')
-
         # Group patient rhythms by type (segment, start, stop)
-        seg_label_map: Dict[str, List[Tuple[str, int, int]]] = {}
+        seg_label_map: Dict[str, List[Tuple[str, int, int]]] = {lbl: [] for lbl in tgt_rhythm_labels}
         for seg_key, segment in segments.items():
             rlabels = segment['rlabels'][:]
-            if rlabels.shape[0] == 0:
+            if not rlabels.shape[0]:
                 continue # Segment has no rhythm labels
-            rlabels = rlabels[np.where(rlabels[:, 1] != 0)[0]]
+            rlabels = rlabels[np.where(rlabels[:, 1] != IcentiaRhythm.noise.value)[0]]
             for i, l in enumerate(rlabels[::2,1]):
                 xs, xe = rlabels[i*2+0,0], rlabels[i*2+1,0]
                 xs += random.randint(0, ds_sampling_rate)
                 seg_frame_size = xe - xs + 1
-                if l in [IcentiaRhythm.normal, IcentiaRhythm.afib] and seg_frame_size > frame_size:
-                    seg_label_map[l] = seg_label_map.get(l, []) + [(seg_key, xs, xe)]
+                if l in tgt_rhythm_labels and (seg_frame_size > frame_size):
+                    seg_label_map[l].append((seg_key, xs, xe))
                 # END IF
             # END FOR
         # END FOR
@@ -235,11 +244,16 @@ def rhythm_data_generator(patient_generator, frame_size: int = 2048, samples_per
         seg_samples: List[Tuple[str, int, int, int]] = []
 
         # Grab all arrhythmia instances
-        afib_segments = seg_label_map.get(IcentiaRhythm.afib, [])
-        for seg_key, rhy_start, rhy_end in afib_segments:
-            for frame_start in range(rhy_start, rhy_end - frame_size + 1, frame_size):
-                frame_end = frame_start + frame_size
-                seg_samples.append((seg_key, frame_start, frame_end, ds_rhythm_map[IcentiaRhythm.afib]))
+        for label in arr_rhythm_labels:
+            arr_segments = seg_label_map.get(label, [])
+            random.shuffle(arr_segments)
+            for seg_key, rhy_start, rhy_end in arr_segments:
+                for i, frame_start in enumerate(range(rhy_start, rhy_end - frame_size + 1, frame_size)):
+                    if i > samples_per_patient:
+                        break
+                    frame_end = frame_start + frame_size
+                    seg_samples.append((seg_key, frame_start, frame_end, HeartRhythmMap[label]))
+                # END FOR
             # END FOR
         # END FOR
 
@@ -249,7 +263,8 @@ def rhythm_data_generator(patient_generator, frame_size: int = 2048, samples_per
             seg_key, rhy_start, rhy_end = random.choice(norm_segments)
             frame_start = np.random.randint(rhy_start, rhy_end - frame_size + 1)
             frame_end = frame_start + frame_size
-            seg_samples.append((seg_key, frame_start, frame_end, ds_rhythm_map[IcentiaRhythm.normal]))
+            seg_samples.append((seg_key, frame_start, frame_end, HeartRhythmMap[IcentiaRhythm.normal]))
+        # END WHILE
 
         # Shuffle frames
         random.shuffle(seg_samples)
@@ -278,7 +293,7 @@ def rhythm_data_generator_v1(patient_generator, frame_size: int = 2048, samples_
             segment_size: int = segment['data'].shape[0]
             frame_start = np.random.randint(segment_size - frame_size)
             frame_end = frame_start + frame_size
-            if segment['rlabels'].shape[0] == 0:
+            if not segment['rlabels'].shape[0]:
                 continue
             x: npt.NDArray = segment['data'][frame_start:frame_end]
             # calculate the durations of each rhythm in the frame and determine the final label
@@ -309,7 +324,7 @@ def beat_data_generator(patient_generator, frame_size: int = 2048, samples_per_p
             segment_size: int = segment['data'].shape[0]
             frame_start = np.random.randint(segment_size - frame_size)
             frame_end = frame_start + frame_size
-            if segment['blabels'].shape[0] == 0:
+            if not segment['blabels'].shape[0]:
                 continue
             x = segment['data'][frame_start:frame_end]
             beat_indices, beat_labels = segment['blabels'][:, 0], segment['blabels'][:, 1]
@@ -369,13 +384,11 @@ def signal_generator(patient_generator, frame_size=2048, samples_per_patient=1):
     """
     for _, segments in patient_generator:
         for _ in range(samples_per_patient):
-            # randomly choose a frame that lies within the segment i.e. no zero-padding is necessary
             segment = segments[np.random.choice(list(segments.keys()))]
             segment_size = segment['data'].shape[0]
             frame_start = np.random.randint(segment_size - frame_size)
             frame_end = frame_start + frame_size
             x = segment['data'][frame_start:frame_end]
-            # x = np.expand_dims(x, axis=1)  # add channel dimension
             yield x
         # END FOR
     # END FOR
@@ -394,22 +407,19 @@ def uniform_patient_generator(
     @param shuffle: Whether to shuffle patient ids.
     @return: Generator that yields a tuple of patient id and patient data.
     """
-    if shuffle:
-        patient_ids = np.copy(patient_ids)
-        while True:
-            if shuffle:
-                np.random.shuffle(patient_ids)
-                print('x', end='')
-            for patient_id in patient_ids:
-                pt_key = f'p{patient_id:05d}'
-                with h5py.File(os.path.join(db_path, f'{pt_key}.h5'), mode='r') as h5:
-                    patient_data = h5[pt_key]
-                    yield patient_id, patient_data
-            # END FOR
-            if not repeat:
-                break
-        # END WHILE
-    # END WITH
+    patient_ids = np.copy(patient_ids)
+    while True:
+        if shuffle:
+            np.random.shuffle(patient_ids)
+        for patient_id in patient_ids:
+            pt_key = f'p{patient_id:05d}'
+            with h5py.File(os.path.join(db_path, f'{pt_key}.h5'), mode='r') as h5:
+                patient_data = h5[pt_key]
+                yield patient_id, patient_data
+        # END FOR
+        if not repeat:
+            break
+    # END WHILE
 
 
 def random_patient_generator(
@@ -424,12 +434,15 @@ def random_patient_generator(
     @param patient_weights: Probabilities associated with each patient. By default assumes a uniform distribution.
     @return: Generator that yields a tuple of patient id and patient data.
     """
-    with h5py.File(db_path, mode='r') as h5:
-        while True:
-            # NOTE: Currently only 1024 patients are selected w/ repeats
-            for patient_id in np.random.choice(patient_ids, size=1024, p=patient_weights):
-                patient_data = h5[f'p{patient_id:05d}']
+    while True:
+        for patient_id in np.random.choice(patient_ids, size=1024, p=patient_weights):
+            pt_key = f'p{patient_id:05d}'
+            with h5py.File(os.path.join(db_path, f'{pt_key}.h5'), mode='r') as h5:
+                patient_data = h5[pt_key]
                 yield patient_id, patient_data
+            # END WITH
+        # END FOR
+    # END WHILE
 
 
 def count_labels(labels: List[Tuple[int, int]], num_classes: int):
@@ -457,6 +470,8 @@ def calculate_durations(labels, num_classes):
         segment_durations = np.diff(segment_indices, prepend=0)
         for label in range(num_classes):
             durations[segment_index, label] = segment_durations[segment_labels == label].sum()
+        # END FOR
+    # END FOR
     return durations
 
 def flatten_raw_labels(raw_labels):
@@ -476,12 +491,15 @@ def flatten_raw_labels(raw_labels):
             for label, indices in enumerate(segment_labels[label_type]):
                 flat_indices.append(indices)
                 flat_labels.append(np.repeat(label, len(indices)))
+            # END FOR
             flat_indices = np.concatenate(flat_indices)
             flat_labels = np.concatenate(flat_labels)
             sort_index = np.argsort(flat_indices)
             flat_indices = flat_indices[sort_index]
             flat_labels = flat_labels[sort_index]
             labels[label_type].append((flat_indices, flat_labels))
+        # END FOR
+    # END FOR
     return labels
 
 
@@ -561,26 +579,26 @@ def get_complete_beats(indices, labels=None, start=0, end=None):
 
 def get_rhythm_label(durations, labels):
     """
-    Determine rhythm label based on the longest rhythm among undefined / afib / aflut if present,
+    Determine rhythm label based on the longest rhythm among arrhythmias if present,
     otherwise the longer among end / noise / normal.
     @param durations: Array of rhythm durations
     @param labels: Array of rhythm labels.
     @return: Rhythm label as an integer.
     """
     # sum up the durations of each rhythm
-    summed_durations = np.zeros(len(ds_rhythm_names))
+    summed_durations = np.zeros(len(IcentiaRhythm))
     for rhythm in IcentiaRhythm:
         summed_durations[rhythm.value] = durations[labels == rhythm.value].sum()
     longest_hp_rhythm = np.argmax(summed_durations[IcentiaRhythm.hi_priority()])
     if summed_durations[IcentiaRhythm.hi_priority()][longest_hp_rhythm] > 0:
-        y = IcentiaRhythm.hi_priority()[longest_hp_rhythm]
+        y = HeartRhythmMap[IcentiaRhythm.hi_priority()[longest_hp_rhythm]]
     else:
         longest_lp_rhythm = np.argmax(summed_durations[IcentiaRhythm.lo_priority()])
         # handle the case of no detected rhythm
         if summed_durations[IcentiaRhythm.lo_priority()][longest_lp_rhythm] > 0:
-            y = IcentiaRhythm.lo_priority()[longest_lp_rhythm]
+            y = HeartRhythmMap[IcentiaRhythm.lo_priority()[longest_lp_rhythm]]
         else:
-            y = 0  # undefined rhythm
+            y = HeartRhythmMap[IcentiaRhythm.noise]
     return y
 
 
@@ -592,17 +610,17 @@ def get_beat_label(labels):
     @return: Beat label as an integer.
     """
     # calculate the count of each beat type in the frame
-    beat_counts = np.bincount(labels, minlength=len(ds_beat_names))
-    most_hp_beats = np.argmax(beat_counts[IcentiaBeat.hi_priority()])
-    if beat_counts[IcentiaBeat.hi_priority()][most_hp_beats] > 0:
-        y = IcentiaBeat.hi_priority()[most_hp_beats]
+    beat_counts = np.bincount(labels, minlength=len(IcentiaBeat))
+    max_hp_idx = np.argmax(beat_counts[IcentiaBeat.hi_priority()])
+    if beat_counts[IcentiaBeat.hi_priority()][max_hp_idx] > 0:
+        y = HeartBeatMap[IcentiaBeat.hi_priority()[max_hp_idx]]
     else:
-        most_lp_beats = np.argmax(beat_counts[IcentiaBeat.lo_priority()])
+        max_lp_idx = np.argmax(beat_counts[IcentiaBeat.lo_priority()])
         # handle the case of no detected beats
-        if beat_counts[IcentiaBeat.lo_priority()][most_lp_beats] > 0:
-            y = IcentiaBeat.lo_priority()[most_lp_beats]
+        if beat_counts[IcentiaBeat.lo_priority()][max_lp_idx] > 0:
+            y = HeartBeatMap[IcentiaBeat.lo_priority()[max_lp_idx]]
         else:
-            y = 0  # undefined beat
+            y = HeartBeatMap[IcentiaBeat.undefined]
     return y
 
 
@@ -622,24 +640,26 @@ def get_heart_rate_label(qrs_indices, fs=None):
             rr_intervals = rr_intervals / fs
         bpm = 60 / rr_intervals.mean()
         if bpm < 60:
-            return IcentiaHeartRate.bradycardia.value
+            return HeartRate.bradycardia.value
         elif bpm <= 100:
-            return IcentiaHeartRate.normal.value
+            return HeartRate.normal.value
         else:
-            return IcentiaHeartRate.tachycardia.value
+            return HeartRate.tachycardia.value
     else:
-        return IcentiaHeartRate.noise.value
+        return HeartRate.noise.value
 
 
-def normalize(array: npt.NDArray, inplace=False, local=True):
+def normalize(array: npt.ArrayLike, inplace: bool = False, local: bool = True, filter: bool = False):
     """
     Normalize an array using the mean and standard deviation calculated over the entire dataset.
     @param array: Numpy array to normalize.
     @param inplace: Whether to perform the normalization steps in-place.
     @return: Normalized array.
     """
-    # filt_array = array
-    filt_array = filter_ecg_signal(array, lowcut=0.5, highcut=30, sample_rate=ds_sampling_rate, order=2)
+    if filter:
+        filt_array = filter_ecg_signal(array, lowcut=0.5, highcut=30, sample_rate=ds_sampling_rate, order=2)
+    else:
+        filt_array = np.copy(array)
     mu = np.mean(filt_array) if local else ds_mean
     std = np.std(filt_array) if local else ds_std
 
@@ -687,16 +707,47 @@ def _choose_random_segment(patients, size=None, segment_p=None):
             indices.append((patient_index, segment_index))
         return indices
 
-def convert_pt_zip_to_hdf5(patient: int, zip_path: str, h5_path: str):
+
+def get_rhythm_statistics(db_path: str, patient_ids: Optional[npt.ArrayLike] = None, save_path: Optional[str] = None):
+    import pandas as pd
+    if patient_ids is None:
+        patient_ids = ds_patient_ids
+    pt_gen = uniform_patient_generator(db_path=db_path, patient_ids=patient_ids, repeat=False)
+    stats = []
+    for pt, segments in pt_gen: #, total=len(patient_ids):
+        # Group patient rhythms by type (segment, start, stop)
+        segment_label_map: Dict[str, List[Tuple[str, int, int]]] = {}
+        for seg_key, segment in segments.items():
+            rlabels = segment['rlabels'][:]
+            if rlabels.shape[0] == 0:
+                continue # Segment has no rhythm labels
+            rlabels = rlabels[np.where(rlabels[:, 1] != IcentiaRhythm.noise.value)[0]]
+            for i, l in enumerate(rlabels[::2,1]):
+                if l in (IcentiaRhythm.normal, IcentiaRhythm.afib, IcentiaRhythm.aflut):
+                    rhy_start, rhy_stop = rlabels[i*2+0,0], rlabels[i*2+1,0]
+                    stats.append(dict(pt=pt, rc=seg_key, rhythm=l, start=rhy_start, stop=rhy_stop, dur=rhy_stop-rhy_start))
+                    segment_label_map[l] = segment_label_map.get(l, []) + [(seg_key, rlabels[i*2+0,0], rlabels[i*2+1,0])]
+                # END IF
+            # END FOR
+        # END FOR
+    # END FOR
+    df = pd.DataFrame(stats)
+    if save_path:
+        df.to_parquet(save_path)
+    return df
+
+def convert_dataset_pt_zip_to_hdf5(patient: int, zip_path: str, db_path: str, force: bool = False):
     import wfdb
     import re
-    print(f'Processing patient {patient}')
-    sym_map = {'Q': 0, 'N': 1, 'S': 2, 'a': 3, 'V': 4}
-    rhy_map = {'': 0, '(N': 1, '(AFIB': 2, '(AFL': 3, ')': 4}
 
+    logger.info(f'Processing patient {patient}')
     pt_id = f'p{patient:05d}'
+    pt_path = os.path.join(db_path, f'{pt_id}.h5')
+    if not force and os.path.exists(pt_path):
+        print("skipping patient")
+        return
     zp = zipfile.ZipFile(zip_path, mode='r')
-    h5 = h5py.File(os.path.join(h5_path, f'{pt_id}.h5'), mode='w')
+    h5 = h5py.File(pt_path, mode='w')
 
     # Find all patient .dat file indices
     zp_rec_names = filter(lambda f: re.match(f'{pt_id}_[A-z0-9]+.dat', os.path.basename(f)), (f.filename for f in zp.filelist))
@@ -719,8 +770,8 @@ def convert_pt_zip_to_hdf5(patient: int, zip_path: str, h5_path: str):
                 atr = wfdb.rdann(os.path.splitext(atr_fpath)[0], extension='atr')
             pt_seg_path = os.path.join('/', os.path.splitext(os.path.basename(zp_rec_name))[0].replace('_', '/'))
             data = rec.p_signal.astype(np.float16)
-            blabels = np.array([[atr.sample[i], sym_map.get(s)] for i,s in enumerate(atr.symbol) if s in sym_map], dtype=np.int32)
-            rlabels = np.array([[atr.sample[i], rhy_map.get(atr.aux_note[i], 0)] for i,s in enumerate(atr.symbol) if s == '+'], dtype=np.int32)
+            blabels = np.array([[atr.sample[i], WfdbBeatMap.get(s)] for i,s in enumerate(atr.symbol) if s in WfdbBeatMap], dtype=np.int32)
+            rlabels = np.array([[atr.sample[i], WfdbRhythmMap.get(atr.aux_note[i], 0)] for i,s in enumerate(atr.symbol) if s == '+'], dtype=np.int32)
             h5.create_dataset(name=os.path.join(pt_seg_path, 'data'), data=data, compression="gzip", compression_opts=3)
             h5.create_dataset(name=os.path.join(pt_seg_path, 'blabels'), data=blabels)
             h5.create_dataset(name=os.path.join(pt_seg_path, 'rlabels'), data=rlabels)
@@ -729,10 +780,9 @@ def convert_pt_zip_to_hdf5(patient: int, zip_path: str, h5_path: str):
             continue
     h5.close()
 
-def convert_zip_to_hdf5(zip_path: str, h5_path: str):
-    import functools
-    f = functools.partial(convert_pt_zip_to_hdf5, zip_path=zip_path, h5_path=h5_path)
-    with Pool(processes=10) as pool:
-        print('Started')
-        pool.map(f, ds_patient_ids)
-        print('Finished')
+def convert_dataset_zip_to_hdf5(zip_path: str, db_path: str, patient_ids: Optional[npt.ArrayLike] = None, force: bool = False, num_workers: int = 4):
+    if not patient_ids:
+        patient_ids = ds_patient_ids
+    f = functools.partial(convert_dataset_pt_zip_to_hdf5, zip_path=zip_path, db_path=db_path, force=force)
+    with Pool(processes=num_workers) as pool:
+        r = list(tqdm(pool.imap(f, patient_ids), total=len(patient_ids)))

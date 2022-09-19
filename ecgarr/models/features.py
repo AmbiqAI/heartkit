@@ -6,9 +6,9 @@ def ecg_feature_extractor(arch=None, stages=None):
         resnet = ResNet(
             num_outputs=None,
             input_conv=(32, 7, 2),
-            blocks=(1, 1)[:stages],
-            filters=(32, 64),
-            kernel_size=(7, 5),
+            blocks=(1, 1, 1)[:stages],
+            filters=(32, 64, 128),
+            kernel_size=(7, 5, 3),
             include_top=False
         )
     elif arch == 'resnet18':

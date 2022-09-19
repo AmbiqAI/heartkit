@@ -5,7 +5,6 @@ def batch_norm():
 
 def relu():
     return tf.keras.layers.ReLU()
-    # return tf.keras.layers.Activation('swish')
 
 def conv1d(filters, kernel_size=3, strides=1):
     return tf.keras.layers.Conv1D(
@@ -99,7 +98,7 @@ class ResNet(tf.keras.Model):
             input_conv=(64, 7, 2), block_fn=ResidualBlock, include_top=True, **kwargs
         ):
         super().__init__(**kwargs)
-        self.noise = tf.keras.layers.GaussianNoise(0.1)
+        # self.noise = tf.keras.layers.GaussianNoise(0.1)
         self.conv1 = conv1d(*input_conv)
         self.bn1 = batch_norm()
         self.relu1 = relu()
@@ -119,7 +118,7 @@ class ResNet(tf.keras.Model):
     def call(self, x, include_top=None, **kwargs):
         if include_top is None:
             include_top = self.include_top
-        x = self.noise(x)
+        # x = self.noise(x)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu1(x)

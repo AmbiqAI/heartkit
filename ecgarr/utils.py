@@ -1,16 +1,23 @@
 import os
+import sys
+import requests
+import logging
+from logging.handlers import RotatingFileHandler
 import gzip
+import random
 import pickle
-from enum import Enum
-from scipy.signal import butter, sosfiltfilt
+from typing import Optional
+import tensorflow as tf
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
+from tqdm import tqdm
 
-class EcgTask(str, Enum):
-    rhythm = 'rhythm'
-    beat = 'beat'
-    hr = 'hr'
+def set_random_seed(seed: Optional[int] = None):
+    seed = seed or np.random.randint(2 ** 16)
+    random.seed(seed)
+    np.random.seed(seed)
+    tf.random.set_seed(seed)
+    return seed
 
 def xxd_c_dump(src_path: str, dst_path: str, var_name: str = 'g_model', chunk_len: int = 12):
     """ Generate C like char array of hex values from binary source. Equivalent to `xxd -i src_path > dst_path`
@@ -232,10 +239,79 @@ def rolling_standardize(x: np.ndarray, win_len: int):
     x_norm = (x - x_mu)/x_std
     return x_norm
 
-def filter_ecg_signal(data: npt.NDArray, lowcut: float, highcut: float, sample_rate: float, order: int = 2):
-    nyq = 0.5 * sample_rate
-    low = lowcut / nyq
-    high = highcut / nyq
-    sos = butter(order, [low, high], btype='band', output='sos')
-    f_data = sosfiltfilt(sos, data, axis=0)
-    return f_data
+class MaxLevelFilter(logging.Filter):
+    def __init__(self, max_level):
+        self.max_level = max_level
+
+    def filter(self, log_record):
+        return log_record.levelno <= self.max_level
+
+def setup_logger(log_name: str, log_folder: str) -> logging.Logger:
+    os.makedirs(log_folder, exist_ok=True)
+    log_formatter = logging.Formatter('[%(levelname)s:%(asctime)s] %(message)s', '%Y-%m-%dT%H:%M:%S')
+    logger = logging.getLogger(log_name)
+    if logger.handlers and len(logger.handlers) > 0:
+        return logger
+    logger.setLevel(logging.INFO)
+    info_file_handler = RotatingFileHandler(
+        filename=os.path.join(log_folder, log_name + '.info.log'),
+        maxBytes=3 * 1024 * 1024,
+        backupCount=10
+    )
+    info_file_handler.setFormatter(log_formatter)
+    info_file_handler.setLevel(logging.INFO)
+    info_file_handler.addFilter(MaxLevelFilter(logging.WARNING))
+    error_file_handler = RotatingFileHandler(
+        filename=os.path.join(log_folder, log_name + '.error.log'),
+        maxBytes=3 * 1024 * 1024,
+        backupCount=10
+    )
+    error_file_handler.setFormatter(log_formatter)
+    error_file_handler.setLevel(logging.ERROR)
+    logger.addHandler(info_file_handler)
+    logger.addHandler(error_file_handler)
+    # For development print to stdout and stderr
+    if os.getenv('PYTHON_ENV') == 'development' or os.getenv('LOG_VERBOSE'):
+        so_handler = logging.StreamHandler(sys.stdout)
+        so_handler.setFormatter(log_formatter)
+        so_handler.setLevel(logging.DEBUG)
+        so_handler.addFilter(MaxLevelFilter(logging.WARNING))
+        se_handler = logging.StreamHandler(sys.stderr)
+        se_handler.setFormatter(log_formatter)
+        se_handler.setLevel(logging.WARNING)
+        logger.addHandler(so_handler)
+        logger.addHandler(se_handler)
+        logger.setLevel(logging.DEBUG)
+    return logger
+
+def env_flag(env_var: str, default: bool = False) -> bool:
+    """
+    Return the specified environment variable coerced to a bool, as follows:
+    - When the variable is unset, or set to the empty string, return `default`.
+    - When the variable is set to a truthy value, returns `True`.
+      These are the truthy values:
+          - 1
+          - true, yes, on
+    - When the variable is set to the anything else, returns False.
+       Example falsy values:
+          - 0
+          - no
+    - Ignore case and leading/trailing whitespace.
+    """
+    environ_string = os.environ.get(env_var, "").strip().lower()
+    if not environ_string:
+        return default
+    return environ_string in ["1", "true", "yes", "on"]
+
+
+def download_file(src: str, dst: str, progress: bool = True):
+    with requests.get(src, stream=True) as r:
+        r.raise_for_status()
+        req_len = int(r.headers.get('Content-length', 0))
+        prog_bar = tqdm(total=req_len, unit='iB', unit_scale=True) if progress else None
+        with open(dst, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+                if prog_bar:
+                    prog_bar.update(len(chunk))
+    return dst

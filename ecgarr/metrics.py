@@ -1,10 +1,26 @@
 import warnings
+from typing import List, Optional
+import seaborn as sns
 import numpy as np
+import numpy.typing as npt
 import tensorflow as tf
+import matplotlib.pyplot as plt
 from sklearn.metrics import roc_auc_score, f1_score
 
 
-def auc(y_true, y_prob):
+def auc(y_true: npt.ArrayLike, y_prob: npt.ArrayLike) -> float:
+    """ Computes Area Under the Receiver Operating Characteristic Curve
+
+    Args:
+        y_true (_type_): True labels
+        y_prob (_type_): Predicted class probabilities
+
+    Raises:
+        ValueError: y_prob must be a matrix
+
+    Returns:
+        _type_: _description_
+    """
     if y_prob.ndim != 2:
         raise ValueError('y_prob must be a 2d matrix with class probabilities for each sample')
     if y_true.shape != y_prob.shape:
@@ -38,6 +54,16 @@ def f_max(y_true, y_prob, thresholds=None):
     f1s = (2 * pr * rc) / (pr + rc)
     i = np.nanargmax(f1s)
     return f1s[i], thresholds[i]
+
+def confusion_matrix_plot(y_true: npt.ArrayLike, y_pred: npt.ArrayLike, labels: List[str], save_path: Optional[str], **kwargs):
+    confusion_mtx = tf.math.confusion_matrix(y_true, y_pred)
+    plt.figure(figsize=kwargs.get('figsize', (10, 8)))
+    sns.heatmap(confusion_mtx, xticklabels=labels, yticklabels=labels, annot=True, fmt='g')
+    plt.xlabel('Prediction')
+    plt.ylabel('Label')
+    if save_path:
+        plt.savefig(save_path)
+    plt.close()
 
 
 def macro_precision_recall(y_true, y_prob, thresholds):  # multi-class multi-output
@@ -92,8 +118,7 @@ def challenge2020_metrics(y_true, y_pred, beta_f=2, beta_g=2, class_weights=None
         g_beta += w_k * tp / (tp + fp + beta_g * fn)
     f_beta /= class_weights.sum()
     g_beta /= class_weights.sum()
-    return {'F_beta': f_beta,
-            'G_beta': g_beta}
+    return {'F_beta': f_beta, 'G_beta': g_beta}
 
 
 def _one_hot(x, depth):

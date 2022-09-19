@@ -1,6 +1,6 @@
 # ECG Heart Arrhythmia Classification
 
-The objective is to perform real-time Heart Arrhythmia classification using 1-lead ECG and optionally PPG. Classification can be performed on either rhythm (e.g. normal, AFIB, AFL) or beat (e.g. PAC, PVC).
+The objective is to perform real-time Heart Arrhythmia classification using 1-lead ECG and optionally PPG. Classification can be performed on either rhythm (e.g. normal, AFIB, AFL) or beat (e.g. PAC, PVC). The current model is able to
 
 ## Datasets
 
