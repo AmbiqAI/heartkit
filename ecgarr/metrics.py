@@ -5,31 +5,41 @@ import numpy as np
 import numpy.typing as npt
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from sklearn.metrics import roc_auc_score, f1_score
+from sklearn.metrics import f1_score, roc_curve, auc
 
 
-def auc(y_true: npt.ArrayLike, y_prob: npt.ArrayLike) -> float:
-    """ Computes Area Under the Receiver Operating Characteristic Curve
+# def auc(y_true: npt.ArrayLike, y_prob: npt.ArrayLike) -> float:
+#     """ Computes Area Under the Receiver Operating Characteristic Curve
+
+#     Args:
+#         y_true (_type_): True labels
+#         y_prob (_type_): Predicted class probabilities
+
+#     Raises:
+#         ValueError: y_prob must be a matrix
+
+#     Returns:
+#         _type_: _description_
+#     """
+#     if y_prob.ndim != 2:
+#         raise ValueError('y_prob must be a 2d matrix with class probabilities for each sample')
+#     if y_true.shape != y_prob.shape:
+#         raise ValueError('shapes do not match')
+#     return roc_auc_score(y_true, y_prob, average='macro')
+
+
+def f1(y_true, y_prob, multiclass=False, threshold=None):
+    """Compute F1 scores
 
     Args:
-        y_true (_type_): True labels
-        y_prob (_type_): Predicted class probabilities
-
-    Raises:
-        ValueError: y_prob must be a matrix
+        y_true (_type_): _description_
+        y_prob (_type_): 2D matrix with class probs
+        multiclass (bool, optional): If multiclass. Defaults to False.
+        threshold (float, optional): Decision threshold for multiclass. Defaults to None.
 
     Returns:
         _type_: _description_
     """
-    if y_prob.ndim != 2:
-        raise ValueError('y_prob must be a 2d matrix with class probabilities for each sample')
-    if y_true.shape != y_prob.shape:
-        raise ValueError('shapes do not match')
-    return roc_auc_score(y_true, y_prob, average='macro')
-
-
-def f1(y_true, y_prob, multiclass=False, threshold=None):
-    # threshold may also be a 1d array of thresholds for each class
     if y_prob.ndim != 2:
         raise ValueError('y_prob must be a 2d matrix with class probabilities for each sample')
     if y_true.ndim == 1:  # we assume that y_true is sparse (consequently, multiclass=False)
@@ -47,7 +57,16 @@ def f1(y_true, y_prob, multiclass=False, threshold=None):
 
 
 def f_max(y_true, y_prob, thresholds=None):
-    """ source: https://github.com/helme/ecg_ptbxl_benchmarking """
+    """ Compute F max
+    source: https://github.com/helme/ecg_ptbxl_benchmarking
+    Args:
+        y_true (npt.ArrayLike): _description_
+        y_prob (npt.ArrayLike): _description_
+        thresholds (_type_, optional): _description_. Defaults to None.
+
+    Returns:
+        Tuple[float]: _description_
+    """
     if thresholds is None:
         thresholds = np.linspace(0, 1, 100)
     pr, rc = macro_precision_recall(y_true, y_prob, thresholds)
@@ -55,7 +74,15 @@ def f_max(y_true, y_prob, thresholds=None):
     i = np.nanargmax(f1s)
     return f1s[i], thresholds[i]
 
-def confusion_matrix_plot(y_true: npt.ArrayLike, y_pred: npt.ArrayLike, labels: List[str], save_path: Optional[str], **kwargs):
+def confusion_matrix_plot(y_true: npt.ArrayLike, y_pred: npt.ArrayLike, labels: List[str], save_path: Optional[str] = None, **kwargs):
+    """Generate confusion matrix plot via matplotlib/seaborn
+
+    Args:
+        y_true (npt.ArrayLike): True y labels
+        y_pred (npt.ArrayLike): Predicted y labels
+        labels (List[str]): Label names
+        save_path (Optional[str]): Path to save plot. Defaults to None.
+    """
     confusion_mtx = tf.math.confusion_matrix(y_true, y_pred)
     plt.figure(figsize=kwargs.get('figsize', (10, 8)))
     sns.heatmap(confusion_mtx, xticklabels=labels, yticklabels=labels, annot=True, fmt='g')
@@ -65,6 +92,34 @@ def confusion_matrix_plot(y_true: npt.ArrayLike, y_pred: npt.ArrayLike, labels: 
         plt.savefig(save_path)
     plt.close()
 
+
+def roc_auc_plot(y_true: npt.ArrayLike, y_prob: npt.ArrayLike, labels: List[str], save_path: Optional[str] = None, **kwargs):
+    """Generate ROC plot via matplotlib/seaborn
+    Args:
+        y_true (npt.ArrayLike): True y labels
+        y_prob (npt.ArrayLike): Predicted y labels
+        labels (List[str]): Label names
+        save_path (Optional[str]): Path to save plot. Defaults to None.
+    """
+
+    fpr, tpr, _ = roc_curve(y_true, y_prob)
+    roc_auc = auc(fpr, tpr)
+    plt.figure(figsize=kwargs.get('figsize', (10, 8)))
+    lw = 2
+    plt.plot(
+        fpr, tpr, lw=lw, color="darkorange",
+        label=f"ROC curve (area = {roc_auc:0.2f})",
+    )
+    plt.plot([0, 1], [0, 1], color="navy", lw=lw, linestyle="--")
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("ROC-AUC")
+    plt.legend(loc="lower right")
+    if save_path:
+        plt.savefig(save_path)
+    plt.close()
 
 def macro_precision_recall(y_true, y_prob, thresholds):  # multi-class multi-output
     """ source: https://github.com/helme/ecg_ptbxl_benchmarking """

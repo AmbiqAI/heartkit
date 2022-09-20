@@ -1,12 +1,67 @@
 # ECG Heart Arrhythmia Classification
 
-The objective is to perform real-time Heart Arrhythmia classification using 1-lead ECG and optionally PPG. Classification can be performed on either rhythm (e.g. normal, AFIB, AFL) or beat (e.g. PAC, PVC). The current model is able to
+The objective is to perform real-time Heart Arrhythmia classification using 1-lead ECG and optionally PPG. Classification can be performed on either rhythm (e.g. normal, AFIB, AFL) or beat (e.g. PAC, PVC). The current model is able to perform AFIB arrhythmia classification. In the near future, this will be extended to include Atrial flutter. Longer term goal is to perform beat-level classification.
+
+## Prerequisite
+
+* [Python 3.9+](https://www.python.org)
+* [Poetry](https://python-poetry.org/docs/#installation)
+
+## Usage
+
+To get started, first install the local python package `ecgarr` along with its dependencies via `Poetry`:
+
+```bash
+poetry install
+```
+
+The python package is intended to be used as a CLI-based app and provides a number of commands discussed below. In general, reference configs are provided to (1) download dataset, (2) train model, (3) test model, (4) deploy model, and (5) run demo on Apollo 4 EVB hardware. Reference models are included to enable running (3) and (5) off the bat.
+
+### 1. Download Dataset (download_dataset)
+
+This command will download the entire dataset as a single zip file as well as convert into individual patient HDF5 files (e.g. p00001.h5). The latter makes it possible to leverage Tensorflow datasets `prefetch` and `interleave` to parallelize loading data.
+
+| _NOTE: The dataset requires roughly 300 GB of disk space and can take around 1 hr to download_ |
+
+```bash
+python -m ecgarr download_dataset --config-file ./configs/download_dataset.json
+```
+
+### 2. Train Model (train_model)
+
+This command is used to train the AFIB model. The following command will train the model using the default configurations. Please refer to `ecgarr/types.py` to see support parameters and values.
+
+```bash
+python -m ecgarr train_model --config-file ./configs/train_model.json
+```
+
+### 3. Test Model (test_model)
+
+```bash
+python -m ecgarr test_model --config-file ./configs/test_model.json
+```
+
+### 4. Deploy (deploy_model)
+
+```bash
+python -m ecgarr deploy_model --config-file ./configs/deploy_model.json
+```
+
+### 5. EVB Demo (evb_demo)
+
+```bash
+python -m ecgarr evb_demo --config-file ./configs/evb_demo.json
+```
+
+## Architecture
+
+TODO: Discuss network architecture
 
 ## Datasets
 
 ### Icentia 11k Database
 
-This dataset consists of ECG recordings from 11,000 patients and 2 billion labelled beats. The data was collected by the CardioSTAT, a single-lead heart monitor device from Icentia. The raw signals were recorded with a 16-bit resolution and sampled at 250 Hz with the CardioSTAT in a modified lead 1 position.
+This dataset consists of ECG recordings from 11,000 patients and 2 billion labelled beats. The data was collected by the CardioSTAT, a single-lead heart monitor device from Icentia. The raw signals were recorded with a 16-bit resolution and sampled at 250 Hz with the CardioSTAT in a modified lead 1 position. Please visit [Physionet](https://physionet.org/content/icentia11k-continuous-ecg/1.0/) for more details.
 
 ### MIT-BIH Arrhythmia Database
 
@@ -22,31 +77,10 @@ This database includes 18 long-term ECG recordings of subjects referred to the A
 
 Dataset consists of ECG records from 290 subjects: 148 diagnosed as MI, 52 healthy control, and the rest are diagnosed with 7 different disease. Each record contains ECG signals from 12 leads sampled at the frequency of 1000 Hz.
 
-## Pipeline
+## EVB Demo Setup
 
-* ECG -> Spectrogram -> 2-D CNN -> Classification [85% accuracy]
-
-* ECG -> Time-series -> 1-D CNN -> Classification
-
-* ECG -> Time-series -> LSTM -> Classification
-* ECG -> Scalogram -> 2-D CNN -> Classification
-
-## Reference Papers
-
-* [ECG Heartbeat classification using deep transfer learning with Convolutional Neural Network and STFT technique](https://arxiv.org/abs/2206.14200)
-* [Classification of ECG based on Hybrid Features using CNNs for Wearable Applications](https://arxiv.org/pdf/2206.07648.pdf)
-* [ECG Heartbeat classification using deep transfer learning with Convolutional Neural Network and STFT technique](https://arxiv.org/pdf/2206.14200.pdf)
-
-### Feature Extraction
-
-1. Spectrogram (STFT)
-2. Raw Time-series
-3. Scalogram (CWT)
-
-### Model Architecture
-
-1. 1D/2D-CNN
-1. LSTM
+* [Apollo4 EVB](https://ambiq.com/apollo4/)
+* [MAX86150 Eval bard](https://protocentral.com/product/protocentral-max86150-ppg-and-ecg-breakout-with-qwiic-v2/)
 
 ## Hardware
 
@@ -55,27 +89,19 @@ Dataset consists of ECG records from 290 subjects: 148 diagnosed as MI, 52 healt
 * [AS7038RB](https://ams.com/en/as7038rb)
 * [MAX86150](https://www.maximintegrated.com/en/products/interface/signal-integrity/MAX86150.html)
 
-### ECG / PPG Eval Kits
+## Reference Papers
 
-* [Protocentral MAX86150](https://protocentral.com/product/protocentral-max86150-ppg-and-ecg-breakout-with-qwiic-v2/)
-* [MAX86150 Eval Sys](https://www.mouser.com/ProductDetail/Maxim-Integrated/MAX86150EVSYS?qs=chTDxNqvsylQl7eFGURvdw%3D%3D&gclid=Cj0KCQjwlK-WBhDjARIsAO2sErRwZ1A4Pl8LggiOEdglcysa__Eg1f1dHl_KnadjWswq8q6ttpaA72IaAocyEALw_wcB)
+* [ECG Heartbeat classification using deep transfer learning with Convolutional Neural Network and STFT technique](https://arxiv.org/abs/2206.14200)
+* [Classification of ECG based on Hybrid Features using CNNs for Wearable Applications](https://arxiv.org/pdf/2206.07648.pdf)
+* [ECG Heartbeat classification using deep transfer learning with Convolutional Neural Network and STFT technique](https://arxiv.org/pdf/2206.14200.pdf)
 
 ## Project Milestones
 
-### 09/05
-
-* EVB: Incorporate ECG sensor (get physical HW working)
-* EVB: Finish pipeline/ app state machine
-
-### 09/12
-
-* EVB: Implement pre-processing stage (window filter, normalize)
-* EVB: Integrate eRPC for CLI (trigger, data, results)
-
 ### 09/19
 
+* EVB: Integrate eRPC for CLI (trigger, data, results)
 * EVB: Integrate V1 model (verify stimulus sets produce ~same~ outputs)
-* TFL: Quantization and HPO
+* TFL: Quantization
 
 ### 09/26
 
@@ -90,7 +116,6 @@ Dataset consists of ECG records from 290 subjects: 148 diagnosed as MI, 52 healt
 ### 10/10
 
 * Documentation
-* Demo UI
 
 ## EVB Inference Pipeline
 

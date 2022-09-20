@@ -7,6 +7,7 @@ include autogen.mk
 local_app_name := main
 sources := $(wildcard src/*.c)
 sources += $(wildcard src/*.cc)
+sources += $(wildcard src/*.cpp)
 sources += $(wildcard src/*.s)
 
 targets  := $(BINDIR)/$(local_app_name).axf
@@ -44,6 +45,11 @@ $(BINDIR):
 	@mkdir -p $(@D)
 	$(Q) $(CC) -c $(CFLAGS) $(CCFLAGS) $< -o $@
 
+%.o: ../src/%.cpp
+	@echo " Compiling $(COMPILERNAME) $< to make $@"
+	@mkdir -p $(@D)
+	$(Q) $(CC) -c $(CFLAGS) $(CCFLAGS) $< -o $@
+
 %.o: ../src/%.c
 	@echo " Compiling $(COMPILERNAME) $< to make $@"
 	@mkdir -p $(@D)
@@ -65,5 +71,22 @@ $(BINDIR):
 	$(Q) $(CP) $(CPFLAGS) $< $@
 	$(Q) $(OD) $(ODFLAGS) $< > $*.lst
 	$(Q) $(SIZE) $(objects) $(lib_prebuilt) $< > $*.size
+
+$(JLINK_CF):
+	@echo " Creating JLink command sequence input file..."
+	$(Q) echo "ExitOnError 1" > $@
+	$(Q) echo "Reset" >> $@
+	$(Q) echo "LoadFile $(BINDIR)/$(TARGET).bin, $(JLINK_PF_ADDR)" >> $@
+	$(Q) echo "Exit" >> $@
+
+.PHONY: deploy
+deploy: $(JLINK_CF)
+	@echo " Deploying $< to device (ensure JLink USB connected and powered on)..."
+	$(Q) $(JLINK) $(JLINK_CMD)
+
+.PHONY: view
+view:
+	@echo " Printing SWO output (ensure JLink USB connected and powered on)..."
+	$(Q) $(JLINK_SWO) $(JLINK_SWO_CMD)
 
 %.d: ;

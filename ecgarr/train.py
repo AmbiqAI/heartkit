@@ -11,7 +11,7 @@ from . import datasets as ds
 from .datasets import icentia11k
 from .metrics import confusion_matrix_plot
 from .models.utils import build_input_tensor_from_shape, task_solver
-from .utils import setup_logger, set_random_seed, load_pkl, save_pkl, env_flag
+from .utils import set_random_seed, load_pkl, save_pkl, env_flag, setup_logger
 from .types import EcgTrainParams, EcgTask
 
 logger = logging.getLogger('ecgarr.train')
@@ -26,6 +26,17 @@ def parallelize_dataset(
         repeat: bool = False,
         num_workers: int = 1
 ):
+    """ Generates datasets for given task in parallel using TF `interleave`
+
+    Args:
+        db_path (str): Database path
+        patient_ids (int, optional): List of patient IDs. Defaults to None.
+        task (EcgTask, optional): ECG Task routine. Defaults to EcgTask.rhythm.
+        frame_size (int, optional): Frame size. Defaults to 1250.
+        samples_per_patient (int, optional): # Samples per pateint. Defaults to 100.
+        repeat (bool, optional): Should data generator repeat. Defaults to False.
+        num_workers (int, optional): Number of parallel workers. Defaults to 1.
+    """
     def _make_train_dataset(i, split):
         return ds.create_dataset_from_generator(
             task=task, db_path=db_path,
@@ -49,6 +60,22 @@ def load_datasets(
         val_file: Optional[str] = None,
         num_workers: int = 1
     ) -> Tuple[tf.data.Dataset, tf.data.Dataset]:
+    """ Load training and validation datasets
+    Args:
+        db_path (str): Database path
+        task (EcgTask, optional): ECG Task. Defaults to EcgTask.rhythm.
+        frame_size (int, optional): Frame size. Defaults to 1250.
+        train_patients (Optional[float], optional): # or proportion of train patients. Defaults to None.
+        val_patients (Optional[float], optional): # or proportion of train patients. Defaults to None.
+        train_pt_samples (Optional[int], optional): # samples per patient for training. Defaults to None.
+        val_pt_samples (Optional[int], optional): # samples per patient for training. Defaults to None.
+        train_file (Optional[str], optional): Path to existing picked training file. Defaults to None.
+        val_file (Optional[str], optional): Path to existing picked validation file. Defaults to None.
+        num_workers (int, optional): # of parallel workers. Defaults to 1.
+
+    Returns:
+        Tuple[tf.data.Dataset, tf.data.Dataset]: Training and validation datasets
+    """
 
     if val_patients is not None and val_patients >= 1:
         val_patients = int(val_patients)
@@ -100,7 +127,11 @@ def load_datasets(
     return train_data, validation_data
 
 def train_model(params: EcgTrainParams):
-    setup_logger('ecgarr', str(params.job_dir))
+    """ Train model command. This trains a ResNet still network on the given ECG task and dataset.
+
+    Args:
+        params (EcgTrainParams): Training parameters
+    """
 
     params.seed = set_random_seed(params.seed)
     logger.info(f'Random seed {params.seed}')
@@ -171,8 +202,6 @@ def train_model(params: EcgTrainParams):
             logger.info(f'Loading weights from file {params.weights_file}')
             model.load_weights(str(params.weights_file))
 
-        if params.val_metric not in ['loss', 'acc', 'f1']:
-            raise ValueError('Unknown metric: {}'.format(params.val_metric))
         checkpoint_weight_path = str(params.job_dir / 'model.weights')
         checkpoint = tf.keras.callbacks.ModelCheckpoint(
             filepath=checkpoint_weight_path,
@@ -195,15 +224,15 @@ def train_model(params: EcgTrainParams):
             except KeyboardInterrupt:
                 logger.info('Stopping training due to keyboard interrupt')
 
-        # Restore best weights from checkpoint
-        model.load_weights(checkpoint_weight_path)
+            # Restore best weights from checkpoint
+            model.load_weights(checkpoint_weight_path)
 
         # Save full model
         tf_model_path = str(params.job_dir / 'model.tf')
         model.save(tf_model_path)
 
         # Perform QAT fine-tuning
-        if params.quantization:
+        if params.quantization and False:
             quantize_model = tfmot.quantization.keras.quantize_model
             q_model = quantize_model(model)
             q_model.compile(
@@ -215,7 +244,7 @@ def train_model(params: EcgTrainParams):
             q_model.summary()
             if params.epochs:
                 q_model.fit(
-                    train_data, steps_per_epoch=params.steps_per_epoch, verbose=2, epochs=params.epochs,
+                    train_data, steps_per_epoch=params.steps_per_epoch, verbose=2, epochs=params.epochs or 5,
                     validation_data=validation_data, callbacks=model_callbacks
                 )
 
@@ -239,13 +268,19 @@ def train_model(params: EcgTrainParams):
     # END WITH
 
 def create_parser():
+    """ Create CLI argument parser
+    Returns:
+        ArgumentParser: Arg parser
+    """
     return pydantic_argparse.ArgumentParser(
         model=EcgTrainParams,
-        prog="ECG Arrhythmia Training Params",
-        description="ECG Arrhythmia Training Params"
+        prog="ECG Arrhythmia Train Command",
+        description="Train ECG arrhythmia model"
     )
 
 if __name__ == '__main__':
+    """ Run ecgarr.train as CLI. """
+    setup_logger('ecgarr')
     parser = create_parser()
     params = parser.parse_typed_args()
     train_model(params)

@@ -1,3 +1,4 @@
+from typing import Optional
 import tensorflow as tf
 from .features import ecg_feature_extractor
 from .resnet1d import ResidualBlock, BottleneckBlock
@@ -22,6 +23,17 @@ def build_input_tensor_from_shape(shape, dtype=None, ignore_batch_dim: bool = Fa
             shape = shape[1:]
         return tf.keras.layers.Input(shape, dtype=dtype)
 
+def unfold_model_layers(layer, model: Optional[tf.keras.Model] = None):
+    if model is None:
+        model = tf.keras.Sequential()
+    if isinstance(layer, (tf.keras.Model, tf.keras.Sequential)):
+        print(f'Unfolding {layer}')
+        for llayer in layer.layers:
+            unfold_model_layers(llayer, model)
+    else:
+        print(f'Adding layer {layer}')
+        model.add(layer)
+    return model
 
 def task_solver(task, arch='resnet18', stages=None, return_feature_extractor=False):
     feature_extractor = ecg_feature_extractor(arch, stages=stages)
@@ -52,11 +64,11 @@ def task_solver(task, arch='resnet18', stages=None, return_feature_extractor=Fal
         ])
     else:
         raise ValueError('unknown task: {}'.format(task))
+    # model = unfold_model_layers(model)
     if return_feature_extractor:
         return model, feature_extractor
     else:
         return model
-
 
 def get_pretrained_weights(checkpoint_file, task, arch='resnet18', stages=None):
     model, _ = task_solver(task, arch, stages=stages, return_feature_extractor=True)

@@ -20,7 +20,6 @@ tensorflow-metal = {version = "^0.6.0", platform = "darwin"}
 fastparquet = "^0.8.1"
 plotly = "^5.9.0"
 tqdm = "^4.64.0"
-wandb = "^0.13.1"
 seaborn = "^0.11.2"
 neurokit2 = "^0.2.0"
 tensorflow-model-optimization = "^0.7.3"
@@ -28,6 +27,11 @@ pydantic = "^1.10.2"
 pydantic-argparse = "^0.5.0"
 pylint = "^2.15.2"
 typer = {version = "^0.6.1", extras = ["all"]}
+erpc = {git = "https://github.com/AmbiqAI/erpc.git", rev = "develop", subdirectory = "erpc_python"}
+pyserial = "^3.5"
+rich = "^12.5.1"
+wandb = "0.13.1"
+tensorflow-addons = "^0.17.1"
 
 [tool.poetry.dev-dependencies]
 ipython = "^8.4.0"

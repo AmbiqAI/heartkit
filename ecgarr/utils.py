@@ -2,7 +2,6 @@ import os
 import sys
 import requests
 import logging
-from logging.handlers import RotatingFileHandler
 import gzip
 import random
 import pickle
@@ -10,6 +9,7 @@ from typing import Optional
 import tensorflow as tf
 import numpy as np
 import pandas as pd
+from rich.logging import RichHandler
 from tqdm import tqdm
 
 def set_random_seed(seed: Optional[int] = None):
@@ -19,7 +19,7 @@ def set_random_seed(seed: Optional[int] = None):
     tf.random.set_seed(seed)
     return seed
 
-def xxd_c_dump(src_path: str, dst_path: str, var_name: str = 'g_model', chunk_len: int = 12):
+def xxd_c_dump(src_path: str, dst_path: str, var_name: str = 'g_model', chunk_len: int = 12, is_header: bool = False):
     """ Generate C like char array of hex values from binary source. Equivalent to `xxd -i src_path > dst_path`
         but with added features to provide # columns and variable name.
     Args:
@@ -30,6 +30,10 @@ def xxd_c_dump(src_path: str, dst_path: str, var_name: str = 'g_model', chunk_le
     """
     var_len = 0;
     with open(src_path, 'rb') as rfp, open(dst_path, 'w') as wfp:
+        if is_header:
+            wfp.write(f"#ifndef __{var_name.upper()}_H{os.linesep}")
+            wfp.write(f"#define __{var_name.upper()}_H{os.linesep}")
+
         wfp.write(f"const unsigned char {var_name}[] = {{{os.linesep}");
         for chunk in iter(lambda: rfp.read(chunk_len), b''):
             wfp.write("  " + ", ".join((f'0x{c:02x}' for c in chunk)) + f", {os.linesep}")
@@ -37,6 +41,9 @@ def xxd_c_dump(src_path: str, dst_path: str, var_name: str = 'g_model', chunk_le
         # END FOR
         wfp.write(f"}};{os.linesep}");
         wfp.write(f"const unsigned int {var_name}_len = {var_len};{os.linesep}")
+        if is_header:
+            wfp.write(f"#endif // __{var_name.upper()}_H{os.linesep}")
+
     # END WITH
 
 
@@ -246,42 +253,12 @@ class MaxLevelFilter(logging.Filter):
     def filter(self, log_record):
         return log_record.levelno <= self.max_level
 
-def setup_logger(log_name: str, log_folder: str) -> logging.Logger:
-    os.makedirs(log_folder, exist_ok=True)
-    log_formatter = logging.Formatter('[%(levelname)s:%(asctime)s] %(message)s', '%Y-%m-%dT%H:%M:%S')
+def setup_logger(log_name: str) -> logging.Logger:
     logger = logging.getLogger(log_name)
-    if logger.handlers and len(logger.handlers) > 0:
+    if logger.handlers:
         return logger
     logger.setLevel(logging.INFO)
-    info_file_handler = RotatingFileHandler(
-        filename=os.path.join(log_folder, log_name + '.info.log'),
-        maxBytes=3 * 1024 * 1024,
-        backupCount=10
-    )
-    info_file_handler.setFormatter(log_formatter)
-    info_file_handler.setLevel(logging.INFO)
-    info_file_handler.addFilter(MaxLevelFilter(logging.WARNING))
-    error_file_handler = RotatingFileHandler(
-        filename=os.path.join(log_folder, log_name + '.error.log'),
-        maxBytes=3 * 1024 * 1024,
-        backupCount=10
-    )
-    error_file_handler.setFormatter(log_formatter)
-    error_file_handler.setLevel(logging.ERROR)
-    logger.addHandler(info_file_handler)
-    logger.addHandler(error_file_handler)
-    # For development print to stdout and stderr
-    if os.getenv('PYTHON_ENV') == 'development' or os.getenv('LOG_VERBOSE'):
-        so_handler = logging.StreamHandler(sys.stdout)
-        so_handler.setFormatter(log_formatter)
-        so_handler.setLevel(logging.DEBUG)
-        so_handler.addFilter(MaxLevelFilter(logging.WARNING))
-        se_handler = logging.StreamHandler(sys.stderr)
-        se_handler.setFormatter(log_formatter)
-        se_handler.setLevel(logging.WARNING)
-        logger.addHandler(so_handler)
-        logger.addHandler(se_handler)
-        logger.setLevel(logging.DEBUG)
+    logger.addHandler(RichHandler())
     return logger
 
 def env_flag(env_var: str, default: bool = False) -> bool:

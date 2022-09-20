@@ -65,6 +65,7 @@
 //*****************************************************************************
 
 #include "constants.h"
+#include "model.h"
 #include "SEGGER_RTT.h"
 #include "max86150.h"
 #include "ns_io_i2c.h"

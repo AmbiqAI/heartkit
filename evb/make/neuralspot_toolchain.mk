@@ -1,5 +1,4 @@
 # Makefile include for common toolchain definitions
-#include jlink.mk
 
 # Enable printing explicit commands with 'make VERBOSE=1'
 ifneq ($(VERBOSE),1)
@@ -51,8 +50,9 @@ LFLAGS+=
 CPFLAGS = -Obinary
 ODFLAGS = -S
 
-$(info Building for $(PART))
-DEFINES += PART_$(PART)
+$(info Building for $(PART)_$(EVB))
+DEFINES+= $(PART)_$(EVB)
+DEFINES+= PART_$(PART)
 ifeq ($(PART),apollo4b)
 DEFINES+= AM_PART_APOLLO4B
 endif

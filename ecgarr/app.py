@@ -1,5 +1,7 @@
+import os
+import logging
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 import pydantic_argparse
 from pydantic import BaseModel, Field
 from .types import (
@@ -14,6 +16,9 @@ from . import evaluate
 from . import demo
 from . import deploy
 
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+logger = logging.getLogger('ecgarr.app')
+
 class AppCommandArgments(BaseModel):
     config_file: Optional[Path] = Field(None, description='Configuration JSON file')
 
@@ -25,41 +30,66 @@ class AppArguments(BaseModel):
     evb_demo: Optional[AppCommandArgments] = Field(description="EVB demo")
 
 def download_dataset(command: AppCommandArgments):
+    """ Download dataset CLI command.
+    Args:
+        command (AppCommandArgments): Command arguments
+    """
     params = EcgDownloadParams.parse_file(command.config_file)
-    print("#STARTED downloading dataset")
+    logger.info("#STARTED downloading dataset")
     ds.download_datasets(params=params)
-    print('#FINISHED downloading dataset')
+    logger.info('#FINISHED downloading dataset')
 
 def train_model(command: AppCommandArgments):
+    """ Train model CLI command.
+    Args:
+        command (AppCommandArgments): Command arguments
+    """
     params = EcgTrainParams.parse_file(command.config_file)
-    print("#STARTED training model")
+    logger.info("#STARTED training model")
     train.train_model(params=params)
-    print("#FINISHED training model")
+    logger.info("#FINISHED training model")
 
 def test_model(command: AppCommandArgments):
+    """ Test model CLI command.
+    Args:
+        command (AppCommandArgments): Command arguments
+    """
+
     params = EcgTestParams.parse_file(command.config_file)
-    print("#STARTED testing model")
+    logger.info("#STARTED testing model")
     evaluate.evaluate_model(params=params)
-    print("#FINISHED testing model")
+    logger.info("#FINISHED testing model")
 
 def deploy_model(command: AppCommandArgments):
+    """ Deploy model CLI command.
+    Args:
+        command (AppCommandArgments): Command arguments
+    """
     params = EcgDeployParams.parse_file(command.config_file)
-    print("#STARTED deploying model")
+    logger.info("#STARTED deploying model")
     deploy.deploy_model(params=params)
-    print("#FINISHED deploying model")
+    logger.info("#FINISHED deploying model")
 
 def evb_demo(command: AppCommandArgments):
-    print("#STARTED evb demo")
+    """ EVB Demo CLI command.
+    Args:
+        command (AppCommandArgments): Command arguments
+    """
+    logger.info("#STARTED evb demo")
     demo.evb_demo()
-    print("#FINISHED evb demo")
+    logger.info("#FINISHED evb demo")
 
-if __name__ == "__main__":
+def run(inputs: Optional[List[str]] = None):
+    """ Main CLI app runner
+    Args:
+        inputs (Optional[List[str]], optional): App arguments. Defaults to CLI arguments.
+    """
     parser = pydantic_argparse.ArgumentParser(
         model=AppArguments,
         prog="ECG arrhythmia Demo",
         description="ECG arrhythmia demo"
     )
-    args = parser.parse_typed_args()
+    args = parser.parse_typed_args(inputs)
 
     if args.download_dataset:
         download_dataset(args.download_dataset)
@@ -72,4 +102,7 @@ if __name__ == "__main__":
     elif args.evb_demo:
         evb_demo(args.evb_demo)
     else:
-        print(f'Error: Unknown command')
+        logger.error(f'Error: Unknown command')
+
+if __name__ == "__main__":
+    run()

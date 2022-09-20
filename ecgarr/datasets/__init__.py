@@ -20,8 +20,10 @@ def get_class_names(task: EcgTask) -> List[str]:
 def rhythm_dataset(db_path: str, patient_ids: npt.ArrayLike, frame_size: int, normalize: bool = True, samples_per_patient: int = 1, repeat: bool = True):
     dataset = tf.data.Dataset.from_generator(
         generator=rhythm_generator,
-        output_types=(tf.float32, tf.int32),
-        output_shapes=(tf.TensorShape((frame_size, 1)), tf.TensorShape(())),
+        output_signature=(
+            tf.TensorSpec(shape=(frame_size, 1), dtype=tf.float32),
+            tf.TensorSpec(shape=(), dtype=tf.int32),
+        ),
         args=(db_path, patient_ids, frame_size, normalize, samples_per_patient, repeat)
     )
     return dataset
@@ -38,8 +40,10 @@ def rhythm_generator(db_path: str, patient_ids: npt.ArrayLike, frame_size: int, 
 def beat_dataset(db_path, patient_ids, frame_size, normalize=True, samples_per_patient=1):
     dataset = tf.data.Dataset.from_generator(
         generator=beat_generator,
-        output_types=(tf.float32, tf.int32),
-        output_shapes=(tf.TensorShape((frame_size, 1)), tf.TensorShape(())),
+        output_signature=(
+            tf.TensorSpec(shape=(frame_size, 1), dtype=tf.float32),
+            tf.TensorSpec(shape=(), dtype=tf.int32),
+        ),
         args=(db_path, patient_ids, frame_size, normalize, samples_per_patient)
     )
     return dataset
@@ -56,8 +60,10 @@ def beat_generator(db_path, patient_ids, frame_size, normalize=True, samples_per
 def heart_rate_dataset(db_path, patient_ids, frame_size, normalize=True, samples_per_patient=1):
     dataset = tf.data.Dataset.from_generator(
         generator=heart_rate_generator,
-        output_types=(tf.float32, tf.int32),
-        output_shapes=(tf.TensorShape((frame_size, 1)), tf.TensorShape(())),
+        output_signature=(
+            tf.TensorSpec(shape=(frame_size, 1), dtype=tf.float32),
+            tf.TensorSpec(shape=(), dtype=tf.int32),
+        ),
         args=(db_path, patient_ids, frame_size, normalize, samples_per_patient)
     )
     return dataset
@@ -138,5 +144,5 @@ def create_parser():
 if __name__ == '__main__':
     parser = create_parser()
     args = parser.parse_typed_args()
-    setup_logger('ecgarr', str(args.job_dir))
+    setup_logger('ecgarr')
     download_datasets(args)
