@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple, Union
 import pydantic_argparse
 import wandb
 from wandb.keras import WandbCallback
@@ -14,7 +14,7 @@ from .models.utils import build_input_tensor_from_shape, task_solver
 from .utils import set_random_seed, load_pkl, save_pkl, env_flag, setup_logger
 from .types import EcgTrainParams, EcgTask
 
-logger = logging.getLogger('ecgarr.train')
+logger = logging.getLogger('ECGARR')
 
 @tf.function
 def parallelize_dataset(
@@ -22,7 +22,7 @@ def parallelize_dataset(
         patient_ids: int = None,
         task: EcgTask = EcgTask.rhythm,
         frame_size: int = 1250,
-        samples_per_patient: int = 100,
+        samples_per_patient: Union[int, List[int]] = 100,
         repeat: bool = False,
         num_workers: int = 1
 ):
@@ -63,7 +63,7 @@ def load_datasets(
     """ Load training and validation datasets
     Args:
         db_path (str): Database path
-        task (EcgTask, optional): ECG Task. Defaults to EcgTask.rhythm.
+        task (EcgTask, optional): Heart arrhythmia task. Defaults to EcgTask.rhythm.
         frame_size (int, optional): Frame size. Defaults to 1250.
         train_patients (Optional[float], optional): # or proportion of train patients. Defaults to None.
         val_patients (Optional[float], optional): # or proportion of train patients. Defaults to None.
@@ -127,7 +127,7 @@ def load_datasets(
     return train_data, validation_data
 
 def train_model(params: EcgTrainParams):
-    """ Train model command. This trains a ResNet still network on the given ECG task and dataset.
+    """ Train model command. This trains a ResNet still network on the given task and dataset.
 
     Args:
         params (EcgTrainParams): Training parameters
@@ -138,14 +138,14 @@ def train_model(params: EcgTrainParams):
 
     os.makedirs(str(params.job_dir), exist_ok=True)
     logger.info(f'Creating working directory in {params.job_dir}')
-    with open(str(params.job_dir / 'train_config.json'), 'w') as fp:
+    with open(str(params.job_dir / 'train_config.json'), 'w', encoding='utf-8') as fp:
         fp.write(params.json(indent=2))
 
     if env_flag('WANDB'):
-        wandb.init(project="ecg-arrhythmia", entity="ambiq", dir=str(params.job_dir / 'wandb'))
+        wandb.init(project="ecg-arrhythmia", entity="ambiq", dir=str(params.job_dir))
         wandb.config.update(params.dict())
 
-    # Load datasets
+    # Create TF datasets
     train_data, validation_data = load_datasets(
         db_path=str(params.db_path),
         frame_size=params.frame_size,
@@ -193,14 +193,14 @@ def train_model(params: EcgTrainParams):
         logger.info(f'# model parameters: {model.count_params()}')
         model.summary()
 
-        early_stopping = tf.keras.callbacks.EarlyStopping(
-            monitor='val_loss', min_delta=0, patience=10, verbose=0,
-            mode='auto', restore_best_weights=True
-        )
-
         if params.weights_file:
             logger.info(f'Loading weights from file {params.weights_file}')
             model.load_weights(str(params.weights_file))
+
+        early_stopping = tf.keras.callbacks.EarlyStopping(
+            monitor=f'val_{params.val_metric}', min_delta=0, patience=10, verbose=0,
+            mode='max' if params.val_metric == 'f1' else 'auto', restore_best_weights=True
+        )
 
         checkpoint_weight_path = str(params.job_dir / 'model.weights')
         checkpoint = tf.keras.callbacks.ModelCheckpoint(
@@ -209,7 +209,6 @@ def train_model(params: EcgTrainParams):
             save_best_only=True, save_weights_only=True,
             mode='max' if params.val_metric == 'f1' else 'auto', verbose=1
         )
-
         tf_logger = tf.keras.callbacks.CSVLogger(str(params.job_dir / 'history.csv'))
         model_callbacks = [early_stopping, checkpoint, tf_logger]
         if env_flag('WANDB'):
@@ -222,17 +221,18 @@ def train_model(params: EcgTrainParams):
                     validation_data=validation_data, callbacks=model_callbacks
                 )
             except KeyboardInterrupt:
-                logger.info('Stopping training due to keyboard interrupt')
+                logger.warning('Stopping training due to keyboard interrupt')
 
             # Restore best weights from checkpoint
             model.load_weights(checkpoint_weight_path)
 
         # Save full model
         tf_model_path = str(params.job_dir / 'model.tf')
+        logger.info(f'Model saved to {tf_model_path}')
         model.save(tf_model_path)
 
         # Perform QAT fine-tuning
-        if params.quantization and False:
+        if params.quantization:
             quantize_model = tfmot.quantization.keras.quantize_model
             q_model = quantize_model(model)
             q_model.compile(
@@ -249,6 +249,7 @@ def train_model(params: EcgTrainParams):
                 )
 
         # Get full validation results
+        logger.info('Performing full validation')
         test_labels = []
         for _, label in validation_data:
             test_labels.append(label.numpy())
@@ -258,7 +259,7 @@ def train_model(params: EcgTrainParams):
         # Summarize results
         class_names = ds.get_class_names(task=params.task)
         test_acc = np.sum(y_pred == y_true) / len(y_true)
-        logger.info(f'Test set accuracy: {test_acc:.0%}')
+        logger.info(f'Validation accuracy: {test_acc:.0%}')
         confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=str(params.job_dir / 'confusion_matrix.png'))
         if env_flag('WANDB'):
             wandb.log({"afib_conf_mat" : wandb.plot.confusion_matrix(
@@ -274,13 +275,11 @@ def create_parser():
     """
     return pydantic_argparse.ArgumentParser(
         model=EcgTrainParams,
-        prog="ECG Arrhythmia Train Command",
-        description="Train ECG arrhythmia model"
+        prog="Heart Arrhythmia Train Command",
+        description="Train heart arrhythmia model"
     )
 
 if __name__ == '__main__':
-    """ Run ecgarr.train as CLI. """
-    setup_logger('ecgarr')
+    setup_logger('ECGARR')
     parser = create_parser()
-    params = parser.parse_typed_args()
-    train_model(params)
+    train_model(parser.parse_typed_args())

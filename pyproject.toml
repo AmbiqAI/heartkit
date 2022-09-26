@@ -1,12 +1,24 @@
 [tool.poetry]
 name = "ecg-arr"
 version = "0.1.0"
-description = "Perform AI-based ECG arrhythmia classification"
+description = "Perform AI-based heart arrhythmia classification"
 authors = ["Adam Page <adam.page@ambiq.com>"]
 
 [tool.taskipy.tasks]
 lint = "pylint --rcfile .pylintrc ecgarr"
 test = "pytest tests/"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+filterwarnings = [
+    "ignore:Call to deprecated create:DeprecationWarning",
+    "ignore:distutils Version:DeprecationWarning",
+    "ignore:The register_cmap function:PendingDeprecationWarning"
+]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.11"

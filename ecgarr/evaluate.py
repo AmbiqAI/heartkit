@@ -11,7 +11,7 @@ from .types import EcgTask, EcgTestParams
 from .utils import setup_logger, set_random_seed
 
 console = Console()
-logger = logging.getLogger('ecgarr')
+logger = logging.getLogger('ECGARR')
 
 @tf.function
 def parallelize_dataset(
@@ -75,20 +75,19 @@ def load_test_dataset(
         num_pts = int(test_patients) if test_patients > 1 else int(test_patients*len(test_patient_ids))
         test_patient_ids = test_patient_ids[:num_pts]
 
-    test_size = len(test_patient_ids) * test_pt_samples * 4
+    test_size = len(test_patient_ids) * test_pt_samples * 2
     logger.info(f'Collecting {test_size} test samples')
     test_patient_ids = tf.convert_to_tensor(test_patient_ids)
     test_data = parallelize_dataset(
         db_path=db_path, patient_ids=test_patient_ids, task=task, frame_size=frame_size,
-        samples_per_patient=test_pt_samples, repeat=False, num_workers=num_workers
+        samples_per_patient=test_pt_samples, repeat=True, num_workers=num_workers
     )
     with console.status("[bold green] Loading test dataset..."):
         test_x, test_y = next(test_data.batch(test_size).as_numpy_iterator())
-        test_data = ds.create_dataset_from_data(test_x, test_y, task=task, frame_size=frame_size)
-    return test_data
+    return test_x, test_y
 
 def evaluate_model(params: EcgTestParams):
-    """ Test model command. This evaluates a trained network on the given ECG task and dataset.
+    """ Test model command. This evaluates a trained network on the given task and dataset.
 
     Args:
         params (EcgTestParams): Testing/evaluation parameters
@@ -97,7 +96,7 @@ def evaluate_model(params: EcgTestParams):
     logger.info(f'Random seed {params.seed}')
 
     logger.info("Loading test dataset")
-    test_data = load_test_dataset(
+    test_x, test_y = load_test_dataset(
         db_path=str(params.db_path),
         task=params.task,
         frame_size=params.frame_size,
@@ -105,11 +104,7 @@ def evaluate_model(params: EcgTestParams):
         test_pt_samples=params.samples_per_patient,
         num_workers=params.data_parallelism
     )
-    test_data = test_data.batch(
-        batch_size=512,
-        drop_remainder=True,
-        num_parallel_calls=tf.data.experimental.AUTOTUNE
-    )
+
     strategy = tf.distribute.MirroredStrategy()
     with strategy.scope():
         logger.info("Loading model")
@@ -117,11 +112,8 @@ def evaluate_model(params: EcgTestParams):
         model.summary()
 
         logger.info("Performing inference")
-        test_labels = []
-        for _, label in test_data:
-            test_labels.append(label.numpy())
-        y_true = np.concatenate(test_labels)
-        y_prob = model.predict(test_data)
+        y_true = test_y
+        y_prob = model.predict(test_x)
         y_pred = np.argmax(y_prob, axis=1)
 
         # Summarize results
@@ -142,13 +134,11 @@ def create_parser():
     """
     return pydantic_argparse.ArgumentParser(
         model=EcgTestParams,
-        prog="ECG Arrhythmia Test Command",
-        description="Test ECG arrhythmia model"
+        prog="Heart arrhythmia test command",
+        description="Test heart arrhythmia model"
     )
 
 if __name__ == '__main__':
-    """ Run ecgarr.test as CLI. """
-    setup_logger('ecgarr')
+    setup_logger('ECGARR')
     parser = create_parser()
-    args = parser.parse_typed_args()
-    evaluate_model(args)
+    evaluate_model(parser.parse_typed_args())

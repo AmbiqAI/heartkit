@@ -1,5 +1,6 @@
+import logging
 import warnings
-from typing import List, Optional
+from typing import Callable, List, Optional, Tuple, Union
 import seaborn as sns
 import numpy as np
 import numpy.typing as npt
@@ -7,33 +8,14 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from sklearn.metrics import f1_score, roc_curve, auc
 
+logger = logging.getLogger('ECGARR')
 
-# def auc(y_true: npt.ArrayLike, y_prob: npt.ArrayLike) -> float:
-#     """ Computes Area Under the Receiver Operating Characteristic Curve
-
-#     Args:
-#         y_true (_type_): True labels
-#         y_prob (_type_): Predicted class probabilities
-
-#     Raises:
-#         ValueError: y_prob must be a matrix
-
-#     Returns:
-#         _type_: _description_
-#     """
-#     if y_prob.ndim != 2:
-#         raise ValueError('y_prob must be a 2d matrix with class probabilities for each sample')
-#     if y_true.shape != y_prob.shape:
-#         raise ValueError('shapes do not match')
-#     return roc_auc_score(y_true, y_prob, average='macro')
-
-
-def f1(y_true, y_prob, multiclass=False, threshold=None):
-    """Compute F1 scores
+def f1(y_true: npt.ArrayLike, y_prob: npt.ArrayLike, multiclass: bool = False, threshold: float = None):
+    """ Compute F1 scores
 
     Args:
-        y_true (_type_): _description_
-        y_prob (_type_): 2D matrix with class probs
+        y_true ( npt.ArrayLike): _description_
+        y_prob ( npt.ArrayLike): 2D matrix with class probs
         multiclass (bool, optional): If multiclass. Defaults to False.
         threshold (float, optional): Decision threshold for multiclass. Defaults to None.
 
@@ -56,7 +38,7 @@ def f1(y_true, y_prob, multiclass=False, threshold=None):
     return f1_score(y_true, y_pred, average='macro')
 
 
-def f_max(y_true, y_prob, thresholds=None):
+def f_max(y_true: npt.ArrayLike, y_prob: npt.ArrayLike, thresholds: Optional[Union[float, List[float]]] = None):
     """ Compute F max
     source: https://github.com/helme/ecg_ptbxl_benchmarking
     Args:
@@ -75,7 +57,7 @@ def f_max(y_true, y_prob, thresholds=None):
     return f1s[i], thresholds[i]
 
 def confusion_matrix_plot(y_true: npt.ArrayLike, y_pred: npt.ArrayLike, labels: List[str], save_path: Optional[str] = None, **kwargs):
-    """Generate confusion matrix plot via matplotlib/seaborn
+    """ Generate confusion matrix plot via matplotlib/seaborn
 
     Args:
         y_true (npt.ArrayLike): True y labels
@@ -94,7 +76,7 @@ def confusion_matrix_plot(y_true: npt.ArrayLike, y_pred: npt.ArrayLike, labels: 
 
 
 def roc_auc_plot(y_true: npt.ArrayLike, y_prob: npt.ArrayLike, labels: List[str], save_path: Optional[str] = None, **kwargs):
-    """Generate ROC plot via matplotlib/seaborn
+    """ Generate ROC plot via matplotlib/seaborn
     Args:
         y_true (npt.ArrayLike): True y labels
         y_prob (npt.ArrayLike): Predicted y labels
@@ -176,18 +158,58 @@ def challenge2020_metrics(y_true, y_pred, beta_f=2, beta_g=2, class_weights=None
     return {'F_beta': f_beta, 'G_beta': g_beta}
 
 
-def _one_hot(x, depth):
+def _one_hot(x: npt.ArrayLike, depth: int) -> npt.ArrayLike:
+    """ Generate one hot encoding
+
+    Args:
+        x (npt.ArrayLike): Categories
+        depth (int): Depth
+
+    Returns:
+        npt.ArrayLike: One hot encoded
+    """
     x_one_hot = np.zeros((x.size, depth))
     x_one_hot[np.arange(x.size), x] = 1
     return x_one_hot
 
 
-def multi_f1(y_true, y_prob):
+def multi_f1(y_true: npt.ArrayLike, y_prob: npt.ArrayLike):
+    """ Compute multi-class F1
+
+    Args:
+        y_true (npt.ArrayLike): _description_
+        y_prob (npt.ArrayLike): _description_
+
+    Returns:
+        _type_: _description_
+    """
     return f1(y_true, y_prob, multiclass=True, threshold=0.5)
 
 
 class CustomCheckpoint(tf.keras.callbacks.Callback):
-    def __init__(self, filepath, data, score_fn, best=-np.Inf, save_best_only=False, batch_size=None, verbose=0):
+    """ Custom keras callback checkpoint
+    """
+    def __init__(
+            self,
+            filepath: str,
+            data: Tuple[npt.ArrayLike, npt.ArrayLike],
+            score_fn: Callable[[Tuple[npt.ArrayLike, npt.ArrayLike]], npt.ArrayLike],
+            best: float = -np.Inf,
+            save_best_only: bool = False,
+            batch_size: Optional[bool] = None,
+            verbose: int = 0
+        ):
+        """ Custom keras callback checkpoint
+
+        Args:
+            filepath (str): Save checkpoint filepath
+            data (Tuple[npt.ArrayLike, npt.ArrayLike]): Data
+            score_fn (Callable[[Tuple[npt.ArrayLike, npt.ArrayLike]], npt.ArrayLike]): Scoring function
+            best (float, optional): Current best score. Defaults to -np.Inf.
+            save_best_only (bool, optional): Save best checkpoint only. Defaults to False.
+            batch_size (Optional[bool], optional): Batch size. Defaults to None.
+            verbose (int, optional): Verbosity. Defaults to 0.
+        """
         super().__init__()
         self.filepath = filepath
         self.data = data
@@ -197,7 +219,7 @@ class CustomCheckpoint(tf.keras.callbacks.Callback):
         self.verbose = verbose
         self.best = best
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(self, epoch: int, logs=None):
         logs = logs or {}
         x, y_true = self.data
         y_prob = self.model.predict(x, batch_size=self.batch_size)
@@ -205,21 +227,28 @@ class CustomCheckpoint(tf.keras.callbacks.Callback):
         logs.update({self.metric_name: score})
         filepath = self.filepath.format(epoch=epoch + 1, **logs)
         if score > self.best:
-            if self.verbose:
-                print('\nEpoch %05d: %s improved from %0.5f to %0.5f, saving model to %s'
-                      % (epoch + 1, self.metric_name, self.best, score, filepath))
+            logger.debug((
+                f'\nEpoch {epoch+1:05d}: {self.metric_name} ({score:.05f}) improved from {self.best:0.5f}'
+                f'saving model to {self.filepath}'
+            ))
             self.model.save_weights(filepath, overwrite=True)
             self.best = score
         elif not self.save_best_only:
-            if self.verbose:
-                print('\nEpoch %05d: %s (%.05f) did not improve from %0.5f, saving model to %s'
-                      % (epoch + 1, self.metric_name, score, self.best, filepath))
+            logger.debug((
+                f'\nEpoch {epoch+1:05d}: {self.metric_name} ({score:.05f}) did not improve from {self.best:0.5f}'
+                f'saving model to {self.filepath}'
+            ))
             self.model.save_weights(filepath, overwrite=True)
         else:
-            if self.verbose:
-                print('\nEpoch %05d: %s (%.05f) did not improve from %0.5f'
-                      % (epoch + 1, self.metric_name, score, self.best))
+            logger.debug(
+                f'\nEpoch {epoch+1:05d}: {self.metric_name} ({score:.05f}) did not improve from {self.best:0.5f}'
+            )
 
     @property
-    def metric_name(self):
+    def metric_name(self) -> str:
+        """ Get metric name
+
+        Returns:
+            str: name
+        """
         return self.score_fn.__name__

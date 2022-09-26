@@ -1,5 +1,5 @@
+from ecgarr import app
 from .utils import setup_logger
-import ecgarr.app as app
 
-setup_logger('ecgarr')
+setup_logger('ECGARR')
 app.run()

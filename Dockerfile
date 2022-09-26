@@ -6,7 +6,8 @@ WORKDIR /app
 RUN \
     apt update && \
     apt install -y --no-install-recommends curl && \
-    pip3 install --no-cache-dir -U pip setuptools wheel poetry && \
+    pip3 install --no-cache-dir -U pip setuptools wheel && \
+    curl -sSL https://install.python-poetry.org | python3 - && \
     echo "Finished installing base packages"
 
 COPY pyproject.toml poetry.toml poetry.lock /app/
@@ -19,4 +20,4 @@ COPY ecgarr /app/
 RUN \
     echo "Finished installing project sources"
 
-ENTRYPOINT ["poetry", "run", "python", "-m", "ecgarr.pretraining.trainer"]
+ENTRYPOINT ["poetry", "run", "python", "-m", "ecgarr"]

@@ -38,10 +38,11 @@
 //*****************************************************************************
 
 //*****************************************************************************
-#include <cstdarg>
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cstdarg>
+#include <cstdio>
+#include <arm_math.h>
 // Tensorflow Lite for Microcontroller includes (somewhat boilerplate)
 //#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 #include "tensorflow/lite/micro/all_ops_resolver.h"
@@ -61,6 +62,9 @@
 #endif
 #include "ns_peripherals_button.h"
 #include "ns_peripherals_power.h"
+#include "ns_usb.h"
+#include "ns_malloc.h"
+#include "ns_rpc_generic_data.h"
 //***
 //*****************************************************************************
 
@@ -75,7 +79,7 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
-// #define EMULATION
+#define EMULATION
 #define SAMPLE_RATE 250
 #define INF_WINDOW_LEN (SAMPLE_RATE*5) // 5 seconds
 #define NUM_ELEMENTS (3)
@@ -105,10 +109,28 @@ static const char *hear_rate_labels[] = { "normal", "tachycardia", "bradycardia"
 
 uint8_t rttBuffer[RTT_BUFFER_LEN];
 static uint32_t sensorBuffer[MAX86150_FIFO_DEPTH*NUM_ELEMENTS] = { 0 };
-static uint32_t ecgBuffer[ECG_BUFFER_LEN];
+static float32_t ecgBuffer[ECG_BUFFER_LEN];
 int captureButtonPressed = 0;
 AppState state = IDLE_STATE;
 uint32_t numSamples;
+
+
+#ifdef EMULATION
+
+char command_desc[] = "ECG_SENSOR_REQUEST\0";
+binary_t binaryBlock = {
+    .data = (uint8_t *) &ecgBuffer[0],
+    .dataLength = 10*sizeof(float32_t),
+};
+dataBlock commandBlock = {
+    .length = 10,
+    .dType = uint32_e,
+    .description = command_desc,
+    .cmd = read,
+    .buffer = binaryBlock
+};
+dataBlock resultBlock;
+#endif
 
 //***
 //*****************************************************************************
@@ -158,6 +180,15 @@ max86150_context_t maxCtx = {
 //***
 //*****************************************************************************
 
+void init_rpc(void) {
+    ns_rpc_config_t rpcConfig = {
+        .mode = NS_RPC_GENERICDATA_CLIENT,
+        .sendBlockToEVB_cb = NULL,
+        .fetchBlockFromEVB_cb = NULL,
+        .computeOnEVB_cb = NULL
+    };
+    ns_rpc_genericDataOperations_init(&rpcConfig); // init RPC and USB
+}
 
 void init_ecg_sensor(void) {
     /**
@@ -218,24 +249,27 @@ void stop_ecg_sensor(void) {
 #endif
 }
 
-uint32_t capture_ecg_sensor(uint32_t* buffer, uint32_t size) {
+uint32_t capture_ecg_sensor(float32_t* buffer, uint32_t size) {
     uint32_t numSamples;
-    uint32_t val;
+    uint32_t val = 0;
 #ifdef EMULATION
-    numSamples = 8;
+    // Capture samples from PC
+    ns_rpc_data_computeOnPC(&commandBlock, &resultBlock);
+    numSamples = resultBlock.length;
+    memcpy(buffer, resultBlock.buffer.data, resultBlock.buffer.dataLength);
     for (size_t i = 0; i < numSamples; i++) {
-        buffer[i] = (rand() % (255 - 0 + 1)) + 0;
-        SEGGER_RTT_Write(RTT_PORT, (uint8_t *)&val, 4);
+        SEGGER_RTT_Write(RTT_PORT, &buffer[i], 4);
         ns_delay_us(4000);
     }
-
+    ns_free(resultBlock.description);
+    ns_free(resultBlock.buffer.data);
 #else
     numSamples = max86150_read_fifo_samples(&maxCtx, sensorBuffer, NUM_ELEMENTS);
     if (numSamples == 0) {
         ns_delay_us(2500);
     }
     for (size_t i = 0; i < numSamples; i++) {
-        buffer[i] = sensorBuffer[NUM_ELEMENTS*i];
+        buffer[i] = (uint32_t)sensorBuffer[NUM_ELEMENTS*i];
         SEGGER_RTT_Write(RTT_PORT, &buffer[i], 4);
         ns_delay_us(5000);
     }
@@ -293,16 +327,24 @@ void model_init(void) {
 }
 
 int model_run() {
+    uint32_t x = 2;
+    float32_t y = -99;
     // Copy sensor data to input buffer
-    int8_t y;
+    for (size_t i = 0; i < modelInput->dims->data[1]; i++) {
+        modelInput->data.f[i] = ecgBuffer[i];
+    }
     TfLiteStatus invokeStatus = interpreter->Invoke();
     if (invokeStatus != kTfLiteOk) {
         return -1;
     } else {
-        for (size_t i = 0; i < modelOutput->dims->data[0]; i++) {
-            y = modelOutput->data.int8[i];
+        for (size_t i = 0; i < modelOutput->dims->data[1]; i++) {
+            if (modelOutput->data.f[i] > y) {
+                y = modelOutput->data.f[i];
+                x = i;
+            }
+            ns_printf("y[%lu] = %0.2f\n", i, modelOutput->data.f[i]);
         }
-        return y;
+        return x;
     }
 }
 
@@ -326,6 +368,7 @@ static void setup() {
     SEGGER_RTT_ConfigUpBuffer(RTT_PORT, "DATA", rttBuffer, RTT_BUFFER_LEN, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
     ns_delay_us(20);
     // am_bsp_itm_printf_disable();
+    init_rpc();
     init_ecg_sensor();
     model_init();
     ns_peripheral_button_init(&button_config);
@@ -336,12 +379,26 @@ static void setup() {
 #endif
 }
 
+void tud_mount_cb(void) {
+    ns_printf("tud_mount_cb\n");
+}
+void tud_umount_cb(void) {
+    ns_printf("tud_umount_cb\n");
+}
+void tud_suspend_cb(bool remote_wakeup_en) {
+    ns_printf("tud_suspend_cb\n");
+}
+void tud_resume_cb(void) {
+    ns_printf("tud_resume_cb\n");
+}
+
 static void loop() {
     /**
      * @brief Application loop
      *
      */
     int result;
+
     switch (state) {
     case IDLE_STATE:
         if (captureButtonPressed) {
@@ -387,7 +444,7 @@ static void loop() {
     case DISPLAY_STATE:
         captureButtonPressed = 0;
         state = START_CAPTURE_STATE;
-        ns_printf("Done\n");
+        ns_printf("Done %d\n", result);
         break;
 
     case FAIL_STATE:
@@ -399,6 +456,7 @@ static void loop() {
         state = IDLE_STATE;
         break;
     }
+    tud_task();
 }
 
 int main(void) {

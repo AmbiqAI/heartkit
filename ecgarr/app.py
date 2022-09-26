@@ -3,12 +3,13 @@ import logging
 from pathlib import Path
 from typing import List, Optional
 import pydantic_argparse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field  # pylint: disable=no-name-in-module
 from .types import (
     EcgDownloadParams,
     EcgTrainParams,
     EcgTestParams,
-    EcgDeployParams
+    EcgDeployParams,
+    EcgDemoParams
 )
 from . import datasets as ds
 from . import train
@@ -17,12 +18,14 @@ from . import demo
 from . import deploy
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-logger = logging.getLogger('ecgarr.app')
+logger = logging.getLogger('ECGARR')
 
 class AppCommandArgments(BaseModel):
+    """ App command arguments as configuration file. """
     config_file: Optional[Path] = Field(None, description='Configuration JSON file')
 
 class AppArguments(BaseModel):
+    """ App CLI arguments """
     download_dataset: Optional[AppCommandArgments] = Field(description="Fetch dataset")
     train_model: Optional[AppCommandArgments] = Field(description="Train model")
     test_model: Optional[AppCommandArgments] = Field(description="Test model")
@@ -75,8 +78,9 @@ def evb_demo(command: AppCommandArgments):
     Args:
         command (AppCommandArgments): Command arguments
     """
+    params = EcgDemoParams.parse_file(command.config_file)
     logger.info("#STARTED evb demo")
-    demo.evb_demo()
+    demo.evb_demo(params=params)
     logger.info("#FINISHED evb demo")
 
 def run(inputs: Optional[List[str]] = None):
@@ -86,8 +90,8 @@ def run(inputs: Optional[List[str]] = None):
     """
     parser = pydantic_argparse.ArgumentParser(
         model=AppArguments,
-        prog="ECG arrhythmia Demo",
-        description="ECG arrhythmia demo"
+        prog="Heart arrhythmia Demo",
+        description="Heart arrhythmia demo"
     )
     args = parser.parse_typed_args(inputs)
 
@@ -102,7 +106,7 @@ def run(inputs: Optional[List[str]] = None):
     elif args.evb_demo:
         evb_demo(args.evb_demo)
     else:
-        logger.error(f'Error: Unknown command')
+        logger.error('Error: Unknown command')
 
 if __name__ == "__main__":
     run()

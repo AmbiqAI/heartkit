@@ -1,19 +1,23 @@
 import tensorflow as tf
 
 def batch_norm():
+    """ Batch normalization layer """
     return tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-5)
 
 def relu():
+    " ReLU layer "
     return tf.keras.layers.ReLU()
 
-def conv1d(filters, kernel_size=3, strides=1):
+def conv1d(filters: int, kernel_size: int = 3, strides: int = 1):
+    """ 1D convolutional layer """
     return tf.keras.layers.Conv1D(
         filters, kernel_size, strides=strides, padding='same', use_bias=False,
         kernel_initializer=tf.keras.initializers.VarianceScaling()
     )
 
 class ResidualBlock(tf.keras.layers.Layer):
-    def __init__(self, filters, kernel_size=3, strides=1, **kwargs):
+    """ Residual block module """
+    def __init__(self, filters: int, kernel_size: int = 3, strides: int = 1, **kwargs):
         super().__init__(**kwargs)
         self.filters = filters
         self.kernel_size = kernel_size
@@ -48,7 +52,6 @@ class ResidualBlock(tf.keras.layers.Layer):
         x = self.relu2(x + shortcut)
         return x
 
-
     def get_config(self):
         config = super().get_config().copy()
         config.update({
@@ -59,12 +62,13 @@ class ResidualBlock(tf.keras.layers.Layer):
         return config
 
 class BottleneckBlock(tf.keras.layers.Layer):
-    def __init__(self, filters, kernel_size=3, strides=1, expansion=4, **kwargs):
+    def __init__(self, filters: int, kernel_size: int = 3, strides: int = 1, expansion: int = 4, **kwargs):
         super().__init__(**kwargs)
         self.filters = filters
         self.kernel_size = kernel_size
         self.strides = strides
         self.expansion = expansion
+        self.projection = False
 
     def build(self, input_shape):
         num_chan = input_shape[-1]

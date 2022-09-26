@@ -1,7 +1,18 @@
+from typing import Optional
 import tensorflow as tf
 from .resnet1d import ResNet, BottleneckBlock
+from ..types import ArchitectureType
 
-def ecg_feature_extractor(arch=None, stages=None):
+def ecg_feature_extractor(arch: Optional[ArchitectureType] = None, stages: Optional[int] = None):
+    """AI based feature extractor. Currently consists of 1D variant of ResNet
+
+    Args:
+        arch (str, optional): Architecture name. Defaults to None.
+        stages (int, optional): Number of stages. Defaults to None.
+
+    Returns:
+        tf.keras.Sequential: Feature extractor model
+    """
     if arch is None or arch == 'resnet12':
         resnet = ResNet(
             num_outputs=None,

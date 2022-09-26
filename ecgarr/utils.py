@@ -1,18 +1,26 @@
 import os
-import sys
-import requests
 import logging
 import gzip
 import random
 import pickle
 from typing import Optional
+import requests
 import tensorflow as tf
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 from rich.logging import RichHandler
 from tqdm import tqdm
 
-def set_random_seed(seed: Optional[int] = None):
+def set_random_seed(seed: Optional[int] = None) -> int:
+    """ Set random seed across libraries: TF, Numpy, Python
+
+    Args:
+        seed (Optional[int], optional): Random seed state to use. Defaults to None.
+
+    Returns:
+        int: Random seed
+    """
     seed = seed or np.random.randint(2 ** 16)
     random.seed(seed)
     np.random.seed(seed)
@@ -28,18 +36,18 @@ def xxd_c_dump(src_path: str, dst_path: str, var_name: str = 'g_model', chunk_le
         var_name (str, optional): C variable name. Defaults to 'g_model'.
         chunk_len (int, optional): # of elements per row. Defaults to 12.
     """
-    var_len = 0;
-    with open(src_path, 'rb') as rfp, open(dst_path, 'w') as wfp:
+    var_len = 0
+    with open(src_path, 'rb', encoding='utf-8') as rfp, open(dst_path, 'w', encoding='utf-8') as wfp:
         if is_header:
             wfp.write(f"#ifndef __{var_name.upper()}_H{os.linesep}")
             wfp.write(f"#define __{var_name.upper()}_H{os.linesep}")
 
-        wfp.write(f"const unsigned char {var_name}[] = {{{os.linesep}");
+        wfp.write(f"const unsigned char {var_name}[] = {{{os.linesep}")
         for chunk in iter(lambda: rfp.read(chunk_len), b''):
             wfp.write("  " + ", ".join((f'0x{c:02x}' for c in chunk)) + f", {os.linesep}")
             var_len += len(chunk)
         # END FOR
-        wfp.write(f"}};{os.linesep}");
+        wfp.write(f"}};{os.linesep}")
         wfp.write(f"const unsigned int {var_name}_len = {var_len};{os.linesep}")
         if is_header:
             wfp.write(f"#endif // __{var_name.upper()}_H{os.linesep}")
@@ -67,7 +75,7 @@ def pad_sequences(x, max_len=None, padding='pre'):
         elif padding == 'post':
             x_padded[i, :trim_len] = x_i[:trim_len]
         else:
-            raise ValueError('Unknown padding: %s' % padding)
+            raise ValueError(f'Unknown padding: {padding}')
     return x_padded
 
 
@@ -90,7 +98,7 @@ def create_predictions_frame(y_prob, y_true=None, y_pred=None, class_names=None,
         class_names = np.arange(num_classes)
     elif len(class_names) != num_classes:
         raise ValueError('length of class_names does not match with the number of classes')
-    columns = ['prob_{}'.format(label) for label in class_names]
+    columns = [f'prob_{label}' for label in class_names]
     data = {column: y_prob[:, i] for i, column in enumerate(columns)}
     if y_pred is not None:
         y_pred = np.squeeze(y_pred)
@@ -98,7 +106,7 @@ def create_predictions_frame(y_prob, y_true=None, y_pred=None, class_names=None,
             y_pred = np.stack([1 - y_pred, y_pred], axis=1)
         if y_pred.shape != y_prob.shape:
             raise ValueError('y_prob and y_pred shapes do not match')
-        y_pred_columns = ['pred_{}'.format(label) for label in class_names]
+        y_pred_columns = [f'pred_{label}' for label in class_names]
         y_pred_data = {column: y_pred[:, i] for i, column in enumerate(y_pred_columns)}
         columns = columns + y_pred_columns
         data = {**data, **y_pred_data}
@@ -108,11 +116,11 @@ def create_predictions_frame(y_prob, y_true=None, y_pred=None, class_names=None,
             # search for true labels that do not correspond to any column in the predictions matrix
             unknown_labels = np.setdiff1d(y_true, np.arange(num_classes))
             if len(unknown_labels) > 0:
-                raise ValueError('Unknown labels encountered: %s' % unknown_labels)
+                raise ValueError(f'Unknown labels encountered: {unknown_labels}')
             y_true = np.eye(num_classes)[y_true]
         if y_true.shape != y_prob.shape:
             raise ValueError('y_prob and y_true shapes do not match')
-        y_true_columns = ['true_{}'.format(label) for label in class_names]
+        y_true_columns = [f'true_{label}' for label in class_names]
         y_true_data = {column: y_true[:, i] for i, column in enumerate(y_true_columns)}
         columns = y_true_columns + columns
         data = {**data, **y_true_data}
@@ -134,10 +142,10 @@ def read_predictions(file):
     classes = [label[5:] for label in df.columns if label.startswith('prob')]
     predictions = {}
     for prefix in ['true', 'pred', 'prob']:
-        col_names = ['{}_{}'.format(prefix, label) for label in classes]
+        col_names = [f'{prefix}_{label}' for label in classes]
         col_names = [name for name in col_names if name in df.columns]
         if col_names:
-            predictions['y_{}'.format(prefix)] = df[col_names].values
+            predictions[f'y_{prefix}'] = df[col_names].values
     predictions['classes'] = classes
     return predictions
 
@@ -152,26 +160,27 @@ def matches_spec(o, spec, ignore_batch_dim=False):
     """
     if isinstance(spec, (list, tuple)):
         if not isinstance(o, (list, tuple)):
-            raise ValueError('data object is not a list or tuple which is required by the spec: {}'.format(spec))
+            raise ValueError(f'data object is not a list or tuple which is required by the spec: {spec}')
         if len(spec) != len(o):
-            raise ValueError('data object has a different number of elements than the spec: {}'.format(spec))
-        for i in range(len(spec)):
-            if not matches_spec(o[i], spec[i], ignore_batch_dim=ignore_batch_dim):
+            raise ValueError(f'data object has a different number of elements than the spec: {spec}')
+        for i, ispec in enumerate(spec):
+            if not matches_spec(o[i], ispec, ignore_batch_dim=ignore_batch_dim):
                 return False
         return True
-    elif isinstance(spec, dict):
+
+    if isinstance(spec, dict):
         if not isinstance(o, dict):
-            raise ValueError('data object is not a dict which is required by the spec: {}'.format(spec))
+            raise ValueError(f'data object is not a dict which is required by the spec: {spec}')
         if spec.keys() != o.keys():
-            raise ValueError('data object has different keys than those specified in the spec: {}'.format(spec))
+            raise ValueError(f'data object has different keys than those specified in the spec: {spec}')
         for k in spec:
             if not matches_spec(o[k], spec[k], ignore_batch_dim=ignore_batch_dim):
                 return False
             return True
-    else:
-        spec_shape = spec.shape[1:] if ignore_batch_dim else spec.shape
-        o_shape = o.shape[1:] if ignore_batch_dim else o.shape
-        return spec_shape == o_shape and spec.dtype == o.dtype
+
+    spec_shape = spec.shape[1:] if ignore_batch_dim else spec.shape
+    o_shape = o.shape[1:] if ignore_batch_dim else o.shape
+    return spec_shape == o_shape and spec.dtype == o.dtype
 
 
 def running_mean_std(iterator, dtype=None):
@@ -212,8 +221,16 @@ def buffered_generator(generator, buffer_size):
         yield buffer
 
 
-def load_pkl(file, compress=True):
-    """ Load pickled file. """
+def load_pkl(file: str, compress: bool = True):
+    """ Load pickled file.
+
+    Args:
+        file (str): File path (.pkl)
+        compress (bool, optional): If file is compressed. Defaults to True.
+
+    Returns:
+        Any: Contents of pickle
+    """
     if compress:
         with gzip.open(file, 'rb') as fh:
             return pickle.load(fh)
@@ -222,8 +239,13 @@ def load_pkl(file, compress=True):
             return pickle.load(fh)
 
 
-def save_pkl(file, compress=True, **kwargs):
-    """ Save dictionary in a pickle file. """
+def save_pkl(file: str, compress: bool = True, **kwargs):
+    """ Save python objects into pickle file.
+
+    Args:
+        file (str): File path (.pkl)
+        compress (bool, optional): Whether to compress file. Defaults to True.
+    """
     if compress:
         with gzip.open(file, 'wb') as fh:
             pickle.dump(kwargs, fh, protocol=4)
@@ -232,12 +254,28 @@ def save_pkl(file, compress=True, **kwargs):
             pickle.dump(kwargs, fh, protocol=4)
 
 
-def is_multiclass(labels):
-    """ Return true if this is a multiclass task otherwise false. """
+def is_multiclass(labels: npt.ArrayLike) -> bool:
+    """ Return true if this is a multiclass task otherwise false.
+
+    Args:
+        labels (npt.ArrayLike): List of labels
+
+    Returns:
+        bool: If multiclass
+    """
     return labels.squeeze().ndim == 2 and any(labels.sum(axis=1) != 1)
 
 
-def rolling_standardize(x: np.ndarray, win_len: int):
+def rolling_standardize(x: npt.ArrayLike, win_len: int) -> npt.ArrayLike:
+    """ Performs rolling standardization
+
+    Args:
+        x (npt.ArrayLike): Data
+        win_len (int): Window length
+
+    Returns:
+        npt.ArrayLike: Standardized data
+    """
     x_roll = np.lib.stride_tricks.sliding_window_view(x, win_len)
     x_roll_std = np.std(x_roll, axis=-1)
     x_roll_mu = np.mean(x_roll, axis=-1)
@@ -246,24 +284,23 @@ def rolling_standardize(x: np.ndarray, win_len: int):
     x_norm = (x - x_mu)/x_std
     return x_norm
 
-class MaxLevelFilter(logging.Filter):
-    def __init__(self, max_level):
-        self.max_level = max_level
-
-    def filter(self, log_record):
-        return log_record.levelno <= self.max_level
-
 def setup_logger(log_name: str) -> logging.Logger:
+    """ Setup logger with Rich
+
+    Args:
+        log_name (str): _description_
+
+    Returns:
+        logging.Logger: _description_
+    """
     logger = logging.getLogger(log_name)
     if logger.handlers:
         return logger
-    logger.setLevel(logging.INFO)
-    logger.addHandler(RichHandler())
+    logging.basicConfig(level=logging.INFO, handlers=[RichHandler()])
     return logger
 
 def env_flag(env_var: str, default: bool = False) -> bool:
-    """
-    Return the specified environment variable coerced to a bool, as follows:
+    """ Return the specified environment variable coerced to a bool, as follows:
     - When the variable is unset, or set to the empty string, return `default`.
     - When the variable is set to a truthy value, returns `True`.
       These are the truthy values:
@@ -282,7 +319,15 @@ def env_flag(env_var: str, default: bool = False) -> bool:
 
 
 def download_file(src: str, dst: str, progress: bool = True):
-    with requests.get(src, stream=True) as r:
+    """ Download file from supplied url to destination.
+
+    Args:
+        src (str): Source URL path
+        dst (str): Destination file path
+        progress (bool, optional): Display progress bar. Defaults to True.
+
+    """
+    with requests.get(src, stream=True, timeout=3600*24) as r:
         r.raise_for_status()
         req_len = int(r.headers.get('Content-length', 0))
         prog_bar = tqdm(total=req_len, unit='iB', unit_scale=True) if progress else None
@@ -291,4 +336,6 @@ def download_file(src: str, dst: str, progress: bool = True):
                 f.write(chunk)
                 if prog_bar:
                     prog_bar.update(len(chunk))
-    return dst
+            # END FOR
+        # END WITH
+    # END WITH

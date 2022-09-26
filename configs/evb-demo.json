@@ -1,2 +1,8 @@
 {
+    "task": "rhythm",
+    "job_dir": "./results/runs/rhythm-full-model",
+    "db_path": "./db/icentia11k",
+    "frame_size": 1250,
+    "vid_pid": "51966:16385",
+    "baudrate": "115200"
 }

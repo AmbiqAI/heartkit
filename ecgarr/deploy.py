@@ -4,11 +4,13 @@ import numpy as np
 import numpy.typing as npt
 import tensorflow as tf
 import pydantic_argparse
+from rich.console import Console
 from .utils import xxd_c_dump, setup_logger
 from . import datasets as ds
 from .types import EcgTask, EcgDeployParams
 
-logger = logging.getLogger('ecgarr.deploy')
+console = Console()
+logger = logging.getLogger('ECGARR')
 
 def create_dataset(
         db_path: str,
@@ -38,6 +40,7 @@ def create_dataset(
         patient_ids=patient_ids, frame_size=frame_size,
         samples_per_patient=samples_per_patient, repeat=False
     )
+
     data_x, data_y = next(dataset.batch(sample_size).as_numpy_iterator())
     return data_x, data_y
 
@@ -49,22 +52,26 @@ def deploy_model(params: EcgDeployParams):
     tfl_model_path = str(params.job_dir / 'model.tflite')
     tflm_model_path = str(params.job_dir / 'model.h')
 
-    # First load the model and provide fixed batch size
+    # Load model and set fixed batch size of 1
+    logger.info('Loading trained model')
     model = tf.keras.models.load_model(params.model_file)
     input_layer = tf.keras.layers.Input((params.frame_size, 1), dtype=tf.float32, batch_size=1)
     model(input_layer)
 
-    test_x, test_y = create_dataset(
-        db_path=str(params.db_path),
-        task=params.task,
-        frame_size=params.frame_size,
-        num_patients=200,
-        samples_per_patient=10
-    )
+    # Load dataset
+    with console.status("[bold green] Loading dataset..."):
+        test_x, test_y = create_dataset(
+            db_path=str(params.db_path),
+            task=params.task,
+            frame_size=params.frame_size,
+            num_patients=200,
+            samples_per_patient=10
+        )
 
     # Instantiate converter from model
     converter = tf.lite.TFLiteConverter.from_keras_model(model=model)
 
+    # Optionally quantize model
     if params.quantization:
         converter.optimizations = [tf.lite.Optimize.DEFAULT]
         # NOTE: Enable once QAT is working
@@ -77,19 +84,23 @@ def deploy_model(params: EcgDeployParams):
         converter.representative_dataset = rep_dataset
 
     # Convert model
+    logger.info('Converting model to TFLite')
     model_tflite = converter.convert()
 
     # Save TFLite model
+    logger.info(f'Saving TFLite model to {tfl_model_path}')
     with open(tfl_model_path, 'wb') as fp:
         fp.write(model_tflite)
 
     # Save TF Micro model
+    logger.info(f'Saving TFL micro model to {tflm_model_path}')
     xxd_c_dump(
         src_path=tfl_model_path, dst_path=tflm_model_path,
         var_name=params.tflm_var_name, chunk_len=12, is_header=True
     )
 
     # Verify TFLite results match TF results on example data
+    logger.info('Validating model results')
     interpreter = tf.lite.Interpreter(tfl_model_path)
     model_sig = interpreter.get_signature_runner()
     input_details = model_sig.get_input_details()
@@ -100,16 +111,19 @@ def deploy_model(params: EcgDeployParams):
     # Predict using TF
     y_prob_tf = model.predict(test_x)
     y_pred_tf = np.argmax(y_prob_tf, axis=1)
+
     # Predict using TFLite
     y_prob_tfl = np.array([model_sig(**{input_name:test_x[i:i+1]})[output_name][0] for i in range(test_x.shape[0])])
     y_pred_tfl = np.argmax(y_prob_tfl, axis=1)
 
     # Verify TF matches TFLite
     num_bad = np.sum(np.abs(y_pred_tfl - y_pred_tf))
-    print(num_bad)
+    if num_bad:
+        logger.warning(f'Found {num_bad} labels mismatched betwee TF and TFLite')
+    else:
+        logger.info('Validation passed')
 
-    # Generate examples and dump into C arrays (data and labels)
-    # Grab N of each class
+    # Generate header with samples
 
 def create_parser():
     """ Create CLI argument parser
@@ -118,13 +132,11 @@ def create_parser():
     """
     return pydantic_argparse.ArgumentParser(
         model=EcgDeployParams,
-        prog="ECG Arrhythmia Deploy Command",
-        description="Deploy ECG arrhythmia model to EVB"
+        prog="Heart arrhythmia deploy command",
+        description="Deploy heart arrhythmia model to EVB"
     )
 
 if __name__ == '__main__':
-    """ Run ecgarr.deploy as CLI. """
-    setup_logger('ecgarr')
+    setup_logger('ECGARR')
     parser = create_parser()
-    args = parser.parse_typed_args()
-    deploy_model(args)
+    deploy_model(parser.parse_typed_args())

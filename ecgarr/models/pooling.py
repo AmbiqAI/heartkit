@@ -2,11 +2,14 @@ import tensorflow as tf
 
 
 class AttentionPooling(tf.keras.layers.Layer):
-    def __init__(self, transformer, keepdims: bool = False, **kwargs):
-        """
-        @param transformer: (batch_size, seq_len, d_model) -> (batch_size, seq_len, d_model)
-        @param keepdims: If True then keep the output dimension of the transformer,
-                otherwise squeeze the output.
+    """ Attention Pooling layer """
+    def __init__(self, transformer: tf.keras.layers.Layer, keepdims: bool = False, **kwargs):
+        """ Attention pooling layer
+
+        Args:
+            transformer (tf.keras.layers.Layer): (batch_size, seq_len, d_model) -> (batch_size, seq_len, d_model)
+            keepdims (bool, optional): If True then keep the output dimension of the transformer,
+                otherwise squeeze the output. Defaults to False.
         """
         super().__init__(**kwargs)
         self.transformer = transformer
@@ -15,12 +18,16 @@ class AttentionPooling(tf.keras.layers.Layer):
         self.pool_token_embedding = tf.Variable(initial_pool_token_embedding, trainable=True)
 
     def call(self, x, training=None, mask=None):
+        """Forward pass
+        Args:
+            x (tf.Tensor): (batch_size, seq_len, d_model)
+            training (bool, optional): Whether in training or inference mode. Defaults to None.
+            mask (bool, optional): Whether to enable masking. Defaults to None.
+
+        Returns:
+            tf.Tensor: (batch_size, d_model) or (batch_size, 1, d_model) if keepdims is True
         """
-        @param x: (batch_size, seq_len, d_model)
-        @param training: training mode
-        @param mask: (batch_size, seq_len)
-        @return: (batch_size, d_model) or (batch_size, 1, d_model) if keepdims is True
-        """
+
         batch_size = tf.shape(x)[0]  # dynamic shape
         # prepend pool token embedding to each sample in the batch
         pool_token_embedding = tf.tile(self.pool_token_embedding, (batch_size,))

@@ -1,13 +1,14 @@
-"""
-Implementation of the Transformer [1] based on: https://www.tensorflow.org/tutorials/text/transformer
-[1] https://arxiv.org/abs/1706.03762
-"""
-
+from typing import Optional
 import numpy as np
 import tensorflow as tf
 
-
 class MultiHeadAttention(tf.keras.layers.Layer):
+    """ Multi-head Attention layer
+
+    Implementation of the Transformer [1] based on:
+        https://www.tensorflow.org/tutorials/text/transformer
+         https://arxiv.org/abs/1706.03762
+    """
     def __init__(self, d_model, num_heads, **kwargs):
         super().__init__(**kwargs)
         assert d_model % num_heads == 0
@@ -51,6 +52,8 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 
 
 class EncoderLayer(tf.keras.layers.Layer):
+    """ Transformer encoder layer
+    """
     def __init__(self, d_model, num_heads, dff, dropout=0.1, **kwargs):
         super().__init__(**kwargs)
         self.mha = MultiHeadAttention(d_model, num_heads)
@@ -86,12 +89,16 @@ class Encoder(tf.keras.layers.Layer):
         self.enc_layers = [EncoderLayer(d_model, num_heads, dff, dropout)
                            for _ in range(num_layers)]
 
-    def call(self, x, training=None, mask=None):
-        """
-        @param x: (batch_size, seq_len, d_model)
-        @param training: training mode
-        @param mask: (batch_size, seq_len)
-        @return: (batch_size, seq_len, d_model)
+    def call(self, x: tf.Tensor, training: Optional[bool] = None, mask: Optional[bool] = None):
+        """ Forward pass
+
+        Args:
+            x (tf.Tensor): (batch_size, seq_len, d_model)
+            training (bool, optional): Training mode. Defaults to None.
+            mask (bool, optional): Mask. Defaults to None.
+
+        Returns:
+            tf.Tensor: (batch_size, seq_len, d_model)
         """
         if mask is not None:
             # add extra dimensions to add the padding to the attention logits
@@ -106,7 +113,16 @@ class Encoder(tf.keras.layers.Layer):
         return x
 
 
-def positional_embedding(size, d_model):
+def positional_embedding(size: int, d_model: int):
+    """ Generate positonal embedding
+
+    Args:
+        size (int): Embedding size
+        d_model (int): Depth of model
+
+    Returns:
+        tf.Tensor: Positional embedding
+    """
     indices = np.arange(size)[:, None]
     i = np.arange(d_model)[None, :]
     angle_rads = indices / np.power(10000, (2 * (i // 2)) / d_model)
