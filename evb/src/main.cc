@@ -103,20 +103,17 @@ enum AppState {
 //*****************************************************************************
 //*** Application globals
 static const char *heart_rhythm_labels[] = { "normal", "afib", "aflut", "noise" };
-static const char *heart_beat_labels[] = { "normal", "pac", "aberrated", "pvc", "noise" };
-static const char *hear_rate_labels[] = { "normal", "tachycardia", "bradycardia", "noise" };
+// static const char *heart_beat_labels[] = { "normal", "pac", "aberrated", "pvc", "noise" };
+// static const char *hear_rate_labels[] = { "normal", "tachycardia", "bradycardia", "noise" };
 
 
 uint8_t rttBuffer[RTT_BUFFER_LEN];
-static uint32_t sensorBuffer[MAX86150_FIFO_DEPTH*NUM_ELEMENTS] = { 0 };
 static float32_t ecgBuffer[ECG_BUFFER_LEN];
 int captureButtonPressed = 0;
 AppState state = IDLE_STATE;
 uint32_t numSamples;
 
-
 #ifdef EMULATION
-
 char command_desc[] = "ECG_SENSOR_REQUEST\0";
 binary_t binaryBlock = {
     .data = (uint8_t *) &ecgBuffer[0],
@@ -130,6 +127,11 @@ dataBlock commandBlock = {
     .buffer = binaryBlock
 };
 dataBlock resultBlock;
+
+#else
+
+static uint32_t sensorBuffer[MAX86150_FIFO_DEPTH*NUM_ELEMENTS] = { 0 };
+
 #endif
 
 //***
@@ -142,6 +144,7 @@ const tflite::Model *model = nullptr;
 tflite::MicroInterpreter *interpreter = nullptr;
 TfLiteTensor *modelInput = nullptr;
 TfLiteTensor *modelOutput = nullptr;
+int modelResult = 0;
 constexpr int kTensorArenaSize = 1024 * 300;
 alignas(16) uint8_t tensorArena[kTensorArenaSize];
 //***
@@ -251,7 +254,6 @@ void stop_ecg_sensor(void) {
 
 uint32_t capture_ecg_sensor(float32_t* buffer, uint32_t size) {
     uint32_t numSamples;
-    uint32_t val = 0;
 #ifdef EMULATION
     // Capture samples from PC
     ns_rpc_data_computeOnPC(&commandBlock, &resultBlock);
@@ -330,14 +332,14 @@ int model_run() {
     uint32_t x = 2;
     float32_t y = -99;
     // Copy sensor data to input buffer
-    for (size_t i = 0; i < modelInput->dims->data[1]; i++) {
+    for (int i = 0; i < modelInput->dims->data[1]; i++) {
         modelInput->data.f[i] = ecgBuffer[i];
     }
     TfLiteStatus invokeStatus = interpreter->Invoke();
     if (invokeStatus != kTfLiteOk) {
         return -1;
     } else {
-        for (size_t i = 0; i < modelOutput->dims->data[1]; i++) {
+        for (int i = 0; i < modelOutput->dims->data[1]; i++) {
             if (modelOutput->data.f[i] > y) {
                 y = modelOutput->data.f[i];
                 x = i;
@@ -397,8 +399,6 @@ static void loop() {
      * @brief Application loop
      *
      */
-    int result;
-
     switch (state) {
     case IDLE_STATE:
         if (captureButtonPressed) {
@@ -433,8 +433,8 @@ static void loop() {
 
     case INFERENCE_STATE:
         ns_printf("Running inference\n");
-        result = model_run();
-        if (result == -1) {
+        modelResult = model_run();
+        if (modelResult == -1) {
             state = FAIL_STATE;
         } else {
             state = DISPLAY_STATE;
@@ -444,7 +444,7 @@ static void loop() {
     case DISPLAY_STATE:
         captureButtonPressed = 0;
         state = START_CAPTURE_STATE;
-        ns_printf("Done %d\n", result);
+        ns_printf("Label=%s [%d] \n", heart_rhythm_labels[modelResult], modelResult);
         break;
 
     case FAIL_STATE:

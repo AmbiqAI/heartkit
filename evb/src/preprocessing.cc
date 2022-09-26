@@ -24,10 +24,12 @@ arm_biquad_cascade_df2T_instance_f32 iirInst;
 
 int ecg_filter_init() {
     arm_biquad_cascade_df2T_init_f32(&iirInst, NUM_STAGE_IIR, &iirCoeffs[0], &iirState[0]);
+    return 0;
 }
 
 int ecg_filter(q15_t* input, q15_t *output, size_t numSamples) {
     arm_q15_to_float(input, ecgFilterInputF32, numSamples);
     arm_biquad_cascade_df2T_f32(&iirInst, ecgFilterInputF32, ecgFilterOutputF32, numSamples);
     arm_float_to_q15(ecgFilterOutputF32 ,output, numSamples);
+    return 0;
 }

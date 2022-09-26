@@ -41,11 +41,11 @@ uint8_t max86150_get_register(const max86150_context_t *ctx, uint8_t reg, uint8_
      * @brief Read register field
      * @return Register value
      */
-    int err;
+    // int err;
     uint32_t regAddr = reg;
     uint32_t regVal;
     uint8_t value;
-    err = ctx->i2c_write_read(ctx->addr, &regAddr, 1, &regVal, 1);
+    ctx->i2c_write_read(ctx->addr, &regAddr, 1, &regVal, 1);
     value = regVal & 0x00FF;
     if (mask != 0xFF) { value &= mask; }
     return value;
@@ -57,7 +57,6 @@ int max86150_set_register(const max86150_context_t *ctx, uint8_t reg, uint8_t va
      * @return 0 if successful
      */
     int err;
-    uint32_t regAddr = reg;
     uint8_t i2cBuffer[4];
     if (mask != 0xFF) {
         value = max86150_get_register(ctx, reg, ~mask) | (value & mask);
@@ -68,7 +67,7 @@ int max86150_set_register(const max86150_context_t *ctx, uint8_t reg, uint8_t va
     return err;
 }
 
-#pragma region Status Registers
+// Status Registers
 
 uint8_t max86150_get_int1(const max86150_context_t *ctx) {
     /**
@@ -144,9 +143,8 @@ void max86150_set_ecg_rdy_int_flag(const max86150_context_t *ctx, bool enable) {
     max86150_set_register(ctx, MAX86150_INT_EN2, enable << 2, 0x04);
 }
 
-#pragma endregion
 
-#pragma region FIFO Registers
+// FIFO Registers
 
 uint8_t max86150_get_fifo_wr_pointer(const max86150_context_t *ctx) {
     /**
@@ -221,7 +219,7 @@ uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint32_t *buf
     uint8_t wrPtr = max86150_get_fifo_wr_pointer(ctx);
     uint32_t regAddr = MAX86150_FIFO_DATA;
     uint32_t numSamples = ovrCnt > 0 ? MAX86150_FIFO_DEPTH : rdPtr <= wrPtr ? wrPtr - rdPtr : MAX86150_FIFO_DEPTH - rdPtr + wrPtr;
-    uint32_t bytesPerSample = 3*elementsPerSample;
+    // uint32_t bytesPerSample = 3*elementsPerSample;
     uint8_t temp[4];
     uint32_t tempLong;
     if (numSamples == 0) { return numSamples; }
@@ -312,9 +310,8 @@ void max86150_set_almost_full_threshold(const max86150_context_t *ctx, uint8_t s
     max86150_set_register(ctx, MAX86150_FIFO_CONFIG, space, 0x0F);
 }
 
-#pragma endregion
 
-#pragma region System Registers
+// System Registers
 
 void max86150_set_fifo_enable(const max86150_context_t *ctx, bool enable) {
     /**
@@ -362,9 +359,7 @@ uint8_t max86150_get_part_id(const max86150_context_t *ctx) {
     return max86150_get_register(ctx, MAX86150_PART_ID, 0xFF);
 }
 
-#pragma endregion
-
-#pragma region PPG Configuration
+// PPG Configuration
 
 void max86150_set_ppg_adc_range(const max86150_context_t *ctx, uint8_t range) {
     /**
@@ -418,9 +413,7 @@ void max86150_set_proximity_threshold(const max86150_context_t *ctx, uint8_t val
     max86150_set_register(ctx, MAX86150_PPG_PROX_INT_THRESH, value, 0xFF);
 }
 
-#pragma endregion
-
-#pragma region LED Configuration
+// LED Configuration
 
 void max86150_set_led_pulse_amplitude(const max86150_context_t *ctx, uint8_t led, uint8_t value) {
     /**
@@ -460,9 +453,7 @@ void max86150_set_led_current_range(const max86150_context_t *ctx, uint8_t led, 
     max86150_set_register(ctx, MAX86150_LED_RANGE, val, mask);
 }
 
-#pragma endregion
-
-#pragma region ECG Configuration
+// ECG Configuration
 
 void max86150_set_ecg_sample_rate(const max86150_context_t *ctx, uint8_t value) {
     /**
@@ -503,5 +494,3 @@ void max86150_set_ecg_ia_gain(const max86150_context_t *ctx, uint8_t value) {
      */
     max86150_set_register(ctx, MAX86150_ECG_CONFIG3, value, 0x03);
 }
-
-#pragma endregion
