@@ -27,3 +27,5 @@ max-locals=30
 
 # Maximum number of statements in function / method body
 max-statements=80
+
+max-module-lines=2000

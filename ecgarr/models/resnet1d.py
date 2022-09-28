@@ -1,22 +1,31 @@
 import tensorflow as tf
 
+
 def batch_norm():
-    """ Batch normalization layer """
+    """Batch normalization layer"""
     return tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-5)
 
+
 def relu():
-    " ReLU layer "
+    "ReLU layer"
     return tf.keras.layers.ReLU()
 
+
 def conv1d(filters: int, kernel_size: int = 3, strides: int = 1):
-    """ 1D convolutional layer """
+    """1D convolutional layer"""
     return tf.keras.layers.Conv1D(
-        filters, kernel_size, strides=strides, padding='same', use_bias=False,
-        kernel_initializer=tf.keras.initializers.VarianceScaling()
+        filters,
+        kernel_size,
+        strides=strides,
+        padding="same",
+        use_bias=False,
+        kernel_initializer=tf.keras.initializers.VarianceScaling(),
     )
 
+
 class ResidualBlock(tf.keras.layers.Layer):
-    """ Residual block module """
+    """Residual block module"""
+
     def __init__(self, filters: int, kernel_size: int = 3, strides: int = 1, **kwargs):
         super().__init__(**kwargs)
         self.filters = filters
@@ -54,15 +63,25 @@ class ResidualBlock(tf.keras.layers.Layer):
 
     def get_config(self):
         config = super().get_config().copy()
-        config.update({
-            'filters': self.filters,
-            'kernel_size': self.kernel_size,
-            'strides': self.strides
-        })
+        config.update(
+            {
+                "filters": self.filters,
+                "kernel_size": self.kernel_size,
+                "strides": self.strides,
+            }
+        )
         return config
 
+
 class BottleneckBlock(tf.keras.layers.Layer):
-    def __init__(self, filters: int, kernel_size: int = 3, strides: int = 1, expansion: int = 4, **kwargs):
+    def __init__(
+        self,
+        filters: int,
+        kernel_size: int = 3,
+        strides: int = 1,
+        expansion: int = 4,
+        **kwargs
+    ):
         super().__init__(**kwargs)
         self.filters = filters
         self.kernel_size = kernel_size
@@ -107,24 +126,34 @@ class BottleneckBlock(tf.keras.layers.Layer):
 
     def get_config(self):
         config = super().get_config().copy()
-        config.update({
-            'filters': self.filters,
-            'kernel_size': self.kernel_size,
-            'strides': self.strides,
-            'expansion': self.expansion
-        })
+        config.update(
+            {
+                "filters": self.filters,
+                "kernel_size": self.kernel_size,
+                "strides": self.strides,
+                "expansion": self.expansion,
+            }
+        )
         return config
+
 
 class ResNet(tf.keras.Model):
     def __init__(
-            self, num_outputs=1, blocks=(2, 2, 2, 2), filters=(64, 128, 256, 512), kernel_size=(3, 3, 3, 3),
-            input_conv=(64, 7, 2), block_fn=ResidualBlock, include_top=True, **kwargs
-        ):
+        self,
+        num_outputs=1,
+        blocks=(2, 2, 2, 2),
+        filters=(64, 128, 256, 512),
+        kernel_size=(3, 3, 3, 3),
+        input_conv=(64, 7, 2),
+        block_fn=ResidualBlock,
+        include_top=True,
+        **kwargs
+    ):
         super().__init__(**kwargs)
         self.conv1 = conv1d(*input_conv)
         self.bn1 = batch_norm()
         self.relu1 = relu()
-        self.maxpool1 = tf.keras.layers.MaxPooling1D(3, 2, padding='same')
+        self.maxpool1 = tf.keras.layers.MaxPooling1D(3, 2, padding="same")
         self.blocks = []
         for stage, num_blocks in enumerate(blocks):
             for block in range(num_blocks):
@@ -134,7 +163,7 @@ class ResNet(tf.keras.Model):
         self.include_top = include_top
         if include_top:
             self.global_pool = tf.keras.layers.GlobalAveragePooling1D()
-            out_act = 'sigmoid' if num_outputs == 1 else 'softmax'
+            out_act = "sigmoid" if num_outputs == 1 else "softmax"
             self.classifier = tf.keras.layers.Dense(num_outputs, out_act)
 
     def call(self, x, include_top=None, **kwargs):

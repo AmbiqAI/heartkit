@@ -19,9 +19,10 @@ from ..types import EcgTask, HeartBeat, HeartRhythm, HeartRate
 from .utils import butter_bp_filter
 from .types import PatientGenerator, SampleGenerator
 
-logger = logging.getLogger('ECGARR')
+logger = logging.getLogger("ECGARR")
 
 # Patients containing AFIB/AFLUT events
+# fmt: off
 arr_rhythm_patients = [
     16,    20,    53,    60,    65,    75,    84,    91,   119,
     139,   148,   159,   166,   177,   198,   230,   247,   268,
@@ -107,7 +108,7 @@ arr_rhythm_patients = [
     10778, 10784, 10812, 10813, 10839, 10852, 10853, 10915, 10949,
     10951, 10958, 10961, 10966, 10969, 10974, 10979, 10994, 10995
 ]
-
+# fmt: off
 
 class IcentiaRhythm(IntEnum):
     """ Icentia Rhythm labels """

@@ -15,19 +15,20 @@ from .utils import setup_logger
 from .deploy import create_dataset
 from .rpc import (
     GenericDataOperations_PcToEvb as gen_pc2evb,
-    GenericDataOperations_EvbToPc as gen_evb2pc
+    GenericDataOperations_EvbToPc as gen_evb2pc,
 )
 
-logger = logging.getLogger('ECGARR')
+logger = logging.getLogger("ECGARR")
 console = Console()
 
+
 def _find_serial_device(
-        vid_pid: Optional[str] = None,
-        serial_number: Optional[str] = None,
-        manufacturer: Optional[str] = None,
-        product: Optional[str] = None
-        ) -> Optional[ListPortInfo]:
-    """ Find serial device based on optional fields.
+    vid_pid: Optional[str] = None,
+    serial_number: Optional[str] = None,
+    manufacturer: Optional[str] = None,
+    product: Optional[str] = None,
+) -> Optional[ListPortInfo]:
+    """Find serial device based on optional fields.
 
     Args:
         vid_pid (Optional[str], optional): Vendor ID & product ID formatted as VID:PID. Defaults to None.
@@ -40,7 +41,7 @@ def _find_serial_device(
     """
     ports = list_ports()
     for port in ports:
-        if vid_pid and f'{port.vid}:{port.pid}' != vid_pid:
+        if vid_pid and f"{port.vid}:{port.pid}" != vid_pid:
             continue
         if serial_number and port.serial_number != serial_number:
             continue
@@ -51,11 +52,11 @@ def _find_serial_device(
         return port
     return None
 
+
 def get_serial_transport(
-    vid_pid: Optional[str] = None,
-    baudrate: Optional[int] = None
+    vid_pid: Optional[str] = None, baudrate: Optional[int] = None
 ) -> SerialTransport:
-    """ Create serial transport to EVB. Scans looking for port for 30 seconds before giving up.
+    """Create serial transport to EVB. Scans looking for port for 30 seconds before giving up.
 
     Args:
         vid_pid (Optional[str], optional): VID & PID. Defaults to None.
@@ -75,12 +76,14 @@ def get_serial_transport(
             if not port:
                 time.sleep(0.5)
     if port is None:
-        raise NotFoundErr('Unable to locate EVB serial port. Please verify connection')
-    logger.info(f'Found serial device @ {port.device}')
+        raise NotFoundErr("Unable to locate EVB serial port. Please verify connection")
+    logger.info(f"Found serial device @ {port.device}")
     return SerialTransport(port.device, baudrate=baudrate)
 
+
 class DataServiceHandler(gen_evb2pc.interface.Ievb_to_pc):
-    """ Acts as delegate for eRPC generic data operations. """
+    """Acts as delegate for eRPC generic data operations."""
+
     def __init__(self, params: EcgDemoParams) -> None:
         super().__init__()
         self.params = params
@@ -89,9 +92,9 @@ class DataServiceHandler(gen_evb2pc.interface.Ievb_to_pc):
             task=params.task,
             frame_size=params.frame_size,
             num_patients=200,
-            samples_per_patient=10
+            samples_per_patient=10,
         )
-        self.test_x, self.test_y = shuffle(self.test_x,  self.test_y)
+        self.test_x, self.test_y = shuffle(self.test_x, self.test_y)
         # State
         self._sample_idx = 0
         self._frame_idx = 0
@@ -103,26 +106,32 @@ class DataServiceHandler(gen_evb2pc.interface.Ievb_to_pc):
         print("Got a ns_rpc_data_fetchBlockFromPC call.")
         return 1
 
-    def ns_rpc_data_computeOnPC(self, in_block: gen_evb2pc.common.dataBlock, result_block):
-        if 'ECG' in in_block.description:
+    def ns_rpc_data_computeOnPC(
+        self, in_block: gen_evb2pc.common.dataBlock, result_block
+    ):
+        if "ECG" in in_block.description:
             num_samples = in_block.length
             fstart = self._frame_idx
             f_len = min(self.params.frame_size - self._frame_idx, num_samples)
-            x = self.test_x[self._sample_idx, fstart:fstart+f_len].squeeze().astype(np.float32)
+            x = (
+                self.test_x[self._sample_idx, fstart : fstart + f_len]
+                .squeeze()
+                .astype(np.float32)
+            )
             x = np.ascontiguousarray(x, dtype=np.float32)
-            x = x.tobytes('C')
+            x = x.tobytes("C")
             self._frame_idx += f_len
             if self._frame_idx >= self.params.frame_size:
-                logger.info(f'Label was {self.test_y[self._sample_idx]}')
-                logger.info('Grabbing next sample')
+                logger.info(f"Label was {self.test_y[self._sample_idx]}")
+                logger.info("Grabbing next sample")
                 self._frame_idx = 0
-                self._sample_idx = (self._sample_idx+1)%self.test_x.shape[0]
+                self._sample_idx = (self._sample_idx + 1) % self.test_x.shape[0]
             result_block.value = gen_evb2pc.common.dataBlock(
-                length = f_len,
-                dType = gen_pc2evb.common.dataType.float32_e,
-                description = "ECG_SENSOR_RESPONSE",
-                cmd = gen_evb2pc.common.command.generic_cmd,
-                buffer = bytearray(x),
+                length=f_len,
+                dType=gen_pc2evb.common.dataType.float32_e,
+                description="ECG_SENSOR_RESPONSE",
+                cmd=gen_evb2pc.common.command.generic_cmd,
+                buffer=bytearray(x),
             )
         return 1
 
@@ -130,34 +139,37 @@ class DataServiceHandler(gen_evb2pc.interface.Ievb_to_pc):
         logger.info(f"{msg}")
         return 1
 
+
 def evb_demo(params: EcgDemoParams):
-    """ EVB Demo
+    """EVB Demo
 
     Args:
         params (EcgDemoParams): Demo parameters
     """
     try:
         handler = DataServiceHandler(params=params)
-        transport = get_serial_transport(vid_pid=params.vid_pid, baudrate=params.baudrate)
+        transport = get_serial_transport(
+            vid_pid=params.vid_pid, baudrate=params.baudrate
+        )
         service = gen_evb2pc.server.evb_to_pcService(handler)
         server = erpc.simple_server.SimpleServer(transport, erpc.basic_codec.BasicCodec)
         server.add_service(service)
         logger.info("Server running")
         server.run()
     except KeyboardInterrupt:
-        pass # Allow user to stop demo nicely
-
+        pass  # Allow user to stop demo nicely
 
 
 def create_parser():
-    """ Create CLI parser """
+    """Create CLI parser"""
     return pydantic_argparse.ArgumentParser(
         model=EcgDemoParams,
         prog="Heart arrhythmia EVB demo command",
-        description="Demo heart arrhythmia model on EVB"
+        description="Demo heart arrhythmia model on EVB",
     )
 
-if __name__ == '__main__':
-    setup_logger('ECGARR')
+
+if __name__ == "__main__":
+    setup_logger("ECGARR")
     parser = create_parser()
     evb_demo(parser.parse_typed_args())

@@ -2,13 +2,15 @@ from typing import Optional
 import numpy as np
 import tensorflow as tf
 
+
 class MultiHeadAttention(tf.keras.layers.Layer):
-    """ Multi-head Attention layer
+    """Multi-head Attention layer
 
     Implementation of the Transformer [1] based on:
         https://www.tensorflow.org/tutorials/text/transformer
          https://arxiv.org/abs/1706.03762
     """
+
     def __init__(self, d_model, num_heads, **kwargs):
         super().__init__(**kwargs)
         assert d_model % num_heads == 0
@@ -52,8 +54,8 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 
 
 class EncoderLayer(tf.keras.layers.Layer):
-    """ Transformer encoder layer
-    """
+    """Transformer encoder layer"""
+
     def __init__(self, d_model, num_heads, dff, dropout=0.1, **kwargs):
         super().__init__(**kwargs)
         self.mha = MultiHeadAttention(d_model, num_heads)
@@ -80,17 +82,28 @@ class EncoderLayer(tf.keras.layers.Layer):
 
 
 class Encoder(tf.keras.layers.Layer):
-    def __init__(self, num_layers=6, d_model=512, num_heads=8, dff=2048,
-                 max_seq_len=512, dropout=0.1, **kwargs):
+    def __init__(
+        self,
+        num_layers=6,
+        d_model=512,
+        num_heads=8,
+        dff=2048,
+        max_seq_len=512,
+        dropout=0.1,
+        **kwargs
+    ):
         super().__init__(**kwargs)
         self.d_model = d_model
         self.pos_embedding = positional_embedding(max_seq_len, d_model)
         self.dropout = tf.keras.layers.Dropout(dropout)
-        self.enc_layers = [EncoderLayer(d_model, num_heads, dff, dropout)
-                           for _ in range(num_layers)]
+        self.enc_layers = [
+            EncoderLayer(d_model, num_heads, dff, dropout) for _ in range(num_layers)
+        ]
 
-    def call(self, x: tf.Tensor, training: Optional[bool] = None, mask: Optional[bool] = None):
-        """ Forward pass
+    def call(
+        self, x: tf.Tensor, training: Optional[bool] = None, mask: Optional[bool] = None
+    ):
+        """Forward pass
 
         Args:
             x (tf.Tensor): (batch_size, seq_len, d_model)
@@ -114,7 +127,7 @@ class Encoder(tf.keras.layers.Layer):
 
 
 def positional_embedding(size: int, d_model: int):
-    """ Generate positonal embedding
+    """Generate positonal embedding
 
     Args:
         size (int): Embedding size

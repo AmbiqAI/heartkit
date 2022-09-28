@@ -3,8 +3,11 @@ name = "ecg-arr"
 version = "0.1.0"
 description = "Perform AI-based heart arrhythmia classification"
 authors = ["Adam Page <adam.page@ambiq.com>"]
+[tool.poetry.group.dev.dependencies]
+black = "^22.8.0"
 
 [tool.taskipy.tasks]
+black = "black ecgarr"
 lint = "pylint --rcfile .pylintrc ecgarr"
 test = "pytest tests/"
 clean = "make -C ./evb clean"
@@ -57,3 +60,6 @@ taskipy = "^1.10.3"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = 'black'

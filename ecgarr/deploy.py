@@ -10,15 +10,16 @@ from . import datasets as ds
 from .types import EcgTask, EcgDeployParams
 
 console = Console()
-logger = logging.getLogger('ECGARR')
+logger = logging.getLogger("ECGARR")
+
 
 def create_dataset(
-        db_path: str,
-        task: EcgTask = EcgTask.rhythm,
-        frame_size: Optional[int] = 1250,
-        num_patients: int = 100,
-        samples_per_patient: int = 100,
-    ) -> Tuple[npt.ArrayLike, npt.ArrayLike]:
+    db_path: str,
+    task: EcgTask = EcgTask.rhythm,
+    frame_size: Optional[int] = 1250,
+    num_patients: int = 100,
+    samples_per_patient: int = 100,
+) -> Tuple[npt.ArrayLike, npt.ArrayLike]:
     """Generate test dataset
 
     Args:
@@ -32,30 +33,36 @@ def create_dataset(
         Tuple[npt.ArrayLike, npt.ArrayLike]: (test_x, test_y)
     """
 
-    sample_size = num_patients*samples_per_patient
+    sample_size = num_patients * samples_per_patient
     patient_ids = ds.icentia11k.get_train_patient_ids()[:num_patients]
     np.random.shuffle(patient_ids)
     dataset = ds.create_dataset_from_generator(
-        task=task, db_path=db_path,
-        patient_ids=patient_ids, frame_size=frame_size,
-        samples_per_patient=samples_per_patient, repeat=False
+        task=task,
+        db_path=db_path,
+        patient_ids=patient_ids,
+        frame_size=frame_size,
+        samples_per_patient=samples_per_patient,
+        repeat=False,
     )
 
     data_x, data_y = next(dataset.batch(sample_size).as_numpy_iterator())
     return data_x, data_y
 
+
 def deploy_model(params: EcgDeployParams):
-    """ Deploy model command. This will convert saved model to TFLite and TFLite micro.
+    """Deploy model command. This will convert saved model to TFLite and TFLite micro.
     Args:
         params (EcgDeployParams): Deployment parameters
     """
-    tfl_model_path = str(params.job_dir / 'model.tflite')
-    tflm_model_path = str(params.job_dir / 'model.h')
+    tfl_model_path = str(params.job_dir / "model.tflite")
+    tflm_model_path = str(params.job_dir / "model.h")
 
     # Load model and set fixed batch size of 1
-    logger.info('Loading trained model')
+    logger.info("Loading trained model")
     model = tf.keras.models.load_model(params.model_file)
-    input_layer = tf.keras.layers.Input((params.frame_size, 1), dtype=tf.float32, batch_size=1)
+    input_layer = tf.keras.layers.Input(
+        (params.frame_size, 1), dtype=tf.float32, batch_size=1
+    )
     model(input_layer)
 
     # Load dataset
@@ -65,7 +72,7 @@ def deploy_model(params: EcgDeployParams):
             task=params.task,
             frame_size=params.frame_size,
             num_patients=200,
-            samples_per_patient=10
+            samples_per_patient=10,
         )
 
     # Instantiate converter from model
@@ -80,27 +87,31 @@ def deploy_model(params: EcgDeployParams):
         # converter.inference_output_type = tf.uint8
         def rep_dataset():
             for i in range(test_x.shape[0]):
-                yield (test_x[i:i+1], test_y[i])
+                yield (test_x[i : i + 1], test_y[i])
+
         converter.representative_dataset = rep_dataset
 
     # Convert model
-    logger.info('Converting model to TFLite')
+    logger.info("Converting model to TFLite")
     model_tflite = converter.convert()
 
     # Save TFLite model
-    logger.info(f'Saving TFLite model to {tfl_model_path}')
-    with open(tfl_model_path, 'wb') as fp:
+    logger.info(f"Saving TFLite model to {tfl_model_path}")
+    with open(tfl_model_path, "wb") as fp:
         fp.write(model_tflite)
 
     # Save TF Micro model
-    logger.info(f'Saving TFL micro model to {tflm_model_path}')
+    logger.info(f"Saving TFL micro model to {tflm_model_path}")
     xxd_c_dump(
-        src_path=tfl_model_path, dst_path=tflm_model_path,
-        var_name=params.tflm_var_name, chunk_len=12, is_header=True
+        src_path=tfl_model_path,
+        dst_path=tflm_model_path,
+        var_name=params.tflm_var_name,
+        chunk_len=12,
+        is_header=True,
     )
 
     # Verify TFLite results match TF results on example data
-    logger.info('Validating model results')
+    logger.info("Validating model results")
     interpreter = tf.lite.Interpreter(tfl_model_path)
     model_sig = interpreter.get_signature_runner()
     input_details = model_sig.get_input_details()
@@ -113,30 +124,37 @@ def deploy_model(params: EcgDeployParams):
     y_pred_tf = np.argmax(y_prob_tf, axis=1)
 
     # Predict using TFLite
-    y_prob_tfl = np.array([model_sig(**{input_name:test_x[i:i+1]})[output_name][0] for i in range(test_x.shape[0])])
+    y_prob_tfl = np.array(
+        [
+            model_sig(**{input_name: test_x[i : i + 1]})[output_name][0]
+            for i in range(test_x.shape[0])
+        ]
+    )
     y_pred_tfl = np.argmax(y_prob_tfl, axis=1)
 
     # Verify TF matches TFLite
     num_bad = np.sum(np.abs(y_pred_tfl - y_pred_tf))
     if num_bad:
-        logger.warning(f'Found {num_bad} labels mismatched betwee TF and TFLite')
+        logger.warning(f"Found {num_bad} labels mismatched betwee TF and TFLite")
     else:
-        logger.info('Validation passed')
+        logger.info("Validation passed")
 
     # Generate header with samples
 
+
 def create_parser():
-    """ Create CLI argument parser
+    """Create CLI argument parser
     Returns:
         ArgumentParser: Arg parser
     """
     return pydantic_argparse.ArgumentParser(
         model=EcgDeployParams,
         prog="Heart arrhythmia deploy command",
-        description="Deploy heart arrhythmia model to EVB"
+        description="Deploy heart arrhythmia model to EVB",
     )
 
-if __name__ == '__main__':
-    setup_logger('ECGARR')
+
+if __name__ == "__main__":
+    setup_logger("ECGARR")
     parser = create_parser()
     deploy_model(parser.parse_typed_args())
