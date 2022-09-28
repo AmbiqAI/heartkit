@@ -110,6 +110,7 @@ class EcgTestParams(BaseModel):
     data_parallelism: int = Field(1, description='# of data loaders running in parallel')
     # Model arguments
     model_file: Optional[Path] = Field(None, description='Path to model file')
+    threshold: Optional[float] = Field(None, description='Model output threshold')
     # Extra arguments
     seed: Optional[int] = Field(None, description='Random state seed')
 

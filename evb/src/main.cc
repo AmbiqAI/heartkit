@@ -70,14 +70,12 @@
 
 #include "constants.h"
 #include "model.h"
-#include "SEGGER_RTT.h"
 #include "max86150.h"
 #include "ns_io_i2c.h"
 
 //*****************************************************************************
 //*** Assorted Configs and helpers
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+
 
 #define EMULATION
 #define SAMPLE_RATE 250
@@ -86,9 +84,6 @@
 #define ECG_BUFFER_LEN (INF_WINDOW_LEN+SAMPLE_RATE)
 #define MAX86150_ADDR (0x5E)
 //*****************************************************************************
-
-#define RTT_PORT 1
-#define RTT_BUFFER_LEN (2*INF_WINDOW_LEN)
 
 enum AppState {
     IDLE_STATE,
@@ -105,9 +100,7 @@ enum AppState {
 static const char *heart_rhythm_labels[] = { "normal", "afib", "aflut", "noise" };
 // static const char *heart_beat_labels[] = { "normal", "pac", "aberrated", "pvc", "noise" };
 // static const char *hear_rate_labels[] = { "normal", "tachycardia", "bradycardia", "noise" };
-
-
-uint8_t rttBuffer[RTT_BUFFER_LEN];
+static uint32_t sensorBuffer[MAX86150_FIFO_DEPTH*NUM_ELEMENTS] = { 0 };
 static float32_t ecgBuffer[ECG_BUFFER_LEN];
 int captureButtonPressed = 0;
 AppState state = IDLE_STATE;
@@ -130,7 +123,6 @@ dataBlock resultBlock;
 
 #else
 
-static uint32_t sensorBuffer[MAX86150_FIFO_DEPTH*NUM_ELEMENTS] = { 0 };
 
 #endif
 
@@ -180,6 +172,7 @@ max86150_context_t maxCtx = {
     .i2c_read = max86150_read,
     .i2c_write = max86150_write,
 };
+
 //***
 //*****************************************************************************
 
@@ -260,7 +253,6 @@ uint32_t capture_ecg_sensor(float32_t* buffer, uint32_t size) {
     numSamples = resultBlock.length;
     memcpy(buffer, resultBlock.buffer.data, resultBlock.buffer.dataLength);
     for (size_t i = 0; i < numSamples; i++) {
-        SEGGER_RTT_Write(RTT_PORT, &buffer[i], 4);
         ns_delay_us(4000);
     }
     ns_free(resultBlock.description);
@@ -269,12 +261,15 @@ uint32_t capture_ecg_sensor(float32_t* buffer, uint32_t size) {
     numSamples = max86150_read_fifo_samples(&maxCtx, sensorBuffer, NUM_ELEMENTS);
     if (numSamples == 0) {
         ns_delay_us(2500);
+        return numSamples;
     }
     for (size_t i = 0; i < numSamples; i++) {
         buffer[i] = (uint32_t)sensorBuffer[NUM_ELEMENTS*i];
-        SEGGER_RTT_Write(RTT_PORT, &buffer[i], 4);
         ns_delay_us(5000);
     }
+    memcpy(commandBlock.buffer.data, buffer, numSamples*sizeof(uint32_t));
+    ns_rpc_data_sendBlockToPC(&commandBlock);
+
 #endif
     return numSamples;
 }
@@ -366,8 +361,6 @@ static void setup() {
     ns_debug_printf_enable(); // Leave crypto on for ease of debugging
     ns_power_config(&ns_development_default);
 #endif
-    SEGGER_RTT_Init();
-    SEGGER_RTT_ConfigUpBuffer(RTT_PORT, "DATA", rttBuffer, RTT_BUFFER_LEN, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
     ns_delay_us(20);
     // am_bsp_itm_printf_disable();
     init_rpc();

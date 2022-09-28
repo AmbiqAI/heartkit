@@ -113,8 +113,17 @@ def evaluate_model(params: EcgTestParams):
 
         logger.info("Performing inference")
         y_true = test_y
-        y_prob = model.predict(test_x)
+        y_prob = tf.nn.softmax(model.predict(test_x)).numpy()
         y_pred = np.argmax(y_prob, axis=1)
+        # If threshold given, only count predictions above threshold
+        if params.threshold is not None:
+            logger.info(f"Using threshold {params.threshold:0.2f}")
+            y_pred_prob = np.take_along_axis(y_prob, np.expand_dims(y_pred, axis=-1), axis=-1).squeeze(axis=-1)
+            y_thresh_idx = np.where(y_pred_prob > params.threshold)[0]
+            logger.info(f"Dropping {len(y_thresh_idx)} samples ({100*(1-len(y_thresh_idx)/len(y_true)):0.2f}%)")
+            y_prob = y_prob[y_thresh_idx]
+            y_pred = y_pred[y_thresh_idx]
+            y_true = y_true[y_thresh_idx]
 
         # Summarize results
         logger.info("Testing Results")
@@ -124,8 +133,7 @@ def evaluate_model(params: EcgTestParams):
         logger.info(f"TEST SET: ACC={test_acc:.2%}, F1={test_f1:.2%}")
         confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=str(params.job_dir / 'confusion_matrix_test.png'))
         if len(class_names) == 2:
-            y_prob1 = tf.nn.softmax(y_prob)[:,1].numpy()
-            roc_auc_plot(y_true, y_prob1, labels=class_names, save_path=str(params.job_dir / 'roc_auc_test.png'))
+            roc_auc_plot(y_true, y_prob[:,1], labels=class_names, save_path=str(params.job_dir / 'roc_auc_test.png'))
 
 def create_parser():
     """ Create CLI argument parser

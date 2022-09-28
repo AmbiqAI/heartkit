@@ -5,9 +5,14 @@ The objective is to perform real-time heart arrhythmia classification using 1-le
 ## Prerequisite
 
 * [Python 3.9+](https://www.python.org)
-* [Poetry](https://python-poetry.org/docs/#installation)
+* [Poetry 1.2.1+](https://python-poetry.org/docs/#installation)
 
-For `Apple Silicon based Macs` additional steps are required to properly install TensorFlow to leverage Metal. Please refer to [MacOS Setup](#macos-setup).
+The following are also required to compile the binary for the EVB demo:
+
+* [Arm GNU Toolchain 11.3](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads)
+* [Segger J-Link v7.56+](https://www.segger.com/downloads/jlink/)
+
+For `Apple Silicon Macs` additional steps may be required to properly install TensorFlow to leverage Metal. Please refer to [MacOS Setup](#macos-setup).
 
 ## Usage
 
@@ -17,7 +22,7 @@ To get started, first install the local python package `ecgarr` along with its d
 poetry install
 ```
 
-The python package is intended to be used as a CLI-based app and provides a number of commands discussed below. In general, reference configurations are provided to (1) download dataset, (2) train model, (3) test model, (4) deploy model, and (5) run demo on Apollo 4 EVB hardware. Pre-trained reference models are also included to enable running inference and the demo immediately.
+The python package is intended to be used as a CLI-based app and provides a number of commands discussed below. In general, reference configurations are provided to (1) download the dataset, (2) train the model, (3) test the model, (4) deploy the model, and (5) run demo on Apollo 4 EVB hardware. Pre-trained reference models are also included to enable running inference and the demo immediately.
 
 ### 1. Download Dataset (download_dataset)
 
@@ -45,7 +50,7 @@ The following command will evaluate the accuracy of the model on the reserved te
 python -m ecgarr test_model --config-file ./configs/test-model.json
 ```
 
-### 4. Deploy (deploy_model)
+### 4. Deploy Model (deploy_model)
 
 The `Deploy command` will convert the referenced TensorFlow model into both TFLite and TFLite for microcontroller. The command will also verify the model outputs based on the dataset.
 
@@ -67,28 +72,28 @@ The current network is based on a 1-D CNN architecture. The CNN is based on ResN
 
 ## Datasets
 
-A number of datasets are readily available online that are suitable for training heart arrhythmia models. The following datasets are ones we plan to explore. Currently, we are only using `Icentia11k` database as it contains the largest number of patients in a highly abulatory setting- users wearing a 1-lead chest band for up to two weeks. In future work, we intend to demonstrate fine-tuning the reference model on a different dataset (w/ different sensor(s)).
+A number of datasets are readily available online that are suitable for training heart arrhythmia models. The following datasets are ones we plan to explore. Currently, we are only using `Icentia11k` database as it contains the largest number of patients in a highly ambulatory setting- users wearing a 1-lead chest band for up to two weeks. In future work, we intend to demonstrate fine-tuning the reference model on a different dataset (w/ different sensor(s)).
 
-### Icentia 11k Database
+### Icentia 11k Dataset
 
 This dataset consists of ECG recordings from 11,000 patients and 2 billion labelled beats. The data was collected by the CardioSTAT, a single-lead heart monitor device from Icentia. The raw signals were recorded with a 16-bit resolution and sampled at 250 Hz with the CardioSTAT in a modified lead 1 position. Please visit [Physionet](https://physionet.org/content/icentia11k-continuous-ecg/1.0/) for more details.
 
-### MIT-BIH Arrhythmia Database
+### MIT-BIH Arrhythmia Dataset
 
 This dataset consists of ECG recordings from 47 different subjects recorded at a sampling rate of 360 Hz. 23 records (numbered from 100 to 124 inclusive with some numbers missing) chosen at random from this set, and 25 records (numbered from 200 to 234 inclusive, again with some numbers missing) selected from the same set to include a variety of rare but clinically important phenomena that would not be well-represented by a small random sample of Holter recordings. Each of the 48 records is slightly over 30 minutes long. Please visit [Physionet](https://physionet.org/content/mitdb/1.0.0/) for more details.
 
-### MIT-BIH Normal Sinus Rhythm Database
+### MIT-BIH Normal Sinus Rhythm Dataset
 
 This database includes 18 long-term ECG recordings of subjects referred to the Arrhythmia Laboratory at Boston's Beth Israel Hospital (now the Beth Israel Deaconess Medical Center). Subjects included in this database were found to have had no significant arrhythmias; they include 5 men, aged 26 to 45, and 13 women, aged 20 to 50. Please visit [Physionet](https://physionet.org/content/nsrdb/1.0.0/) for more details.
 
-### PTB Diagnostics dataset
+### PTB Diagnostics Dataset
 
-Dataset consists of ECG records from 290 subjects: 148 diagnosed as MI, 52 healthy control, and the rest are diagnosed with 7 different disease. Each record contains ECG signals from 12 leads sampled at the frequency of 1000 Hz. Please visit [Physionet](https://physionet.org/content/ptbdb/1.0.0/) for more details.
+PTB diagnostics dataset consists of ECG records from 290 subjects: 148 diagnosed as MI, 52 healthy control, and the rest are diagnosed with 7 different disease. Each record contains ECG signals from 12 leads sampled at the frequency of 1000 Hz. Please visit [Physionet](https://physionet.org/content/ptbdb/1.0.0/) for more details.
 
 ## EVB Demo Setup
 
 * [Apollo4 EVB](https://ambiq.com/apollo4/)
-* [MAX86150 Eval bard](https://protocentral.com/product/protocentral-max86150-ppg-and-ecg-breakout-with-qwiic-v2/)
+* [MAX86150 Eval board](https://protocentral.com/product/protocentral-max86150-ppg-and-ecg-breakout-with-qwiic-v2/)
 
 ## Hardware
 

@@ -138,7 +138,7 @@ uint32_t ns_io_i2c_xfer(ns_i2c_config_t *cfg, ns_i2c_msg *msgs, size_t num_msgs)
 
 int ns_io_i2c_write_read(ns_i2c_config_t *cfg, uint16_t addr, const void *write_buf, size_t num_write, void *read_buf, size_t num_read) {
     /**
-     * @brief Perform low-level I2C write followed by immediate write using IOM transfer
+     * @brief Perform low-level I2C write followed by immediate read using IOM transfer
      * @param cfg I2C configuration
      * @param write_buf Write buffer
      * @param num_write Number of bytes to write

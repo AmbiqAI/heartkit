@@ -1,5 +1,6 @@
 import os
 import random
+import warnings
 import zipfile
 import tempfile
 import functools
@@ -13,6 +14,7 @@ import numpy.typing as npt
 import pandas as pd
 from tqdm import tqdm
 import sklearn.model_selection
+import sklearn.preprocessing
 from ..types import EcgTask, HeartBeat, HeartRhythm, HeartRate
 from .utils import butter_bp_filter
 from .types import PatientGenerator, SampleGenerator
@@ -179,7 +181,7 @@ HeartRhythmMap = {
     IcentiaRhythm.noise: HeartRhythm.noise,
     IcentiaRhythm.normal: HeartRhythm.normal,
     IcentiaRhythm.afib: HeartRhythm.afib,
-    IcentiaRhythm.aflut: HeartRhythm.aflut,
+    IcentiaRhythm.aflut: HeartRhythm.afib,
 }
 
 HeartBeatMap = {
@@ -267,12 +269,12 @@ def rhythm_data_generator(
         Iterator[SampleGenerator]
     """
 
-    tgt_rhythm_labels = (IcentiaRhythm.normal, IcentiaRhythm.afib)
+    tgt_rhythm_labels = (IcentiaRhythm.normal, IcentiaRhythm.afib)  #, IcentiaRhythm.aflut)
     if isinstance(samples_per_patient, list):
         samples_per_tgt = samples_per_patient
     else:
         samples_per_tgt = int(max(1, samples_per_patient/len(tgt_rhythm_labels)))*[len(tgt_rhythm_labels)]
-    samples_per_tgt = [samples_per_patient, 10*samples_per_patient]
+    samples_per_tgt = [samples_per_patient, 10*samples_per_patient]  #, 5*samples_per_patient]
     for _, segments in patient_generator:
         # Group patient rhythms by type (segment, start, stop)
         seg_label_map: Dict[str, List[Tuple[str, int, int]]] = {lbl: [] for lbl in tgt_rhythm_labels}
@@ -315,7 +317,7 @@ def rhythm_data_generator(
         random.shuffle(seg_samples)
 
         for seg_key, frame_start, frame_end, label in seg_samples:
-            x: npt.NDArray = segments[seg_key]['data'][frame_start:frame_end]
+            x: npt.NDArray = segments[seg_key]['data'][frame_start:frame_end].astype(np.float32)
             yield x, label
         # END FOR
     # END FOR
@@ -626,14 +628,14 @@ def get_heart_rate_label(qrs_indices, fs=None) -> int:
     return HeartRate.tachycardia.value
 
 
-def normalize(array: npt.ArrayLike, inplace: bool = False, local: bool = True, filter_enable: bool = False) -> npt.ArrayLike:
+def normalize(array: npt.ArrayLike, local: bool = True, filter_enable: bool = False) -> npt.ArrayLike:
     """ Normalize an array using the mean and standard deviation calculated over the entire dataset.
 
     Args:
         array (npt.ArrayLike):  Numpy array to normalize
         inplace (bool, optional): Whether to perform the normalization steps in-place. Defaults to False.
         local (bool, optional): Local mean and std or global. Defaults to True.
-        filter (bool, optional): Enable band-pass filter. Defaults to False.
+        filter_enable (bool, optional): Enable band-pass filter. Defaults to False.
 
     Returns:
         npt.ArrayLike: Normalized array
@@ -642,14 +644,10 @@ def normalize(array: npt.ArrayLike, inplace: bool = False, local: bool = True, f
         filt_array = butter_bp_filter(array, lowcut=0.5, highcut=30, sample_rate=ds_sampling_rate, order=2)
     else:
         filt_array = np.copy(array)
-    mu = np.mean(filt_array) if local else ds_mean
-    std = np.std(filt_array) if local else ds_std
-
-    filt_array = (filt_array - mu) / std
-    if inplace:
-        array[:] = filt_array
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        filt_array = sklearn.preprocessing.scale(filt_array, with_mean=True, with_std=True, copy=False)
     return filt_array
-
 
 def _choose_random_segment(patients: npt.ArrayLike, size: Optional[int] = None, segment_p: Optional[Tuple[int, int, float]] = None):
     """ Choose a random segment from an array of patient data. Each segment has the same probability of being chosen.

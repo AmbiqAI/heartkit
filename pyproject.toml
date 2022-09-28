@@ -7,6 +7,8 @@ authors = ["Adam Page <adam.page@ambiq.com>"]
 [tool.taskipy.tasks]
 lint = "pylint --rcfile .pylintrc ecgarr"
 test = "pytest tests/"
+clean = "make -C ./evb clean"
+build = "make -C ./evb"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
