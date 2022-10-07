@@ -10,8 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install poetry
-      - run: apt install -y --no-install-recommends libopenblas-dev liblapack-dev
-      - run: pipx install poetry==1.2.1
+        run: apt install -y --no-install-recommends libopenblas-dev liblapack-dev && pipx install poetry==1.2.1
       - uses: actions/setup-python@v4
         with:
           python-version: '3.9'
