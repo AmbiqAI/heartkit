@@ -1,8 +1,6 @@
 #ifndef __MAX86150_H
 #define __MAX86150_H
 
-#include <cstdint>
-
 enum Max86150SlotType {
     Max86150SlotOff = 0,
     Max86150SlotPpgLed1 = 1,

@@ -1389,6 +1389,19 @@ docs = ["furo (>=2021.7.5b38)", "proselint (>=0.10.2)", "sphinx (>=4)", "sphinx-
 test = ["appdirs (==1.4.4)", "pytest (>=6)", "pytest-cov (>=2.7)", "pytest-mock (>=3.6)"]
 
 [[package]]
+name = "plotext"
+version = "5.2.7"
+description = "plotext plots directly on terminal"
+category = "main"
+optional = false
+python-versions = ">=3.5"
+
+[package.extras]
+completion = ["shtab"]
+image = ["pillow (>=8.4)"]
+video = ["ffpyplayer (>=4.3.5)", "opencv-python (>=4.5.5)", "pafy (>=0.5.5)", "pillow (>=8.4)", "youtube-dl (==2020.12.2)"]
+
+[[package]]
 name = "plotly"
 version = "5.10.0"
 description = "An open-source, interactive data visualization library for Python"
@@ -2476,7 +2489,7 @@ testing = ["func-timeout", "jaraco.itertools", "pytest (>=6)", "pytest-black (>=
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9,<3.11"
-content-hash = "53d03ca1048e0ed45111296f357da1a177403538fd567398524bfc6f781c55b6"
+content-hash = "478404b9421fdc7da7651681931bfa90e32ed14a83ce74c26bd5a6a6f9781038"
 
 [metadata.files]
 absl-py = [
@@ -3601,6 +3614,10 @@ Pillow = [
 platformdirs = [
     {file = "platformdirs-2.5.2-py3-none-any.whl", hash = "sha256:027d8e83a2d7de06bbac4e5ef7e023c02b863d7ea5d079477e722bb41ab25788"},
     {file = "platformdirs-2.5.2.tar.gz", hash = "sha256:58c8abb07dcb441e6ee4b11d8df0ac856038f944ab98b7be6b27b2a3c7feef19"},
+]
+plotext = [
+    {file = "plotext-5.2.7-py3-none-any.whl", hash = "sha256:72a3f4aa02b8e3809d770e691a70f011e035e71030cf633b26257700242caca0"},
+    {file = "plotext-5.2.7.tar.gz", hash = "sha256:db135c37ad113268e2bc57f1fb9314349055b2ab87a7cc08096cdfb8097016ad"},
 ]
 plotly = [
     {file = "plotly-5.10.0-py2.py3-none-any.whl", hash = "sha256:989b13825cc974390aa0169479485d9257d37848a47bc63957251f8e1a7046ba"},

@@ -5,9 +5,11 @@ from xml.dom import NotFoundErr
 from serial.tools.list_ports_common import ListPortInfo
 from serial.tools.list_ports import comports as list_ports
 import numpy as np
+import numpy.typing as npt
 import erpc
 from erpc.transport import SerialTransport
 import pydantic_argparse
+import plotext as plt
 from rich.console import Console
 from sklearn.utils import shuffle
 from .types import EcgDemoParams
@@ -69,12 +71,12 @@ def get_serial_transport(
         SerialTransport: Serial device
     """
     port = None
-    with console.status("[bold green] Searching for EVB  port..."):
-        tic = time.time()
-        while not port and (time.time() - tic) < 30:
-            port = _find_serial_device(vid_pid=vid_pid)
-            if not port:
-                time.sleep(0.5)
+    # with console.status("[bold green] Searching for EVB  port..."):
+    tic = time.time()
+    while not port and (time.time() - tic) < 30:
+        port = _find_serial_device(vid_pid=vid_pid)
+        if not port:
+            time.sleep(0.5)
     if port is None:
         raise NotFoundErr("Unable to locate EVB serial port. Please verify connection")
     logger.info(f"Found serial device @ {port.device}")
@@ -98,8 +100,27 @@ class DataServiceHandler(gen_evb2pc.interface.Ievb_to_pc):
         # State
         self._sample_idx = 0
         self._frame_idx = 0
+        self._x = np.zeros(params.frame_size, dtype=np.float32)
+        plt.theme("dark")
 
     def ns_rpc_data_sendBlockToPC(self, block: gen_pc2evb.common.dataBlock):
+        if "SEND_SAMPLES" in block.description:
+            # num_samples = block.length
+            x: npt.NDArray = np.frombuffer(block.buffer, dtype=np.float32)
+            for v in x:
+                self._x[self._frame_idx] = v
+                self._frame_idx = (self._frame_idx + 1) % self.params.frame_size
+                if self._frame_idx % 25 == 0:
+                    plt.clt()  # Clear terminal
+                    plt.cld()  # Clear data only
+                    plt.scatter(self._x)
+                    plt.show()
+            # print(x.tolist())
+            # with open(
+            #     self.params.job_dir / "evb_data.csv", "a+", encoding="utf-8"
+            # ) as f:
+            #     f.write("\n".join((f"{v:0.1f}" for v in x.tolist())) + "\n")
+            #     # f.write(block.buffer)
         return 1
 
     def ns_rpc_data_fetchBlockFromPC(self, block):
@@ -109,7 +130,8 @@ class DataServiceHandler(gen_evb2pc.interface.Ievb_to_pc):
     def ns_rpc_data_computeOnPC(
         self, in_block: gen_evb2pc.common.dataBlock, result_block
     ):
-        if "ECG" in in_block.description:
+        # logger.info(f"ns_rpc_data_computeOnPC {in_block.length} {in_block.description}")
+        if "FETCH_SAMPLES" in in_block.description:
             num_samples = in_block.length
             fstart = self._frame_idx
             f_len = min(self.params.frame_size - self._frame_idx, num_samples)
@@ -118,12 +140,18 @@ class DataServiceHandler(gen_evb2pc.interface.Ievb_to_pc):
                 .squeeze()
                 .astype(np.float32)
             )
+            self._x[self._frame_idx : self._frame_idx + f_len] = x
+            if self._frame_idx % 30 == 0:
+                plt.clt()  # Clear terminal
+                plt.cld()  # Clear data only
+                plt.plot(self._x)
+                plt.show()
             x = np.ascontiguousarray(x, dtype=np.float32)
             x = x.tobytes("C")
             self._frame_idx += f_len
             if self._frame_idx >= self.params.frame_size:
-                logger.info(f"Label was {self.test_y[self._sample_idx]}")
-                logger.info("Grabbing next sample")
+                # logger.info(f"Label was {self.test_y[self._sample_idx]}")
+                # logger.info("Grabbing next sample")
                 self._frame_idx = 0
                 self._sample_idx = (self._sample_idx + 1) % self.test_x.shape[0]
             result_block.value = gen_evb2pc.common.dataBlock(
@@ -133,6 +161,7 @@ class DataServiceHandler(gen_evb2pc.interface.Ievb_to_pc):
                 cmd=gen_evb2pc.common.command.generic_cmd,
                 buffer=bytearray(x),
             )
+
         return 1
 
     def ns_rpc_data_remotePrintOnPC(self, msg):
@@ -157,7 +186,7 @@ def evb_demo(params: EcgDemoParams):
         logger.info("Server running")
         server.run()
     except KeyboardInterrupt:
-        pass  # Allow user to stop demo nicely
+        logger.info("Server stopping")
 
 
 def create_parser():

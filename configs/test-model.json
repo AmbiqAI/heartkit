@@ -1,11 +1,11 @@
 {
     "task": "rhythm",
     "job_dir": "./results/runs/rhythm-full-model",
-    "db_path": "./db/icentia11k",
+    "db_path": "./datasets/icentia11k",
     "frame_size": 1250,
     "samples_per_patient": 400,
     "test_patients": 1000,
     "data_parallelism": 8,
     "model_file": "./results/runs/rhythm-full-model/model.tf",
-    "threshold": 0.9
+    "threshold": 0.95
 }

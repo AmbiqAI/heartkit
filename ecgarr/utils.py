@@ -45,8 +45,8 @@ def xxd_c_dump(
         chunk_len (int, optional): # of elements per row. Defaults to 12.
     """
     var_len = 0
-    with open(src_path, "rb", encoding="utf-8") as rfp, open(
-        dst_path, "w", encoding="utf-8"
+    with open(src_path, "rb", encoding=None) as rfp, open(
+        dst_path, "w", encoding="UTF-8"
     ) as wfp:
         if is_header:
             wfp.write(f"#ifndef __{var_name.upper()}_H{os.linesep}")
@@ -323,7 +323,7 @@ def setup_logger(log_name: str) -> logging.Logger:
     logger = logging.getLogger(log_name)
     if logger.handlers:
         return logger
-    logging.basicConfig(level=logging.ERROR, handlers=[RichHandler()])
+    # logging.basicConfig(level=logging.ERROR, handlers=[RichHandler()])
     logger.setLevel(logging.INFO)
     logger.addHandler(RichHandler())
     return logger

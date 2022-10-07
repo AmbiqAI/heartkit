@@ -5,9 +5,9 @@ WORKDIR /app
 
 RUN \
     apt update && \
-    apt install -y --no-install-recommends curl && \
+    apt install -y --no-install-recommends curl pipx && \
     pip3 install --no-cache-dir -U pip setuptools wheel && \
-    curl -sSL https://install.python-poetry.org | python3 - && \
+    pipx install poetry==1.2.1 && \
     echo "Finished installing base packages"
 
 COPY pyproject.toml poetry.toml poetry.lock /app/

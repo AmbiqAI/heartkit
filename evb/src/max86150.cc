@@ -1,8 +1,8 @@
 #include <ctype.h>
 #include <string.h>
-
-#include "max86150.h"
+#include <stdint.h>
 #include <am_util_stdio.h>
+#include "max86150.h"
 
 // Status Registers
 static const uint8_t MAX86150_INT_STAT1 = 0x00;
@@ -227,9 +227,9 @@ uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint32_t *buf
     for (size_t i = 0; i < numSamples; i++){
         for (size_t j = 0; j < elementsPerSample; j++){
             temp[3] = 0;
-            ctx->i2c_read(&(temp[2]), 1, ctx->addr);
-            ctx->i2c_read(&(temp[1]), 1, ctx->addr);
-            ctx->i2c_read(&(temp[0]), 1, ctx->addr);
+            ctx->i2c_read(&temp[2], 1, ctx->addr);
+            ctx->i2c_read(&temp[1], 1, ctx->addr);
+            ctx->i2c_read(&temp[0], 1, ctx->addr);
             memcpy(&tempLong, temp, 4);
             tempLong &= 0x7FFFF;
             buffer[i*elementsPerSample+j] = tempLong;

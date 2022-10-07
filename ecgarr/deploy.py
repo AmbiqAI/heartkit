@@ -67,7 +67,7 @@ def deploy_model(params: EcgDeployParams):
 
     # Load dataset
     with console.status("[bold green] Loading dataset..."):
-        test_x, test_y = create_dataset(
+        test_x, _ = create_dataset(
             db_path=str(params.db_path),
             task=params.task,
             frame_size=params.frame_size,
@@ -87,7 +87,7 @@ def deploy_model(params: EcgDeployParams):
         # converter.inference_output_type = tf.uint8
         def rep_dataset():
             for i in range(test_x.shape[0]):
-                yield (test_x[i : i + 1], test_y[i])
+                yield [test_x[i : i + 1]]
 
         converter.representative_dataset = rep_dataset
 
@@ -120,17 +120,42 @@ def deploy_model(params: EcgDeployParams):
     output_name = list(output_details.keys())[0]
 
     # Predict using TF
-    y_prob_tf = model.predict(test_x)
+    y_prob_tf = tf.nn.softmax(model.predict(test_x)).numpy()
     y_pred_tf = np.argmax(y_prob_tf, axis=1)
 
     # Predict using TFLite
-    y_prob_tfl = np.array(
-        [
-            model_sig(**{input_name: test_x[i : i + 1]})[output_name][0]
-            for i in range(test_x.shape[0])
-        ]
-    )
+    y_prob_tfl = tf.nn.softmax(
+        np.array(
+            [
+                model_sig(**{input_name: test_x[i : i + 1]})[output_name][0]
+                for i in range(test_x.shape[0])
+            ]
+        )
+    ).numpy()
     y_pred_tfl = np.argmax(y_prob_tfl, axis=1)
+
+    # If threshold given, only count predictions above threshold
+    # if params.threshold is not None:
+    #     logger.info(f"Using threshold {params.threshold:0.2f}")
+    #     y_pred_prob_tf = np.take_along_axis(
+    #         y_prob_tf, np.expand_dims(y_pred_tf, axis=-1), axis=-1
+    #     ).squeeze(axis=-1)
+
+    #     y_pred_prob_tfl = np.take_along_axis(
+    #         y_prob_tfl, np.expand_dims(y_pred_tfl, axis=-1), axis=-1
+    #     ).squeeze(axis=-1)
+
+    #     y_thresh_idx = np.union1d(
+    #         np.where(y_pred_prob_tf > params.threshold)[0],
+    #         np.where(y_pred_prob_tfl > params.threshold)[0]
+    #     )
+    #     y_thresh_idx.sort()
+
+    #     logger.info(
+    #         f"Dropping {len(y_thresh_idx)} samples ({100*(1-len(y_thresh_idx)/len(y_true)):0.2f}%)"
+    #     )
+    #     y_pred_tf = y_pred_tf[y_thresh_idx]
+    #     y_pred_tfl = y_pred_tfl[y_thresh_idx]
 
     # Verify TF matches TFLite
     num_bad = np.sum(np.abs(y_pred_tfl - y_pred_tf))
