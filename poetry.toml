@@ -2,4 +2,4 @@
 in-project = true
 
 [installer]
-no-binary = ["psutil", "scipy"]
+no-binary = ["psutil"]
