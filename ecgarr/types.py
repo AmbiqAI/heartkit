@@ -87,8 +87,8 @@ class EcgDownloadParams(BaseModel):
     force: bool = Field(
         False, description="Force download dataset- overriding existing files"
     )
-    data_parallelism: int = Field(
-        1, description="# of data loaders running in parallel"
+    data_parallelism: Optional[int] = Field(
+        None, description="# of data loaders running in parallel"
     )
 
 

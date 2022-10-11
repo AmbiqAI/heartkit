@@ -55,7 +55,7 @@ def deploy_model(params: EcgDeployParams):
         params (EcgDeployParams): Deployment parameters
     """
     tfl_model_path = str(params.job_dir / "model.tflite")
-    tflm_model_path = str(params.job_dir / "model.h")
+    tflm_model_path = str(params.job_dir / "model_buffer.h")
 
     # Load model and set fixed batch size of 1
     logger.info("Loading trained model")
@@ -163,8 +163,6 @@ def deploy_model(params: EcgDeployParams):
         logger.warning(f"Found {num_bad} labels mismatched betwee TF and TFLite")
     else:
         logger.info("Validation passed")
-
-    # Generate header with samples
 
 
 def create_parser():

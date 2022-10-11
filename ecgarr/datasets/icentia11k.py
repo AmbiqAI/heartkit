@@ -796,7 +796,7 @@ def convert_dataset_zip_to_hdf5(
         db_path: str,
         patient_ids: Optional[npt.ArrayLike] = None,
         force: bool = False,
-        num_workers: int = 4
+        num_workers: Optional[int] = None
     ):
     """ Convert zipped Icentia dataset into individial patient HDF5 files.
 
@@ -805,7 +805,7 @@ def convert_dataset_zip_to_hdf5(
         db_path (str): Destination DB path
         patient_ids (Optional[npt.ArrayLike], optional): List of patient IDs to extract. Defaults to all.
         force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
-        num_workers (int, optional): # parallel workers. Defaults to 4.
+        num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
     """
     if not patient_ids:
         patient_ids = get_patient_ids()

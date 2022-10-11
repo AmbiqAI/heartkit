@@ -27,8 +27,8 @@ static const uint8_t MAX86150_PPG_PROX_INT_THRESH = 0x10;
 // LED Pulse Amplitude
 static const uint8_t MAX86150_LED1_PA = 0x11;
 static const uint8_t MAX86150_LED2_PA = 0x12;
-static const uint8_t MAX86150_LEDP_PA = 0x15;
 static const uint8_t MAX86150_LED_RANGE = 0x14;
+static const uint8_t MAX86150_LEDP_PA = 0x15;
 // ECG Configuration
 static const uint8_t MAX86150_ECG_CONFIG1 = 0x3C;
 static const uint8_t MAX86150_ECG_CONFIG3 = 0x3E;
@@ -98,7 +98,7 @@ void max86150_set_alm_full_int_flag(const max86150_context_t *ctx, bool enable) 
     max86150_set_register(ctx, MAX86150_INT_EN1, enable << 7, 0x80);
 }
 
-void max86150_set_data_rdy_int_flag(const max86150_context_t *ctx, bool enable) {
+void max86150_set_ppg_rdy_int_flag(const max86150_context_t *ctx, bool enable) {
     /**
      * @brief Set new PPG FIFO data ready interrupt enable flag
      * @param  ctx Device context
@@ -231,7 +231,7 @@ uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint32_t *buf
             ctx->i2c_read(&temp[1], 1, ctx->addr);
             ctx->i2c_read(&temp[0], 1, ctx->addr);
             memcpy(&tempLong, temp, 4);
-            tempLong &= 0x7FFFF;
+            tempLong &= 0x3FFFF;
             buffer[i*elementsPerSample+j] = tempLong;
         }
     }
@@ -245,6 +245,15 @@ uint8_t max86150_get_fifo_overflow_counter(const max86150_context_t *ctx) {
      * @return FIFO overflow counter
      */
     return max86150_get_register(ctx, MAX86150_FIFO_OVERFLOW, 0x1F);
+}
+
+uint8_t max86150_set_fifo_overflow_counter(const max86150_context_t *ctx, uint8_t value) {
+    /**
+     * @brief Set FIFO overflow counter
+     * @param  ctx Device context
+     * @return FIFO overflow counter
+     */
+    return max86150_set_register(ctx, MAX86150_FIFO_OVERFLOW, value, 0x1F);
 }
 
 uint8_t max86150_get_fifo_rd_pointer(const max86150_context_t *ctx) {
@@ -437,7 +446,7 @@ void max86150_set_led_pulse_amplitude(const max86150_context_t *ctx, uint8_t led
         default:
             break;
     }
-    max86150_set_register(ctx, reg, value & 0x7F, 0xFF);
+    max86150_set_register(ctx, reg, value, 0xFF);
 }
 
 void max86150_set_led_current_range(const max86150_context_t *ctx, uint8_t led, uint8_t value) {
@@ -493,4 +502,10 @@ void max86150_set_ecg_ia_gain(const max86150_context_t *ctx, uint8_t value) {
      *
      */
     max86150_set_register(ctx, MAX86150_ECG_CONFIG3, value, 0x03);
+}
+
+void max86150_clear_fifo(const max86150_context_t *ctx) {
+    max86150_set_fifo_wr_pointer(ctx, 0);
+    max86150_set_fifo_overflow_counter(ctx, 0);
+    max86150_set_fifo_wr_pointer(ctx, 0);
 }

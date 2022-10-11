@@ -44,6 +44,7 @@ void max86150_set_fifo_slots(const max86150_context_t *ctx, Max86150SlotType slo
 void max86150_disable_slots(const max86150_context_t *ctx);
 uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint32_t *buffer, uint8_t elementsPerSample);
 uint8_t max86150_get_fifo_overflow_counter(const max86150_context_t *ctx);
+uint8_t max86150_set_fifo_overflow_counter(const max86150_context_t *ctx, uint8_t value);
 uint8_t max86150_get_fifo_rd_pointer(const max86150_context_t *ctx);
 void max86150_set_fifo_rd_pointer(const max86150_context_t *ctx, uint8_t value);
 
@@ -69,4 +70,5 @@ void max86150_set_ecg_pga_gain(const max86150_context_t *ctx, uint8_t value);
 void max86150_set_ecg_ia_gain(const max86150_context_t *ctx, uint8_t value);
 uint8_t max86150_get_part_id(const max86150_context_t *ctx);
 
+void max86150_clear_fifo(const max86150_context_t *ctx);
 #endif // __MAX86150_H

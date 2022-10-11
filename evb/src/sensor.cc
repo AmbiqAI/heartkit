@@ -36,28 +36,32 @@ void init_sensor(void) {
      *
      */
     ns_io_i2c_init(&i2cConfig);
+    max86150_powerup(&maxCtx);
+    ns_delay_us(10000);
     max86150_reset(&maxCtx);
     ns_delay_us(10000);
     max86150_set_fifo_slots(
         &maxCtx,
-        Max86150SlotPpgLed1, Max86150SlotOff,
+        Max86150SlotEcg, Max86150SlotOff,
         Max86150SlotOff, Max86150SlotOff
     );
     max86150_set_almost_full_rollover(&maxCtx, 1);      // !FIFO rollover: should decide
     max86150_set_ppg_sample_average(&maxCtx, 2);        // Avg 4 samples
     max86150_set_ppg_adc_range(&maxCtx, 2);             // 16,384 nA Scale
-    max86150_set_ppg_sample_rate(&maxCtx, 4);           // 100 Samples/sec
-    max86150_set_ppg_pulse_width(&maxCtx, 3);           // 400 us
+    max86150_set_ppg_sample_rate(&maxCtx, 5);           // 200 Samples/sec
+    max86150_set_ppg_pulse_width(&maxCtx, 1);           // 100 us
     // max86150_set_proximity_threshold(&i2c_dev, MAX86150_ADDR, 0x1F); // Disabled
+
     max86150_set_led_current_range(&maxCtx, 0, 0);      // IR LED 50 mA
     max86150_set_led_current_range(&maxCtx, 1, 0);      // RED LED 50 mA
-    max86150_set_led_pulse_amplitude(&maxCtx, 0, 0x64); // IR LED 20 mA
-    max86150_set_led_pulse_amplitude(&maxCtx, 1, 0x64); // RED LED 20 mA
-    max86150_set_led_pulse_amplitude(&maxCtx, 2, 0x64); // RED LED 20 mA
+    max86150_set_led_pulse_amplitude(&maxCtx, 0, 0xFF); // IR LED 20 mA
+    max86150_set_led_pulse_amplitude(&maxCtx, 1, 0xFF); // RED LED 20 mA
+    max86150_set_led_pulse_amplitude(&maxCtx, 2, 0x64); // AMB LED 20 mA
+
     max86150_set_ecg_sample_rate(&maxCtx, 3);           // Fs = 200 Hz
     max86150_set_ecg_ia_gain(&maxCtx, 1);               // 9.5 V/V
     max86150_set_ecg_pga_gain(&maxCtx, 3);              // 8 V/V
-    max86150_powerup(&maxCtx);
+    max86150_clear_fifo(&maxCtx);
 }
 
 
@@ -68,6 +72,7 @@ void start_sensor(void) {
      */
     // max86150_powerup(&maxCtx);
     max86150_set_fifo_enable(&maxCtx, 1);
+    max86150_clear_fifo(&maxCtx);
 }
 
 void stop_sensor(void) {

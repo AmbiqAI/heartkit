@@ -178,7 +178,7 @@ uint32_t collect_samples() {
             send_samples_to_pc(&sensorBuffer[numSamples], newSamples);
         }
         numSamples += newSamples;
-        sleep_us(10000); // Tweak for overhead
+        sleep_us(1000); // Tweak for overhead
     }
     return newSamples;
 }
