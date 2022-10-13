@@ -17,21 +17,6 @@ static float32_t iirCoeffs[NUM_STAGE_IIR * NUM_STD_COEFFS] = { // Bandpass 0.5 -
 
 arm_biquad_cascade_df2T_instance_f32 iirInst;
 
-int bandpass_filter(float32_t* pSrc, float32_t *pResult, uint32_t blockSize) {
-    arm_biquad_cascade_df2T_f32(&iirInst, pSrc, pResult, blockSize);
-    return 0;
-}
-
-int standardize(float32_t *pSrc, float32_t *pResult, uint32_t blockSize) {
-    float32_t mu, std;
-    arm_mean_f32(pSrc, blockSize, &mu);
-    arm_std_f32(pSrc, blockSize, &std);
-    std = std < 1e-6 ? 1 : std;
-    arm_offset_f32(pSrc, -mu, pResult, blockSize);
-    arm_scale_f32(pResult, 1.0f/std, pResult, blockSize);
-    return 0;
-}
-
 void init_preprocess() {
     /**
      * @brief Initialize preprocessing block
@@ -40,8 +25,24 @@ void init_preprocess() {
     arm_biquad_cascade_df2T_init_f32(&iirInst, NUM_STAGE_IIR, iirCoeffs, iirState);
 }
 
-int preprocess(float32_t *pSrc, float32_t *pResult, uint32_t blockSize) {
-    bandpass_filter(pSrc, pResult, blockSize);
-    standardize(pResult, pResult, blockSize);
+int bandpass_filter(float32_t* pSrc, float32_t *pResult, uint32_t blockSize) {
+    /**
+     * @brief Perform bandpass filter (0.5-30 Hz) on signal
+     */
+    arm_biquad_cascade_df2T_f32(&iirInst, pSrc, pResult, blockSize);
+    return 0;
+}
+
+int standardize(float32_t *pSrc, float32_t *pResult, uint32_t blockSize) {
+    /**
+     * @brief Standardize input y = (x - mu) / std. Provides safegaurd against small st devs
+     *
+     */
+    float32_t mu, std;
+    arm_mean_f32(pSrc, blockSize, &mu);
+    arm_std_f32(pSrc, blockSize, &std);
+    std = std < 1e-6 ? 1 : std;
+    arm_offset_f32(pSrc, -mu, pResult, blockSize);
+    arm_scale_f32(pResult, 1.0f/std, pResult, blockSize);
     return 0;
 }

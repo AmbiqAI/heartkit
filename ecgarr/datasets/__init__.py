@@ -65,7 +65,7 @@ def rhythm_generator(
     data_generator = icentia11k.rhythm_data_generator(
         patient_generator,
         frame_size=int(frame_size),
-        samples_per_patient=int(samples_per_patient),
+        samples_per_patient=samples_per_patient,
     )
     if normalize:
         data_generator = map(
@@ -107,7 +107,7 @@ def beat_generator(
     data_generator = icentia11k.beat_data_generator(
         patient_generator,
         frame_size=int(frame_size),
-        samples_per_patient=int(samples_per_patient),
+        samples_per_patient=samples_per_patient,
     )
     if normalize:
         data_generator = map(
@@ -149,7 +149,7 @@ def heart_rate_generator(
     data_generator = icentia11k.heart_rate_data_generator(
         patient_generator,
         frame_size=int(frame_size),
-        samples_per_patient=int(samples_per_patient),
+        samples_per_patient=samples_per_patient,
     )
     if normalize:
         data_generator = map(
@@ -188,7 +188,8 @@ def create_dataset_from_generator(
     patient_ids: List[int],
     frame_size: int,
     samples_per_patient: Union[int, List[int]] = 1,
-    repeat: bool = True,
+    normalize: bool = True,
+    repeat: bool = True
 ):
     """Create dataset from generator for given arrhythmia task
 
@@ -209,7 +210,8 @@ def create_dataset_from_generator(
             patient_ids=patient_ids,
             frame_size=frame_size,
             samples_per_patient=samples_per_patient,
-            repeat=repeat,
+            normalize=normalize,
+            repeat=repeat
         )
     elif task == EcgTask.beat:
         dataset = beat_dataset(
@@ -217,6 +219,7 @@ def create_dataset_from_generator(
             patient_ids=patient_ids,
             frame_size=frame_size,
             samples_per_patient=samples_per_patient,
+            normalize=normalize
         )
     elif task == EcgTask.hr:
         dataset = heart_rate_dataset(
@@ -224,6 +227,7 @@ def create_dataset_from_generator(
             patient_ids=patient_ids,
             frame_size=frame_size,
             samples_per_patient=samples_per_patient,
+            normalize=normalize
         )
     else:
         raise ValueError(f"unknown task: {task}")

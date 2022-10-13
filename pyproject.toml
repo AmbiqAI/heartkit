@@ -90,3 +90,4 @@ max-args = 10
 max-locals = 30
 max-statements = 80
 max-module-lines = 2000
+max-attributes=10

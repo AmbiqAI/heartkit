@@ -55,7 +55,7 @@ Run the following commands in terminal A. This will compile the EVB binary and f
 
 ```bash
 make -C ./evb
-make -C ./evb/ deploy
+make -C ./evb deploy
 ```
 
 ### 2. Run server on host PC
@@ -70,6 +70,8 @@ Upon start, the server will scan and connect to the EVB serial port. If no port 
 
 ### 3. Trigger start
 
-Now that the EVB client and PC server are running, press either Button 0 (BTN0) or Button 1 (BTN1) on the EVB to start the demo. Pressing Button 0, will use live sensor data whereas Button 1 will use test dataset supplied by the PC. In terminal A, the EVB should be printing the stage it's in (e.g `INFERENCE STAGE`) and any results. In terminal B, the PC should be plotting the data along with classification results. If labelled dataset is being used both true label and predicted label will be displayed.
+Now that the EVB client and PC server are running, press either Button 1 (BTN1) or Button 2 (BTN2) on the EVB to start the demo. Pressing Button 1, will use live sensor data whereas Button 2 will use test dataset supplied by the PC. In terminal A, the EVB should be printing the stage it's in (e.g `INFERENCE STAGE`) and any results. In terminal B, the PC should be plotting the data along with classification results. If labelled dataset is being used, the true label will be displayed in the bar plot title.
+
+![evb-demo-plot](./assets/evb-demo-plot.png)
 
 To shutdown the PC server, a keyboard interrupt can be used (e.g `[CTRL] + c`).

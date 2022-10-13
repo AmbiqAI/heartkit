@@ -61,8 +61,10 @@
 
 
 // Application globals
-static float32_t sensorBuffer[SENSOR_BUFFER_LEN];
 uint32_t numSamples;
+static float32_t sensorBuffer[SENSOR_BUFFER_LEN];
+static float32_t modelResults[NUM_CLASSES] = {0};
+static int modelResult;
 int volatile static sensorCollectBtnPressed = false;
 int volatile static clientCollectBtnPressed = false;
 
@@ -70,8 +72,8 @@ AppState state = IDLE_STATE;
 DataCollectMode collectMode = SENSOR_DATA_COLLECT;
 
 bool usbAvailable = false;
-uint32_t modelResult = 0;
 char rpcSendSamplesDesc[]  = "SEND_SAMPLES";
+char rpcSendResultsDesc[]  = "SEND_RESULTS";
 char rpcFetchSamplesDesc[] = "FETCH_SAMPLES";
 
 //*****************************************************************************
@@ -160,7 +162,19 @@ void send_samples_to_pc(float32_t *samples, uint32_t numSamples) {
     ns_rpc_data_sendBlockToPC(&commandBlock);
 }
 
-void send_results_to_pc() {
+void send_results_to_pc(float32_t *results, uint32_t numResults) {
+    binary_t binaryBlock = {
+        .data = (uint8_t *)results,
+        .dataLength = numResults*sizeof(float32_t),
+    };
+    dataBlock commandBlock = {
+        .length = numResults,
+        .dType = float32_e,
+        .description = rpcSendResultsDesc,
+        .cmd = generic_cmd,
+        .buffer = binaryBlock
+    };
+    ns_rpc_data_sendBlockToPC(&commandBlock);
 }
 
 uint32_t collect_samples() {
@@ -168,19 +182,25 @@ uint32_t collect_samples() {
     if (collectMode == CLIENT_DATA_COLLECT) {
         newSamples = fetch_samples_from_pc(&sensorBuffer[numSamples], 10);
         numSamples += newSamples;
-        sleep_us(40000); // Tweak for overhead
+        sleep_us(10000); // Tweak for overhead
     } else if (collectMode == SENSOR_DATA_COLLECT) {
         newSamples = capture_sensor_data(&sensorBuffer[numSamples]);
         if (newSamples) {
-            // for (size_t i = 0; i < newSamples; i++) {
-            //     sensorBuffer[numSamples+i] = i;
-            // }
             send_samples_to_pc(&sensorBuffer[numSamples], newSamples);
         }
         numSamples += newSamples;
         sleep_us(1000); // Tweak for overhead
     }
     return newSamples;
+}
+
+void preprocess_samples() {
+    /**
+     * @brief Preprocess by bandpass filtering and standardizing
+     *
+     */
+    // bandpass_filter(sensorBuffer, sensorBuffer, COLLECT_LEN);
+    standardize(&sensorBuffer[PAD_WINDOW_LEN], &sensorBuffer[PAD_WINDOW_LEN], INF_WINDOW_LEN);
 }
 
 
@@ -206,8 +226,8 @@ void setup() {
     init_preprocess();
     init_model();
     ns_peripheral_button_init(&button_config);
-    ns_printf("Heart Arrhythmia Classifier Demo\n\n");
-    ns_printf("Please select data collection options:\n\t1. BTN0=sensor\n\t2. BTN1=client\n");
+    ns_printf("♥️ Heart Arrhythmia Classifier Demo\n\n");
+    ns_printf("Please select data collection options:\n\n\t1. BTN1=sensor\n\t2. BTN2=client\n");
 #ifdef ENERGYMODE
     ns_power_set_monitor_state(AM_AI_DATA_COLLECTION);
 #endif
@@ -240,7 +260,7 @@ void loop() {
 
     case COLLECT_STATE:
         collect_samples();
-        if (numSamples >= (INF_WINDOW_LEN)) {
+        if (numSamples >= COLLECT_LEN) {
             state = STOP_COLLECT_STATE;
         }
         break;
@@ -252,21 +272,22 @@ void loop() {
 
     case PREPROCESS_STATE:
         ns_printf("PREPROCESS STAGE\n");
-        preprocess(sensorBuffer, sensorBuffer, INF_WINDOW_LEN);
+        preprocess_samples();
         state = INFERENCE_STATE;
         break;
 
     case INFERENCE_STATE:
         ns_printf("INFERENCE STAGE\n");
-        err = model_inference(&sensorBuffer[0], &modelResult);
-        state = err == 0 ? DISPLAY_STATE : FAIL_STATE;
+        modelResult = model_inference(&sensorBuffer[PAD_WINDOW_LEN], modelResults);
+        state = modelResult == -1 ? FAIL_STATE : DISPLAY_STATE;
         break;
 
     case DISPLAY_STATE:
         ns_printf("DISPLAY STAGE\n");
-        state = START_COLLECT_STATE;
+        state = IDLE_STATE;
         // TODO: Convert logits to probs and add inconclusive label
         ns_printf("\tLabel=%s [%d] \n", heart_rhythm_labels[modelResult], modelResult);
+        send_results_to_pc(modelResults, NUM_CLASSES);
         break;
 
     case FAIL_STATE:

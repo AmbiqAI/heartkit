@@ -70,9 +70,9 @@ void init_model() {
 }
 
 
-int model_inference(float32_t *x, uint32_t *y) {
-    *y = 0;
-    float32_t y_val = -99;
+int model_inference(float32_t *x, float32_t *y) {
+    int y_idx = 0;
+    float32_t y_val = -9999;
     for (int i = 0; i < modelInput->dims->data[1]; i++) {
         modelInput->data.f[i] = x[i];
     }
@@ -81,11 +81,11 @@ int model_inference(float32_t *x, uint32_t *y) {
         return -1;
     }
     for (int i = 0; i < modelOutput->dims->data[1]; i++) {
-        if (modelOutput->data.f[i] > y_val) {
-            y_val = modelOutput->data.f[i];
-            *y = i;
+        y[i] = modelOutput->data.f[i];
+        if (y[i] > y_val) {
+            y_val = y[i];
+            y_idx = i;
         }
-        // ns_printf("y[%lu] = %0.2f\n", i, modelOutput->data.f[i]);
     }
-    return 0;
+    return y_idx;
 }

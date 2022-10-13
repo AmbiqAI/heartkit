@@ -1,12 +1,14 @@
 #ifndef __CONSTANTS_H
 #define __CONSTANTS_H
 
+// #define EMULATION (1)
 #define SAMPLE_RATE (250)
 #define MAX86150_ADDR (0x5E)
-#define NUM_ELEMENTS (1)
 #define INF_WINDOW_LEN (SAMPLE_RATE*5) // 5 seconds
 #define PAD_WINDOW_LEN (SAMPLE_RATE*1) // 1 seconds
-#define SENSOR_BUFFER_LEN (PAD_WINDOW_LEN+INF_WINDOW_LEN+SAMPLE_RATE)
+#define COLLECT_LEN (INF_WINDOW_LEN+PAD_WINDOW_LEN) // 1 seconds
+#define SENSOR_BUFFER_LEN (COLLECT_LEN+SAMPLE_RATE) // Add extra SAMPLE_RATE just in case
+#define NUM_CLASSES (2)
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))

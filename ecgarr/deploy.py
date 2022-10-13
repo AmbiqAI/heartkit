@@ -19,6 +19,7 @@ def create_dataset(
     frame_size: Optional[int] = 1250,
     num_patients: int = 100,
     samples_per_patient: int = 100,
+    normalize: bool = True,
 ) -> Tuple[npt.ArrayLike, npt.ArrayLike]:
     """Generate test dataset
 
@@ -42,6 +43,7 @@ def create_dataset(
         patient_ids=patient_ids,
         frame_size=frame_size,
         samples_per_patient=samples_per_patient,
+        normalize=normalize,
         repeat=False,
     )
 

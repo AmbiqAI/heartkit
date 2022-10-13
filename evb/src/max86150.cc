@@ -179,7 +179,7 @@ void max86150_set_fifo_slot(const max86150_context_t *ctx, uint8_t slot, Max8615
     max86150_set_register(ctx, reg, value, mask);
 }
 
-void max86150_set_fifo_slots(const max86150_context_t *ctx, Max86150SlotType slot0, Max86150SlotType slot1, Max86150SlotType slot2, Max86150SlotType slot3) {
+void max86150_set_fifo_slots(const max86150_context_t *ctx, Max86150SlotType *slots) {
     /**
      * @brief Configure all FIFO slots
      * @param   ctx Device context
@@ -189,11 +189,11 @@ void max86150_set_fifo_slots(const max86150_context_t *ctx, Max86150SlotType slo
      * @param slot3 Element (FD4) data source
      *
      */
-    max86150_set_fifo_slot(ctx, 0, slot0);
-    max86150_set_fifo_slot(ctx, 1, slot1);
-    max86150_set_fifo_slot(ctx, 2, slot2);
-    max86150_set_fifo_slot(ctx, 3, slot3);
+    for (size_t i = 0; i < 4; i++) {
+        max86150_set_fifo_slot(ctx, i, slots[i]);
+    }
 }
+
 
 void max86150_disable_slots(const max86150_context_t *ctx) {
     /**
@@ -205,7 +205,7 @@ void max86150_disable_slots(const max86150_context_t *ctx) {
     max86150_set_register(ctx, MAX86150_FIFO_CONTROL2, 0x00, 0xFF);
 }
 
-uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint32_t *buffer, uint8_t elementsPerSample) {
+uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint32_t *buffer, Max86150SlotType *slots, uint8_t numSlots) {
     /**
      * @brief Reads all data available in FIFO
      * @param  ctx Device context
@@ -214,25 +214,31 @@ uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint32_t *buf
      * @return Number of samples read
      *
      */
+    uint8_t temp[4];
+    uint8_t rdBytes[3*4];
+    uint32_t rdBytesIdx;
+    uint32_t bufferIdx;
     uint8_t ovrCnt = max86150_get_fifo_overflow_counter(ctx);
     uint8_t rdPtr = max86150_get_fifo_rd_pointer(ctx);
     uint8_t wrPtr = max86150_get_fifo_wr_pointer(ctx);
     uint32_t regAddr = MAX86150_FIFO_DATA;
+    uint32_t bytesPerSample = 3*numSlots;
     uint32_t numSamples = ovrCnt > 0 ? MAX86150_FIFO_DEPTH : rdPtr <= wrPtr ? wrPtr - rdPtr : MAX86150_FIFO_DEPTH - rdPtr + wrPtr;
-    // uint32_t bytesPerSample = 3*elementsPerSample;
-    uint8_t temp[4];
-    uint32_t tempLong;
     if (numSamples == 0) { return numSamples; }
+
     ctx->i2c_write(&regAddr, 1, ctx->addr);
+    bufferIdx = 0;
     for (size_t i = 0; i < numSamples; i++){
-        for (size_t j = 0; j < elementsPerSample; j++){
+        ctx->i2c_read((void *)rdBytes, bytesPerSample, ctx->addr);
+        rdBytesIdx = 0;
+        for (size_t j = 0; j < numSlots; j++){
             temp[3] = 0;
-            ctx->i2c_read(&temp[2], 1, ctx->addr);
-            ctx->i2c_read(&temp[1], 1, ctx->addr);
-            ctx->i2c_read(&temp[0], 1, ctx->addr);
-            memcpy(&tempLong, temp, 4);
-            tempLong &= 0x3FFFF;
-            buffer[i*elementsPerSample+j] = tempLong;
+            temp[2] = rdBytes[rdBytesIdx++];
+            temp[1] = rdBytes[rdBytesIdx++];
+            temp[0] = rdBytes[rdBytesIdx++];
+            memcpy(&buffer[bufferIdx], temp, 4);
+            buffer[bufferIdx] &= 0x3FFFF;
+            bufferIdx += 1;
         }
     }
     return numSamples;

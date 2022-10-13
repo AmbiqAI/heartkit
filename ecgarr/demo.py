@@ -1,9 +1,10 @@
 import time
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 from xml.dom import NotFoundErr
 from serial.tools.list_ports_common import ListPortInfo
 from serial.tools.list_ports import comports as list_ports
+from serial.serialutil import SerialException
 import numpy as np
 import numpy.typing as npt
 import erpc
@@ -12,8 +13,10 @@ import pydantic_argparse
 import plotext as plt
 from rich.console import Console
 from sklearn.utils import shuffle
+from scipy.special import softmax
 from .types import EcgDemoParams
 from .utils import setup_logger
+from . import datasets as ds
 from .deploy import create_dataset
 from .rpc import (
     GenericDataOperations_PcToEvb as gen_pc2evb,
@@ -39,7 +42,7 @@ def _find_serial_device(
         product (Optional[str], optional): Product name. Defaults to None.
 
     Returns:
-        _type_: _description_
+        ListPortInfo: Serial port info
     """
     ports = list_ports()
     for port in ports:
@@ -71,14 +74,16 @@ def get_serial_transport(
         SerialTransport: Serial device
     """
     port = None
-    # with console.status("[bold green] Searching for EVB  port..."):
-    tic = time.time()
-    while not port and (time.time() - tic) < 30:
-        port = _find_serial_device(vid_pid=vid_pid)
-        if not port:
-            time.sleep(0.5)
-    if port is None:
-        raise NotFoundErr("Unable to locate EVB serial port. Please verify connection")
+    with console.status("[bold green] Searching for EVB  port..."):
+        tic = time.time()
+        while not port and (time.time() - tic) < 30:
+            port = _find_serial_device(vid_pid=vid_pid)
+            if not port:
+                time.sleep(0.5)
+        if port is None:
+            raise NotFoundErr(
+                "Unable to locate EVB serial port. Please verify connection"
+            )
     logger.info(f"Found serial device @ {port.device}")
     return SerialTransport(port.device, baudrate=baudrate)
 
@@ -89,48 +94,95 @@ class DataServiceHandler(gen_evb2pc.interface.Ievb_to_pc):
     def __init__(self, params: EcgDemoParams) -> None:
         super().__init__()
         self.params = params
-        self.test_x, self.test_y = create_dataset(
-            db_path=str(params.db_path),
-            task=params.task,
-            frame_size=params.frame_size,
-            num_patients=200,
-            samples_per_patient=10,
-        )
-        self.test_x, self.test_y = shuffle(self.test_x, self.test_y)
+        self.test_x, self.test_y = self.load_test_data()
+        self.setup_plot()
         # State
         self._sample_idx = 0
         self._frame_idx = 0
-        self._x = np.zeros(params.frame_size, dtype=np.float32)
+        self._plot_data = np.full(
+            params.frame_size, fill_value=np.nan, dtype=np.float32
+        )
+        self._class_labels = ds.get_class_names(self.params.task)
+        self._plot_results = np.zeros(len(self._class_labels))
+        self._true_label = -1
+
+    def load_test_data(self) -> Tuple[npt.ArrayLike, npt.ArrayLike]:
+        """Load test data
+
+        Returns:
+            Tuple[npt.ArrayLike, npt.ArrayLike]: x,y
+        """
+        test_x, test_y = create_dataset(
+            db_path=str(self.params.db_path),
+            task=self.params.task,
+            frame_size=self.params.frame_size,
+            num_patients=200,
+            samples_per_patient=10,
+            normalize=False,
+        )
+        return shuffle(test_x, test_y)
+
+    def setup_plot(self):
+        """Setup plotting.
+        """
         plt.theme("dark")
+
+    def update_plot(self):
+        """Update plot routine.
+        """
+        # plt.clt()
+        # plt.cld()
+        plt.clf()
+        plt.subplots(1, 2)
+        plt.subplot(1, 1).plotsize(3 * plt.tw() // 4, None)
+        plt.title("Live Sensor Data")
+        plt.plot(self._plot_data)
+        plt.subplot(1, 2)
+        title_label = ""
+        if self._true_label != -1:
+            title_label = f"[Y = {self._class_labels[self._true_label]}]"
+        plt.title(f"Classification {title_label}")
+        plt.bar(self._class_labels, self._plot_results)
+        plt.show()
+
+    def increment_frame_idx(self, inc: int):
+        """Increment frame index and optional increment sample index
+
+        Args:
+            inc (int): increment
+        """
+        self._frame_idx += inc
+        if self._frame_idx >= self.params.frame_size:
+            logger.debug("Fetching next sample")
+            self._frame_idx = 0
+            self._sample_idx = (self._sample_idx + 1) % self.test_x.shape[0]
+
+    def log_data(self, x):
+        """ Log data to file. """
+        with open(self.params.job_dir / "evb_data.csv", "a+", encoding="utf-8") as f:
+            f.write("\n".join((f"{v:0.1f}" for v in x)) + "\n")
 
     def ns_rpc_data_sendBlockToPC(self, block: gen_pc2evb.common.dataBlock):
         if "SEND_SAMPLES" in block.description:
-            # num_samples = block.length
             x: npt.NDArray = np.frombuffer(block.buffer, dtype=np.float32)
             for v in x:
-                self._x[self._frame_idx] = v
-                self._frame_idx = (self._frame_idx + 1) % self.params.frame_size
+                self._plot_data[self._frame_idx] = v
+                self.increment_frame_idx(1)
                 if self._frame_idx % 25 == 0:
-                    plt.clt()  # Clear terminal
-                    plt.cld()  # Clear data only
-                    plt.scatter(self._x)
-                    plt.show()
-            # print(x.tolist())
-            # with open(
-            #     self.params.job_dir / "evb_data.csv", "a+", encoding="utf-8"
-            # ) as f:
-            #     f.write("\n".join((f"{v:0.1f}" for v in x.tolist())) + "\n")
-            #     # f.write(block.buffer)
+                    self.update_plot()
+        if "SEND_RESULTS" in block.description:
+            self._plot_results: npt.NDArray = softmax(
+                np.frombuffer(block.buffer, dtype=np.float32)
+            )
+            self.update_plot()
         return 1
 
     def ns_rpc_data_fetchBlockFromPC(self, block):
-        print("Got a ns_rpc_data_fetchBlockFromPC call.")
         return 1
 
     def ns_rpc_data_computeOnPC(
         self, in_block: gen_evb2pc.common.dataBlock, result_block
     ):
-        # logger.info(f"ns_rpc_data_computeOnPC {in_block.length} {in_block.description}")
         if "FETCH_SAMPLES" in in_block.description:
             num_samples = in_block.length
             fstart = self._frame_idx
@@ -140,20 +192,13 @@ class DataServiceHandler(gen_evb2pc.interface.Ievb_to_pc):
                 .squeeze()
                 .astype(np.float32)
             )
-            self._x[self._frame_idx : self._frame_idx + f_len] = x
+            self._true_label = self.test_y[self._sample_idx]
+            self._plot_data[self._frame_idx : self._frame_idx + f_len] = x
+            self.increment_frame_idx(f_len)
             if self._frame_idx % 30 == 0:
-                plt.clt()  # Clear terminal
-                plt.cld()  # Clear data only
-                plt.plot(self._x)
-                plt.show()
-            x = np.ascontiguousarray(x, dtype=np.float32)
-            x = x.tobytes("C")
-            self._frame_idx += f_len
-            if self._frame_idx >= self.params.frame_size:
-                # logger.info(f"Label was {self.test_y[self._sample_idx]}")
-                # logger.info("Grabbing next sample")
-                self._frame_idx = 0
-                self._sample_idx = (self._sample_idx + 1) % self.test_x.shape[0]
+                self.update_plot()
+            x = np.ascontiguousarray(x, dtype=np.float32).tobytes("C")
+
             result_block.value = gen_evb2pc.common.dataBlock(
                 length=f_len,
                 dType=gen_pc2evb.common.dataType.float32_e,
@@ -161,7 +206,6 @@ class DataServiceHandler(gen_evb2pc.interface.Ievb_to_pc):
                 cmd=gen_evb2pc.common.command.generic_cmd,
                 buffer=bytearray(x),
             )
-
         return 1
 
     def ns_rpc_data_remotePrintOnPC(self, msg):
@@ -185,8 +229,10 @@ def evb_demo(params: EcgDemoParams):
         server.add_service(service)
         logger.info("Server running")
         server.run()
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, SerialException):
         logger.info("Server stopping")
+    except Exception as err: # pylint: disable=broad-except
+        logger.exception(f"Unhandled error {err}")
 
 
 def create_parser():
