@@ -182,14 +182,14 @@ uint32_t collect_samples() {
     if (collectMode == CLIENT_DATA_COLLECT) {
         newSamples = fetch_samples_from_pc(&sensorBuffer[numSamples], 10);
         numSamples += newSamples;
-        sleep_us(10000); // Tweak for overhead
+        sleep_us(20000);
     } else if (collectMode == SENSOR_DATA_COLLECT) {
         newSamples = capture_sensor_data(&sensorBuffer[numSamples]);
         if (newSamples) {
             send_samples_to_pc(&sensorBuffer[numSamples], newSamples);
         }
         numSamples += newSamples;
-        sleep_us(1000); // Tweak for overhead
+        sleep_us(10000);
     }
     return newSamples;
 }
@@ -199,7 +199,7 @@ void preprocess_samples() {
      * @brief Preprocess by bandpass filtering and standardizing
      *
      */
-    // bandpass_filter(sensorBuffer, sensorBuffer, COLLECT_LEN);
+    bandpass_filter(sensorBuffer, sensorBuffer, COLLECT_LEN);
     standardize(&sensorBuffer[PAD_WINDOW_LEN], &sensorBuffer[PAD_WINDOW_LEN], INF_WINDOW_LEN);
 }
 
@@ -252,8 +252,8 @@ void loop() {
         break;
 
     case START_COLLECT_STATE:
-        ns_rpc_data_remotePrintOnPC("COLLECT STAGE\n");
-        ns_printf("COLLECT STAGE\n");
+        ns_rpc_data_remotePrintOnPC("COLLECT_STATE\n");
+        ns_printf("COLLECT_STATE\n");
         start_collecting();
         state = COLLECT_STATE;
         break;
@@ -267,31 +267,37 @@ void loop() {
 
     case STOP_COLLECT_STATE:
         stop_collecting();
+        sensorCollectBtnPressed = false;
+        clientCollectBtnPressed = false;
         state = PREPROCESS_STATE;
         break;
 
     case PREPROCESS_STATE:
-        ns_printf("PREPROCESS STAGE\n");
+        ns_rpc_data_remotePrintOnPC("PREPROCESS_STATE\n");
+        ns_printf("PREPROCESS_STATE\n");
         preprocess_samples();
         state = INFERENCE_STATE;
         break;
 
     case INFERENCE_STATE:
-        ns_printf("INFERENCE STAGE\n");
+        ns_rpc_data_remotePrintOnPC("INFERENCE_STATE\n");
+        ns_printf("INFERENCE_STATE\n");
         modelResult = model_inference(&sensorBuffer[PAD_WINDOW_LEN], modelResults);
         state = modelResult == -1 ? FAIL_STATE : DISPLAY_STATE;
         break;
 
     case DISPLAY_STATE:
-        ns_printf("DISPLAY STAGE\n");
+        ns_rpc_data_remotePrintOnPC("DISPLAY_STATE\n");
+        ns_printf("DISPLAY_STATE\n");
         state = IDLE_STATE;
         // TODO: Convert logits to probs and add inconclusive label
-        ns_printf("\tLabel=%s [%d] \n", heart_rhythm_labels[modelResult], modelResult);
+        ns_printf("\tLabel=%s [%d,%f]\n", heart_rhythm_labels[modelResult], modelResult, modelResults[modelResult]);
         send_results_to_pc(modelResults, NUM_CLASSES);
         break;
 
     case FAIL_STATE:
-        ns_printf("FAIL STAGE (err=%d)\n", err);
+        ns_rpc_data_remotePrintOnPC("FAIL_STATE\n");
+        ns_printf("FAIL_STATE (err=%d)\n", err);
         state = IDLE_STATE;
         err = 0;
         break;

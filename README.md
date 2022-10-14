@@ -44,7 +44,7 @@ python -m ecgarr train_model --config-file ./configs/train-model.json
 
 ### 3. Test Model (test_model)
 
-The `test_model` command will evaluate the performance of the model on the reserved test dataset. A confidence threshold can also be set such that a label is only assigned when the model's probability is greater than the threshold; otherwise, a label of inconclusive will be assigned. Using a threshold of 95% will lead to roughly 15% of test data being labeled as inconclusive while increasing F1 score from __95.3%__ to __99.6%__ and accuracy from __96.4%__ to __99.7%__.
+The `test_model` command will evaluate the performance of the model on the reserved test set. A confidence threshold can also be set such that a label is only assigned when the model's probability is greater than the threshold; otherwise, a label of inconclusive will be assigned. Using a threshold of 95% will lead to roughly 15% of test data being labeled as inconclusive while increasing F1 score from __95.3%__ to __99.3%__ and accuracy from __96.4%__ to __99.3%__.
 
 ```bash
 python -m ecgarr test_model --config-file ./configs/test-model.json
@@ -58,7 +58,7 @@ The `deploy_model` command will convert the trained TensorFlow model into both T
 python -m ecgarr deploy_model --config-file ./configs/deploy-model.json
 ```
 
-Once converted, the TFLM header file must be copied into the evb directory (`cp ./results/runs/rhythm-full-model/model_buffer.h ./evb/src/model_buffer.h` ). Additionally, if parameters were changed (e.g. window size, quantization) will need to update `./evb/src/constants.h`.
+Once converted, the TFLM header file must be copied into the evb directory (`cp ./results/runs/rhythm-full-model/model_buffer.h ./evb/src/model_buffer.h` ). Additionally, if parameters were changed (e.g. window size, quantization) `./evb/src/constants.h` will need to be updated.
 
 ### 5. EVB Demo (evb_demo)
 

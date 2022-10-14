@@ -305,7 +305,7 @@ void max86150_set_almost_full_flag_options(const max86150_context_t *ctx, uint8_
 
 void max86150_set_almost_full_rollover(const max86150_context_t *ctx, uint8_t enable) {
     /**
-     * @brief Set whether FIFO rollsover when full
+     * @brief Set whether FIFO rolls over when full
      * @param  ctx Device context
      * @param enable 1-bit:
      * 0: No rollover - FIFO stop on full

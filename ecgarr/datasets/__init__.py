@@ -168,7 +168,7 @@ def split_train_test_patients(
     """Perform train/test split on patients for given task.
 
     Args:
-        task (EcgTask): Arrythmia task
+        task (EcgTask): Arrhythmia task
         patient_ids (npt.ArrayLike): Patient Ids
         test_size (float): Test size
 

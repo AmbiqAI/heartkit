@@ -5,14 +5,13 @@
 
 #define NUM_STAGE_IIR 2
 #define NUM_ORDER_IIR (NUM_STAGE_IIR * 2)
-#define NUM_STD_COEFFS 5 // b0, b1, b2, a1, a2
+#define NUM_STD_COEFFS 5
 #define NUM_COMP_COEFFS 8
 static float32_t iirState[NUM_ORDER_IIR];
-static float32_t iirCoeffs[NUM_STAGE_IIR * NUM_STD_COEFFS] = { // Bandpass 0.5 - 30 Hz
-    // [b0, b1, b2, a1, a2]
-    0.044157196394093684, 0.08831439278818737, 0.044157196394093684, 1.3309555967298963, -0.5095097187836408,
-    // [b0, b1, b2, a1, a2]
-    1.0, -2.0, 1.0, 1.98226563125227, -0.9824297820610058
+static float32_t iirCoeffs[NUM_STAGE_IIR * NUM_STD_COEFFS] = {
+    // Bandpass 0.5 - 30 Hz [b0, b1, b2, a1, a2]
+    0.08882609991787925, 0.1776521998357585, 0.08882609991787925, 1.001180675173544, -0.3599418394747336,
+    1.0, -2.0, 1.0, 1.9822422643876543, -0.9824037452770975
 };
 
 arm_biquad_cascade_df2T_instance_f32 iirInst;

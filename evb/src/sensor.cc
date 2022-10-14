@@ -66,7 +66,7 @@ void init_sensor(void) {
     max86150_reset(&maxCtx);
     ns_delay_us(10000);
     max86150_set_fifo_slots(&maxCtx, maxSlotsConfig);
-    max86150_set_almost_full_rollover(&maxCtx, 1);      // !FIFO rollover: should decide
+    max86150_set_almost_full_rollover(&maxCtx, 1);      // FIFO rollover: should decide
     max86150_set_ppg_sample_average(&maxCtx, 2);        // Avg 4 samples
     max86150_set_ppg_adc_range(&maxCtx, 2);             // 16,384 nA Scale
     max86150_set_ppg_sample_rate(&maxCtx, 5);           // 200 Samples/sec
@@ -80,8 +80,8 @@ void init_sensor(void) {
     max86150_set_led_pulse_amplitude(&maxCtx, 2, 0x32); // AMB LED 20 mA
 
     max86150_set_ecg_sample_rate(&maxCtx, 3);           // Fs = 200 Hz
-    max86150_set_ecg_ia_gain(&maxCtx, 0);               // 9.5 V/V
-    max86150_set_ecg_pga_gain(&maxCtx, 2);              // 8 V/V
+    max86150_set_ecg_ia_gain(&maxCtx, 0);               // 5 V/V
+    max86150_set_ecg_pga_gain(&maxCtx, 2);              // 4 V/V
     max86150_set_fifo_enable(&maxCtx, 1);
     max86150_clear_fifo(&maxCtx);
 }
@@ -92,8 +92,8 @@ void start_sensor(void) {
      * @brief Takes sensor out of low-power mode and enables FIFO
      *
      */
-    // max86150_powerup(&maxCtx);
-    // max86150_set_fifo_enable(&maxCtx, 1);
+    max86150_powerup(&maxCtx);
+    max86150_set_fifo_enable(&maxCtx, 1);
     max86150_clear_fifo(&maxCtx);
 }
 

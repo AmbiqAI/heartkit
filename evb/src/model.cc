@@ -71,7 +71,7 @@ void init_model() {
 
 
 int model_inference(float32_t *x, float32_t *y) {
-    int y_idx = 0;
+    int y_idx = -1;
     float32_t y_val = -9999;
     for (int i = 0; i < modelInput->dims->data[1]; i++) {
         modelInput->data.f[i] = x[i];
@@ -82,7 +82,7 @@ int model_inference(float32_t *x, float32_t *y) {
     }
     for (int i = 0; i < modelOutput->dims->data[1]; i++) {
         y[i] = modelOutput->data.f[i];
-        if (y[i] > y_val) {
+        if ((y_idx == -1) || (y[i] > y_val)) {
             y_val = y[i];
             y_idx = i;
         }
