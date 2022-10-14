@@ -92,10 +92,18 @@ void tud_umount_cb(void) { usbAvailable = false; }
 void tud_suspend_cb(bool remote_wakeup_en) { usbAvailable = false; }
 
 void background_task() {
+    /**
+     * @brief Run background tasks
+     *
+     */
     tud_task();
 }
 
 void sleep_us(uint32_t time) {
+    /**
+     * @brief Enable longer sleeps while also running background tasks on interval
+     * @param time Sleep duration in microseconds
+     */
     uint32_t chunk;
     while (time > 0){
         chunk = MIN(10000, time);
@@ -106,6 +114,10 @@ void sleep_us(uint32_t time) {
 }
 
 void init_rpc(void) {
+    /**
+     * @brief Initialize RPC and USB
+     *
+     */
     ns_rpc_config_t rpcConfig = {
         .mode = NS_RPC_GENERICDATA_CLIENT,
         .sendBlockToEVB_cb = NULL,
@@ -115,7 +127,21 @@ void init_rpc(void) {
     ns_rpc_genericDataOperations_init(&rpcConfig);
 }
 
+void print_to_pc(const char * msg) {
+    /**
+     * @brief Print to PC over RPC
+     *
+     */
+    if (usbAvailable) {
+        ns_rpc_data_remotePrintOnPC(msg);
+    }
+}
+
 void start_collecting(void) {
+    /**
+     * @brief Setup sensor for collecting
+     *
+     */
     numSamples = 0;
     if (collectMode == SENSOR_DATA_COLLECT) {
         start_sensor();
@@ -123,12 +149,25 @@ void start_collecting(void) {
 }
 
 void stop_collecting(void) {
+    /**
+     * @brief Disable sensor
+     *
+     */
     if (collectMode == SENSOR_DATA_COLLECT) {
         stop_sensor();
     }
 }
 
 uint32_t fetch_samples_from_pc(float32_t *samples, uint32_t numSamples) {
+    /**
+     * @brief Fetch samples from PC over RPC
+     * @param samples Buffer to store samples
+     * @param numSamples # requested samples
+     * @return # samples actually fetched
+     */
+    if (!usbAvailable) {
+        return 0;
+    }
     binary_t binaryBlock = {
         .data = (uint8_t *)samples,
         .dataLength = numSamples*sizeof(float32_t),
@@ -148,6 +187,14 @@ uint32_t fetch_samples_from_pc(float32_t *samples, uint32_t numSamples) {
 }
 
 void send_samples_to_pc(float32_t *samples, uint32_t numSamples) {
+    /**
+     * @brief Send sensor samples to PC
+     * @param samples Samples to send
+     * @param numSamples # samples to send
+     */
+    if (!usbAvailable) {
+        return;
+    }
     binary_t binaryBlock = {
         .data = (uint8_t *)samples,
         .dataLength = numSamples*sizeof(float32_t),
@@ -163,6 +210,14 @@ void send_samples_to_pc(float32_t *samples, uint32_t numSamples) {
 }
 
 void send_results_to_pc(float32_t *results, uint32_t numResults) {
+    /**
+     * @brief Send classification results to PC
+     * @param results Buffer with model outputs (logits)
+     * @param numResults # model ouputs
+     */
+    if (!usbAvailable) {
+        return;
+    }
     binary_t binaryBlock = {
         .data = (uint8_t *)results,
         .dataLength = numResults*sizeof(float32_t),
@@ -178,6 +233,10 @@ void send_results_to_pc(float32_t *results, uint32_t numResults) {
 }
 
 uint32_t collect_samples() {
+    /**
+     * @brief Collect samples from sensor or PC
+     * @return # new samples collected
+     */
     uint32_t newSamples = 0;
     if (collectMode == CLIENT_DATA_COLLECT) {
         newSamples = fetch_samples_from_pc(&sensorBuffer[numSamples], 10);
@@ -252,7 +311,7 @@ void loop() {
         break;
 
     case START_COLLECT_STATE:
-        ns_rpc_data_remotePrintOnPC("COLLECT_STATE\n");
+        print_to_pc("COLLECT_STATE\n");
         ns_printf("COLLECT_STATE\n");
         start_collecting();
         state = COLLECT_STATE;
@@ -273,30 +332,29 @@ void loop() {
         break;
 
     case PREPROCESS_STATE:
-        ns_rpc_data_remotePrintOnPC("PREPROCESS_STATE\n");
+        print_to_pc("PREPROCESS_STATE\n");
         ns_printf("PREPROCESS_STATE\n");
         preprocess_samples();
         state = INFERENCE_STATE;
         break;
 
     case INFERENCE_STATE:
-        ns_rpc_data_remotePrintOnPC("INFERENCE_STATE\n");
+        print_to_pc("INFERENCE_STATE\n");
         ns_printf("INFERENCE_STATE\n");
         modelResult = model_inference(&sensorBuffer[PAD_WINDOW_LEN], modelResults);
         state = modelResult == -1 ? FAIL_STATE : DISPLAY_STATE;
         break;
 
     case DISPLAY_STATE:
-        ns_rpc_data_remotePrintOnPC("DISPLAY_STATE\n");
+        print_to_pc("DISPLAY_STATE\n");
         ns_printf("DISPLAY_STATE\n");
         state = IDLE_STATE;
-        // TODO: Convert logits to probs and add inconclusive label
         ns_printf("\tLabel=%s [%d,%f]\n", heart_rhythm_labels[modelResult], modelResult, modelResults[modelResult]);
         send_results_to_pc(modelResults, NUM_CLASSES);
         break;
 
     case FAIL_STATE:
-        ns_rpc_data_remotePrintOnPC("FAIL_STATE\n");
+        print_to_pc("FAIL_STATE\n");
         ns_printf("FAIL_STATE (err=%d)\n", err);
         state = IDLE_STATE;
         err = 0;

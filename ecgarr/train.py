@@ -65,9 +65,9 @@ def load_datasets(
     frame_size: int = 1250,
     train_patients: Optional[float] = None,
     val_patients: Optional[float] = None,
-    train_pt_samples: Optional[int] = None,
-    val_pt_samples: Optional[int] = None,
-    train_file: Optional[str] = None,
+    train_pt_samples: Optional[Union[int, List[int]]] = None,
+    val_pt_samples: Optional[Union[int, List[int]]] = None,
+    val_size: Optional[int] = None,
     val_file: Optional[str] = None,
     num_workers: int = 1,
 ) -> Tuple[tf.data.Dataset, tf.data.Dataset]:
@@ -78,8 +78,8 @@ def load_datasets(
         frame_size (int, optional): Frame size. Defaults to 1250.
         train_patients (Optional[float], optional): # or proportion of train patients. Defaults to None.
         val_patients (Optional[float], optional): # or proportion of train patients. Defaults to None.
-        train_pt_samples (Optional[int], optional): # samples per patient for training. Defaults to None.
-        val_pt_samples (Optional[int], optional): # samples per patient for training. Defaults to None.
+        train_pt_samples (Optional[Union[int, List[int]]], optional): # samples per patient for training. Defaults to None.
+        val_pt_samples (Optional[Union[int, List[int]]], optional): # samples per patient for training. Defaults to None.
         train_file (Optional[str], optional): Path to existing picked training file. Defaults to None.
         val_file (Optional[str], optional): Path to existing picked validation file. Defaults to None.
         num_workers (int, optional): # of parallel workers. Defaults to 1.
@@ -118,8 +118,9 @@ def load_datasets(
         train_patient_ids, val_patient_ids = ds.split_train_test_patients(
             task=task, patient_ids=train_patient_ids, test_size=val_patients
         )
+        if val_size is None:
+            val_size = 250 * len(val_patient_ids)
 
-        val_size = len(val_patient_ids) * val_pt_samples
         logger.info(f"Collecting {val_size} validation samples")
         validation_data = parallelize_dataset(
             db_path=db_path,
@@ -184,6 +185,7 @@ def train_model(params: EcgTrainParams):
         train_pt_samples=params.samples_per_patient,
         val_pt_samples=params.val_samples_per_patient,
         val_file=params.val_file,
+        val_size=params.val_size,
         num_workers=params.data_parallelism,
     )
     # Shuffle and batch datasets for training

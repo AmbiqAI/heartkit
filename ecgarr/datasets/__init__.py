@@ -1,12 +1,12 @@
 import os
 import logging
-from typing import List, Any, Union
+from typing import List, Any, Optional, Union
 import sklearn
 import tensorflow as tf
 import numpy.typing as npt
 import pydantic_argparse
 from ..utils import matches_spec, download_file, setup_logger
-from ..types import EcgTask, EcgDownloadParams
+from ..types import DatasetTypes, EcgTask, EcgDownloadParams
 from . import icentia11k
 
 logger = logging.getLogger("ECGARR")
@@ -251,34 +251,52 @@ def create_dataset_from_data(
     return dataset
 
 
-def download_datasets(params: EcgDownloadParams):
-    """Download all datasets. Currently this only includes Icentia11k dataset.
+def download_icentia11k_dataset(db_path: str, num_workers: Optional[int] = None, force: bool = False):
+    """Download icentia11k dataset
 
     Args:
-        params (EcgDownloadParams): Download parameters
+        db_path (str): Path to store dataset
+        num_workers (Optional[int], optional): # parallel workers. Defaults to None.
+        force (bool, optional): Force redownload. Defaults to False.
     """
-    #### Icentia11k Dataset
-    db_zip_path = str(params.db_path / "icentia11k.zip")
-    os.makedirs(params.db_path, exist_ok=True)
-    if os.path.exists(db_zip_path) and not params.force:
+    logger.info("Downloading icentia11k dataset")
+    db_url = (
+        "https://physionet.org/static/published-projects/icentia11k-continuous-ecg/"
+        "icentia11k-single-lead-continuous-raw-electrocardiogram-dataset-1.0.zip"
+    )
+    db_zip_path = os.path.join(db_path, "icentia11k.zip")
+    os.makedirs(db_path, exist_ok=True)
+    if os.path.exists(db_zip_path) and not force:
         logger.warning(
             f"Zip file already exists. Please delete or set `force` flag to redownload. PATH={db_zip_path}"
         )
     else:
-        download_file(params.db_url, db_zip_path, progress=True)
-    logger.info("Finished downloading dataset")
+        download_file(db_url, db_zip_path, progress=True)
 
     # 2. Extract and convert patient ECG data to H5 files
-    logger.info("Generating patient data")
+    logger.info("Generating icentia11k patient data")
     icentia11k.convert_dataset_zip_to_hdf5(
         zip_path=db_zip_path,
-        db_path=str(params.db_path),
-        force=params.force,
-        num_workers=params.data_parallelism,
+        db_path=db_path,
+        force=force,
+        num_workers=num_workers
     )
-    print("Finished generating patient data")
-    #### Icentia11k Dataset
+    print("Finished icentia11k patient data")
 
+def download_datasets(params: EcgDownloadParams):
+    """Download all specified datasets.
+
+    Args:
+        params (EcgDownloadParams): Download parameters
+    """
+    os.makedirs(params.db_root_path, exist_ok=True)
+    #### Icentia11k Dataset
+    if "icentia11k" in params.datasets:
+        download_icentia11k_dataset(
+            db_path=str(params.db_root_path / "icentia11k"),
+            num_workers=params.data_parallelism,
+            force=params.force
+        )
 
 def create_parser():
     """Create CLI parser"""

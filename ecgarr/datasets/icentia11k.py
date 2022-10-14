@@ -6,6 +6,7 @@ import tempfile
 import functools
 import logging
 from enum import IntEnum
+from collections.abc import Iterable
 from multiprocessing import Pool
 from typing import Dict, List, Optional, Tuple, Union
 import h5py
@@ -108,7 +109,7 @@ arr_rhythm_patients = [
     10778, 10784, 10812, 10813, 10839, 10852, 10853, 10915, 10949,
     10951, 10958, 10961, 10966, 10969, 10974, 10979, 10994, 10995
 ]
-# fmt: off
+# fmt: on
 
 class IcentiaRhythm(IntEnum):
     """ Icentia Rhythm labels """
@@ -270,12 +271,12 @@ def rhythm_data_generator(
         Iterator[SampleGenerator]
     """
 
-    tgt_rhythm_labels = (IcentiaRhythm.normal, IcentiaRhythm.afib)  #, IcentiaRhythm.aflut)
-    if isinstance(samples_per_patient, list):
+    tgt_rhythm_labels = (IcentiaRhythm.normal, IcentiaRhythm.afib)
+    if isinstance(samples_per_patient, Iterable):
         samples_per_tgt = samples_per_patient
     else:
         samples_per_tgt = int(max(1, samples_per_patient/len(tgt_rhythm_labels)))*[len(tgt_rhythm_labels)]
-    samples_per_tgt = [samples_per_patient, 10*samples_per_patient]  #, 5*samples_per_patient]
+    # samples_per_tgt = [samples_per_patient, 10*samples_per_patient]
     for _, segments in patient_generator:
         # Group patient rhythms by type (segment, start, stop)
         seg_label_map: Dict[str, List[Tuple[str, int, int]]] = {lbl: [] for lbl in tgt_rhythm_labels}

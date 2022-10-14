@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple, Union
 import numpy as np
 import numpy.typing as npt
 import tensorflow as tf
@@ -18,7 +18,8 @@ def create_dataset(
     task: EcgTask = EcgTask.rhythm,
     frame_size: Optional[int] = 1250,
     num_patients: int = 100,
-    samples_per_patient: int = 100,
+    samples_per_patient: Union[int, List[int]] = 100,
+    sample_size: Optional[int] = None,
     normalize: bool = True,
 ) -> Tuple[npt.ArrayLike, npt.ArrayLike]:
     """Generate test dataset
@@ -33,8 +34,8 @@ def create_dataset(
     Returns:
         Tuple[npt.ArrayLike, npt.ArrayLike]: (test_x, test_y)
     """
-
-    sample_size = num_patients * samples_per_patient
+    if sample_size is None:
+        sample_size = 100 * num_patients
     patient_ids = ds.icentia11k.get_train_patient_ids()[:num_patients]
     np.random.shuffle(patient_ids)
     dataset = ds.create_dataset_from_generator(
@@ -75,6 +76,7 @@ def deploy_model(params: EcgDeployParams):
             frame_size=params.frame_size,
             num_patients=200,
             samples_per_patient=10,
+            sample_size=2000,
         )
 
     # Instantiate converter from model

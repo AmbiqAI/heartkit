@@ -22,6 +22,8 @@ poetry install
 
 The python package is intended to be used as a CLI-based app and provides a number of commands discussed below. In general, reference configurations are provided to (1) download the dataset, (2) train the model, (3) test the model, (4) deploy the model, and (5) run demo on Apollo 4 EVB hardware. Pre-trained reference models are also included to enable running inference and the demo immediately.
 
+> NOTE: Before running commands, be sure to activate python environment: `poetry shell`
+
 ### 1. Download Dataset (download_dataset)
 
 The `download_dataset` command will download the entire [Icentia11k dataset](https://physionet.org/content/icentia11k-continuous-ecg/1.0/) as a single zip file as well as convert into individual patient [HDF5 files](https://www.hdfgroup.org/solutions/hdf5/) (e.g. `p00001.h5`). The latter makes it possible to leverage TensorFlow `prefetch` and `interleave` to parallelize loading data.
@@ -62,7 +64,7 @@ Once converted, the TFLM header file must be copied into the evb directory (`cp 
 
 ### 5. EVB Demo (evb_demo)
 
-The `evb_demo` command is used to run the model on an Apollo 4 evaluation board (EVB). This setup requires both a host PC along with an Apollo 4 EVB. The host PC acts as a server and provides random samples to the EVB. The host PC is also used to provide status updates and model results from the EVB. The EVB runs in client mode- its job is to fetch samples and perform real-time inference using the arrhythmia model. Please refer to [EVB Demo Setup](./docs/evb_demo.md) for additional details.
+The `evb_demo` command is used to run the model on an Apollo 4 evaluation board (EVB). This setup requires both a host PC along with an Apollo 4 EVB. The host PC acts as a server and provides test samples to the EVB. The host PC is also used to provide status updates and model results from the EVB. The EVB runs in client mode- its job is to fetch samples and perform real-time inference using the arrhythmia model. Please refer to [EVB Demo Setup](./docs/evb_demo.md) for additional details.
 
 ```bash
 python -m ecgarr evb_demo --config-file ./configs/evb-demo.json
@@ -100,3 +102,10 @@ The results of the AFIB model when testing on 1,000 patients (not used during tr
 * [ECG Heartbeat classification using deep transfer learning with Convolutional Neural Network and STFT technique](https://arxiv.org/abs/2206.14200)
 * [Classification of ECG based on Hybrid Features using CNNs for Wearable Applications](https://arxiv.org/pdf/2206.07648.pdf)
 * [ECG Heartbeat classification using deep transfer learning with Convolutional Neural Network and STFT technique](https://arxiv.org/pdf/2206.14200.pdf)
+
+## Future Milestones
+
+* [x] Create end-to-end EVB demo
+* [ ] Perform model quantization
+* [ ] Add Atrial Flutter (AFL) to model
+* [ ] Fine-tune on another dataset

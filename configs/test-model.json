@@ -3,8 +3,9 @@
     "job_dir": "./results/runs/rhythm-full-model",
     "db_path": "./datasets/icentia11k",
     "frame_size": 1250,
-    "samples_per_patient": 400,
+    "samples_per_patient": [400, 4000],
     "test_patients": 1000,
+    "test_size": 400000,
     "data_parallelism": 8,
     "model_file": "./results/runs/rhythm-full-model/model.tf",
     "threshold": 0.95

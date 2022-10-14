@@ -1,4 +1,5 @@
 {
-    "db_path": "./datasets/icentia11k",
+    "db_root_path": "./datasets",
+    "datasets": ["icentia11k"],
     "progress": true
 }

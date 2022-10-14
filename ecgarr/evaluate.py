@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import List, Optional, Union
 import numpy as np
 import tensorflow as tf
 import pydantic_argparse
@@ -61,7 +61,8 @@ def load_test_dataset(
     task: str = "rhythm",
     frame_size: int = 1250,
     test_patients: Optional[float] = None,
-    test_pt_samples: Optional[int] = None,
+    test_pt_samples: Optional[Union[int, List[int]]] = None,
+    test_size: Optional[int] = None,
     num_workers: int = 1,
 ):
     """Load testing datasets
@@ -88,8 +89,8 @@ def load_test_dataset(
             else int(test_patients * len(test_patient_ids))
         )
         test_patient_ids = test_patient_ids[:num_pts]
-
-    test_size = len(test_patient_ids) * test_pt_samples * 2
+    if test_size is None:
+        test_size = 200 * len(test_patient_ids)
     logger.info(f"Collecting {test_size} test samples")
     test_patient_ids = tf.convert_to_tensor(test_patient_ids)
     test_data = parallelize_dataset(
@@ -122,6 +123,7 @@ def evaluate_model(params: EcgTestParams):
         frame_size=params.frame_size,
         test_patients=params.test_patients,
         test_pt_samples=params.samples_per_patient,
+        test_size=params.test_size,
         num_workers=params.data_parallelism,
     )
 

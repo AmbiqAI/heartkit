@@ -109,7 +109,8 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
             task=self.params.task,
             frame_size=self.window_size,
             num_patients=200,
-            samples_per_patient=10,
+            samples_per_patient=[10, 100],
+            sample_size=2000,
             normalize=False,
         )
         return shuffle(test_x, test_y)

@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import List, Optional
 import pydantic_argparse
-from pydantic import BaseModel, Field  # pylint: disable=no-name-in-module
+from pydantic import BaseModel, Field
 from .types import (
     EcgDownloadParams,
     EcgTrainParams,

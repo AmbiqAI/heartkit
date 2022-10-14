@@ -71,6 +71,12 @@ void init_model() {
 
 
 int model_inference(float32_t *x, float32_t *y) {
+    /**
+     * @brief Run inference
+     * @param x Model inputs
+     * @param y Model outputs
+     * @return Output label index
+     */
     int y_idx = -1;
     float32_t y_val = -9999;
     for (int i = 0; i < modelInput->dims->data[1]; i++) {

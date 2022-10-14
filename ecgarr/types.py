@@ -14,6 +14,7 @@ class EcgTask(str, Enum):
 
 
 ArchitectureType = Literal["resnet12", "resnet18", "resnet34", "resnet50"]
+DatasetTypes = Literal["icentia11k"]
 
 
 class HeartRhythm(IntEnum):
@@ -75,14 +76,10 @@ class HeartRateName(str, Enum):
 class EcgDownloadParams(BaseModel):
     """Download command params"""
 
-    db_url: str = Field(
-        (
-            "https://physionet.org/static/published-projects/icentia11k-continuous-ecg/"
-            "icentia11k-single-lead-continuous-raw-electrocardiogram-dataset-1.0.zip"
-        ),
-        description="Icentia11k dataset zip url",
+    db_root_path: Path = Field(
+        default_factory=Path, description="Dataset root directory"
     )
-    db_path: Path = Field(default_factory=Path, description="Database directory")
+    datasets: List[DatasetTypes] = Field(default_factory=list, description="Datasets")
     progress: bool = Field(True, description="Display progress bar")
     force: bool = Field(
         False, description="Force download dataset- overriding existing files"
@@ -118,6 +115,7 @@ class EcgTrainParams(BaseModel):
     val_file: Optional[Path] = Field(
         None, description="Path to load/store pickled validation file"
     )
+    val_size: int = Field(200_000, description="# samples for validation")
     data_parallelism: int = Field(
         1, description="# of data loaders running in parallel"
     )
@@ -151,10 +149,13 @@ class EcgTestParams(BaseModel):
     # Dataset arguments
     db_path: Path = Field(default_factory=Path, description="Database directory")
     frame_size: int = Field(1250, description="Frame size")
-    samples_per_patient: int = Field(1000, description="# test samples per patient")
+    samples_per_patient: Union[int, List[int]] = Field(
+        1000, description="# test samples per patient"
+    )
     test_patients: Optional[float] = Field(
         None, description="# or proportion of patients for testing"
     )
+    test_size: int = Field(200_000, description="# samples for testing")
     data_parallelism: int = Field(
         1, description="# of data loaders running in parallel"
     )
