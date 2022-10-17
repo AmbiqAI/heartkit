@@ -87,7 +87,7 @@ class EcgDownloadParams(BaseModel):
     )
     data_parallelism: int = Field(
         default_factory=lambda: os.cpu_count() or 1,
-        description="# of data loaders running in parallel"
+        description="# of data loaders running in parallel",
     )
 
 
@@ -120,7 +120,7 @@ class EcgTrainParams(BaseModel):
     val_size: int = Field(200_000, description="# samples for validation")
     data_parallelism: int = Field(
         default_factory=lambda: os.cpu_count() or 1,
-        description="# of data loaders running in parallel"
+        description="# of data loaders running in parallel",
     )
     # Model arguments
     weights_file: Optional[Path] = Field(
@@ -161,7 +161,7 @@ class EcgTestParams(BaseModel):
     test_size: int = Field(200_000, description="# samples for testing")
     data_parallelism: int = Field(
         default_factory=lambda: os.cpu_count() or 1,
-        description="# of data loaders running in parallel"
+        description="# of data loaders running in parallel",
     )
     # Model arguments
     model_file: Optional[Path] = Field(None, description="Path to model file")
