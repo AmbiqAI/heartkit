@@ -270,15 +270,8 @@ void setup() {
      */
     ns_itm_printf_enable();
     am_hal_interrupt_master_enable();
-
-#ifdef ENERGYMODE
-    ns_uart_printf_enable();
-    ns_init_power_monitor_state();
-    ns_power_set_monitor_state(&am_ai_audio_default);
-#else
     ns_debug_printf_enable(); // Leave crypto on for ease of debugging
     ns_power_config(&ns_development_default);
-#endif
     ns_delay_us(50);
     init_rpc();
     init_sensor();
@@ -287,9 +280,6 @@ void setup() {
     ns_peripheral_button_init(&button_config);
     ns_printf("♥️ Heart Arrhythmia Classifier Demo\n\n");
     ns_printf("Please select data collection options:\n\n\t1. BTN1=sensor\n\t2. BTN2=client\n");
-#ifdef ENERGYMODE
-    ns_power_set_monitor_state(AM_AI_DATA_COLLECTION);
-#endif
 }
 
 void loop() {
