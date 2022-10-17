@@ -29,7 +29,7 @@ The python package is intended to be used as a CLI-based app and provides a numb
 The `download_dataset` command will download the entire [Icentia11k dataset](https://physionet.org/content/icentia11k-continuous-ecg/1.0/) as a single zip file as well as convert into individual patient [HDF5 files](https://www.hdfgroup.org/solutions/hdf5/) (e.g. `p00001.h5`). The latter makes it possible to leverage TensorFlow `prefetch` and `interleave` to parallelize loading data.
 
 ```bash
-python -m ecgarr download_dataset --config-file ./configs/download_dataset.json
+python -m ecgarr download_dataset --config-file ./configs/download-dataset.json
 ```
 
 > NOTE: The dataset requires roughly 300 GB of disk space and can take around 2 hours to download. Once the command finishes, the zip file (`./datasets/icentia11k/icentia11k.zip`) can be deleted to free up 188 GB.
