@@ -323,7 +323,6 @@ def setup_logger(log_name: str) -> logging.Logger:
     logger = logging.getLogger(log_name)
     if logger.handlers:
         return logger
-    # logging.basicConfig(level=logging.ERROR, handlers=[RichHandler()])
     logger.setLevel(logging.INFO)
     logger.addHandler(RichHandler())
     return logger

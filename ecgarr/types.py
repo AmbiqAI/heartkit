@@ -1,3 +1,4 @@
+import os
 import tempfile
 from enum import Enum, IntEnum
 from pathlib import Path
@@ -84,8 +85,9 @@ class EcgDownloadParams(BaseModel):
     force: bool = Field(
         False, description="Force download dataset- overriding existing files"
     )
-    data_parallelism: Optional[int] = Field(
-        None, description="# of data loaders running in parallel"
+    data_parallelism: int = Field(
+        default_factory=lambda: os.cpu_count() or 1,
+        description="# of data loaders running in parallel"
     )
 
 
@@ -117,7 +119,8 @@ class EcgTrainParams(BaseModel):
     )
     val_size: int = Field(200_000, description="# samples for validation")
     data_parallelism: int = Field(
-        1, description="# of data loaders running in parallel"
+        default_factory=lambda: os.cpu_count() or 1,
+        description="# of data loaders running in parallel"
     )
     # Model arguments
     weights_file: Optional[Path] = Field(
@@ -157,7 +160,8 @@ class EcgTestParams(BaseModel):
     )
     test_size: int = Field(200_000, description="# samples for testing")
     data_parallelism: int = Field(
-        1, description="# of data loaders running in parallel"
+        default_factory=lambda: os.cpu_count() or 1,
+        description="# of data loaders running in parallel"
     )
     # Model arguments
     model_file: Optional[Path] = Field(None, description="Path to model file")

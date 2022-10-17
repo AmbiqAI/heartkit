@@ -276,7 +276,6 @@ def rhythm_data_generator(
         samples_per_tgt = samples_per_patient
     else:
         samples_per_tgt = int(max(1, samples_per_patient/len(tgt_rhythm_labels)))*[len(tgt_rhythm_labels)]
-    # samples_per_tgt = [samples_per_patient, 10*samples_per_patient]
     for _, segments in patient_generator:
         # Group patient rhythms by type (segment, start, stop)
         seg_label_map: Dict[str, List[Tuple[str, int, int]]] = {lbl: [] for lbl in tgt_rhythm_labels}
@@ -643,7 +642,7 @@ def normalize(array: npt.ArrayLike, local: bool = True, filter_enable: bool = Fa
         npt.ArrayLike: Normalized array
     """
     if filter_enable:
-        filt_array = butter_bp_filter(array, lowcut=0.5, highcut=30, sample_rate=ds_sampling_rate, order=2)
+        filt_array = butter_bp_filter(array, lowcut=0.5, highcut=40, sample_rate=ds_sampling_rate, order=2)
     else:
         filt_array = np.copy(array)
     with warnings.catch_warnings():

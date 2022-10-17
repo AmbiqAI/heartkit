@@ -9,9 +9,9 @@
 #define NUM_COMP_COEFFS 8
 static float32_t iirState[NUM_ORDER_IIR];
 static float32_t iirCoeffs[NUM_STAGE_IIR * NUM_STD_COEFFS] = {
-    // Bandpass 0.5 - 30 Hz [b0, b1, b2, a1, a2]
-    0.08882609991787925, 0.1776521998357585, 0.08882609991787925, 1.001180675173544, -0.3599418394747336,
-    1.0, -2.0, 1.0, 1.9822422643876543, -0.9824037452770975
+    // Bandpass 0.5 - 40 Hz [b0, b1, b2, a1, a2]
+    0.1424442454075173, 0.2848884908150346, 0.1424442454075173, 0.6856000535320614, -0.26069603227349614,
+    1.0, -2.0, 1.0, 1.9822347503854438, -0.9823948462782603
 };
 
 arm_biquad_cascade_df2T_instance_f32 iirInst;
@@ -26,7 +26,7 @@ void init_preprocess() {
 
 int bandpass_filter(float32_t* pSrc, float32_t *pResult, uint32_t blockSize) {
     /**
-     * @brief Perform bandpass filter (0.5-30 Hz) on signal
+     * @brief Perform bandpass filter (0.5-40 Hz) on signal
      */
     arm_biquad_cascade_df2T_f32(&iirInst, pSrc, pResult, blockSize);
     return 0;
