@@ -32,7 +32,7 @@ The `download_dataset` command will download the entire [Icentia11k dataset](htt
 python -m ecgarr download_dataset --config-file ./configs/download-dataset.json
 ```
 
-> NOTE: The dataset requires roughly 300 GB of disk space and can take around 2 hours to download. Once the command finishes, the zip file (`./datasets/icentia11k/icentia11k.zip`) can be deleted to free up 188 GB.
+> NOTE: The dataset requires roughly 300 GB of disk space and can take around 6 hours to download. Once the command finishes, the zip file (`./datasets/icentia11k/icentia11k.zip`) can be deleted to free up 188 GB.
 
 ### 2. Train Model (train_model)
 
