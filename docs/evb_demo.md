@@ -79,10 +79,10 @@ Upon start, the server will scan and connect to the EVB serial port. If no port 
 
 ### 3. Trigger start
 
-Now that the EVB client and PC server are running, press either Button 1 (BTN1) or Button 2 (BTN2) on the EVB to start the demo. Pressing Button 1, will use live sensor data whereas Button 2 will use test dataset supplied by the PC. In terminal A, the EVB should be printing the stage it's in (e.g `INFERENCE STAGE`) and any results. In terminal B, the PC should be plotting the data along with classification results. If labelled dataset is being used, the true label will be displayed in the bar plot title.
+Now that the EVB client and PC server are running, press either Button 1 (BTN1) or Button 2 (BTN2) on the EVB to start the demo. Pressing Button 1, will use live sensor data whereas Button 2 will use test dataset supplied by the PC. In terminal A, the EVB should be printing the stage it's in (e.g `INFERENCE STAGE`) and any results. In terminal B, the PC should be plotting the data along with classification results. If labelled dataset is being used, the true label will be displayed in the __True Label Panel__. Once finished, Button 1 or Button 2 can be pressed to start the next capture.
 
 ![evb-demo-plot](./assets/evb-demo-screenshot.svg)
 
-To shutdown the PC server, a keyboard interrupt can be used (e.g `[CTRL]+C`).
-
 > NOTE: Please use a monospaced font in the terminal for proper alignment of the plot.
+
+To shutdown the PC server, a keyboard interrupt can be used (e.g `[CTRL]+C`).

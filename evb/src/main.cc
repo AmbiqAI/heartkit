@@ -163,6 +163,7 @@ uint32_t fetch_samples_from_pc(float32_t *samples, uint32_t numSamples) {
      * @param numSamples # requested samples
      * @return # samples actually fetched
      */
+    int err;
     if (!usbAvailable) {
         return 0;
     }
@@ -177,10 +178,18 @@ uint32_t fetch_samples_from_pc(float32_t *samples, uint32_t numSamples) {
         .cmd = generic_cmd,
         .buffer = binaryBlock
     };
-    ns_rpc_data_computeOnPC(&resultBlock, &resultBlock);
+    err = ns_rpc_data_computeOnPC(&resultBlock, &resultBlock);
+    if (resultBlock.description != rpcFetchSamplesDesc){
+        ns_free(resultBlock.description);
+    }
+    if (resultBlock.buffer.data != (uint8_t *)samples){
+        ns_free(resultBlock.buffer.data);
+    }
+    if (err) {
+        ns_printf("Failed fetching from PC w/ error: %x\n", err);
+        return 0;
+    }
     memcpy(samples, resultBlock.buffer.data, resultBlock.buffer.dataLength);
-    ns_free(resultBlock.description);
-    ns_free(resultBlock.buffer.data);
     return resultBlock.length;
 }
 

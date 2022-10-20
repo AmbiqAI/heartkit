@@ -20,7 +20,7 @@ def build_input_tensor_from_shape(
         ignore_batch_dim (bool, optional): Ignore first dimension as batch. Defaults to False.
 
     Returns:
-        _type_: _description_
+        tf.keras.layers.Input: Input layer
     """
     if isinstance(shape, (list, tuple)):
         return [
@@ -45,20 +45,6 @@ def build_input_tensor_from_shape(
     if ignore_batch_dim:
         shape = shape[1:]
     return tf.keras.layers.Input(shape, dtype=dtype)
-
-
-def unfold_model_layers(layer, model: Optional[tf.keras.Model] = None):
-    """Unfold model layers into flat"""
-    if model is None:
-        model = tf.keras.Sequential()
-    if isinstance(layer, (tf.keras.Model, tf.keras.Sequential)):
-        print(f"Unfolding {layer}")
-        for llayer in layer.layers:
-            unfold_model_layers(llayer, model)
-    else:
-        print(f"Adding layer {layer}")
-        model.add(layer)
-    return model
 
 
 def generate_task_model(
