@@ -1,7 +1,6 @@
 //*****************************************************************************
 //*** TensorFlow
-//#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
-#include "tensorflow/lite/micro/all_ops_resolver.h"
+#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 #include "tensorflow/lite/micro/kernels/micro_ops.h"
 #include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
@@ -17,14 +16,30 @@ const tflite::Model *model = nullptr;
 tflite::MicroInterpreter *interpreter = nullptr;
 TfLiteTensor *modelInput = nullptr;
 TfLiteTensor *modelOutput = nullptr;
-constexpr int kTensorArenaSize = 1024 * 300;
+constexpr int kTensorArenaSize = 1024 * 50;
 alignas(16) uint8_t tensorArena[kTensorArenaSize];
 
-void init_model() {
+#pragma GCC push_options
+#pragma GCC optimize("O0")
+int init_model() {
     /**
      * @brief Initialize TFLM model block
      *
      */
+    static tflite::MicroMutableOpResolver<12> model_op_resolver;
+    model_op_resolver.AddQuantize();
+    model_op_resolver.AddShape();
+    model_op_resolver.AddStridedSlice();
+    model_op_resolver.AddPack();
+    model_op_resolver.AddReshape();
+    model_op_resolver.AddConv2D();
+    model_op_resolver.AddMaxPool2D();
+    model_op_resolver.AddAdd();
+    model_op_resolver.AddMean();
+    model_op_resolver.AddFullyConnected();
+    model_op_resolver.AddDequantize();
+    model_op_resolver.AddSoftmax();
+
     static tflite::MicroErrorReporter micro_error_reporter;
     errorReporter = &micro_error_reporter;
 
@@ -37,15 +52,12 @@ void init_model() {
             "Model provided is schema version %d not equal to supported version %d.",
             model->version(), TFLITE_SCHEMA_VERSION
         );
-        return;
+        return 1;
     }
 
-    // This pulls in all the operation implementations we need.
-    // static tflite::MicroMutableOpResolver<1> resolver;
-    static tflite::AllOpsResolver resolver;
-    // Build an interpreter to run the model with.
+    // Build an TFLM interpreter
     static tflite::MicroInterpreter static_interpreter(
-        model, resolver, tensorArena, kTensorArenaSize, errorReporter
+        model, model_op_resolver, tensorArena, kTensorArenaSize, errorReporter
     );
     interpreter = &static_interpreter;
 
@@ -53,7 +65,7 @@ void init_model() {
     TfLiteStatus allocate_status = interpreter->AllocateTensors();
     if (allocate_status != kTfLiteOk) {
         TF_LITE_REPORT_ERROR(errorReporter, "AllocateTensors() failed");
-        return;
+        return 1;
     }
 
     size_t bytesUsed = interpreter->arena_used_bytes();
@@ -62,17 +74,25 @@ void init_model() {
             "Model requires %d bytes for arena but given only %d bytes.",
             bytesUsed, kTensorArenaSize
         );
+        return 1;
     }
 
     // Obtain pointers to the model's input and output tensors.
     modelInput = interpreter->input(0);
     modelOutput = interpreter->output(0);
+    return 0;
 }
+#pragma GCC pop_options
 
-
-int model_inference(float32_t *x, uint32_t *y) {
-    *y = 0;
-    float32_t y_val = -99;
+int model_inference(float32_t *x, float32_t *y) {
+    /**
+     * @brief Run inference
+     * @param x Model inputs
+     * @param y Model outputs
+     * @return Output label index
+     */
+    int y_idx = -1;
+    float32_t y_val = -9999;
     for (int i = 0; i < modelInput->dims->data[1]; i++) {
         modelInput->data.f[i] = x[i];
     }
@@ -81,11 +101,11 @@ int model_inference(float32_t *x, uint32_t *y) {
         return -1;
     }
     for (int i = 0; i < modelOutput->dims->data[1]; i++) {
-        if (modelOutput->data.f[i] > y_val) {
-            y_val = modelOutput->data.f[i];
-            *y = i;
+        y[i] = modelOutput->data.f[i];
+        if ((y_idx == -1) || (y[i] > y_val)) {
+            y_val = y[i];
+            y_idx = i;
         }
-        // ns_printf("y[%lu] = %0.2f\n", i, modelOutput->data.f[i]);
     }
-    return 0;
+    return y_idx;
 }

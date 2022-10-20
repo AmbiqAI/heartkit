@@ -1,3 +1,4 @@
+import os
 import tempfile
 from enum import Enum, IntEnum
 from pathlib import Path
@@ -14,6 +15,7 @@ class EcgTask(str, Enum):
 
 
 ArchitectureType = Literal["resnet12", "resnet18", "resnet34", "resnet50"]
+DatasetTypes = Literal["icentia11k"]
 
 
 class HeartRhythm(IntEnum):
@@ -75,20 +77,17 @@ class HeartRateName(str, Enum):
 class EcgDownloadParams(BaseModel):
     """Download command params"""
 
-    db_url: str = Field(
-        (
-            "https://physionet.org/static/published-projects/icentia11k-continuous-ecg/"
-            "icentia11k-single-lead-continuous-raw-electrocardiogram-dataset-1.0.zip"
-        ),
-        description="Icentia11k dataset zip url",
+    db_root_path: Path = Field(
+        default_factory=Path, description="Dataset root directory"
     )
-    db_path: Path = Field(default_factory=Path, description="Database directory")
+    datasets: List[DatasetTypes] = Field(default_factory=list, description="Datasets")
     progress: bool = Field(True, description="Display progress bar")
     force: bool = Field(
         False, description="Force download dataset- overriding existing files"
     )
     data_parallelism: int = Field(
-        1, description="# of data loaders running in parallel"
+        default_factory=lambda: os.cpu_count() or 1,
+        description="# of data loaders running in parallel",
     )
 
 
@@ -118,8 +117,10 @@ class EcgTrainParams(BaseModel):
     val_file: Optional[Path] = Field(
         None, description="Path to load/store pickled validation file"
     )
+    val_size: int = Field(200_000, description="# samples for validation")
     data_parallelism: int = Field(
-        1, description="# of data loaders running in parallel"
+        default_factory=lambda: os.cpu_count() or 1,
+        description="# of data loaders running in parallel",
     )
     # Model arguments
     weights_file: Optional[Path] = Field(
@@ -127,7 +128,9 @@ class EcgTrainParams(BaseModel):
     )
     arch: ArchitectureType = Field("resnet12", description="Network architecture")
     stages: Optional[int] = Field(None, description="# of resnet stages")
-    quantization: Optional[bool] = Field(None, description="Enable quantization")
+    quantization: Optional[bool] = Field(
+        None, description="Enable quantization aware training (QAT)"
+    )
     # Training arguments
     batch_size: int = Field(32, description="Batch size")
     buffer_size: int = Field(100, description="Buffer size")
@@ -151,12 +154,16 @@ class EcgTestParams(BaseModel):
     # Dataset arguments
     db_path: Path = Field(default_factory=Path, description="Database directory")
     frame_size: int = Field(1250, description="Frame size")
-    samples_per_patient: int = Field(1000, description="# test samples per patient")
+    samples_per_patient: Union[int, List[int]] = Field(
+        1000, description="# test samples per patient"
+    )
     test_patients: Optional[float] = Field(
         None, description="# or proportion of patients for testing"
     )
+    test_size: int = Field(200_000, description="# samples for testing")
     data_parallelism: int = Field(
-        1, description="# of data loaders running in parallel"
+        default_factory=lambda: os.cpu_count() or 1,
+        description="# of data loaders running in parallel",
     )
     # Model arguments
     model_file: Optional[Path] = Field(None, description="Path to model file")
@@ -177,8 +184,13 @@ class EcgDeployParams(BaseModel):
     frame_size: int = Field(1250, description="Frame size")
     model_file: Optional[Path] = Field(None, description="Path to model file")
     threshold: Optional[float] = Field(None, description="Model output threshold")
-    quantization: Optional[bool] = Field(None, description="Enable quantization")
+    quantization: Optional[bool] = Field(
+        None, description="Enable post training quantization (PQT)"
+    )
     tflm_var_name: str = Field("g_model", description="TFLite Micro C variable name")
+    tflm_file: Optional[Path] = Field(
+        None, description="Path to copy TFLM header file (e.g. ./model_buffer.h)"
+    )
 
 
 class EcgDemoParams(BaseModel):
@@ -191,6 +203,7 @@ class EcgDemoParams(BaseModel):
     # Dataset arguments
     db_path: Path = Field(default_factory=Path, description="Database directory")
     frame_size: int = Field(1250, description="Frame size")
+    pad_size: int = Field(0, description="Frame size")
     # EVB arguments
     vid_pid: Optional[str] = Field(
         "51966:16385",

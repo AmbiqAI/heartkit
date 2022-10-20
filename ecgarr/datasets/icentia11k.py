@@ -6,6 +6,7 @@ import tempfile
 import functools
 import logging
 from enum import IntEnum
+from collections.abc import Iterable
 from multiprocessing import Pool
 from typing import Dict, List, Optional, Tuple, Union
 import h5py
@@ -108,7 +109,7 @@ arr_rhythm_patients = [
     10778, 10784, 10812, 10813, 10839, 10852, 10853, 10915, 10949,
     10951, 10958, 10961, 10966, 10969, 10974, 10979, 10994, 10995
 ]
-# fmt: off
+# fmt: on
 
 class IcentiaRhythm(IntEnum):
     """ Icentia Rhythm labels """
@@ -270,12 +271,11 @@ def rhythm_data_generator(
         Iterator[SampleGenerator]
     """
 
-    tgt_rhythm_labels = (IcentiaRhythm.normal, IcentiaRhythm.afib)  #, IcentiaRhythm.aflut)
-    if isinstance(samples_per_patient, list):
+    tgt_rhythm_labels = (IcentiaRhythm.normal, IcentiaRhythm.afib)
+    if isinstance(samples_per_patient, Iterable):
         samples_per_tgt = samples_per_patient
     else:
         samples_per_tgt = int(max(1, samples_per_patient/len(tgt_rhythm_labels)))*[len(tgt_rhythm_labels)]
-    samples_per_tgt = [samples_per_patient, 10*samples_per_patient]  #, 5*samples_per_patient]
     for _, segments in patient_generator:
         # Group patient rhythms by type (segment, start, stop)
         seg_label_map: Dict[str, List[Tuple[str, int, int]]] = {lbl: [] for lbl in tgt_rhythm_labels}
@@ -642,7 +642,7 @@ def normalize(array: npt.ArrayLike, local: bool = True, filter_enable: bool = Fa
         npt.ArrayLike: Normalized array
     """
     if filter_enable:
-        filt_array = butter_bp_filter(array, lowcut=0.5, highcut=30, sample_rate=ds_sampling_rate, order=2)
+        filt_array = butter_bp_filter(array, lowcut=0.5, highcut=40, sample_rate=ds_sampling_rate, order=2)
     else:
         filt_array = np.copy(array)
     with warnings.catch_warnings():
@@ -796,7 +796,7 @@ def convert_dataset_zip_to_hdf5(
         db_path: str,
         patient_ids: Optional[npt.ArrayLike] = None,
         force: bool = False,
-        num_workers: int = 4
+        num_workers: Optional[int] = None
     ):
     """ Convert zipped Icentia dataset into individial patient HDF5 files.
 
@@ -805,7 +805,7 @@ def convert_dataset_zip_to_hdf5(
         db_path (str): Destination DB path
         patient_ids (Optional[npt.ArrayLike], optional): List of patient IDs to extract. Defaults to all.
         force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
-        num_workers (int, optional): # parallel workers. Defaults to 4.
+        num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
     """
     if not patient_ids:
         patient_ids = get_patient_ids()

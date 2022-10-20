@@ -5,5 +5,7 @@
     "frame_size": 1250,
     "model_file": "./results/runs/rhythm-full-model/model.tf",
     "quantization": true,
-    "tflm_var_name": "g_afib_model"
+    "threshold": 0.95,
+    "tflm_var_name": "g_afib_model",
+    "tflm_file": "./evb/src/model_buffer.h"
 }

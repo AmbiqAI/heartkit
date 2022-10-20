@@ -1,12 +1,13 @@
+import functools
 import os
 import logging
-from typing import List, Any, Union
+from typing import Generator, List, Any, Optional, Tuple, Union
 import sklearn
 import tensorflow as tf
 import numpy.typing as npt
 import pydantic_argparse
 from ..utils import matches_spec, download_file, setup_logger
-from ..types import EcgTask, EcgDownloadParams
+from ..types import DatasetTypes, EcgTask, EcgDownloadParams
 from . import icentia11k
 
 logger = logging.getLogger("ECGARR")
@@ -65,7 +66,7 @@ def rhythm_generator(
     data_generator = icentia11k.rhythm_data_generator(
         patient_generator,
         frame_size=int(frame_size),
-        samples_per_patient=int(samples_per_patient),
+        samples_per_patient=samples_per_patient,
     )
     if normalize:
         data_generator = map(
@@ -107,7 +108,7 @@ def beat_generator(
     data_generator = icentia11k.beat_data_generator(
         patient_generator,
         frame_size=int(frame_size),
-        samples_per_patient=int(samples_per_patient),
+        samples_per_patient=samples_per_patient,
     )
     if normalize:
         data_generator = map(
@@ -149,7 +150,7 @@ def heart_rate_generator(
     data_generator = icentia11k.heart_rate_data_generator(
         patient_generator,
         frame_size=int(frame_size),
-        samples_per_patient=int(samples_per_patient),
+        samples_per_patient=samples_per_patient,
     )
     if normalize:
         data_generator = map(
@@ -168,7 +169,7 @@ def split_train_test_patients(
     """Perform train/test split on patients for given task.
 
     Args:
-        task (EcgTask): Arrythmia task
+        task (EcgTask): Arrhythmia task
         patient_ids (npt.ArrayLike): Patient Ids
         test_size (float): Test size
 
@@ -188,7 +189,8 @@ def create_dataset_from_generator(
     patient_ids: List[int],
     frame_size: int,
     samples_per_patient: Union[int, List[int]] = 1,
-    repeat: bool = True,
+    normalize: bool = True,
+    repeat: bool = True
 ):
     """Create dataset from generator for given arrhythmia task
 
@@ -209,7 +211,8 @@ def create_dataset_from_generator(
             patient_ids=patient_ids,
             frame_size=frame_size,
             samples_per_patient=samples_per_patient,
-            repeat=repeat,
+            normalize=normalize,
+            repeat=repeat
         )
     elif task == EcgTask.beat:
         dataset = beat_dataset(
@@ -217,6 +220,7 @@ def create_dataset_from_generator(
             patient_ids=patient_ids,
             frame_size=frame_size,
             samples_per_patient=samples_per_patient,
+            normalize=normalize
         )
     elif task == EcgTask.hr:
         dataset = heart_rate_dataset(
@@ -224,11 +228,16 @@ def create_dataset_from_generator(
             patient_ids=patient_ids,
             frame_size=frame_size,
             samples_per_patient=samples_per_patient,
+            normalize=normalize
         )
     else:
         raise ValueError(f"unknown task: {task}")
     return dataset
 
+def numpy_dataset_generator(x: npt.ArrayLike, y: npt.ArrayLike) -> Generator[Tuple[npt.ArrayLike, npt.ArrayLike], None, None]:
+    """ Create generator from numpy dataset"""
+    for i in range(x.shape[0]):
+        yield x[i], y[i]
 
 def create_dataset_from_data(
     x: npt.ArrayLike, y: npt.ArrayLike, task: EcgTask, frame_size: int
@@ -243,38 +252,63 @@ def create_dataset_from_data(
         raise ValueError(f"unknown task: {task}")
     if not matches_spec((x, y), spec, ignore_batch_dim=True):
         raise ValueError(f"data does not match the required spec: {spec}")
-    dataset = tf.data.Dataset.from_tensor_slices((x, y))
+    gen = functools.partial(numpy_dataset_generator, x=x, y=y)
+    dataset = tf.data.Dataset.from_generator(
+        generator=gen,
+        output_signature=(
+            tf.TensorSpec(shape=(frame_size, 1), dtype=tf.float32),
+            tf.TensorSpec(shape=(), dtype=tf.int32),
+        ),
+    )
     return dataset
 
 
-def download_datasets(params: EcgDownloadParams):
-    """Download all datasets. Currently this only includes Icentia11k dataset.
+def download_icentia11k_dataset(db_path: str, num_workers: Optional[int] = None, force: bool = False):
+    """Download icentia11k dataset
 
     Args:
-        params (EcgDownloadParams): Download parameters
+        db_path (str): Path to store dataset
+        num_workers (Optional[int], optional): # parallel workers. Defaults to None.
+        force (bool, optional): Force redownload. Defaults to False.
     """
-    #### Icentia11k Dataset
-    db_zip_path = str(params.db_path / "icentia11k.zip")
-    os.makedirs(params.db_path, exist_ok=True)
-    if os.path.exists(db_zip_path) and not params.force:
+    logger.info("Downloading icentia11k dataset")
+    db_url = (
+        "https://physionet.org/static/published-projects/icentia11k-continuous-ecg/"
+        "icentia11k-single-lead-continuous-raw-electrocardiogram-dataset-1.0.zip"
+    )
+    db_zip_path = os.path.join(db_path, "icentia11k.zip")
+    os.makedirs(db_path, exist_ok=True)
+    if os.path.exists(db_zip_path) and not force:
         logger.warning(
             f"Zip file already exists. Please delete or set `force` flag to redownload. PATH={db_zip_path}"
         )
     else:
-        download_file(params.db_url, db_zip_path, progress=True)
-    logger.info("Finished downloading dataset")
+        download_file(db_url, db_zip_path, progress=True)
 
     # 2. Extract and convert patient ECG data to H5 files
-    logger.info("Generating patient data")
+    logger.info("Generating icentia11k patient data")
     icentia11k.convert_dataset_zip_to_hdf5(
         zip_path=db_zip_path,
-        db_path=str(params.db_path),
-        force=params.force,
-        num_workers=params.data_parallelism,
+        db_path=db_path,
+        force=force,
+        num_workers=num_workers
     )
-    print("Finished generating patient data")
-    #### Icentia11k Dataset
+    print("Finished icentia11k patient data")
 
+def download_datasets(params: EcgDownloadParams):
+    """Download all specified datasets.
+
+    Args:
+        params (EcgDownloadParams): Download parameters
+    """
+    os.makedirs(params.db_root_path, exist_ok=True)
+    #### Icentia11k Dataset
+    if "icentia11k" in params.datasets:
+        download_icentia11k_dataset(
+            db_path=str(params.db_root_path / "icentia11k"),
+            num_workers=params.data_parallelism,
+            force=params.force
+        )
 
 def create_parser():
     """Create CLI parser"""
