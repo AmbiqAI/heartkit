@@ -128,7 +128,9 @@ class EcgTrainParams(BaseModel):
     )
     arch: ArchitectureType = Field("resnet12", description="Network architecture")
     stages: Optional[int] = Field(None, description="# of resnet stages")
-    quantization: Optional[bool] = Field(None, description="Enable quantization")
+    quantization: Optional[bool] = Field(
+        None, description="Enable quantization aware training (QAT)"
+    )
     # Training arguments
     batch_size: int = Field(32, description="Batch size")
     buffer_size: int = Field(100, description="Buffer size")
@@ -182,8 +184,13 @@ class EcgDeployParams(BaseModel):
     frame_size: int = Field(1250, description="Frame size")
     model_file: Optional[Path] = Field(None, description="Path to model file")
     threshold: Optional[float] = Field(None, description="Model output threshold")
-    quantization: Optional[bool] = Field(None, description="Enable quantization")
+    quantization: Optional[bool] = Field(
+        None, description="Enable post training quantization (PQT)"
+    )
     tflm_var_name: str = Field("g_model", description="TFLite Micro C variable name")
+    tflm_file: Optional[Path] = Field(
+        None, description="Path to copy TFLM header file (e.g. ./model_buffer.h)"
+    )
 
 
 class EcgDemoParams(BaseModel):

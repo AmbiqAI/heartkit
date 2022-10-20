@@ -6,11 +6,12 @@ import wandb
 from wandb.keras import WandbCallback
 import numpy as np
 import tensorflow as tf
+from sklearn.metrics import f1_score
 import tensorflow_model_optimization as tfmot
 from . import datasets as ds
 from .datasets import icentia11k
 from .metrics import confusion_matrix_plot
-from .models.utils import build_input_tensor_from_shape, task_solver
+from .models.utils import generate_task_model
 from .utils import set_random_seed, load_pkl, save_pkl, env_flag, setup_logger
 from .types import EcgTrainParams, EcgTask
 
@@ -215,19 +216,19 @@ def train_model(params: EcgTrainParams):
     strategy = tf.distribute.MirroredStrategy()
     with strategy.scope():
         logger.info("Building model")
-        model = task_solver(params.task, params.arch, stages=params.stages)
+        # NOTE: Leave batch as None so later TFL conversion can set to 1 for inference
+        inputs = tf.keras.Input(
+            shape=(params.frame_size, 1), batch_size=None, dtype=tf.float32
+        )
+        model = generate_task_model(
+            inputs, params.task, params.arch, stages=params.stages
+        )
         model.compile(
             optimizer=tf.keras.optimizers.Adam(
                 learning_rate=5e-4, beta_1=0.9, beta_2=0.98, epsilon=1e-9
             ),
             loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
             metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="acc")],
-        )
-
-        input_shape, _ = tf.compat.v1.data.get_output_shapes(train_data)
-        input_dtype, _ = tf.compat.v1.data.get_output_types(train_data)
-        inputs = build_input_tensor_from_shape(
-            input_shape, dtype=input_dtype, ignore_batch_dim=True
         )
         model(inputs)
 
@@ -284,26 +285,26 @@ def train_model(params: EcgTrainParams):
 
         # Perform QAT fine-tuning
         if params.quantization:
-            quantize_model = tfmot.quantization.keras.quantize_model
-            q_model = quantize_model(model)
+            q_model = tfmot.quantization.keras.quantize_model(model)
             q_model.compile(
                 optimizer=tf.keras.optimizers.Adam(
-                    learning_rate=5e-5, beta_1=0.9, beta_2=0.98, epsilon=1e-9
+                    learning_rate=5e-6, beta_1=0.9, beta_2=0.98, epsilon=1e-9
                 ),
                 loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                 metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="acc")],
             )
-            logger.info(f"# model parameters: {model.count_params()}")
+            logger.info(f"# qmodel parameters: {q_model.count_params()}")
             q_model.summary()
             if params.epochs:
                 q_model.fit(
                     train_data,
                     steps_per_epoch=params.steps_per_epoch,
                     verbose=2,
-                    epochs=params.epochs or 5,
+                    epochs=max(1, params.epochs // 10),
                     validation_data=validation_data,
                     callbacks=model_callbacks,
                 )
+            model = q_model
 
         # Get full validation results
         logger.info("Performing full validation")
@@ -316,7 +317,8 @@ def train_model(params: EcgTrainParams):
         # Summarize results
         class_names = ds.get_class_names(task=params.task)
         test_acc = np.sum(y_pred == y_true) / len(y_true)
-        logger.info(f"Validation accuracy: {test_acc:.0%}")
+        test_f1 = f1_score(y_true, y_pred, average="macro")
+        logger.info(f"[VAL SET] ACC={test_acc:.2%}, F1={test_f1:.2%}")
         confusion_matrix_plot(
             y_true,
             y_pred,

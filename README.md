@@ -42,7 +42,7 @@ The `train_model` command is used to train the arrhythmia model. The following c
 python -m ecgarr train_model --config-file ./configs/train-model.json
 ```
 
-> Due to the large dataset and class imbalance, the batch size and buffer size are large to ensure properly shuffling of patients as well as classes. To train on a dedicated GPU, it's recommended to have at least 10 GB of VRAM.
+> Due to the large dataset and class imbalance, the batch size and buffer size are large to ensure properly shuffling of patients as well as classes. The first epoch will take much longer as it fills up this shuffled buffer. To train on a dedicated GPU, it's recommended to have at least 10 GB of VRAM.
 
 ### 3. Test Model (test_model)
 
@@ -60,7 +60,7 @@ The `deploy_model` command will convert the trained TensorFlow model into both T
 python -m ecgarr deploy_model --config-file ./configs/deploy-model.json
 ```
 
-Once converted, the TFLM header file must be copied into the evb directory (`cp ./results/runs/rhythm-full-model/model_buffer.h ./evb/src/model_buffer.h` ). Additionally, if parameters were changed (e.g. window size, quantization) `./evb/src/constants.h` will need to be updated.
+Once converted, the TFLM header file will be copied to `./evb/src/model_buffer.h`. If parameters were changed (e.g. window size, quantization), `./evb/src/constants.h` will need to be updated.
 
 ### 5. EVB Demo (evb_demo)
 
@@ -106,6 +106,7 @@ The results of the AFIB model when testing on 1,000 patients (not used during tr
 ## Future Milestones
 
 * [x] Create end-to-end EVB demo
-* [ ] Perform model quantization
+* [x] Perform model quantization
+* [ ] Perform pre-processing in fixed-point
 * [ ] Add Atrial Flutter (AFL) to model
 * [ ] Fine-tune on another dataset

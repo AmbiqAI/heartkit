@@ -6,6 +6,7 @@ import pydantic_argparse
 from rich.console import Console
 from sklearn.metrics import f1_score
 from . import datasets as ds
+from .models.utils import get_predicted_threshold_indices
 from .metrics import confusion_matrix_plot, roc_auc_plot
 from .types import EcgTask, EcgTestParams
 from .utils import setup_logger, set_random_seed
@@ -137,26 +138,31 @@ def evaluate_model(params: EcgTestParams):
         y_true = test_y
         y_prob = tf.nn.softmax(model.predict(test_x)).numpy()
         y_pred = np.argmax(y_prob, axis=1)
-        # If threshold given, only count predictions above threshold
-        if params.threshold is not None:
-            logger.info(f"Using threshold {params.threshold:0.2f}")
-            y_pred_prob = np.take_along_axis(
-                y_prob, np.expand_dims(y_pred, axis=-1), axis=-1
-            ).squeeze(axis=-1)
-            y_thresh_idx = np.where(y_pred_prob > params.threshold)[0]
-            logger.info(
-                f"Dropping {len(y_thresh_idx)} samples ({100*(1-len(y_thresh_idx)/len(y_true)):0.2f}%)"
-            )
-            y_prob = y_prob[y_thresh_idx]
-            y_pred = y_pred[y_thresh_idx]
-            y_true = y_true[y_thresh_idx]
 
         # Summarize results
         logger.info("Testing Results")
-        class_names = ds.get_class_names(params.task)
+
         test_acc = np.sum(y_pred == y_true) / len(y_true)
         test_f1 = f1_score(y_true, y_pred, average="macro")
-        logger.info(f"TEST SET: ACC={test_acc:.2%}, F1={test_f1:.2%}")
+        logger.info(f"[TEST SET] ACC={test_acc:.2%}, F1={test_f1:.2%}")
+
+        # If threshold given, only count predictions above threshold
+        if params.threshold is not None:
+            y_thresh_idx = get_predicted_threshold_indices(
+                y_prob, y_pred, params.threshold
+            )
+            drop_perc = 1 - len(y_thresh_idx) / len(y_true)
+            y_prob = y_prob[y_thresh_idx]
+            y_pred = y_pred[y_thresh_idx]
+            y_true = y_true[y_thresh_idx]
+            test_acc = np.sum(y_pred == y_true) / len(y_true)
+            test_f1 = f1_score(y_true, y_pred, average="macro")
+            logger.info(
+                f"[TEST SET] ACC={test_acc:.2%}, F1={test_f1:.2%}, THRESH={params.threshold:0.2%}, DROP={drop_perc:.2%}"
+            )
+        # END IF
+
+        class_names = ds.get_class_names(params.task)
         confusion_matrix_plot(
             y_true,
             y_pred,
@@ -170,6 +176,8 @@ def evaluate_model(params: EcgTestParams):
                 labels=class_names,
                 save_path=str(params.job_dir / "roc_auc_test.png"),
             )
+        # END IF
+    # END WITH
 
 
 def create_parser():

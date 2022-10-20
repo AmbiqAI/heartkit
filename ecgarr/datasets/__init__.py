@@ -1,6 +1,7 @@
+import functools
 import os
 import logging
-from typing import List, Any, Optional, Union
+from typing import Generator, List, Any, Optional, Tuple, Union
 import sklearn
 import tensorflow as tf
 import numpy.typing as npt
@@ -233,6 +234,10 @@ def create_dataset_from_generator(
         raise ValueError(f"unknown task: {task}")
     return dataset
 
+def numpy_dataset_generator(x: npt.ArrayLike, y: npt.ArrayLike) -> Generator[Tuple[npt.ArrayLike, npt.ArrayLike], None, None]:
+    """ Create generator from numpy dataset"""
+    for i in range(x.shape[0]):
+        yield x[i], y[i]
 
 def create_dataset_from_data(
     x: npt.ArrayLike, y: npt.ArrayLike, task: EcgTask, frame_size: int
@@ -247,7 +252,14 @@ def create_dataset_from_data(
         raise ValueError(f"unknown task: {task}")
     if not matches_spec((x, y), spec, ignore_batch_dim=True):
         raise ValueError(f"data does not match the required spec: {spec}")
-    dataset = tf.data.Dataset.from_tensor_slices((x, y))
+    gen = functools.partial(numpy_dataset_generator, x=x, y=y)
+    dataset = tf.data.Dataset.from_generator(
+        generator=gen,
+        output_signature=(
+            tf.TensorSpec(shape=(frame_size, 1), dtype=tf.float32),
+            tf.TensorSpec(shape=(), dtype=tf.int32),
+        ),
+    )
     return dataset
 
 

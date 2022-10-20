@@ -1,16 +1,58 @@
 import logging
+import shutil
 from typing import List, Optional, Tuple, Union
 import numpy as np
 import numpy.typing as npt
 import tensorflow as tf
+from sklearn.metrics import f1_score
 import pydantic_argparse
 from rich.console import Console
+from .models.utils import (
+    get_predicted_threshold_indices,
+    predict_tflite,
+)
 from .utils import xxd_c_dump, setup_logger
 from . import datasets as ds
 from .types import EcgTask, EcgDeployParams
 
 console = Console()
 logger = logging.getLogger("ECGARR")
+
+
+def convert_tflite(
+    model: tf.keras.Model,
+    quantize: bool = False,
+    test_x: Optional[npt.ArrayLike] = None,
+) -> bytes:
+    """Convert TF model into TFLite model content
+
+    Args:
+        model (tf.keras.Model): TF model
+        quantize (bool, optional): Enable PTQ. Defaults to False.
+        test_x (Optional[npt.ArrayLike], optional): Enables full integer PTQ. Defaults to None.
+
+    Returns:
+        bytes: TFLite content
+
+    """
+    converter = tf.lite.TFLiteConverter.from_keras_model(model=model)
+
+    # Optionally quantize model
+    if quantize:
+        converter.optimizations = [tf.lite.Optimize.DEFAULT]
+        if test_x is not None:
+            # NOTE: Once preprocess stage is Q15 we can enable this
+            # converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+            # converter.inference_input_type = tf.int8
+            # converter.inference_output_type = tf.int8
+            def rep_dataset():
+                for i in range(test_x.shape[0]):
+                    yield [test_x[i : i + 1]]
+
+            converter.representative_dataset = rep_dataset
+        # END IF
+    # Convert model
+    return converter.convert()
 
 
 def create_dataset(
@@ -70,41 +112,27 @@ def deploy_model(params: EcgDeployParams):
 
     # Load dataset
     with console.status("[bold green] Loading dataset..."):
-        test_x, _ = create_dataset(
+        test_x, test_y = create_dataset(
             db_path=str(params.db_path),
             task=params.task,
             frame_size=params.frame_size,
-            num_patients=200,
-            samples_per_patient=10,
-            sample_size=2000,
+            num_patients=1000,
+            samples_per_patient=[100, 1000],
+            sample_size=100000,
         )
+    # END WITH
 
-    # Instantiate converter from model
-    converter = tf.lite.TFLiteConverter.from_keras_model(model=model)
-
-    # Optionally quantize model
-    if params.quantization:
-        converter.optimizations = [tf.lite.Optimize.DEFAULT]
-        # NOTE: Enable once QAT is working
-        # converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-        # converter.inference_input_type = tf.uint8
-        # converter.inference_output_type = tf.uint8
-        def rep_dataset():
-            for i in range(test_x.shape[0]):
-                yield [test_x[i : i + 1]]
-
-        converter.representative_dataset = rep_dataset
-
-    # Convert model
     logger.info("Converting model to TFLite")
-    model_tflite = converter.convert()
+    tflite_model = convert_tflite(
+        model, quantize=params.quantization, test_x=test_x[:1000]
+    )
 
     # Save TFLite model
     logger.info(f"Saving TFLite model to {tfl_model_path}")
     with open(tfl_model_path, "wb") as fp:
-        fp.write(model_tflite)
+        fp.write(tflite_model)
 
-    # Save TF Micro model
+    # Save TFLM model
     logger.info(f"Saving TFL micro model to {tflm_model_path}")
     xxd_c_dump(
         src_path=tfl_model_path,
@@ -116,57 +144,55 @@ def deploy_model(params: EcgDeployParams):
 
     # Verify TFLite results match TF results on example data
     logger.info("Validating model results")
-    interpreter = tf.lite.Interpreter(tfl_model_path)
-    model_sig = interpreter.get_signature_runner()
-    input_details = model_sig.get_input_details()
-    output_details = model_sig.get_output_details()
-    input_name = list(input_details.keys())[0]
-    output_name = list(output_details.keys())[0]
-
-    # Predict using TF
+    y_true = test_y
     y_prob_tf = tf.nn.softmax(model.predict(test_x)).numpy()
     y_pred_tf = np.argmax(y_prob_tf, axis=1)
-
-    # Predict using TFLite
     y_prob_tfl = tf.nn.softmax(
-        np.array(
-            [
-                model_sig(**{input_name: test_x[i : i + 1]})[output_name][0]
-                for i in range(test_x.shape[0])
-            ]
-        )
+        predict_tflite(model_content=tflite_model, test_x=test_x)
     ).numpy()
     y_pred_tfl = np.argmax(y_prob_tfl, axis=1)
 
-    # If threshold given, only count predictions above threshold
-    # if params.threshold is not None:
-    #     logger.info(f"Using threshold {params.threshold:0.2f}")
-    #     y_pred_prob_tf = np.take_along_axis(
-    #         y_prob_tf, np.expand_dims(y_pred_tf, axis=-1), axis=-1
-    #     ).squeeze(axis=-1)
+    tf_acc = np.sum(y_pred_tf == y_true) / len(y_true)
+    tf_f1 = f1_score(y_true, y_pred_tf, average="macro")
+    tfl_acc = np.sum(y_pred_tfl == y_true) / len(y_true)
+    tfl_f1 = f1_score(y_true, y_pred_tfl, average="macro")
+    logger.info(f"[TEST SET]  TF: ACC={tf_acc:.2%}, F1={tf_f1:.2%}")
+    logger.info(f"[TEST SET] TFL: ACC={tfl_acc:.2%}, F1={tfl_f1:.2%}")
 
-    #     y_pred_prob_tfl = np.take_along_axis(
-    #         y_prob_tfl, np.expand_dims(y_pred_tfl, axis=-1), axis=-1
-    #     ).squeeze(axis=-1)
+    if params.threshold is not None:
+        y_thresh_idx = np.union1d(
+            get_predicted_threshold_indices(y_prob_tf, y_pred_tf, params.threshold),
+            get_predicted_threshold_indices(y_prob_tfl, y_pred_tfl, params.threshold),
+        )
+        y_thresh_idx.sort()
+        drop_perc = 1 - len(y_thresh_idx) / len(y_true)
+        y_pred_tf = y_pred_tf[y_thresh_idx]
+        y_pred_tfl = y_pred_tfl[y_thresh_idx]
+        y_true = y_true[y_thresh_idx]
 
-    #     y_thresh_idx = np.union1d(
-    #         np.where(y_pred_prob_tf > params.threshold)[0],
-    #         np.where(y_pred_prob_tfl > params.threshold)[0]
-    #     )
-    #     y_thresh_idx.sort()
+        tf_acc = np.sum(y_pred_tf == y_true) / len(y_true)
+        tf_f1 = f1_score(y_true, y_pred_tf, average="macro")
+        tfl_acc = np.sum(y_pred_tfl == y_true) / len(y_true)
+        tfl_f1 = f1_score(y_true, y_pred_tfl, average="macro")
 
-    #     logger.info(
-    #         f"Dropping {len(y_thresh_idx)} samples ({100*(1-len(y_thresh_idx)/len(y_true)):0.2f}%)"
-    #     )
-    #     y_pred_tf = y_pred_tf[y_thresh_idx]
-    #     y_pred_tfl = y_pred_tfl[y_thresh_idx]
+        logger.info(
+            f"[TEST SET]  TF: ACC={tf_acc:.2%}, F1={tf_f1:.2%}, THRESH={params.threshold:0.2%}, DROP={drop_perc:.2%}"
+        )
+        logger.info(
+            f"[TEST SET] TFL: ACC={tfl_acc:.2%}, F1={tfl_f1:.2%}, THRESH={params.threshold:0.2%}, DROP={drop_perc:.2%}"
+        )
+    # END IF
 
-    # Verify TF matches TFLite
-    num_bad = np.sum(np.abs(y_pred_tfl - y_pred_tf))
-    if num_bad:
-        logger.warning(f"Found {num_bad} labels mismatched betwee TF and TFLite")
+    # Check accuracy hit
+    acc_diff = tf_acc - tfl_acc
+    if acc_diff > 0.5:
+        logger.warning(f"TFLite accuracy dropped by {100*acc_diff:0.2f}%")
     else:
         logger.info("Validation passed")
+
+    if params.tflm_file:
+        logger.info(f"Copying TFLM header to {params.tflm_file}")
+        shutil.copyfile(tflm_model_path, params.tflm_file)
 
 
 def create_parser():
