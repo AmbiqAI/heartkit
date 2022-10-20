@@ -1,5 +1,5 @@
-#ifndef __CONSTANTS_H
-#define __CONSTANTS_H
+#ifndef __ECG_CONSTANTS_H
+#define __ECG_CONSTANTS_H
 
 // #define EMULATION (1)
 #define SAMPLE_RATE (250)
@@ -18,4 +18,4 @@ static const char *heart_rhythm_labels[] = { "normal", "afib", "aflut", "noise" 
 // static const char *heart_beat_labels[] = { "normal", "pac", "aberrated", "pvc", "noise" };
 // static const char *hear_rate_labels[] = { "normal", "tachycardia", "bradycardia", "noise" };
 
-#endif // __CONSTANTS_H
+#endif // __ECG_CONSTANTS_H

@@ -1,12 +1,15 @@
 from typing import Optional
 import tensorflow as tf
-from .resnet1d import ResNet, BottleneckBlock
+from keras.engine.keras_tensor import KerasTensor
+from .resnet1d import generate_resnet
 from ..types import ArchitectureType
 
 
 def ecg_feature_extractor(
-    arch: Optional[ArchitectureType] = None, stages: Optional[int] = None
-):
+    inputs: KerasTensor,
+    arch: Optional[ArchitectureType] = None,
+    stages: Optional[int] = None,
+) -> KerasTensor:
     """AI based feature extractor. Currently consists of 1D variant of ResNet
 
     Args:
@@ -17,8 +20,8 @@ def ecg_feature_extractor(
         tf.keras.Sequential: Feature extractor model
     """
     if arch is None or arch == "resnet12":
-        resnet = ResNet(
-            num_outputs=None,
+        x = generate_resnet(
+            inputs=inputs,
             input_conv=(32, 7, 2),
             blocks=(1, 1, 1)[:stages],
             filters=(32, 64, 128),
@@ -26,31 +29,29 @@ def ecg_feature_extractor(
             include_top=False,
         )
     elif arch == "resnet18":
-        resnet = ResNet(
-            num_outputs=None,
+        x = generate_resnet(
+            inputs=inputs,
             blocks=(2, 2, 2, 2)[:stages],
             kernel_size=(7, 5, 5, 3),
             include_top=False,
         )
     elif arch == "resnet34":
-        resnet = ResNet(
-            num_outputs=None,
+        x = generate_resnet(
+            inputs=inputs,
             blocks=(3, 4, 6, 3)[:stages],
             kernel_size=(7, 5, 5, 3),
             include_top=False,
         )
     elif arch == "resnet50":
-        resnet = ResNet(
-            num_outputs=None,
+        x = generate_resnet(
+            inputs=inputs,
             blocks=(3, 4, 6, 3)[:stages],
             kernel_size=(7, 5, 5, 3),
-            block_fn=BottleneckBlock,
+            use_bottleneck=True,
             include_top=False,
         )
     else:
         raise ValueError("unknown architecture: {}".format(arch))
 
-    feature_extractor = tf.keras.Sequential(
-        [resnet, tf.keras.layers.GlobalAveragePooling1D()]
-    )
-    return feature_extractor
+    x = tf.keras.layers.GlobalAveragePooling1D()(x)
+    return x

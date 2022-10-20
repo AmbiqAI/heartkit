@@ -16,12 +16,13 @@ static float32_t iirCoeffs[NUM_STAGE_IIR * NUM_STD_COEFFS] = {
 
 arm_biquad_cascade_df2T_instance_f32 iirInst;
 
-void init_preprocess() {
+int init_preprocess() {
     /**
      * @brief Initialize preprocessing block
      *
      */
     arm_biquad_cascade_df2T_init_f32(&iirInst, NUM_STAGE_IIR, iirCoeffs, iirState);
+    return 0;
 }
 
 int bandpass_filter(float32_t* pSrc, float32_t *pResult, uint32_t blockSize) {

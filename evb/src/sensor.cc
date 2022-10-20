@@ -55,7 +55,7 @@ void generate_synthetic_data(float32_t *buffer, int len) {
 #endif
 }
 
-void init_sensor(void) {
+int init_sensor(void) {
     /**
      * @brief Initialize and configure sensor block (MAX86150)
      *
@@ -84,6 +84,7 @@ void init_sensor(void) {
     max86150_set_ecg_pga_gain(&maxCtx, 2);              // 4 V/V
     max86150_set_fifo_enable(&maxCtx, 1);
     max86150_clear_fifo(&maxCtx);
+    return 0;
 }
 
 

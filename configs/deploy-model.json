@@ -4,6 +4,8 @@
     "db_path": "./datasets/icentia11k",
     "frame_size": 1250,
     "model_file": "./results/runs/rhythm-full-model/model.tf",
-    "quantization": false,
-    "tflm_var_name": "g_afib_model"
+    "quantization": true,
+    "threshold": 0.95,
+    "tflm_var_name": "g_afib_model",
+    "tflm_file": "./evb/src/model_buffer.h"
 }

@@ -1,17 +1,35 @@
+from typing import Tuple
 import tensorflow as tf
+from keras.engine.keras_tensor import KerasTensor
 
 
-def batch_norm():
+def batch_norm() -> tf.keras.layers.Layer:
     """Batch normalization layer"""
     return tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-5)
 
 
-def relu():
+def relu() -> tf.keras.layers.Layer:
     "ReLU layer"
     return tf.keras.layers.ReLU()
 
 
-def conv1d(filters: int, kernel_size: int = 3, strides: int = 1):
+def conv12d(
+    filters: int, kernel_size: int = 3, strides: int = 1
+) -> tf.keras.layers.Layer:
+    """1D convolutional layer using 2D convolutional layer"""
+    return tf.keras.layers.Conv2D(
+        filters,
+        kernel_size=(1, kernel_size),
+        strides=(1, strides),
+        padding="same",
+        use_bias=False,
+        kernel_initializer=tf.keras.initializers.VarianceScaling(),
+    )
+
+
+def conv1d(
+    filters: int, kernel_size: int = 3, strides: int = 1
+) -> tf.keras.layers.Layer:
     """1D convolutional layer"""
     return tf.keras.layers.Conv1D(
         filters,
@@ -23,159 +41,135 @@ def conv1d(filters: int, kernel_size: int = 3, strides: int = 1):
     )
 
 
-class ResidualBlock(tf.keras.layers.Layer):
-    """Residual block module"""
+def generate_bottleneck_block(
+    x: KerasTensor,
+    filters: int,
+    kernel_size: int = 3,
+    strides: int = 1,
+    expansion: int = 4,
+) -> KerasTensor:
+    """Generate functional bottleneck block.
 
-    def __init__(self, filters: int, kernel_size: int = 3, strides: int = 1, **kwargs):
-        super().__init__(**kwargs)
-        self.filters = filters
-        self.kernel_size = kernel_size
-        self.strides = strides
+    Args:
+        x (KerasTensor): Input
+        filters (int): Filter size
+        kernel_size (int, optional): Kernel size. Defaults to 3.
+        strides (int, optional): Stride length. Defaults to 1.
+        expansion (int, optional): Expansion factor. Defaults to 4.
 
-    def build(self, input_shape):
-        num_chan = input_shape[-1]
-        self.conv1 = conv1d(self.filters, self.kernel_size, self.strides)
-        self.bn1 = batch_norm()
-        self.relu1 = relu()
-        self.conv2 = conv1d(self.filters, self.kernel_size, 1)
-        self.bn2 = batch_norm()
-        self.relu2 = relu()
-        if num_chan != self.filters or self.strides > 1:
-            self.proj_conv = conv1d(self.filters, 1, self.strides)
-            self.proj_bn = batch_norm()
-            self.projection = True
-        else:
-            self.projection = False
-        super().build(input_shape)
+    Returns:
+        KerasTensor: Outputs
+    """
+    num_chan = x.shape[-1]
+    projection = num_chan != filters * expansion or strides > 1
 
-    def call(self, x, **kwargs):
-        shortcut = x
-        if self.projection:
-            shortcut = self.proj_conv(shortcut)
-            shortcut = self.proj_bn(shortcut)
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu1(x)
-        x = self.conv2(x)
-        x = self.bn2(x)
-        x = self.relu2(x + shortcut)
-        return x
+    bx = conv12d(filters, 1, 1)(x)
+    bx = batch_norm()(bx)
+    bx = relu()(bx)
 
-    def get_config(self):
-        config = super().get_config().copy()
-        config.update(
-            {
-                "filters": self.filters,
-                "kernel_size": self.kernel_size,
-                "strides": self.strides,
-            }
-        )
-        return config
+    bx = conv12d(filters, kernel_size, strides)(x)
+    bx = batch_norm()(bx)
+    bx = relu()(bx)
+
+    bx = conv12d(filters * expansion, 1, 1)(bx)
+    bx = batch_norm()(bx)
+
+    if projection:
+        x = conv12d(filters * expansion, 1, strides)(x)
+        x = batch_norm()(x)
+    x = tf.keras.layers.add([bx, x])
+    x = relu()(x)
+    return x
 
 
-class BottleneckBlock(tf.keras.layers.Layer):
-    def __init__(
-        self,
-        filters: int,
-        kernel_size: int = 3,
-        strides: int = 1,
-        expansion: int = 4,
-        **kwargs
-    ):
-        super().__init__(**kwargs)
-        self.filters = filters
-        self.kernel_size = kernel_size
-        self.strides = strides
-        self.expansion = expansion
-        self.projection = False
+def generate_residual_block(
+    x: KerasTensor,
+    filters: int,
+    kernel_size: int = 3,
+    strides: int = 1,
+) -> KerasTensor:
+    """Generate functional residual block
 
-    def build(self, input_shape):
-        num_chan = input_shape[-1]
-        self.conv1 = conv1d(self.filters, 1, 1)
-        self.bn1 = batch_norm()
-        self.relu1 = relu()
-        self.conv2 = conv1d(self.filters, self.kernel_size, self.strides)
-        self.bn2 = batch_norm()
-        self.relu2 = relu()
-        self.conv3 = conv1d(self.filters * self.expansion, 1, 1)
-        self.bn3 = batch_norm()
-        self.relu3 = relu()
-        if num_chan != self.filters * self.expansion or self.strides > 1:
-            self.proj_conv = conv1d(self.filters * self.expansion, 1, self.strides)
-            self.proj_bn = batch_norm()
-            self.projection = True
-        else:
-            self.projection = False
-        super().build(input_shape)
+    Args:
+        x (KerasTensor): Input
+        filters (int): Filter size
+        kernel_size (int, optional): Kernel size. Defaults to 3.
+        strides (int, optional): Stride length. Defaults to 1.
 
-    def call(self, x, **kwargs):
-        shortcut = x
-        if self.projection:
-            shortcut = self.proj_conv(shortcut)
-            shortcut = self.proj_bn(shortcut)
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu1(x)
-        x = self.conv2(x)
-        x = self.bn2(x)
-        x = self.relu2(x)
-        x = self.conv3(x)
-        x = self.bn3(x)
-        x = self.relu3(x + shortcut)
-        return x
+    Returns:
+        KerasTensor: Outputs
+    """
 
-    def get_config(self):
-        config = super().get_config().copy()
-        config.update(
-            {
-                "filters": self.filters,
-                "kernel_size": self.kernel_size,
-                "strides": self.strides,
-                "expansion": self.expansion,
-            }
-        )
-        return config
+    num_chan = x.shape[-1]
+    projection = num_chan != filters or strides > 1
+
+    bx = conv12d(filters, kernel_size, strides)(x)
+    bx = batch_norm()(bx)
+    bx = relu()(bx)
+
+    bx = conv12d(filters, kernel_size, 1)(bx)
+    bx = batch_norm()(bx)
+    if projection:
+        x = conv12d(filters, 1, strides)(x)
+        x = batch_norm()(x)
+    x = tf.keras.layers.add([bx, x])
+    x = relu()(x)
+    return x
 
 
-class ResNet(tf.keras.Model):
-    def __init__(
-        self,
-        num_outputs=1,
-        blocks=(2, 2, 2, 2),
-        filters=(64, 128, 256, 512),
-        kernel_size=(3, 3, 3, 3),
-        input_conv=(64, 7, 2),
-        block_fn=ResidualBlock,
-        include_top=True,
-        **kwargs
-    ):
-        super().__init__(**kwargs)
-        self.conv1 = conv1d(*input_conv)
-        self.bn1 = batch_norm()
-        self.relu1 = relu()
-        self.maxpool1 = tf.keras.layers.MaxPooling1D(3, 2, padding="same")
-        self.blocks = []
-        for stage, num_blocks in enumerate(blocks):
-            for block in range(num_blocks):
-                strides = 2 if block == 0 and stage > 0 else 1
-                res_block = block_fn(filters[stage], kernel_size[stage], strides)
-                self.blocks.append(res_block)
-        self.include_top = include_top
-        if include_top:
-            self.global_pool = tf.keras.layers.GlobalAveragePooling1D()
-            out_act = "sigmoid" if num_outputs == 1 else "softmax"
-            self.classifier = tf.keras.layers.Dense(num_outputs, out_act)
+def generate_resnet(
+    inputs: KerasTensor,
+    num_outputs: int = 1,
+    blocks: Tuple[int, ...] = (2, 2, 2, 2),
+    filters: Tuple[int, ...] = (64, 128, 256, 512),
+    kernel_size: Tuple[int, ...] = (3, 3, 3, 3),
+    input_conv: Tuple[int, ...] = (64, 7, 2),
+    use_bottleneck: bool = False,
+    include_top: bool = True,
+) -> KerasTensor:
+    """Generate functional 1D ResNet model.
+    NOTE: We leverage functional model design as well as 2D architecture to enable QAT.
+          For TFL and TFLM, they automatically convert 1D layers to 2D, however,
+          TF doesnt do this for QAT and instead throws an error...
+    Args:
+        inputs (KerasTensor): Inputs
+        num_outputs (int, optional): # class outputs. Defaults to 1.
+        blocks (Tuple[int, ...], optional): Stage block sizes. Defaults to (2, 2, 2, 2).
+        filters (Tuple[int, ...], optional): Stage filter sizes. Defaults to (64, 128, 256, 512).
+        kernel_size (Tuple[int, ...], optional): Stage kernel sizes. Defaults to (3, 3, 3, 3).
+        input_conv (Tuple[int, ...], optional): Initial conv layer attributes. Defaults to (64, 7, 2).
+        include_top (bool, optional): Include classifier layers. Defaults to True.
 
-    def call(self, x, include_top=None, **kwargs):
-        if include_top is None:
-            include_top = self.include_top
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu1(x)
-        x = self.maxpool1(x)
-        for res_block in self.blocks:
-            x = res_block(x)
-        if include_top:
-            x = self.global_pool(x)
-            x = self.classifier(x)
-        return x
+    Returns:
+        KerasTensor: Outputs
+    """
+    x = tf.keras.layers.Reshape([1] + inputs.shape[1:])(inputs)
+    x = conv12d(*input_conv)(x)
+    x = batch_norm()(x)
+    x = relu()(x)
+    x = tf.keras.layers.MaxPooling2D(3, (1, 2), padding="same")(x)
+    for stage, num_blocks in enumerate(blocks):
+        for block in range(num_blocks):
+            strides = 2 if block == 0 and stage > 0 else 1
+            if use_bottleneck:
+                x = generate_bottleneck_block(
+                    x=x,
+                    filters=filters[stage],
+                    kernel_size=kernel_size[stage],
+                    strides=strides,
+                )
+            else:
+                x = generate_residual_block(
+                    x=x,
+                    filters=filters[stage],
+                    kernel_size=kernel_size[stage],
+                    strides=strides,
+                )
+        # END FOR
+    # END FOR
+    x = tf.keras.layers.Reshape(x.shape[2:])(x)
+    if include_top:
+        out_act = "sigmoid" if num_outputs == 1 else "softmax"
+        x = tf.keras.layers.GlobalAveragePooling1D()(x)
+        x = tf.keras.layers.Dense(num_outputs, out_act)(x)
+    return x

@@ -59,19 +59,17 @@
 #include "model.h"
 #include "main.h"
 
-
 // Application globals
-uint32_t numSamples;
+static uint32_t numSamples = 0;
 static float32_t sensorBuffer[SENSOR_BUFFER_LEN];
 static float32_t modelResults[NUM_CLASSES] = {0};
-static int modelResult;
-int volatile static sensorCollectBtnPressed = false;
-int volatile static clientCollectBtnPressed = false;
+static int modelResult = -1;
+static bool usbAvailable = true;
+static int volatile sensorCollectBtnPressed = false;
+static int volatile clientCollectBtnPressed = false;
+static AppState state = IDLE_STATE;
+static DataCollectMode collectMode = SENSOR_DATA_COLLECT;
 
-AppState state = IDLE_STATE;
-DataCollectMode collectMode = SENSOR_DATA_COLLECT;
-
-bool usbAvailable = false;
 char rpcSendSamplesDesc[]  = "SEND_SAMPLES";
 char rpcSendResultsDesc[]  = "SEND_RESULTS";
 char rpcFetchSamplesDesc[] = "FETCH_SAMPLES";
