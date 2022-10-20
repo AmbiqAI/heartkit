@@ -1,4 +1,4 @@
-# Heart Arrhythmia Classification
+# ♥️ Heart Arrhythmia Classification
 
 The objective is to perform real-time heart arrhythmia classification using 1-lead ECG and optionally PPG. Classification can be performed on either rhythm (e.g. normal, AFIB, AFL) or beat (e.g. PAC, PVC). The current model is able to perform AFIB arrhythmia classification with over 99% accuracy. In the near future, this will be extended to include Atrial flutter. Longer term goal is to perform beat-level classification.
 
