@@ -129,7 +129,7 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
         plt.plotsize(width, height)
         plt.title("Live Sensor Data")
         plt.xlabel("Time (sample)")
-        plt.plot(self._plot_data, marker="hd")
+        plt.plot(self._plot_data)
         return plt.build()
 
     def make_bar_plot(self, width: float, height: float) -> str:

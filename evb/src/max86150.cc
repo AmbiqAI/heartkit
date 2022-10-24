@@ -1,7 +1,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <stdint.h>
-#include <am_util_stdio.h>
+// #include "ns_ambiqsuite_harness.h"
 #include "max86150.h"
 
 // Status Registers
@@ -41,7 +41,6 @@ uint8_t max86150_get_register(const max86150_context_t *ctx, uint8_t reg, uint8_
      * @brief Read register field
      * @return Register value
      */
-    // int err;
     uint32_t regAddr = reg;
     uint32_t regVal;
     uint8_t value;
@@ -145,7 +144,6 @@ void max86150_set_ecg_rdy_int_flag(const max86150_context_t *ctx, bool enable) {
 
 
 // FIFO Registers
-
 uint8_t max86150_get_fifo_wr_pointer(const max86150_context_t *ctx) {
     /**
      * @brief Get FIFO write pointer
@@ -208,7 +206,7 @@ void max86150_disable_slots(const max86150_context_t *ctx) {
 uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint32_t *buffer, Max86150SlotType *slots, uint8_t numSlots) {
     /**
      * @brief Reads all data available in FIFO
-     * @param  ctx Device context
+     * @param ctx Device context
      * @param buffer Buffer to store FIFO data. Should be at least 32*3*elementsPerSample (max 384 bytes)
      * @param elementsPerSample Number of elements per sample. Depends on values written to FD1-FD4
      * @return Number of samples read
@@ -218,14 +216,25 @@ uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint32_t *buf
     uint8_t rdBytes[3*4];
     uint32_t rdBytesIdx;
     uint32_t bufferIdx;
-    uint8_t ovrCnt = max86150_get_fifo_overflow_counter(ctx);
-    uint8_t rdPtr = max86150_get_fifo_rd_pointer(ctx);
-    uint8_t wrPtr = max86150_get_fifo_wr_pointer(ctx);
-    uint32_t regAddr = MAX86150_FIFO_DATA;
+    uint32_t regAddr = MAX86150_FIFO_WR_PTR;
+    ctx->i2c_write_read(ctx->addr, &regAddr, 1, temp, 3);
+    uint8_t wrPtr = temp[0] & 0x1F;
+    uint8_t ovrCnt = temp[1] & 0x1F;
+    uint8_t rdPtr = temp[2] & 0x1F;
     uint32_t bytesPerSample = 3*numSlots;
-    uint32_t numSamples = ovrCnt > 0 ? MAX86150_FIFO_DEPTH : rdPtr <= wrPtr ? wrPtr - rdPtr : MAX86150_FIFO_DEPTH - rdPtr + wrPtr;
+    uint32_t numSamples;
+    // If overflow or pointers are equal, then FIFO is full
+    // NOTE: When FIFO cleared wr=rd=ovr=0 not sure how to handle this
+    if (ovrCnt || (wrPtr && (rdPtr == wrPtr))) {
+        numSamples = MAX86150_FIFO_DEPTH;
+    } else if (wrPtr > rdPtr) {
+        numSamples = wrPtr - rdPtr;
+    } else {
+        numSamples = MAX86150_FIFO_DEPTH + wrPtr - rdPtr;
+    }
+    // ns_printf("[%lu %lu %lu (%u)]\n", rdPtr, wrPtr, ovrCnt, numSamples);
     if (numSamples == 0) { return numSamples; }
-
+    regAddr = MAX86150_FIFO_DATA;
     ctx->i2c_write(&regAddr, 1, ctx->addr);
     bufferIdx = 0;
     for (size_t i = 0; i < numSamples; i++){
@@ -237,7 +246,11 @@ uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint32_t *buf
             temp[1] = rdBytes[rdBytesIdx++];
             temp[0] = rdBytes[rdBytesIdx++];
             memcpy(&buffer[bufferIdx], temp, 4);
-            buffer[bufferIdx] &= 0x3FFFF;
+            if (slots[j] == Max86150SlotEcg) {
+                buffer[bufferIdx] &= 0x3FFFF;
+            } else {
+                buffer[bufferIdx] &= 0x7FFFF;
+            }
             bufferIdx += 1;
         }
     }
@@ -513,5 +526,5 @@ void max86150_set_ecg_ia_gain(const max86150_context_t *ctx, uint8_t value) {
 void max86150_clear_fifo(const max86150_context_t *ctx) {
     max86150_set_fifo_wr_pointer(ctx, 0);
     max86150_set_fifo_overflow_counter(ctx, 0);
-    max86150_set_fifo_wr_pointer(ctx, 0);
+    max86150_set_fifo_rd_pointer(ctx, 0);
 }

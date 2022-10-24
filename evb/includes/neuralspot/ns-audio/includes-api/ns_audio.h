@@ -61,6 +61,11 @@ extern "C" {
 #include "am_util.h"
 #include "ns_ipc_ring_buffer.h"
 
+#ifndef NS_AUDIO_DMA_BUFFER_SIZE
+#define NS_AUDIO_DMA_BUFFER_SIZE 480
+#endif
+
+
 /// Audio IPC Modes
 typedef enum {
     NS_AUDIO_API_CALLBACK,   ///< App-defined callback is invoked when audio is ready

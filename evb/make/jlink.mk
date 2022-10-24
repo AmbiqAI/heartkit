@@ -2,7 +2,7 @@
 JLINK_DEVICE = AMAP42KK-KBR
 JLINK_IF_SPEED = 4000
 JLINK_PF_ADDR = 0x18000
-JLINK_CPUFREQ = 95173000
+JLINK_CPUFREQ = 96105000
 JLINK_SWOFREQ = 1000000
 JLINK_CF = $(BINDIR)/flash_cmds.jlink
 
@@ -14,7 +14,7 @@ else # for linux
   UNAME_S := $(shell uname -s)
   ifeq ($(UNAME_S),Darwin)
     JLINK_SWO = JLinkSWOViewerCL
-  else
+  else	
     JLINK_SWO = JLinkSWOViewer_CL
   endif
 endif

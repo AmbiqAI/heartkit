@@ -74,6 +74,18 @@ char rpcSendSamplesDesc[]  = "SEND_SAMPLES";
 char rpcSendResultsDesc[]  = "SEND_RESULTS";
 char rpcFetchSamplesDesc[] = "FETCH_SAMPLES";
 
+const ns_power_config_t ns_pwr_config = {
+    .eAIPowerMode = NS_MINIMUM_PERF,
+    .bNeedAudAdc = false,
+    .bNeedSharedSRAM = false,
+    .bNeedCrypto = true,
+    .bNeedBluetooth = false,
+    .bNeedUSB = true,
+    .bNeedIOM = false, // We will manually enable IOM0
+    .bNeedAlternativeUART = false,
+    .b128kTCM = false
+};
+
 //*****************************************************************************
 //*** Peripheral Configs
 ns_button_config_t button_config = {
@@ -140,10 +152,15 @@ void start_collecting(void) {
      * @brief Setup sensor for collecting
      *
      */
-    numSamples = 0;
     if (collectMode == SENSOR_DATA_COLLECT) {
         start_sensor();
+        // Discard first second- this will give sensor and user warm up time
+        for (size_t i = 0; i < 100; i++) {
+            capture_sensor_data(sensorBuffer);
+            sleep_us(10000);
+        }
     }
+    numSamples = 0;
 }
 
 void stop_collecting(void) {
@@ -269,17 +286,31 @@ void preprocess_samples() {
     standardize(&sensorBuffer[PAD_WINDOW_LEN], &sensorBuffer[PAD_WINDOW_LEN], INF_WINDOW_LEN);
 }
 
+void wakeup() {
+    am_bsp_itm_printf_enable();
+    am_bsp_debug_printf_enable();
+    ns_delay_us(50);
+}
+
+void deepsleep() {
+    am_bsp_itm_printf_disable();
+    am_bsp_debug_printf_disable();
+    am_hal_sysctrl_sleep(AM_HAL_SYSCTRL_SLEEP_DEEP);
+}
 
 void setup() {
     /**
      * @brief Application setup
      *
      */
-    ns_itm_printf_enable();
+    // Power configuration (mem, cache, peripherals, clock)
+    ns_power_config(&ns_pwr_config);
+    am_hal_pwrctrl_periph_enable(AM_HAL_PWRCTRL_PERIPH_IOM0);
+    // Enable Interrupts
     am_hal_interrupt_master_enable();
-    ns_debug_printf_enable(); // Leave crypto on for ease of debugging
-    ns_power_config(&ns_development_default);
-    ns_delay_us(50);
+    // Enable SWO/USB
+    wakeup();
+    // Initialize blocks
     init_rpc();
     init_sensor();
     init_preprocess();
@@ -301,9 +332,10 @@ void loop() {
             collectMode = sensorCollectBtnPressed ? SENSOR_DATA_COLLECT : CLIENT_DATA_COLLECT;
             sensorCollectBtnPressed = false;
             clientCollectBtnPressed = false;
+            wakeup();
             state = START_COLLECT_STATE;
         } else {
-            sleep_us(10000);
+            deepsleep();
         }
         break;
 
@@ -323,8 +355,9 @@ void loop() {
 
     case STOP_COLLECT_STATE:
         stop_collecting();
-        sensorCollectBtnPressed = false;
-        clientCollectBtnPressed = false;
+        sensorCollectBtnPressed = false;  // DEBOUNCE
+        clientCollectBtnPressed = false;  // DEBOUNCE
+        am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_HIGH_PERFORMANCE);
         state = PREPROCESS_STATE;
         break;
 
@@ -339,6 +372,7 @@ void loop() {
         print_to_pc("INFERENCE_STATE\n");
         ns_printf("INFERENCE_STATE\n");
         modelResult = model_inference(&sensorBuffer[PAD_WINDOW_LEN], modelResults);
+        am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_LOW_POWER);
         state = modelResult == -1 ? FAIL_STATE : DISPLAY_STATE;
         break;
 

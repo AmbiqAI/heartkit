@@ -4,7 +4,7 @@ include make/neuralspot_toolchain.mk
 include make/jlink.mk
 include autogen.mk
 
-local_app_name := main
+TARGET = $(local_app_name)
 sources := $(wildcard src/*.c)
 sources += $(wildcard src/*.cc)
 sources += $(wildcard src/*.cpp)
@@ -12,9 +12,8 @@ sources += $(wildcard src/*.s)
 
 targets  := $(BINDIR)/$(local_app_name).axf
 targets  += $(BINDIR)/$(local_app_name).bin
-mains    += $(BINDIR)/src/$(local_app_name).o
 
-objects      = $(filter-out $(mains),$(call source-to-object,$(sources)))
+objects      = $(call source-to-object,$(sources))
 dependencies = $(subst .o,.d,$(objects))
 
 CFLAGS     += $(addprefix -D,$(DEFINES))
@@ -60,17 +59,17 @@ $(BINDIR)/%.o: %.s
 	@mkdir -p $(@D)
 	$(Q) $(CC) -c $(CFLAGS) $< -o $@
 
-%.axf: src/%.o
+$(BINDIR)/$(local_app_name).axf: $(objects)
 	@echo " Linking $(COMPILERNAME) $@"
 	@mkdir -p $(@D)
-	$(Q) $(CC) -Wl,-T,$(LINKER_FILE) -o $@ $< $(objects) $(LFLAGS)
+	$(Q) $(CC) -Wl,-T,$(LINKER_FILE) -o $@ $(objects) $(LFLAGS)
 
-%.bin: %.axf 
+$(BINDIR)/$(local_app_name).bin: $(BINDIR)/$(local_app_name).axf
 	@echo " Copying $(COMPILERNAME) $@..."
 	@mkdir -p $(@D)
 	$(Q) $(CP) $(CPFLAGS) $< $@
-	$(Q) $(OD) $(ODFLAGS) $< > $*.lst
-	$(Q) $(SIZE) $(objects) $(lib_prebuilt) $< > $*.size
+	$(Q) $(OD) $(ODFLAGS) $< > $(BINDIR)/$(local_app_name).lst
+	$(Q) $(SIZE) $(objects) $(lib_prebuilt) $< > $(BINDIR)/$(local_app_name).size
 
 $(JLINK_CF):
 	@echo " Creating JLink command sequence input file..."
