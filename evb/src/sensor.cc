@@ -16,7 +16,7 @@ uint32_t maxFifoBuffer[MAX86150_FIFO_DEPTH*NUM_SLOTS];
 ns_i2c_config_t i2cConfig = {
     .i2cBus = 0,
     .device = 1,
-    .speed = 100000,
+    .speed = 400000,
 };
 
 static int max86150_write_read(uint16_t addr, const void *write_buf, size_t num_write, void *read_buf, size_t num_read) {
