@@ -40,7 +40,6 @@ Once soldered, connect the breakout board to the EVB using 5 jumper wires as fol
 | INT         | Not used          |
 | GND         | J17 pin 4 (GND)   |
 
-
 ![max86150-5pin-header](./assets/evb-breakout-conn.jpg)
 
 > NOTE: Alternatively, the Qwiic connector on the breakout board can be used. This will require a Qwiic breakout cable. For 3V3, J3 pin 5 (3.3V) can be leveraged on the EVB.
@@ -49,7 +48,7 @@ Once soldered, connect the breakout board to the EVB using 5 jumper wires as fol
 
 Next, connect the EVB to your laptop using both USB-C ports on the EVB.
 
-> NOTE: For a better quality ECG, it is recommended that the accompanying ECG cable be used with electrodes. Quality of ECG from the onboard pads depends on contact quality and will produce artifacts.
+> NOTE: Quality of ECG from the onboard pads depends on contact quality and will produce more artifacts. For a better quality ECG, it is recommended that the accompanying ECG cable be used with electrodes. Place blue electrode on left wrist/finger/arm and red electrode on right wrist/finger/arm. Optionally, the black ground elecrode can be placed on the body to further improve SNR.
 
 ## Running the Demo
 
@@ -79,10 +78,10 @@ Upon start, the server will scan and connect to the EVB serial port. If no port 
 
 ### 3. Trigger start
 
-Now that the EVB client and PC server are running, press either Button 1 (BTN1) or Button 2 (BTN2) on the EVB to start the demo. Pressing Button 1, will use live sensor data whereas Button 2 will use test dataset supplied by the PC. In terminal A, the EVB should be printing the stage it's in (e.g `INFERENCE STAGE`) and any results. In terminal B, the PC should be plotting the data along with classification results. If labelled dataset is being used, the true label will be displayed in the bar plot title.
+Now that the EVB client and PC server are running, press either Button 1 (BTN1) or Button 2 (BTN2) on the EVB to start the demo. Pressing Button 1, will use live sensor data whereas Button 2 will use test dataset supplied by the PC. In terminal A, the EVB should be printing the stage it's in (e.g `INFERENCE STAGE`) and any results. In terminal B, the PC should be plotting the data along with classification results. If labelled dataset is being used, the true label will be displayed in the __True Label Panel__. Once finished, Button 1 or Button 2 can be pressed to start the next capture.
 
 ![evb-demo-plot](./assets/evb-demo-screenshot.svg)
 
-To shutdown the PC server, a keyboard interrupt can be used (e.g `[CTRL]+C`).
-
 > NOTE: Please use a monospaced font in the terminal for proper alignment of the plot.
+
+To shutdown the PC server, a keyboard interrupt can be used (e.g `[CTRL]+C`).

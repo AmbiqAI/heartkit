@@ -129,7 +129,7 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
         plt.plotsize(width, height)
         plt.title("Live Sensor Data")
         plt.xlabel("Time (sample)")
-        plt.plot(self._plot_data, marker="hd")
+        plt.plot(self._plot_data)
         return plt.build()
 
     def make_bar_plot(self, width: float, height: float) -> str:
@@ -174,10 +174,10 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
             self._plot_results: npt.NDArray = 100 * softmax(
                 np.frombuffer(block.buffer, dtype=np.float32)
             )
-        return 1
+        return 0  # SUCCESS
 
     def ns_rpc_data_fetchBlockFromPC(self, block):
-        return 1
+        return 0  # SUCCESS
 
     def ns_rpc_data_computeOnPC(
         self, in_block: gen_evb2pc.common.dataBlock, result_block
@@ -204,7 +204,7 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
                 cmd=gen_evb2pc.common.command.generic_cmd,
                 buffer=bytearray(x),
             )
-        return 1
+        return 0  # SUCCESS
 
     def ns_rpc_data_remotePrintOnPC(self, msg):
 
@@ -223,7 +223,7 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
             pass
         elif self.state == EvbAppState.FAIL_STATE:
             pass
-        return 1
+        return 0  # SUCCESS
 
     def make_layout(self):
         """Create live Rich layout"""

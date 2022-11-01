@@ -75,15 +75,15 @@ int init_sensor(void) {
 
     max86150_set_led_current_range(&maxCtx, 0, 0);      // IR LED 50 mA
     max86150_set_led_current_range(&maxCtx, 1, 0);      // RED LED 50 mA
-    max86150_set_led_pulse_amplitude(&maxCtx, 0, 0x32); // IR LED 20 mA
-    max86150_set_led_pulse_amplitude(&maxCtx, 1, 0x32); // RED LED 20 mA
-    max86150_set_led_pulse_amplitude(&maxCtx, 2, 0x32); // AMB LED 20 mA
+    max86150_set_led_pulse_amplitude(&maxCtx, 0, 0x00); // IR LED 20 mA 0x32
+    max86150_set_led_pulse_amplitude(&maxCtx, 1, 0x00); // RED LED 20 mA 0x32
+    max86150_set_led_pulse_amplitude(&maxCtx, 2, 0x00); // AMB LED 20 mA 0x32
 
     max86150_set_ecg_sample_rate(&maxCtx, 3);           // Fs = 200 Hz
-    max86150_set_ecg_ia_gain(&maxCtx, 0);               // 5 V/V
-    max86150_set_ecg_pga_gain(&maxCtx, 2);              // 4 V/V
-    max86150_set_fifo_enable(&maxCtx, 1);
-    max86150_clear_fifo(&maxCtx);
+    max86150_set_ecg_ia_gain(&maxCtx, 2);               // 9.5 V/V
+    max86150_set_ecg_pga_gain(&maxCtx, 3);              // 8 V/V
+    max86150_powerup(&maxCtx);
+    max86150_set_fifo_enable(&maxCtx, 0);
     return 0;
 }
 
@@ -93,9 +93,8 @@ void start_sensor(void) {
      * @brief Takes sensor out of low-power mode and enables FIFO
      *
      */
-    max86150_powerup(&maxCtx);
+    // max86150_powerup(&maxCtx);
     max86150_set_fifo_enable(&maxCtx, 1);
-    max86150_clear_fifo(&maxCtx);
 }
 
 void stop_sensor(void) {
@@ -103,7 +102,7 @@ void stop_sensor(void) {
      * @brief Puts sensor in low-power mode
      *
      */
-    // max86150_set_fifo_enable(&maxCtx, 0);
+    max86150_set_fifo_enable(&maxCtx, 0);
     // max86150_shutdown(&maxCtx);
 }
 
@@ -120,8 +119,7 @@ uint32_t capture_sensor_data(float32_t* buffer) {
         for (size_t j = 0; j < NUM_SLOTS; j++) {
             val = maxFifoBuffer[NUM_SLOTS*i+j];
             // ECG data is 18-bit 2's complement. If MSB=1 then make negative
-            if (val & (1 << 17)) {
-            // if ((maxSlotsConfig[j] == Max86150SlotEcg) && (val & (1 << 17))) {
+            if ((maxSlotsConfig[j] == Max86150SlotEcg) && (val & (1 << 17))) {
                 val -= (1 << 18);
             }
             buffer[i] = (float32_t)(val);

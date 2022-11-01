@@ -19,14 +19,12 @@ TfLiteTensor *modelOutput = nullptr;
 constexpr int kTensorArenaSize = 1024 * 50;
 alignas(16) uint8_t tensorArena[kTensorArenaSize];
 
-#pragma GCC push_options
-#pragma GCC optimize("O0")
 int init_model() {
     /**
      * @brief Initialize TFLM model block
      *
      */
-    static tflite::MicroMutableOpResolver<12> model_op_resolver;
+    static tflite::MicroMutableOpResolver<13> model_op_resolver;
     model_op_resolver.AddQuantize();
     model_op_resolver.AddShape();
     model_op_resolver.AddStridedSlice();
@@ -37,8 +35,9 @@ int init_model() {
     model_op_resolver.AddAdd();
     model_op_resolver.AddMean();
     model_op_resolver.AddFullyConnected();
-    model_op_resolver.AddDequantize();
     model_op_resolver.AddSoftmax();
+    model_op_resolver.AddRelu();
+    model_op_resolver.AddDequantize();
 
     static tflite::MicroErrorReporter micro_error_reporter;
     errorReporter = &micro_error_reporter;
@@ -82,7 +81,6 @@ int init_model() {
     modelOutput = interpreter->output(0);
     return 0;
 }
-#pragma GCC pop_options
 
 int model_inference(float32_t *x, float32_t *y) {
     /**
