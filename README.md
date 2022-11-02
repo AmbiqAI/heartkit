@@ -7,7 +7,7 @@ The objective is to perform real-time heart arrhythmia classification using 1-le
 * [Python 3.9+](https://www.python.org)
 * [Poetry 1.2.1+](https://python-poetry.org/docs/#installation)
 
-The following are also required to compile the binary for the EVB demo:
+The following are also required to compile/flash the binary for the EVB demo:
 
 * [Arm GNU Toolchain 11.3](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads)
 * [Segger J-Link v7.56+](https://www.segger.com/downloads/jlink/)
