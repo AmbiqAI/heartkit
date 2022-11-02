@@ -1,3 +1,13 @@
+/**
+ * @file sensor.h
+ * @author Adam Page (adam.page@ambiq.com)
+ * @brief Initializes and collects sensor data from MAX86150
+ * @version 0.1
+ * @date 2022-11-02
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
 #ifndef __SENSOR_H
 #define __SENSOR_H
 

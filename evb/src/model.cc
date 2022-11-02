@@ -1,5 +1,13 @@
-//*****************************************************************************
-//*** TensorFlow
+/**
+ * @file model.cc
+ * @author Adam Page (adam.page@ambiq.com)
+ * @brief Performs inference using TFLM
+ * @version 0.1
+ * @date 2022-11-02
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 #include "tensorflow/lite/micro/kernels/micro_ops.h"
 #include "tensorflow/lite/micro/micro_error_reporter.h"

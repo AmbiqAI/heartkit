@@ -1,7 +1,17 @@
+/**
+ * @file sensor.cc
+ * @author Adam Page (adam.page@ambiq.com)
+ * @brief Initializes and collects sensor data from MAX86150
+ * @version 0.1
+ * @date 2022-11-02
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
 #include "arm_math.h"
 #include "ns_ambiqsuite_harness.h"
 #include "max86150.h"
-#include "ns_io_i2c.h"
+#include "ns_i2c.h"
 #include "constants.h"
 #include "sensor.h"
 
@@ -14,19 +24,17 @@ Max86150SlotType maxSlotsConfig[] = {
 uint32_t maxFifoBuffer[MAX86150_FIFO_DEPTH*NUM_SLOTS];
 
 ns_i2c_config_t i2cConfig = {
-    .i2cBus = 0,
-    .device = 1,
-    .speed = 400000,
+    .iom = 1
 };
 
 static int max86150_write_read(uint16_t addr, const void *write_buf, size_t num_write, void *read_buf, size_t num_read) {
-    return ns_io_i2c_write_read(&i2cConfig, addr, write_buf, num_write, read_buf, num_read);
+    return ns_i2c_write_read(&i2cConfig, addr, write_buf, num_write, read_buf, num_read);
 }
 static int max86150_read(const void *buf, uint32_t num_bytes, uint16_t addr) {
-    return ns_io_i2c_read(&i2cConfig, buf, num_bytes, addr);
+    return ns_i2c_read(&i2cConfig, buf, num_bytes, addr);
 }
 static int max86150_write(const void *buf, uint32_t num_bytes, uint16_t addr) {
-    return ns_io_i2c_write(&i2cConfig, buf, num_bytes, addr);
+    return ns_i2c_write(&i2cConfig, buf, num_bytes, addr);
 }
 
 max86150_context_t maxCtx = {
@@ -60,7 +68,7 @@ int init_sensor(void) {
      * @brief Initialize and configure sensor block (MAX86150)
      *
      */
-    ns_io_i2c_init(&i2cConfig);
+    ns_i2c_interface_init(&i2cConfig, 400000);
     max86150_powerup(&maxCtx);
     ns_delay_us(10000);
     max86150_reset(&maxCtx);

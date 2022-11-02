@@ -1,42 +1,13 @@
-//*****************************************************************************
-//
-// Copyright (c) 2022, Ambiq Micro, Inc.
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-// this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright
-// notice, this list of conditions and the following disclaimer in the
-// documentation and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the copyright holder nor the names of its
-// contributors may be used to endorse or promote products derived from this
-// software without specific prior written permission.
-//
-// Third party software included in this distribution is subject to the
-// additional license terms as defined in the /docs/licenses directory.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// POSSIBILITY OF SUCH DAMAGE.
-//
-// This is part of revision R4.1.0 of the AmbiqSuite
-// NeuralSPOT
-//
-//*****************************************************************************
-
+/**
+ * @file main.cc
+ * @author Adam Page (adam.page@ambiq.com)
+ * @brief Main application
+ * @version 0.1
+ * @date 2022-11-02
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
 #include <cstdlib>
 #include <cstring>
 #include <cstdarg>
@@ -44,9 +15,6 @@
 #include "arm_math.h"
 // neuralSPOT
 #include "ns_ambiqsuite_harness.h"
-#ifdef RINGBUFFER_MODE
-    #include "ns_ipc_ring_buffer.h"
-#endif
 #include "ns_peripherals_button.h"
 #include "ns_peripherals_power.h"
 #include "ns_usb.h"
@@ -106,7 +74,6 @@ void background_task() {
      * @brief Run background tasks
      *
      */
-    tud_task();
 }
 
 void sleep_us(uint32_t time) {
