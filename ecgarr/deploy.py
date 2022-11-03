@@ -7,10 +7,7 @@ import tensorflow as tf
 from sklearn.metrics import f1_score
 import pydantic_argparse
 from rich.console import Console
-from .models.utils import (
-    get_predicted_threshold_indices,
-    predict_tflite,
-)
+from .models.utils import get_predicted_threshold_indices, predict_tflite, load_model
 from .utils import xxd_c_dump, setup_logger
 from . import datasets as ds
 from .types import EcgTask, EcgDeployParams
@@ -104,7 +101,7 @@ def deploy_model(params: EcgDeployParams):
 
     # Load model and set fixed batch size of 1
     logger.info("Loading trained model")
-    model = tf.keras.models.load_model(params.model_file)
+    model = load_model(str(params.model_file))
     input_layer = tf.keras.layers.Input(
         (params.frame_size, 1), dtype=tf.float32, batch_size=1
     )

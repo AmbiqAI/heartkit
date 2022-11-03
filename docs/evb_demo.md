@@ -9,7 +9,9 @@ flowchart LR
 
 In the first stage, 5 seconds of sensor data is collected- either directly from the MAX86150 sensor or test data from the PC. In stage 2, the data is preprocessed by bandpass filtering and standardizing. The data is then fed into the CNN network to perform inference. Finally, in stage 4, the ECG data will be classified as normal, arrhythmia (AFIB) or inconclusive. Inconclusive is assigned when the prediction confidence is less than a pre-defined threshold (e.g. 90%).
 
-> NOTE: The reference arrhythmia model (`./evb/src/model_buffer.h`) is trained on Icentia11k dataset that has the associated [non-commercial license](https://physionet.org/content/icentia11k-continuous-ecg/1.0/LICENSE.txt). The model is intended for evaluation purposes only and cannot be used for commercial use without permission.
+A TFLM model with random weights (`./evb/src/model_buffer.h.random`) is included and can be used to quickly evaluate the hardware. Rename `model_buffer.h.random` to `model_buffer.h` and compile the EVB binary. Since weights are random the inference results will yield mostly incorrect results. Run `train_model` through `deploy_model` to generate a model with real weights.
+
+> NOTE: Training is currently done on the Icentia11k dataset that has the associated [non-commercial license](https://physionet.org/content/icentia11k-continuous-ecg/1.0/LICENSE.txt). The model is intended for evaluation purposes only and cannot be used for commercial use without permission.
 
 ## Software Setup
 

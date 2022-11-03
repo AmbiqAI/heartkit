@@ -1,3 +1,4 @@
+import tempfile
 from typing import Dict, List, Optional, Tuple, Union
 import tensorflow as tf
 import numpy as np
@@ -215,3 +216,31 @@ def evaluate_tflite(
     loss_function = tf.keras.losses.get(model.loss)
     loss = loss_function(y_true, y_pred).numpy()
     return loss
+
+
+def load_model(model_path: str) -> tf.keras.Model:
+    """Loads a TF model stored either remotely or locally.
+    NOTE: Currently only WANDB and local files are supported.
+
+    Args:
+        model_path (str): Source path
+            WANDB: wandb://[[entity/]project/]collectionName:[alias]
+            FILE: file://path/to/model.tf
+            S3: S3://bucket/prefix/model.tf
+    Returns:
+        tf.keras.Model: Model
+    """
+    # Stored as WANDB artifact (assumes user is authenticated)
+    if model_path.startswith("wandb://"):
+        import wandb
+
+        api = wandb.Api()
+        model_path = model_path.removeprefix("wandb://")
+        artifact = api.artifact(model_path, type="model")
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            artifact_path = artifact.download(tmpdirname)
+            model = tf.keras.models.load_model(tmpdirname)
+        return model
+    # Local file
+    model_path = model_path.removeprefix("file://")
+    return tf.keras.models.load_model(model_path)
