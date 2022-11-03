@@ -1,7 +1,16 @@
+/**
+ * @file max86150.cc
+ * @author Adam Page (adam.page@ambiq.com)
+ * @brief Register driverf or MAX86150 IC
+ * @version 0.1
+ * @date 2022-11-02
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
 #include <ctype.h>
 #include <string.h>
 #include <stdint.h>
-// #include "ns_ambiqsuite_harness.h"
 #include "max86150.h"
 
 // Status Registers
@@ -232,7 +241,6 @@ uint32_t max86150_read_fifo_samples(const max86150_context_t *ctx, uint32_t *buf
     } else {
         numSamples = MAX86150_FIFO_DEPTH + wrPtr - rdPtr;
     }
-    // ns_printf("[%lu %lu %lu (%u)]\n", rdPtr, wrPtr, ovrCnt, numSamples);
     if (numSamples == 0) { return numSamples; }
     regAddr = MAX86150_FIFO_DATA;
     ctx->i2c_write(&regAddr, 1, ctx->addr);

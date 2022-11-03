@@ -6,7 +6,7 @@ import pydantic_argparse
 from rich.console import Console
 from sklearn.metrics import f1_score
 from . import datasets as ds
-from .models.utils import get_predicted_threshold_indices
+from .models.utils import get_predicted_threshold_indices, load_model
 from .metrics import confusion_matrix_plot, roc_auc_plot
 from .types import EcgTask, EcgTestParams
 from .utils import setup_logger, set_random_seed
@@ -131,7 +131,7 @@ def evaluate_model(params: EcgTestParams):
     strategy = tf.distribute.MirroredStrategy()
     with strategy.scope():
         logger.info("Loading model")
-        model = tf.keras.models.load_model(params.model_file)
+        model = load_model(str(params.model_file))
         model.summary()
 
         logger.info("Performing inference")

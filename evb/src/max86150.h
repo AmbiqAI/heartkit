@@ -1,3 +1,13 @@
+/**
+ * @file max86150.h
+ * @author Adam Page (adam.page@ambiq.com)
+ * @brief Register driverf or MAX86150 IC
+ * @version 0.1
+ * @date 2022-11-02
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
 #ifndef __MAX86150_H
 #define __MAX86150_H
 

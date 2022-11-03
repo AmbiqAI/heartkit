@@ -1,3 +1,13 @@
+/**
+ * @file constants.h
+ * @author Adam Page (adam.page@ambiq.com)
+ * @brief Store global app constants
+ * @version 0.1
+ * @date 2022-11-02
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
 #ifndef __ECG_CONSTANTS_H
 #define __ECG_CONSTANTS_H
 
@@ -14,7 +24,6 @@
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 
 static const char *heart_rhythm_labels[] = { "normal", "afib", "aflut", "noise" };
-// static const int SENSOR_ELEMENTS[] = [9, 0, 0, 0];
 // static const char *heart_beat_labels[] = { "normal", "pac", "aberrated", "pvc", "noise" };
 // static const char *hear_rate_labels[] = { "normal", "tachycardia", "bradycardia", "noise" };
 

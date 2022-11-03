@@ -1,3 +1,13 @@
+/**
+ * @file preprocessing.h
+ * @author Adam Page (adam.page@ambiq.com)
+ * @brief Perform preprocessing of sensor data (standardize and bandpass filter)
+ * @version 0.1
+ * @date 2022-11-02
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
 #ifndef __PREPROCESSING_H
 #define __PREPROCESSING_H
 

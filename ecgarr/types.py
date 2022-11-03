@@ -166,7 +166,7 @@ class EcgTestParams(BaseModel):
         description="# of data loaders running in parallel",
     )
     # Model arguments
-    model_file: Optional[Path] = Field(None, description="Path to model file")
+    model_file: Optional[str] = Field(None, description="Path to model file")
     threshold: Optional[float] = Field(None, description="Model output threshold")
     # Extra arguments
     seed: Optional[int] = Field(None, description="Random state seed")
@@ -182,7 +182,7 @@ class EcgDeployParams(BaseModel):
     # Dataset arguments
     db_path: Path = Field(default_factory=Path, description="Database directory")
     frame_size: int = Field(1250, description="Frame size")
-    model_file: Optional[Path] = Field(None, description="Path to model file")
+    model_file: Optional[str] = Field(None, description="Path to model file")
     threshold: Optional[float] = Field(None, description="Model output threshold")
     quantization: Optional[bool] = Field(
         None, description="Enable post training quantization (PQT)"
