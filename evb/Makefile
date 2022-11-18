@@ -4,11 +4,17 @@ include make/neuralspot_toolchain.mk
 include make/jlink.mk
 include autogen.mk
 
+# local_app_name := main <-- moved to autogen
 TARGET = $(local_app_name)
 sources := $(wildcard src/*.c)
 sources += $(wildcard src/*.cc)
 sources += $(wildcard src/*.cpp)
 sources += $(wildcard src/*.s)
+sources += $(wildcard src/ns-core/*.c)
+sources += $(wildcard src/ns-core/*.cc)
+sources += $(wildcard src/ns-core/*.cpp)
+sources += $(wildcard src/ns-core/*.s)
+
 
 targets  := $(BINDIR)/$(local_app_name).axf
 targets  += $(BINDIR)/$(local_app_name).bin
@@ -64,7 +70,7 @@ $(BINDIR)/$(local_app_name).axf: $(objects)
 	@mkdir -p $(@D)
 	$(Q) $(CC) -Wl,-T,$(LINKER_FILE) -o $@ $(objects) $(LFLAGS)
 
-$(BINDIR)/$(local_app_name).bin: $(BINDIR)/$(local_app_name).axf
+$(BINDIR)/$(local_app_name).bin: $(BINDIR)/$(local_app_name).axf 
 	@echo " Copying $(COMPILERNAME) $@..."
 	@mkdir -p $(@D)
 	$(Q) $(CP) $(CPFLAGS) $< $@
@@ -82,10 +88,12 @@ $(JLINK_CF):
 deploy: $(JLINK_CF)
 	@echo " Deploying $< to device (ensure JLink USB connected and powered on)..."
 	$(Q) $(JLINK) $(JLINK_CMD)
+	$(Q) $(RM) $(JLINK_CF)
 
 .PHONY: view
 view:
 	@echo " Printing SWO output (ensure JLink USB connected and powered on)..."
 	$(Q) $(JLINK_SWO) $(JLINK_SWO_CMD)
+	$(Q) $(RM) $(JLINK_CF)
 
 %.d: ;

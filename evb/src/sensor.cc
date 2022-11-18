@@ -10,13 +10,13 @@
  */
 #include "arm_math.h"
 #include "ns_ambiqsuite_harness.h"
-#include "max86150.h"
+#include "ns_max86150_driver.h"
 #include "ns_i2c.h"
 #include "constants.h"
 #include "sensor.h"
 
 #define NUM_SLOTS (1)
-Max86150SlotType maxSlotsConfig[] = {
+max86150_slot_type maxSlotsConfig[] = {
     Max86150SlotEcg, Max86150SlotOff,
     Max86150SlotOff, Max86150SlotOff
 };
