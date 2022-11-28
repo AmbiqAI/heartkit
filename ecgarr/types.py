@@ -203,7 +203,7 @@ class EcgDemoParams(BaseModel):
     # Dataset arguments
     db_path: Path = Field(default_factory=Path, description="Database directory")
     frame_size: int = Field(1250, description="Frame size")
-    pad_size: int = Field(0, description="Frame size")
+    pad_size: int = Field(0, description="Pad size")
     # EVB arguments
     vid_pid: Optional[str] = Field(
         "51966:16385",
