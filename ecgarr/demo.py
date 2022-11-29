@@ -125,7 +125,7 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
     def make_live_plot(self, width: float, height: float) -> str:
         """Create live plot string"""
         plt.clf()
-        plt.figure.theme("clear")
+        plt.theme("clear")
         plt.plotsize(width, height)
         plt.title("Live Sensor Data")
         plt.xlabel("Time (sample)")
@@ -135,7 +135,7 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
     def make_bar_plot(self, width: float, height: float) -> str:
         """Create bar plot string"""
         plt.clf()
-        plt.figure.theme("clear")
+        plt.theme("clear")
         plt.plotsize(width, height)
         plt.ylim(0, 100)
         label_title = "Predicted Label"
