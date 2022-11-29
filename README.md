@@ -22,7 +22,7 @@ poetry install
 
 The python package is intended to be used as a CLI-based app and provides a number of commands discussed below. In general, reference configurations are provided to (1) download the dataset, (2) train the model, (3) test the model, (4) deploy the model, and (5) run demo on Apollo 4 EVB hardware. Pre-trained reference models are also included to enable running inference and the demo immediately.
 
-> NOTE: Before running commands, be sure to activate python environment: `poetry shell`
+> NOTE: Before running commands, be sure to activate python environment: `poetry shell`. On Windows using Powershell, use `.venv\Scripts\activate.ps1`.
 
 ### 1. Download Dataset (download_dataset)
 
