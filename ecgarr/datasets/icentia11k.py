@@ -816,9 +816,6 @@ def convert_dataset_zip_to_hdf5(
     with Pool(processes=num_workers) as pool:
         _ = list(tqdm(pool.imap(f, patient_ids), total=len(patient_ids)))
 
-
-
-
 def download_dataset(db_path: str, num_workers: Optional[int] = None, force: bool = False):
     """Download icentia11k dataset
 
