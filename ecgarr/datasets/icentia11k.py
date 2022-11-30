@@ -5,6 +5,7 @@ import zipfile
 import tempfile
 import functools
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from enum import IntEnum
 from collections.abc import Iterable
 from multiprocessing import Pool
@@ -13,11 +14,13 @@ import h5py
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import boto3
 from tqdm import tqdm
 import sklearn.model_selection
 import sklearn.preprocessing
 from ..types import EcgTask, HeartBeat, HeartRhythm, HeartRate
 from .utils import butter_bp_filter
+# from ..utils import download_file
 from .types import PatientGenerator, SampleGenerator
 
 logger = logging.getLogger("ECGARR")
@@ -812,3 +815,72 @@ def convert_dataset_zip_to_hdf5(
     f = functools.partial(convert_dataset_pt_zip_to_hdf5, zip_path=zip_path, db_path=db_path, force=force)
     with Pool(processes=num_workers) as pool:
         _ = list(tqdm(pool.imap(f, patient_ids), total=len(patient_ids)))
+
+
+
+
+def download_dataset(db_path: str, num_workers: Optional[int] = None, force: bool = False):
+    """Download icentia11k dataset
+
+    Args:
+        db_path (str): Path to store dataset
+        num_workers (Optional[int], optional): # parallel workers. Defaults to None.
+        force (bool, optional): Force redownload. Defaults to False.
+    """
+
+    def download_s3_file(bucket: str, client: boto3.client, s3_file: str, save_path: str):
+        client.download_file(
+            Bucket=bucket, Key=s3_file, Filename=save_path,
+        )
+
+    s3_bucket = 'ambiqai-ecg-icentia11k-dataset'
+    s3_prefix = 'patients'
+
+    os.makedirs(db_path, exist_ok=True)
+
+    patient_ids = get_patient_ids()
+
+    # Creating only one session and one client
+    session = boto3.Session()
+    client = session.client("s3")
+
+    func = functools.partial(download_s3_file, s3_bucket, client)
+
+    with tqdm(desc="Downloading icentia11k dataset from S3", total=len(patient_ids)) as pbar:
+        with ThreadPoolExecutor(max_workers=2*num_workers) as executor:
+            futures = (executor.submit(
+                func,
+                f"{s3_prefix}/p{patient_id:05d}.h5",
+                os.path.join(db_path, "p{patient_id:05d}.h5"
+            )) for patient_id in patient_ids)
+            for future in as_completed(futures):
+                if future.exception():
+                    print("Failed on file")
+                pbar.update(1)
+            # END FOR
+        # END WITH
+    # END WITH
+
+    # logger.info("Downloading icentia11k dataset")
+    # db_url = (
+    #     "https://physionet.org/static/published-projects/icentia11k-continuous-ecg/"
+    #     "icentia11k-single-lead-continuous-raw-electrocardiogram-dataset-1.0.zip"
+    # )
+    # db_zip_path = os.path.join(db_path, "icentia11k.zip")
+    # os.makedirs(db_path, exist_ok=True)
+    # if os.path.exists(db_zip_path) and not force:
+    #     logger.warning(
+    #         f"Zip file already exists. Please delete or set `force` flag to redownload. PATH={db_zip_path}"
+    #     )
+    # else:
+    #     download_file(db_url, db_zip_path, progress=True)
+
+    # # 2. Extract and convert patient ECG data to H5 files
+    # logger.info("Generating icentia11k patient data")
+    # convert_dataset_zip_to_hdf5(
+    #     zip_path=db_zip_path,
+    #     db_path=db_path,
+    #     force=force,
+    #     num_workers=num_workers
+    # )
+    # print("Finished icentia11k patient data")
