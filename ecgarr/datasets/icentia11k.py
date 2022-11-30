@@ -773,7 +773,7 @@ def convert_dataset_pt_zip_to_hdf5(patient: int, zip_path: str, db_path: str, fo
                     fp.write(zp.read(zp_atr_name))
                 rec = wfdb.rdrecord(os.path.splitext(rec_fpath)[0], physical=True)
                 atr = wfdb.rdann(os.path.splitext(atr_fpath)[0], extension='atr')
-            pt_seg_path = os.path.join('/', os.path.splitext(os.path.basename(zp_rec_name))[0].replace('_', '/'))
+            pt_seg_path = f"/{os.path.splitext(os.path.basename(zp_rec_name))[0].replace('_', '/')}"
             data = rec.p_signal.astype(np.float16)
             blabels = np.array(
                 [[atr.sample[i], WfdbBeatMap.get(s)] for i,s in enumerate(atr.symbol) if s in WfdbBeatMap],
@@ -783,9 +783,9 @@ def convert_dataset_pt_zip_to_hdf5(patient: int, zip_path: str, db_path: str, fo
                 [[atr.sample[i], WfdbRhythmMap.get(atr.aux_note[i], 0)] for i,s in enumerate(atr.symbol) if s == '+'],
                 dtype=np.int32
             )
-            h5.create_dataset(name=os.path.join(pt_seg_path, 'data'), data=data, compression="gzip", compression_opts=3)
-            h5.create_dataset(name=os.path.join(pt_seg_path, 'blabels'), data=blabels)
-            h5.create_dataset(name=os.path.join(pt_seg_path, 'rlabels'), data=rlabels)
+            h5.create_dataset(name=f"{pt_seg_path}/data", data=data, compression="gzip", compression_opts=3)
+            h5.create_dataset(name=f"{pt_seg_path}/blabels", data=blabels)
+            h5.create_dataset(name=f"{pt_seg_path}/rlabels", data=rlabels)
         except Exception as err:  # pylint: disable=broad-except
             print(f'Failed processing {zp_rec_name}', err)
             continue
