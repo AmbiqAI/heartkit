@@ -15,6 +15,8 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import boto3
+from botocore import UNSIGNED
+from botocore.client import Config
 from tqdm import tqdm
 import sklearn.model_selection
 import sklearn.preprocessing
@@ -839,7 +841,7 @@ def download_dataset(db_path: str, num_workers: Optional[int] = None, force: boo
 
     # Creating only one session and one client
     session = boto3.Session()
-    client = session.client("s3")
+    client = session.client("s3", config=Config(signature_version=UNSIGNED))
 
     func = functools.partial(download_s3_file, s3_bucket, client)
 
@@ -848,11 +850,12 @@ def download_dataset(db_path: str, num_workers: Optional[int] = None, force: boo
             futures = (executor.submit(
                 func,
                 f"{s3_prefix}/p{patient_id:05d}.h5",
-                os.path.join(db_path, "p{patient_id:05d}.h5"
+                os.path.join(db_path, f"p{patient_id:05d}.h5"
             )) for patient_id in patient_ids)
             for future in as_completed(futures):
-                if future.exception():
-                    print("Failed on file")
+                err = future.exception()
+                if err:
+                    print("Failed on file", err)
                 pbar.update(1)
             # END FOR
         # END WITH
