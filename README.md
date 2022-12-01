@@ -26,13 +26,13 @@ The python package is intended to be used as a CLI-based app and provides a numb
 
 ### 1. Download Dataset (download_dataset)
 
-The `download_dataset` command will download the entire [Icentia11k dataset](https://physionet.org/content/icentia11k-continuous-ecg/1.0/) as a single zip file as well as convert into individual patient [HDF5 files](https://www.hdfgroup.org/solutions/hdf5/) (e.g. `p00001.h5`). The latter makes it possible to leverage TensorFlow `prefetch` and `interleave` to parallelize loading data.
+The `download_dataset` command will download the entire __Icentia11k dataset__ as individual patient [HDF5 files](https://www.hdfgroup.org/solutions/hdf5/) (e.g. `p00001.h5`). This makes it faster to download as well as makes it possible to leverage TensorFlow `prefetch` and `interleave` to parallelize loading data. The files are derived from the original [Icentia11k dataset]((https://physionet.org/content/icentia11k-continuous-ecg/1.0/)) that has the associated [non-commercial license](https://physionet.org/content/icentia11k-continuous-ecg/1.0/LICENSE.txt). The dataset is intended for evaluation purposes only and cannot be used for commercial use without permission.
 
 ```bash
 python -m ecgarr download_dataset --config-file ./configs/download-dataset.json
 ```
 
-> NOTE: The dataset requires roughly 300 GB of disk space and can take around 6 hours to download. The conversion to HDF5 files takes an additional 6 hours. Once the command finishes, the zip file (`./datasets/icentia11k/icentia11k.zip`) can be deleted to free up 188 GB.
+> NOTE: The dataset requires roughly 200 GB of disk space and can take around 2 hours to download.
 
 ### 2. Train Model (train_model)
 
