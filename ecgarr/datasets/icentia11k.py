@@ -827,7 +827,9 @@ def download_dataset(db_path: str, num_workers: Optional[int] = None, force: boo
         force (bool, optional): Force redownload. Defaults to False.
     """
 
-    def download_s3_file(bucket: str, client: boto3.client, s3_file: str, save_path: str):
+    def download_s3_file(s3_file: str, save_path: str, bucket: str, client: boto3.client, force: bool = False):
+        if not force and os.path.exists(save_path):
+            return
         client.download_file(
             Bucket=bucket, Key=s3_file, Filename=save_path,
         )
@@ -843,7 +845,7 @@ def download_dataset(db_path: str, num_workers: Optional[int] = None, force: boo
     session = boto3.Session()
     client = session.client("s3", config=Config(signature_version=UNSIGNED))
 
-    func = functools.partial(download_s3_file, s3_bucket, client)
+    func = functools.partial(download_s3_file, bucket=s3_bucket, client=client, force=force)
 
     with tqdm(desc="Downloading icentia11k dataset from S3", total=len(patient_ids)) as pbar:
         with ThreadPoolExecutor(max_workers=2*num_workers) as executor:
