@@ -8,24 +8,24 @@
  * @copyright Copyright (c) 2022
  *
  */
-#include <cstdlib>
-#include <cstring>
+#include "arm_math.h"
 #include <cstdarg>
 #include <cstdio>
-#include "arm_math.h"
+#include <cstdlib>
+#include <cstring>
 // neuralSPOT
 #include "ns_ambiqsuite_harness.h"
+#include "ns_malloc.h"
 #include "ns_peripherals_button.h"
 #include "ns_peripherals_power.h"
-#include "ns_usb.h"
-#include "ns_malloc.h"
 #include "ns_rpc_generic_data.h"
+#include "ns_usb.h"
 // Locals
 #include "constants.h"
-#include "sensor.h"
-#include "preprocessing.h"
-#include "model.h"
 #include "main.h"
+#include "model.h"
+#include "preprocessing.h"
+#include "sensor.h"
 
 // Application globals
 static uint32_t numSamples = 0;
@@ -38,51 +38,59 @@ static int volatile clientCollectBtnPressed = false;
 static AppState state = IDLE_STATE;
 static DataCollectMode collectMode = SENSOR_DATA_COLLECT;
 
-char rpcSendSamplesDesc[]  = "SEND_SAMPLES";
-char rpcSendResultsDesc[]  = "SEND_RESULTS";
+char rpcSendSamplesDesc[] = "SEND_SAMPLES";
+char rpcSendResultsDesc[] = "SEND_RESULTS";
 char rpcFetchSamplesDesc[] = "FETCH_SAMPLES";
 
-const ns_power_config_t ns_pwr_config = {
-    .eAIPowerMode = NS_MINIMUM_PERF,
-    .bNeedAudAdc = false,
-    .bNeedSharedSRAM = false,
-    .bNeedCrypto = true,
-    .bNeedBluetooth = false,
-    .bNeedUSB = true,
-    .bNeedIOM = false, // We will manually enable IOM0
-    .bNeedAlternativeUART = false,
-    .b128kTCM = false
-};
+const ns_power_config_t ns_pwr_config = {.eAIPowerMode = NS_MINIMUM_PERF,
+                                         .bNeedAudAdc = false,
+                                         .bNeedSharedSRAM = false,
+                                         .bNeedCrypto = true,
+                                         .bNeedBluetooth = false,
+                                         .bNeedUSB = true,
+                                         .bNeedIOM = false, // We will manually enable IOM0
+                                         .bNeedAlternativeUART = false,
+                                         .b128kTCM = false};
 
 //*****************************************************************************
 //*** Peripheral Configs
 ns_button_config_t button_config = {
-    .button_0_enable = true,
-    .button_1_enable = true,
-    .button_0_flag = &sensorCollectBtnPressed,
-    .button_1_flag = &clientCollectBtnPressed
-};
+    .button_0_enable = true, .button_1_enable = true, .button_0_flag = &sensorCollectBtnPressed, .button_1_flag = &clientCollectBtnPressed};
 
 // Handle TinyUSB events
-void tud_mount_cb(void) { usbAvailable = true; }
-void tud_resume_cb(void) { usbAvailable = true; }
-void tud_umount_cb(void) { usbAvailable = false; }
-void tud_suspend_cb(bool remote_wakeup_en) { usbAvailable = false; }
+void
+tud_mount_cb(void) {
+    usbAvailable = true;
+}
+void
+tud_resume_cb(void) {
+    usbAvailable = true;
+}
+void
+tud_umount_cb(void) {
+    usbAvailable = false;
+}
+void
+tud_suspend_cb(bool remote_wakeup_en) {
+    usbAvailable = false;
+}
 
-void background_task() {
+void
+background_task() {
     /**
      * @brief Run background tasks
      *
      */
 }
 
-void sleep_us(uint32_t time) {
+void
+sleep_us(uint32_t time) {
     /**
      * @brief Enable longer sleeps while also running background tasks on interval
      * @param time Sleep duration in microseconds
      */
     uint32_t chunk;
-    while (time > 0){
+    while (time > 0) {
         chunk = MIN(10000, time);
         ns_delay_us(chunk);
         time -= chunk;
@@ -90,21 +98,19 @@ void sleep_us(uint32_t time) {
     }
 }
 
-void init_rpc(void) {
+void
+init_rpc(void) {
     /**
      * @brief Initialize RPC and USB
      *
      */
     ns_rpc_config_t rpcConfig = {
-        .mode = NS_RPC_GENERICDATA_CLIENT,
-        .sendBlockToEVB_cb = NULL,
-        .fetchBlockFromEVB_cb = NULL,
-        .computeOnEVB_cb = NULL
-    };
+        .mode = NS_RPC_GENERICDATA_CLIENT, .sendBlockToEVB_cb = NULL, .fetchBlockFromEVB_cb = NULL, .computeOnEVB_cb = NULL};
     ns_rpc_genericDataOperations_init(&rpcConfig);
 }
 
-void print_to_pc(const char * msg) {
+void
+print_to_pc(const char *msg) {
     /**
      * @brief Print to PC over RPC
      *
@@ -114,7 +120,8 @@ void print_to_pc(const char * msg) {
     }
 }
 
-void start_collecting(void) {
+void
+start_collecting(void) {
     /**
      * @brief Setup sensor for collecting
      *
@@ -130,7 +137,8 @@ void start_collecting(void) {
     numSamples = 0;
 }
 
-void stop_collecting(void) {
+void
+stop_collecting(void) {
     /**
      * @brief Disable sensor
      *
@@ -140,7 +148,8 @@ void stop_collecting(void) {
     }
 }
 
-uint32_t fetch_samples_from_pc(float32_t *samples, uint32_t numSamples) {
+uint32_t
+fetch_samples_from_pc(float32_t *samples, uint32_t numSamples) {
     /**
      * @brief Fetch samples from PC over RPC
      * @param samples Buffer to store samples
@@ -153,20 +162,15 @@ uint32_t fetch_samples_from_pc(float32_t *samples, uint32_t numSamples) {
     }
     binary_t binaryBlock = {
         .data = (uint8_t *)samples,
-        .dataLength = numSamples*sizeof(float32_t),
+        .dataLength = numSamples * sizeof(float32_t),
     };
     dataBlock resultBlock = {
-        .length = numSamples,
-        .dType = float32_e,
-        .description = rpcFetchSamplesDesc,
-        .cmd = generic_cmd,
-        .buffer = binaryBlock
-    };
+        .length = numSamples, .dType = float32_e, .description = rpcFetchSamplesDesc, .cmd = generic_cmd, .buffer = binaryBlock};
     err = ns_rpc_data_computeOnPC(&resultBlock, &resultBlock);
-    if (resultBlock.description != rpcFetchSamplesDesc){
+    if (resultBlock.description != rpcFetchSamplesDesc) {
         ns_free(resultBlock.description);
     }
-    if (resultBlock.buffer.data != (uint8_t *)samples){
+    if (resultBlock.buffer.data != (uint8_t *)samples) {
         ns_free(resultBlock.buffer.data);
     }
     if (err) {
@@ -177,7 +181,8 @@ uint32_t fetch_samples_from_pc(float32_t *samples, uint32_t numSamples) {
     return resultBlock.length;
 }
 
-void send_samples_to_pc(float32_t *samples, uint32_t numSamples) {
+void
+send_samples_to_pc(float32_t *samples, uint32_t numSamples) {
     /**
      * @brief Send sensor samples to PC
      * @param samples Samples to send
@@ -188,19 +193,15 @@ void send_samples_to_pc(float32_t *samples, uint32_t numSamples) {
     }
     binary_t binaryBlock = {
         .data = (uint8_t *)samples,
-        .dataLength = numSamples*sizeof(float32_t),
+        .dataLength = numSamples * sizeof(float32_t),
     };
     dataBlock commandBlock = {
-        .length = numSamples,
-        .dType = float32_e,
-        .description = rpcSendSamplesDesc,
-        .cmd = generic_cmd,
-        .buffer = binaryBlock
-    };
+        .length = numSamples, .dType = float32_e, .description = rpcSendSamplesDesc, .cmd = generic_cmd, .buffer = binaryBlock};
     ns_rpc_data_sendBlockToPC(&commandBlock);
 }
 
-void send_results_to_pc(float32_t *results, uint32_t numResults) {
+void
+send_results_to_pc(float32_t *results, uint32_t numResults) {
     /**
      * @brief Send classification results to PC
      * @param results Buffer with model outputs (logits)
@@ -211,19 +212,15 @@ void send_results_to_pc(float32_t *results, uint32_t numResults) {
     }
     binary_t binaryBlock = {
         .data = (uint8_t *)results,
-        .dataLength = numResults*sizeof(float32_t),
+        .dataLength = numResults * sizeof(float32_t),
     };
     dataBlock commandBlock = {
-        .length = numResults,
-        .dType = float32_e,
-        .description = rpcSendResultsDesc,
-        .cmd = generic_cmd,
-        .buffer = binaryBlock
-    };
+        .length = numResults, .dType = float32_e, .description = rpcSendResultsDesc, .cmd = generic_cmd, .buffer = binaryBlock};
     ns_rpc_data_sendBlockToPC(&commandBlock);
 }
 
-uint32_t collect_samples() {
+uint32_t
+collect_samples() {
     /**
      * @brief Collect samples from sensor or PC
      * @return # new samples collected
@@ -244,7 +241,8 @@ uint32_t collect_samples() {
     return newSamples;
 }
 
-void preprocess_samples() {
+void
+preprocess_samples() {
     /**
      * @brief Preprocess by bandpass filtering and standardizing
      *
@@ -253,19 +251,22 @@ void preprocess_samples() {
     standardize(&sensorBuffer[PAD_WINDOW_LEN], &sensorBuffer[PAD_WINDOW_LEN], INF_WINDOW_LEN);
 }
 
-void wakeup() {
+void
+wakeup() {
     am_bsp_itm_printf_enable();
     am_bsp_debug_printf_enable();
     ns_delay_us(50);
 }
 
-void deepsleep() {
+void
+deepsleep() {
     am_bsp_itm_printf_disable();
     am_bsp_debug_printf_disable();
     am_hal_sysctrl_sleep(AM_HAL_SYSCTRL_SLEEP_DEEP);
 }
 
-void setup() {
+void
+setup() {
     /**
      * @brief Application setup
      *
@@ -287,7 +288,8 @@ void setup() {
     ns_printf("Please select data collection options:\n\n\t1. BTN1=sensor\n\t2. BTN2=client\n");
 }
 
-void loop() {
+void
+loop() {
     /**
      * @brief Application loop
      *
@@ -322,8 +324,8 @@ void loop() {
 
     case STOP_COLLECT_STATE:
         stop_collecting();
-        sensorCollectBtnPressed = false;  // DEBOUNCE
-        clientCollectBtnPressed = false;  // DEBOUNCE
+        sensorCollectBtnPressed = false; // DEBOUNCE
+        clientCollectBtnPressed = false; // DEBOUNCE
         am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_HIGH_PERFORMANCE);
         state = PREPROCESS_STATE;
         break;
@@ -365,11 +367,14 @@ void loop() {
     background_task();
 }
 
-int main(void) {
+int
+main(void) {
     /**
      * @brief Main function
      * @return int
      */
     setup();
-    while (1) { loop(); }
+    while (1) {
+        loop();
+    }
 }

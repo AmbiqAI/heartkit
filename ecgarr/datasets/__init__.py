@@ -1,13 +1,15 @@
 import functools
-import os
 import logging
-from typing import Generator, List, Any, Optional, Tuple, Union
-import sklearn
-import tensorflow as tf
+import os
+from typing import Any, Generator, List, Optional, Tuple, Union
+
 import numpy.typing as npt
 import pydantic_argparse
-from ..utils import matches_spec, download_file, setup_logger
-from ..types import DatasetTypes, EcgTask, EcgDownloadParams
+import sklearn
+import tensorflow as tf
+
+from ..types import DatasetTypes, EcgDownloadParams, EcgTask
+from ..utils import download_file, matches_spec, setup_logger
 from . import icentia11k
 
 logger = logging.getLogger("ECGARR")
@@ -190,7 +192,7 @@ def create_dataset_from_generator(
     frame_size: int,
     samples_per_patient: Union[int, List[int]] = 1,
     normalize: bool = True,
-    repeat: bool = True
+    repeat: bool = True,
 ):
     """Create dataset from generator for given arrhythmia task
 
@@ -212,7 +214,7 @@ def create_dataset_from_generator(
             frame_size=frame_size,
             samples_per_patient=samples_per_patient,
             normalize=normalize,
-            repeat=repeat
+            repeat=repeat,
         )
     elif task == EcgTask.beat:
         dataset = beat_dataset(
@@ -220,7 +222,7 @@ def create_dataset_from_generator(
             patient_ids=patient_ids,
             frame_size=frame_size,
             samples_per_patient=samples_per_patient,
-            normalize=normalize
+            normalize=normalize,
         )
     elif task == EcgTask.hr:
         dataset = heart_rate_dataset(
@@ -228,16 +230,20 @@ def create_dataset_from_generator(
             patient_ids=patient_ids,
             frame_size=frame_size,
             samples_per_patient=samples_per_patient,
-            normalize=normalize
+            normalize=normalize,
         )
     else:
         raise ValueError(f"unknown task: {task}")
     return dataset
 
-def numpy_dataset_generator(x: npt.ArrayLike, y: npt.ArrayLike) -> Generator[Tuple[npt.ArrayLike, npt.ArrayLike], None, None]:
-    """ Create generator from numpy dataset"""
+
+def numpy_dataset_generator(
+    x: npt.ArrayLike, y: npt.ArrayLike
+) -> Generator[Tuple[npt.ArrayLike, npt.ArrayLike], None, None]:
+    """Create generator from numpy dataset"""
     for i in range(x.shape[0]):
         yield x[i], y[i]
+
 
 def create_dataset_from_data(
     x: npt.ArrayLike, y: npt.ArrayLike, task: EcgTask, frame_size: int
@@ -263,7 +269,9 @@ def create_dataset_from_data(
     return dataset
 
 
-def download_icentia11k_dataset(db_path: str, num_workers: Optional[int] = None, force: bool = False):
+def download_icentia11k_dataset(
+    db_path: str, num_workers: Optional[int] = None, force: bool = False
+):
     """Download icentia11k dataset
 
     Args:
@@ -288,12 +296,10 @@ def download_icentia11k_dataset(db_path: str, num_workers: Optional[int] = None,
     # 2. Extract and convert patient ECG data to H5 files
     logger.info("Generating icentia11k patient data")
     icentia11k.convert_dataset_zip_to_hdf5(
-        zip_path=db_zip_path,
-        db_path=db_path,
-        force=force,
-        num_workers=num_workers
+        zip_path=db_zip_path, db_path=db_path, force=force, num_workers=num_workers
     )
     print("Finished icentia11k patient data")
+
 
 def download_datasets(params: EcgDownloadParams):
     """Download all specified datasets.
@@ -307,8 +313,9 @@ def download_datasets(params: EcgDownloadParams):
         download_icentia11k_dataset(
             db_path=str(params.db_root_path / "icentia11k"),
             num_workers=params.data_parallelism,
-            force=params.force
+            force=params.force,
         )
+
 
 def create_parser():
     """Create CLI parser"""

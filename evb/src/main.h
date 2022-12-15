@@ -20,15 +20,15 @@ enum AppState {
     INFERENCE_STATE,
     DISPLAY_STATE,
     FAIL_STATE
-}; typedef enum AppState AppState;
+};
+typedef enum AppState AppState;
 
-enum DataCollectMode {
-    SENSOR_DATA_COLLECT,
-    CLIENT_DATA_COLLECT
-}; typedef enum DataCollectMode DataCollectMode;
+enum DataCollectMode { SENSOR_DATA_COLLECT, CLIENT_DATA_COLLECT };
+typedef enum DataCollectMode DataCollectMode;
 
-
-void setup(void);
-void loop(void);
+void
+setup(void);
+void
+loop(void);
 
 #endif

@@ -1,14 +1,15 @@
-import os
-import logging
 import gzip
-import random
+import logging
+import os
 import pickle
+import random
 from typing import Optional
-import requests
-import tensorflow as tf
+
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import requests
+import tensorflow as tf
 from rich.logging import RichHandler
 from tqdm import tqdm
 

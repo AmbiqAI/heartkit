@@ -70,7 +70,7 @@ $(BINDIR)/$(local_app_name).axf: $(objects)
 	@mkdir -p $(@D)
 	$(Q) $(CC) -Wl,-T,$(LINKER_FILE) -o $@ $(objects) $(LFLAGS)
 
-$(BINDIR)/$(local_app_name).bin: $(BINDIR)/$(local_app_name).axf 
+$(BINDIR)/$(local_app_name).bin: $(BINDIR)/$(local_app_name).axf
 	@echo " Copying $(COMPILERNAME) $@..."
 	@mkdir -p $(@D)
 	$(Q) $(CP) $(CPFLAGS) $< $@
