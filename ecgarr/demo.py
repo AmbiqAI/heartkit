@@ -1,35 +1,35 @@
-from enum import Enum
-import logging
-import time
 import threading
+import time
+from enum import Enum
 from typing import List, Optional, Tuple
-from serial.serialutil import SerialException
+
+import erpc
 import numpy as np
 import numpy.typing as npt
-import erpc
-import pydantic_argparse
 import plotext as plt
-from rich.layout import Layout
-from rich.live import Live
+import pydantic_argparse
 from rich.ansi import AnsiDecoder
 from rich.console import Group
 from rich.jupyter import JupyterMixin
-from rich.panel import Panel
+from rich.layout import Layout
+from rich.live import Live
 from rich.padding import Padding
+from rich.panel import Panel
 from rich.text import Text
-from sklearn.utils import shuffle
 from scipy.special import softmax
-from .types import EcgDemoParams
-from .utils import setup_logger
+from serial.serialutil import SerialException
+from sklearn.utils import shuffle
+
+from neuralspot.rpc import GenericDataOperations_EvbToPc as gen_evb2pc
+from neuralspot.rpc import GenericDataOperations_PcToEvb as gen_pc2evb
+from neuralspot.rpc.utils import get_serial_transport
+
 from . import datasets as ds
 from .deploy import create_dataset
-from .rpc import (
-    GenericDataOperations_PcToEvb as gen_pc2evb,
-    GenericDataOperations_EvbToPc as gen_evb2pc,
-)
-from .rpc.utils import get_serial_transport
+from .types import EcgDemoParams
+from .utils import setup_logger
 
-logger = logging.getLogger("ECGARR")
+logger = setup_logger(__name__)
 
 
 class DemoBlockCommands(str, Enum):
@@ -318,6 +318,5 @@ def create_parser():
 
 
 if __name__ == "__main__":
-    setup_logger("ECGARR")
     parser = create_parser()
     evb_demo(parser.parse_typed_args())

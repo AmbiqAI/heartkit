@@ -1,4 +1,5 @@
 from typing import Tuple
+
 import tensorflow as tf
 from keras.engine.keras_tensor import KerasTensor
 
@@ -11,6 +12,11 @@ def batch_norm() -> tf.keras.layers.Layer:
 def relu() -> tf.keras.layers.Layer:
     "ReLU layer"
     return tf.keras.layers.ReLU()
+
+
+def relu6() -> tf.keras.layers.Layer:
+    "ReLU6 layer"
+    return tf.keras.layers.Activation(tf.nn.relu6)
 
 
 def conv12d(

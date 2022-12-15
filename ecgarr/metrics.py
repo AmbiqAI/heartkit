@@ -1,14 +1,16 @@
-import logging
 import warnings
 from typing import Callable, List, Optional, Tuple, Union
-import seaborn as sns
+
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
+import seaborn as sns
 import tensorflow as tf
-import matplotlib.pyplot as plt
-from sklearn.metrics import f1_score, roc_curve, auc
+from sklearn.metrics import auc, f1_score, roc_curve
 
-logger = logging.getLogger("ECGARR")
+from .utils import setup_logger
+
+logger = setup_logger(__name__)
 
 
 def f1(

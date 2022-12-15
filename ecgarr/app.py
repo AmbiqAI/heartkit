@@ -1,24 +1,22 @@
-import os
-import logging
 from pathlib import Path
 from typing import List, Optional
+
 import pydantic_argparse
 from pydantic import BaseModel, Field
-from .types import (
-    EcgDownloadParams,
-    EcgTrainParams,
-    EcgTestParams,
-    EcgDeployParams,
-    EcgDemoParams,
-)
-from . import datasets as ds
-from . import train
-from . import evaluate
-from . import demo
-from . import deploy
 
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-logger = logging.getLogger("ECGARR")
+from . import datasets as ds
+from . import demo, deploy, evaluate, train
+from .types import (
+    EcgDemoParams,
+    EcgDeployParams,
+    EcgDownloadParams,
+    EcgTestParams,
+    EcgTrainParams,
+)
+from .utils import setup_logger
+
+# os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+logger = setup_logger(__name__)
 
 
 class AppCommandArgments(BaseModel):

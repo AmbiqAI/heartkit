@@ -1,11 +1,13 @@
 import tempfile
 from typing import Dict, List, Optional, Tuple, Union
-import tensorflow as tf
+
 import numpy as np
 import numpy.typing as npt
+import tensorflow as tf
 from keras.engine.keras_tensor import KerasTensor
+
+from ..types import ArchitectureType, EcgTask
 from .features import ecg_feature_extractor
-from ..types import EcgTask, ArchitectureType
 
 InputShape = Union[Tuple[int], List[Tuple[int]], Dict[str, Tuple[int]]]
 
@@ -73,7 +75,7 @@ def generate_task_model(
     elif task == EcgTask.hr:
         num_classes = 4
     else:
-        raise ValueError("unknown task: {}".format(task))
+        raise ValueError(f"unknown task: {task}")
     x = ecg_feature_extractor(inputs, arch, stages=stages)
     outputs = tf.keras.layers.Dense(num_classes)(x)
     model = tf.keras.Model(inputs, outputs, name="model")
@@ -98,13 +100,11 @@ def get_pretrained_weights(
     Returns:
         tf.keras.Model: Pre-trained model
     """
-    model = generate_task_model(
-        task, arch, stages=stages, return_feature_extractor=True
-    )
+    model = generate_task_model(task, arch, stages=stages)
     if task in [EcgTask.rhythm, EcgTask.beat, EcgTask.hr]:
         inputs = build_input_tensor_from_shape(tf.TensorShape((None, 1)))
     else:
-        raise ValueError("Unknown task: {}".format(task))
+        raise ValueError(f"Unknown task: {task}")
     model(inputs)
     model.load_weights(checkpoint_file)
     return model
@@ -136,88 +136,6 @@ def get_predicted_threshold_indices(
     return y_thresh_idx
 
 
-def predict_tflite(
-    model_content: bytes,
-    test_x: npt.ArrayLike,
-    input_name: Optional[str] = None,
-    output_name: Optional[str] = None,
-) -> npt.ArrayLike:
-    """Perform prediction using tflite model content
-
-    Args:
-        model_content (bytes): TFLite model content
-        test_x (npt.ArrayLike): Input dataset w/ no batch dimension
-        input_name (Optional[str], optional): Input layer name. Defaults to None.
-        output_name (Optional[str], optional): Output layer name. Defaults to None.
-
-    Returns:
-        npt.ArrayLike: Model outputs
-    """
-    # Prepare the test data
-    inputs = test_x.copy()
-    inputs = inputs.astype(np.float32)
-
-    interpreter = tf.lite.Interpreter(model_content=model_content)
-    model_sig = interpreter.get_signature_runner()
-    inputs_details = model_sig.get_input_details()
-    outputs_details = model_sig.get_output_details()
-    if input_name is None:
-        input_name = list(inputs_details.keys())[0]
-    if output_name is None:
-        output_name = list(outputs_details.keys())[0]
-    input_details = inputs_details[input_name]
-    output_details = outputs_details[output_name]
-    input_scale: List[float] = input_details["quantization_parameters"]["scales"]
-    input_zero_point: List[int] = input_details["quantization_parameters"][
-        "zero_points"
-    ]
-    output_scale: List[float] = output_details["quantization_parameters"]["scales"]
-    output_zero_point: List[int] = output_details["quantization_parameters"][
-        "zero_points"
-    ]
-
-    if input_scale and input_zero_point:
-        inputs = inputs / input_scale[0] + input_zero_point[0]
-        inputs = inputs.astype(input_details["dtype"])
-
-    outputs = np.array(
-        [
-            model_sig(**{input_name: inputs[i : i + 1]})[output_name][0]
-            for i in range(inputs.shape[0])
-        ],
-        dtype=output_details["dtype"],
-    )
-
-    if output_scale and output_zero_point:
-        outputs = outputs.astype(np.float32)
-        outputs = (outputs - output_zero_point[0]) * output_scale[0]
-
-    return outputs
-
-
-def evaluate_tflite(
-    model: tf.keras.Model,
-    model_content: bytes,
-    test_x: npt.ArrayLike,
-    y_true: npt.ArrayLike,
-) -> npt.ArrayLike:
-    """Get loss values of TFLite model for given dataset
-
-    Args:
-        model (tf.keras.Model): TF model
-        model_content (bytes): TFLite model
-        test_x (npt.ArrayLike): Input samples
-        y_true (npt.ArrayLike): Input labels
-
-    Returns:
-        npt.ArrayLike: Loss values
-    """
-    y_pred = predict_tflite(model_content, test_x=test_x)
-    loss_function = tf.keras.losses.get(model.loss)
-    loss = loss_function(y_true, y_pred).numpy()
-    return loss
-
-
 def load_model(model_path: str) -> tf.keras.Model:
     """Loads a TF model stored either remotely or locally.
     NOTE: Currently only WANDB and local files are supported.
@@ -232,13 +150,14 @@ def load_model(model_path: str) -> tf.keras.Model:
     """
     # Stored as WANDB artifact (assumes user is authenticated)
     if model_path.startswith("wandb://"):
+        # pylint: disable=C0415
         import wandb
 
         api = wandb.Api()
         model_path = model_path.removeprefix("wandb://")
         artifact = api.artifact(model_path, type="model")
         with tempfile.TemporaryDirectory() as tmpdirname:
-            artifact_path = artifact.download(tmpdirname)
+            artifact.download(tmpdirname)
             model = tf.keras.models.load_model(tmpdirname)
         return model
     # Local file

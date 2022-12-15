@@ -1,18 +1,20 @@
-import logging
 from typing import List, Optional, Union
+
 import numpy as np
-import tensorflow as tf
 import pydantic_argparse
+import tensorflow as tf
 from rich.console import Console
 from sklearn.metrics import f1_score
+
 from . import datasets as ds
-from .models.utils import get_predicted_threshold_indices, load_model
 from .metrics import confusion_matrix_plot, roc_auc_plot
+from .models.utils import get_predicted_threshold_indices, load_model
 from .types import EcgTask, EcgTestParams
-from .utils import setup_logger, set_random_seed
+from .utils import set_random_seed, setup_logger
 
 console = Console()
-logger = logging.getLogger("ECGARR")
+
+logger = setup_logger(__name__)
 
 
 @tf.function
@@ -193,6 +195,5 @@ def create_parser():
 
 
 if __name__ == "__main__":
-    setup_logger("ECGARR")
     parser = create_parser()
     evaluate_model(parser.parse_typed_args())
