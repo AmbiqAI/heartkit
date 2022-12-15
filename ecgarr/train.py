@@ -220,6 +220,13 @@ def train_model(params: EcgTrainParams):
         num_parallel_calls=tf.data.experimental.AUTOTUNE,
     )
 
+    def decay(epoch):
+        if epoch < 15:
+            return 1e-3
+        if epoch < 30:
+            return 1e-4
+        return 1e-5
+
     strategy = tf.distribute.MirroredStrategy()
     with strategy.scope():
         logger.info("Building model")
@@ -263,7 +270,8 @@ def train_model(params: EcgTrainParams):
             verbose=1,
         )
         tf_logger = tf.keras.callbacks.CSVLogger(str(params.job_dir / "history.csv"))
-        model_callbacks = [early_stopping, checkpoint, tf_logger]
+        lr_scheduler = tf.keras.callbacks.LearningRateScheduler(decay)
+        model_callbacks = [early_stopping, checkpoint, tf_logger, lr_scheduler]
         if env_flag("WANDB"):
             model_callbacks.append(WandbCallback())
 

@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Callable, Tuple
 
 import tensorflow as tf
 from keras.engine.keras_tensor import KerasTensor
@@ -48,12 +48,11 @@ def conv1d(
 
 
 def generate_bottleneck_block(
-    x: KerasTensor,
     filters: int,
     kernel_size: int = 3,
     strides: int = 1,
     expansion: int = 4,
-) -> KerasTensor:
+) -> Callable[[KerasTensor], KerasTensor]:
     """Generate functional bottleneck block.
 
     Args:
@@ -66,34 +65,37 @@ def generate_bottleneck_block(
     Returns:
         KerasTensor: Outputs
     """
-    num_chan = x.shape[-1]
-    projection = num_chan != filters * expansion or strides > 1
 
-    bx = conv12d(filters, 1, 1)(x)
-    bx = batch_norm()(bx)
-    bx = relu()(bx)
+    def layer(x: KerasTensor):
+        num_chan = x.shape[-1]
+        projection = num_chan != filters * expansion or strides > 1
 
-    bx = conv12d(filters, kernel_size, strides)(x)
-    bx = batch_norm()(bx)
-    bx = relu()(bx)
+        bx = conv12d(filters, 1, 1)(x)
+        bx = batch_norm()(bx)
+        bx = relu6()(bx)
 
-    bx = conv12d(filters * expansion, 1, 1)(bx)
-    bx = batch_norm()(bx)
+        bx = conv12d(filters, kernel_size, strides)(x)
+        bx = batch_norm()(bx)
+        bx = relu6()(bx)
 
-    if projection:
-        x = conv12d(filters * expansion, 1, strides)(x)
-        x = batch_norm()(x)
-    x = tf.keras.layers.add([bx, x])
-    x = relu()(x)
-    return x
+        bx = conv12d(filters * expansion, 1, 1)(bx)
+        bx = batch_norm()(bx)
+
+        if projection:
+            x = conv12d(filters * expansion, 1, strides)(x)
+            x = batch_norm()(x)
+        x = tf.keras.layers.add([bx, x])
+        x = relu6()(x)
+        return x
+
+    return layer
 
 
 def generate_residual_block(
-    x: KerasTensor,
     filters: int,
     kernel_size: int = 3,
     strides: int = 1,
-) -> KerasTensor:
+) -> Callable[[KerasTensor], KerasTensor]:
     """Generate functional residual block
 
     Args:
@@ -106,21 +108,24 @@ def generate_residual_block(
         KerasTensor: Outputs
     """
 
-    num_chan = x.shape[-1]
-    projection = num_chan != filters or strides > 1
+    def layer(x: KerasTensor):
+        num_chan = x.shape[-1]
+        projection = num_chan != filters or strides > 1
 
-    bx = conv12d(filters, kernel_size, strides)(x)
-    bx = batch_norm()(bx)
-    bx = relu()(bx)
+        bx = conv12d(filters, kernel_size, strides)(x)
+        bx = batch_norm()(bx)
+        bx = relu6()(bx)
 
-    bx = conv12d(filters, kernel_size, 1)(bx)
-    bx = batch_norm()(bx)
-    if projection:
-        x = conv12d(filters, 1, strides)(x)
-        x = batch_norm()(x)
-    x = tf.keras.layers.add([bx, x])
-    x = relu()(x)
-    return x
+        bx = conv12d(filters, kernel_size, 1)(bx)
+        bx = batch_norm()(bx)
+        if projection:
+            x = conv12d(filters, 1, strides)(x)
+            x = batch_norm()(x)
+        x = tf.keras.layers.add([bx, x])
+        x = relu6()(x)
+        return x
+
+    return layer
 
 
 def generate_resnet(
@@ -152,25 +157,23 @@ def generate_resnet(
     x = tf.keras.layers.Reshape([1] + inputs.shape[1:])(inputs)
     x = conv12d(*input_conv)(x)
     x = batch_norm()(x)
-    x = relu()(x)
+    x = relu6()(x)
     x = tf.keras.layers.MaxPooling2D(3, (1, 2), padding="same")(x)
     for stage, num_blocks in enumerate(blocks):
         for block in range(num_blocks):
             strides = 2 if block == 0 and stage > 0 else 1
             if use_bottleneck:
                 x = generate_bottleneck_block(
-                    x=x,
                     filters=filters[stage],
                     kernel_size=kernel_size[stage],
                     strides=strides,
-                )
+                )(x)
             else:
                 x = generate_residual_block(
-                    x=x,
                     filters=filters[stage],
                     kernel_size=kernel_size[stage],
                     strides=strides,
-                )
+                )(x)
         # END FOR
     # END FOR
     x = tf.keras.layers.Reshape(x.shape[2:])(x)

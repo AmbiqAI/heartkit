@@ -124,7 +124,7 @@ def predict_tflite(
         "zero_points"
     ]
 
-    if input_scale is not None and input_zero_point is not None:
+    if len(input_scale) and len(input_zero_point):
         inputs = inputs / input_scale[0] + input_zero_point[0]
         inputs = inputs.astype(input_details["dtype"])
 
@@ -136,7 +136,7 @@ def predict_tflite(
         dtype=output_details["dtype"],
     )
 
-    if output_scale is not None and output_zero_point is not None:
+    if len(output_scale) and len(output_zero_point):
         outputs = outputs.astype(np.float32)
         outputs = (outputs - output_zero_point[0]) * output_scale[0]
 
