@@ -69,9 +69,9 @@ def generate_task_model(
     """
 
     if task == EcgTask.rhythm:
-        num_classes = 2
+        num_classes = 2  # 4
     elif task == EcgTask.beat:
-        num_classes = 5
+        num_classes = 3  # 5
     elif task == EcgTask.hr:
         num_classes = 4
     else:

@@ -33,8 +33,8 @@ class HeartBeat(IntEnum):
 
     normal = 0
     pac = 1
-    aberrated = 2
-    pvc = 3
+    pvc = 2
+    aberrated = 3
     noise = 4
 
 

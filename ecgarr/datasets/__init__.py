@@ -25,9 +25,9 @@ def get_class_names(task: EcgTask) -> List[str]:
         List[str]: class names
     """
     if task == EcgTask.rhythm:
-        return ["norm", "afib"]
+        return ["NORMAL", "AFIB/AFL"]
     if task == EcgTask.beat:
-        return ["normal", "pac", "aberrated", "pvc"]
+        return ["NORMAL", "PAC", "PVC"]
     if task == EcgTask.hr:
         return ["normal", "tachycardia", "bradycardia"]
     raise ValueError(f"unknown task: {task}")
