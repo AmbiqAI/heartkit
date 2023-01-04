@@ -2,6 +2,7 @@
     "task": "rhythm",
     "job_dir": "./results/runs/evb-demo",
     "db_path": "./datasets/icentia11k",
+    "samples_per_patient": [10, 100, 50],
     "frame_size": 1250,
     "pad_size": 250,
     "vid_pid": "51966:16385",

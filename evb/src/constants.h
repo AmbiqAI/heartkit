@@ -23,8 +23,4 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-static const char *heart_rhythm_labels[] = {"normal", "afib", "aflut", "noise"};
-// static const char *heart_beat_labels[] = { "normal", "pac", "aberrated", "pvc", "noise" };
-// static const char *hear_rate_labels[] = { "normal", "tachycardia", "bradycardia", "noise" };
-
 #endif // __ECG_CONSTANTS_H

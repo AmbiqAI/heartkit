@@ -67,7 +67,7 @@ Once converted, the TFLM header file will be copied to `./evb/src/model_buffer.h
 The `evb_demo` command is used to run the model on an Apollo 4 evaluation board (EVB). This setup requires both a host PC along with an Apollo 4 EVB. The host PC acts as a server and provides test samples to the EVB. The host PC is also used to provide status updates and model results from the EVB. The EVB runs in client mode- its job is to fetch samples and perform real-time inference using the arrhythmia model. Please refer to [EVB Demo Setup](./docs/evb_demo.md) for additional details.
 
 ```bash
-python -m ecgarr evb_demo --config-file ./configs/evb-demo.json
+python -m ecgarr evb_demo --config-file ./configs/evb-rhythm-demo.json
 ```
 
 ## Architecture

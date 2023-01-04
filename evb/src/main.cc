@@ -27,22 +27,23 @@
 #include "preprocessing.h"
 #include "sensor.h"
 
+static const char *heart_rhythm_labels[] = {"NSR", "AFIB/AFL"};
+// const char *heart_beat_labels[] = { "normal", "pac", "aberrated", "pvc", "noise" };
+// const char *hear_rate_labels[] = { "normal", "tachycardia", "bradycardia", "noise" };
+
 // Application globals
 static uint32_t numSamples = 0;
 static float32_t sensorBuffer[SENSOR_BUFFER_LEN];
 static float32_t modelResults[NUM_CLASSES] = {0};
 static int modelResult = -1;
-static bool usbAvailable = true;
+static bool usbAvailable = false;
 static int volatile sensorCollectBtnPressed = false;
 static int volatile clientCollectBtnPressed = false;
 static AppState state = IDLE_STATE;
 static DataCollectMode collectMode = SENSOR_DATA_COLLECT;
 
-char rpcSendSamplesDesc[] = "SEND_SAMPLES";
-char rpcSendResultsDesc[] = "SEND_RESULTS";
-char rpcFetchSamplesDesc[] = "FETCH_SAMPLES";
-
-const ns_power_config_t ns_pwr_config = {.eAIPowerMode = NS_MINIMUM_PERF,
+const ns_power_config_t ns_pwr_config = {.api = &ns_power_V1_0_0,
+                                         .eAIPowerMode = NS_MINIMUM_PERF,
                                          .bNeedAudAdc = false,
                                          .bNeedSharedSRAM = false,
                                          .bNeedCrypto = true,
@@ -54,8 +55,11 @@ const ns_power_config_t ns_pwr_config = {.eAIPowerMode = NS_MINIMUM_PERF,
 
 //*****************************************************************************
 //*** Peripheral Configs
-ns_button_config_t button_config = {
-    .button_0_enable = true, .button_1_enable = true, .button_0_flag = &sensorCollectBtnPressed, .button_1_flag = &clientCollectBtnPressed};
+ns_button_config_t button_config = {.api = &ns_button_V1_0_0,
+                                    .button_0_enable = true,
+                                    .button_1_enable = true,
+                                    .button_0_flag = &sensorCollectBtnPressed,
+                                    .button_1_flag = &clientCollectBtnPressed};
 
 // Handle TinyUSB events
 void
@@ -104,8 +108,11 @@ init_rpc(void) {
      * @brief Initialize RPC and USB
      *
      */
-    ns_rpc_config_t rpcConfig = {
-        .mode = NS_RPC_GENERICDATA_CLIENT, .sendBlockToEVB_cb = NULL, .fetchBlockFromEVB_cb = NULL, .computeOnEVB_cb = NULL};
+    ns_rpc_config_t rpcConfig = {.api = &ns_rpc_gdo_V1_0_0,
+                                 .mode = NS_RPC_GENERICDATA_CLIENT,
+                                 .sendBlockToEVB_cb = NULL,
+                                 .fetchBlockFromEVB_cb = NULL,
+                                 .computeOnEVB_cb = NULL};
     ns_rpc_genericDataOperations_init(&rpcConfig);
 }
 
@@ -118,6 +125,7 @@ print_to_pc(const char *msg) {
     if (usbAvailable) {
         ns_rpc_data_remotePrintOnPC(msg);
     }
+    ns_printf(msg);
 }
 
 void
@@ -156,6 +164,7 @@ fetch_samples_from_pc(float32_t *samples, uint32_t numSamples) {
      * @param numSamples # requested samples
      * @return # samples actually fetched
      */
+    static char rpcFetchSamplesDesc[] = "FETCH_SAMPLES";
     int err;
     if (!usbAvailable) {
         return 0;
@@ -188,6 +197,7 @@ send_samples_to_pc(float32_t *samples, uint32_t numSamples) {
      * @param samples Samples to send
      * @param numSamples # samples to send
      */
+    static char rpcSendSamplesDesc[] = "SEND_SAMPLES";
     if (!usbAvailable) {
         return;
     }
@@ -207,6 +217,7 @@ send_results_to_pc(float32_t *results, uint32_t numResults) {
      * @param results Buffer with model outputs (logits)
      * @param numResults # model ouputs
      */
+    static char rpcSendResultsDesc[] = "SEND_RESULTS";
     if (!usbAvailable) {
         return;
     }
@@ -272,6 +283,8 @@ setup() {
      *
      */
     // Power configuration (mem, cache, peripherals, clock)
+    ns_core_config_t ns_core_cfg = {.api = &ns_core_V1_0_0};
+    ns_core_init(&ns_core_cfg);
     ns_power_config(&ns_pwr_config);
     am_hal_pwrctrl_periph_enable(AM_HAL_PWRCTRL_PERIPH_IOM0);
     // Enable Interrupts
@@ -299,8 +312,6 @@ loop() {
     case IDLE_STATE:
         if (sensorCollectBtnPressed | clientCollectBtnPressed) {
             collectMode = sensorCollectBtnPressed ? SENSOR_DATA_COLLECT : CLIENT_DATA_COLLECT;
-            sensorCollectBtnPressed = false;
-            clientCollectBtnPressed = false;
             wakeup();
             state = START_COLLECT_STATE;
         } else {
@@ -310,7 +321,6 @@ loop() {
 
     case START_COLLECT_STATE:
         print_to_pc("COLLECT_STATE\n");
-        ns_printf("COLLECT_STATE\n");
         start_collecting();
         state = COLLECT_STATE;
         break;
@@ -332,14 +342,12 @@ loop() {
 
     case PREPROCESS_STATE:
         print_to_pc("PREPROCESS_STATE\n");
-        ns_printf("PREPROCESS_STATE\n");
         preprocess_samples();
         state = INFERENCE_STATE;
         break;
 
     case INFERENCE_STATE:
         print_to_pc("INFERENCE_STATE\n");
-        ns_printf("INFERENCE_STATE\n");
         modelResult = model_inference(&sensorBuffer[PAD_WINDOW_LEN], modelResults);
         am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_LOW_POWER);
         state = modelResult == -1 ? FAIL_STATE : DISPLAY_STATE;
@@ -347,14 +355,12 @@ loop() {
 
     case DISPLAY_STATE:
         print_to_pc("DISPLAY_STATE\n");
-        ns_printf("DISPLAY_STATE\n");
         state = IDLE_STATE;
         ns_printf("\tLabel=%s [%d,%f]\n", heart_rhythm_labels[modelResult], modelResult, modelResults[modelResult]);
         send_results_to_pc(modelResults, NUM_CLASSES);
         break;
 
     case FAIL_STATE:
-        print_to_pc("FAIL_STATE\n");
         ns_printf("FAIL_STATE (err=%d)\n", err);
         state = IDLE_STATE;
         err = 0;

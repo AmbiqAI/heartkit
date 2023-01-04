@@ -20,7 +20,7 @@ max86150_slot_type maxSlotsConfig[] = {Max86150SlotEcg, Max86150SlotOff, Max8615
 
 uint32_t maxFifoBuffer[MAX86150_FIFO_DEPTH * NUM_SLOTS];
 
-ns_i2c_config_t i2cConfig = {.iom = 1};
+ns_i2c_config_t i2cConfig = {.api = &ns_i2c_V1_0_0, .iom = 1};
 
 static int
 max86150_write_read(uint16_t addr, const void *write_buf, size_t num_write, void *read_buf, size_t num_read) {

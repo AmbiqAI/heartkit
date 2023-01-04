@@ -1,15 +1,16 @@
 import functools
-import os
 import logging
+import os
 from typing import Generator, List, Optional, Tuple, Union
-import sklearn
-import tensorflow as tf
+
 import numpy.typing as npt
 import pydantic_argparse
-from ..utils import matches_spec, setup_logger
-from ..types import EcgTask, EcgDownloadParams
-from . import icentia11k
+import sklearn
+import tensorflow as tf
 
+from ..types import EcgDownloadParams, EcgTask
+from ..utils import matches_spec, setup_logger
+from . import icentia11k
 
 logger = logging.getLogger("ECGARR")
 
@@ -24,7 +25,7 @@ def get_class_names(task: EcgTask) -> List[str]:
         List[str]: class names
     """
     if task == EcgTask.rhythm:
-        return ["NORMAL", "AFIB/AFL"]
+        return ["NSR", "AFIB/AFL"]
     if task == EcgTask.beat:
         return ["NORMAL", "PAC", "PVC"]
     if task == EcgTask.hr:

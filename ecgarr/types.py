@@ -205,6 +205,9 @@ class EcgDemoParams(BaseModel):
     db_path: Path = Field(default_factory=Path, description="Database directory")
     frame_size: int = Field(1250, description="Frame size")
     pad_size: int = Field(0, description="Pad size")
+    samples_per_patient: Union[int, List[int]] = Field(
+        1000, description="# train samples per patient"
+    )
     # EVB arguments
     vid_pid: Optional[str] = Field(
         "51966:16385",

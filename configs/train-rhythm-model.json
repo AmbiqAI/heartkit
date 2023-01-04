@@ -11,7 +11,7 @@
     "val_size": 500000,
     "arch": "resnet12",
     "quantization": false,
-    "batch_size": 6144,
+    "batch_size": 8192,
     "buffer_size": 1000000,
     "epochs": 100,
     "steps_per_epoch": 20,
