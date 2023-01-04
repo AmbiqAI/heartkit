@@ -1,16 +1,15 @@
 import functools
-import logging
 import os
-from typing import Any, Generator, List, Optional, Tuple, Union
-
-import numpy.typing as npt
-import pydantic_argparse
+import logging
+from typing import Generator, List, Optional, Tuple, Union
 import sklearn
 import tensorflow as tf
-
-from ..types import DatasetTypes, EcgDownloadParams, EcgTask
-from ..utils import download_file, matches_spec, setup_logger
+import numpy.typing as npt
+import pydantic_argparse
+from ..utils import matches_spec, setup_logger
+from ..types import EcgTask, EcgDownloadParams
 from . import icentia11k
+
 
 logger = logging.getLogger("ECGARR")
 
@@ -279,26 +278,7 @@ def download_icentia11k_dataset(
         num_workers (Optional[int], optional): # parallel workers. Defaults to None.
         force (bool, optional): Force redownload. Defaults to False.
     """
-    logger.info("Downloading icentia11k dataset")
-    db_url = (
-        "https://physionet.org/static/published-projects/icentia11k-continuous-ecg/"
-        "icentia11k-single-lead-continuous-raw-electrocardiogram-dataset-1.0.zip"
-    )
-    db_zip_path = os.path.join(db_path, "icentia11k.zip")
-    os.makedirs(db_path, exist_ok=True)
-    if os.path.exists(db_zip_path) and not force:
-        logger.warning(
-            f"Zip file already exists. Please delete or set `force` flag to redownload. PATH={db_zip_path}"
-        )
-    else:
-        download_file(db_url, db_zip_path, progress=True)
-
-    # 2. Extract and convert patient ECG data to H5 files
-    logger.info("Generating icentia11k patient data")
-    icentia11k.convert_dataset_zip_to_hdf5(
-        zip_path=db_zip_path, db_path=db_path, force=force, num_workers=num_workers
-    )
-    print("Finished icentia11k patient data")
+    icentia11k.download_dataset(db_path, num_workers=num_workers, force=force)
 
 
 def download_datasets(params: EcgDownloadParams):

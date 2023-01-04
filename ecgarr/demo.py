@@ -1,3 +1,4 @@
+import os
 import threading
 import time
 from enum import Enum
@@ -253,6 +254,7 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
     def start(self):
         """Start running demo."""
         self._run = True
+        os.makedirs(str(self.params.job_dir), exist_ok=True)
 
         transport = get_serial_transport(
             vid_pid=self.params.vid_pid, baudrate=self.params.baudrate

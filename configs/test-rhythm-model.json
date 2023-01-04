@@ -6,7 +6,7 @@
     "samples_per_patient": [500, 4000, 2000],
     "test_patients": 1000,
     "test_size": 500000,
-    "model_file_rmt": "wandb://ambiq/model-registry/ecg-arrhythmia-afib:v0",
-    "model_file": "./results/runs/rhythm-full-model/model.tf",
+    "model_file": "wandb://ambiq/model-registry/ecg-arrhythmia-afib:v1",
+    "model_file_lcl": "./results/runs/rhythm-full-model/model.tf",
     "threshold": 0.95
 }

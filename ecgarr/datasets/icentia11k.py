@@ -1,21 +1,24 @@
-import functools
-import logging
 import os
 import random
-import tempfile
 import warnings
+import functools
+import logging
+import tempfile
 import zipfile
 from collections.abc import Iterable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from enum import IntEnum
 from multiprocessing import Pool
 from typing import Dict, List, Optional, Tuple, Union
-
+import boto3
 import h5py
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import sklearn.model_selection
 import sklearn.preprocessing
+from botocore import UNSIGNED
+from botocore.client import Config
 from tqdm import tqdm
 
 from ..types import EcgTask, HeartBeat, HeartRate, HeartRhythm
@@ -849,10 +852,7 @@ def convert_dataset_pt_zip_to_hdf5(
                     fp.write(zp.read(zp_atr_name))
                 rec = wfdb.rdrecord(os.path.splitext(rec_fpath)[0], physical=True)
                 atr = wfdb.rdann(os.path.splitext(atr_fpath)[0], extension="atr")
-            pt_seg_path = os.path.join(
-                "/",
-                os.path.splitext(os.path.basename(zp_rec_name))[0].replace("_", "/"),
-            )
+            pt_seg_path = f"/{os.path.splitext(os.path.basename(zp_rec_name))[0].replace('_', '/')}"
             data = rec.p_signal.astype(np.float16)
             blabels = np.array(
                 [
@@ -871,13 +871,13 @@ def convert_dataset_pt_zip_to_hdf5(
                 dtype=np.int32,
             )
             h5.create_dataset(
-                name=os.path.join(pt_seg_path, "data"),
+                name=f"{pt_seg_path}/data",
                 data=data,
                 compression="gzip",
                 compression_opts=3,
             )
-            h5.create_dataset(name=os.path.join(pt_seg_path, "blabels"), data=blabels)
-            h5.create_dataset(name=os.path.join(pt_seg_path, "rlabels"), data=rlabels)
+            h5.create_dataset(name=f"{pt_seg_path}/blabels", data=blabels)
+            h5.create_dataset(name=f"{pt_seg_path}/rlabels", data=rlabels)
         except Exception as err:  # pylint: disable=broad-except
             print(f"Failed processing {zp_rec_name}", err)
             continue
@@ -907,3 +907,90 @@ def convert_dataset_zip_to_hdf5(
     )
     with Pool(processes=num_workers) as pool:
         _ = list(tqdm(pool.imap(f, patient_ids), total=len(patient_ids)))
+
+
+def download_dataset(
+    db_path: str, num_workers: Optional[int] = None, force: bool = False
+):
+    """Download icentia11k dataset
+
+    Args:
+        db_path (str): Path to store dataset
+        num_workers (Optional[int], optional): # parallel workers. Defaults to None.
+        force (bool, optional): Force redownload. Defaults to False.
+    """
+
+    def download_s3_file(
+        s3_file: str,
+        save_path: str,
+        bucket: str,
+        client: boto3.client,
+        force: bool = False,
+    ):
+        if not force and os.path.exists(save_path):
+            return
+        client.download_file(
+            Bucket=bucket,
+            Key=s3_file,
+            Filename=save_path,
+        )
+
+    s3_bucket = "ambiqai-ecg-icentia11k-dataset"
+    s3_prefix = "patients"
+
+    os.makedirs(db_path, exist_ok=True)
+
+    patient_ids = get_patient_ids()
+
+    # Creating only one session and one client
+    session = boto3.Session()
+    client = session.client("s3", config=Config(signature_version=UNSIGNED))
+
+    func = functools.partial(
+        download_s3_file, bucket=s3_bucket, client=client, force=force
+    )
+
+    with tqdm(
+        desc="Downloading icentia11k dataset from S3", total=len(patient_ids)
+    ) as pbar:
+        with ThreadPoolExecutor(max_workers=2 * num_workers) as executor:
+            futures = (
+                executor.submit(
+                    func,
+                    f"{s3_prefix}/p{patient_id:05d}.h5",
+                    os.path.join(db_path, f"p{patient_id:05d}.h5"),
+                )
+                for patient_id in patient_ids
+            )
+            for future in as_completed(futures):
+                err = future.exception()
+                if err:
+                    print("Failed on file", err)
+                pbar.update(1)
+            # END FOR
+        # END WITH
+    # END WITH
+
+    # logger.info("Downloading icentia11k dataset")
+    # db_url = (
+    #     "https://physionet.org/static/published-projects/icentia11k-continuous-ecg/"
+    #     "icentia11k-single-lead-continuous-raw-electrocardiogram-dataset-1.0.zip"
+    # )
+    # db_zip_path = os.path.join(db_path, "icentia11k.zip")
+    # os.makedirs(db_path, exist_ok=True)
+    # if os.path.exists(db_zip_path) and not force:
+    #     logger.warning(
+    #         f"Zip file already exists. Please delete or set `force` flag to redownload. PATH={db_zip_path}"
+    #     )
+    # else:
+    #     download_file(db_url, db_zip_path, progress=True)
+
+    # # 2. Extract and convert patient ECG data to H5 files
+    # logger.info("Generating icentia11k patient data")
+    # convert_dataset_zip_to_hdf5(
+    #     zip_path=db_zip_path,
+    #     db_path=db_path,
+    #     force=force,
+    #     num_workers=num_workers
+    # )
+    # print("Finished icentia11k patient data")

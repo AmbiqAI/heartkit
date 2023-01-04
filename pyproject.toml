@@ -56,6 +56,7 @@ wandb = "0.13.4"
 tensorflow-addons = "^0.18.0"
 scipy = "^1.9.1"
 plotext = "^5.2.7"
+boto3 = "^1.26.19"
 
 [tool.poetry.group.dev.dependencies]
 black = "^22.8.0"

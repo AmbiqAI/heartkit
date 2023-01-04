@@ -26,13 +26,13 @@ The python package is intended to be used as a CLI-based app and provides a numb
 
 ### 1. Download Dataset (download_dataset)
 
-The `download_dataset` command will download the entire [Icentia11k dataset](https://physionet.org/content/icentia11k-continuous-ecg/1.0/) as a single zip file as well as convert into individual patient [HDF5 files](https://www.hdfgroup.org/solutions/hdf5/) (e.g. `p00001.h5`). The latter makes it possible to leverage TensorFlow `prefetch` and `interleave` to parallelize loading data.
+The `download_dataset` command will download the entire __Icentia11k dataset__ as individual patient [HDF5 files](https://www.hdfgroup.org/solutions/hdf5/) (e.g. `p00001.h5`). This makes it faster to download as well as makes it possible to leverage TensorFlow `prefetch` and `interleave` to parallelize loading data. The files are derived from the original [Icentia11k dataset]((https://physionet.org/content/icentia11k-continuous-ecg/1.0/)) that has the associated [non-commercial license](https://physionet.org/content/icentia11k-continuous-ecg/1.0/LICENSE.txt). The dataset is intended for evaluation purposes only and cannot be used for commercial use without permission.
 
 ```bash
 python -m ecgarr download_dataset --config-file ./configs/download-dataset.json
 ```
 
-> NOTE: The dataset requires roughly 300 GB of disk space and can take around 6 hours to download. The conversion to HDF5 files takes an additional 6 hours. Once the command finishes, the zip file (`./datasets/icentia11k/icentia11k.zip`) can be deleted to free up 188 GB.
+> NOTE: The dataset requires roughly 200 GB of disk space and can take around 2 hours to download.
 
 ### 2. Train Model (train_model)
 
@@ -46,7 +46,7 @@ python -m ecgarr train_model --config-file ./configs/train-rhythm-model.json
 
 ### 3. Test Model (test_model)
 
-The `test_model` command will evaluate the performance of the model on the reserved test set. A confidence threshold can also be set such that a label is only assigned when the model's probability is greater than the threshold; otherwise, a label of inconclusive will be assigned. Using a threshold of 95% will lead to roughly 15% of test data being labeled as inconclusive while increasing F1 score from __95.3%__ to __99.3%__ and accuracy from __96.4%__ to __99.3%__.
+The `test_model` command will evaluate the performance of the model on the reserved test set. A confidence threshold can also be set such that a label is only assigned when the model's probability is greater than the threshold; otherwise, a label of inconclusive will be assigned. Using a threshold of 95% will lead to roughly 15% of test data being labeled as inconclusive while increasing  accuracy from __96.2%__ to __99.4%__.
 
 ```bash
 python -m ecgarr test_model --config-file ./configs/test-rhythm-model.json
@@ -54,7 +54,7 @@ python -m ecgarr test_model --config-file ./configs/test-rhythm-model.json
 
 ### 4. Deploy Model (deploy_model)
 
-The `deploy_model` command will convert the trained TensorFlow model into both TFLite (TFL) and TFLite for microcontroller (TFLM) variants. The command will also verify the models' outputs match. Post-training quantization can also be enabled by setting the `quantization` flag in the configuration.
+The `deploy_model` command will convert the trained TensorFlow model into both TFLite (TFL) and TFLite for microcontroller (TFLM) variants. The command will also verify the models' outputs match. Post-training quantization is also be enabled by setting the `quantization` flag in the configuration.
 
 ```bash
 python -m ecgarr deploy_model --config-file ./configs/deploy-rhythm-model.json
