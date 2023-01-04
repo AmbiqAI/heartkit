@@ -11,9 +11,10 @@
     "val_size": 500000,
     "arch": "resnet12",
     "quantization": false,
-    "batch_size": 8192,
+    "batch_size": 6144,
     "buffer_size": 1000000,
     "epochs": 100,
     "steps_per_epoch": 20,
-    "val_metric": "loss"
+    "val_metric": "loss",
+    "seed": 10416
 }

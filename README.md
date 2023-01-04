@@ -1,6 +1,6 @@
 # ♥️ Heart Arrhythmia Classification
 
-The objective is to perform real-time heart arrhythmia classification using 1-lead ECG and optionally PPG. Classification can be performed on either rhythm (e.g. normal, AFIB, AFL) or beat (e.g. PAC, PVC). The current model is able to perform AFIB arrhythmia classification with over 99% accuracy. In the near future, this will be extended to include Atrial flutter. Longer term goal is to perform beat-level classification.
+The objective is to perform real-time heart arrhythmia classification using 1-lead ECG and optionally PPG. Classification can be performed on either rhythm (e.g. NSR, AFIB, AFL) or beat (e.g. PAC, PVC). The current model is able to perform rhythm-level classification with over 99% accuracy. Longer term goal is to perform beat-level classification.
 
 ## Prerequisite
 
@@ -36,10 +36,10 @@ python -m ecgarr download_dataset --config-file ./configs/download-dataset.json
 
 ### 2. Train Model (train_model)
 
-The `train_model` command is used to train the arrhythmia model. The following command will train the model using the reference configuration. Please refer to `configs/train-model.json` and `ecgarr/types.py` to see supported options.
+The `train_model` command is used to train the arrhythmia model. The following command will train the rhythm-level model using the reference configuration. Please refer to `configs/train-rhythm-model.json` and `ecgarr/types.py` to see supported options.
 
 ```bash
-python -m ecgarr train_model --config-file ./configs/train-model.json
+python -m ecgarr train_model --config-file ./configs/train-rhythm-model.json
 ```
 
 > Due to the large dataset and class imbalance, the batch size and buffer size are large to ensure properly shuffling of patients as well as classes. The first epoch will take much longer as it fills up this shuffled buffer. To train on a dedicated GPU, it's recommended to have at least 10 GB of VRAM.
@@ -49,7 +49,7 @@ python -m ecgarr train_model --config-file ./configs/train-model.json
 The `test_model` command will evaluate the performance of the model on the reserved test set. A confidence threshold can also be set such that a label is only assigned when the model's probability is greater than the threshold; otherwise, a label of inconclusive will be assigned. Using a threshold of 95% will lead to roughly 15% of test data being labeled as inconclusive while increasing F1 score from __95.3%__ to __99.3%__ and accuracy from __96.4%__ to __99.3%__.
 
 ```bash
-python -m ecgarr test_model --config-file ./configs/test-model.json
+python -m ecgarr test_model --config-file ./configs/test-rhythm-model.json
 ```
 
 ### 4. Deploy Model (deploy_model)
@@ -57,7 +57,7 @@ python -m ecgarr test_model --config-file ./configs/test-model.json
 The `deploy_model` command will convert the trained TensorFlow model into both TFLite (TFL) and TFLite for microcontroller (TFLM) variants. The command will also verify the models' outputs match. Post-training quantization can also be enabled by setting the `quantization` flag in the configuration.
 
 ```bash
-python -m ecgarr deploy_model --config-file ./configs/deploy-model.json
+python -m ecgarr deploy_model --config-file ./configs/deploy-rhythm-model.json
 ```
 
 Once converted, the TFLM header file will be copied to `./evb/src/model_buffer.h`. If parameters were changed (e.g. window size, quantization), `./evb/src/constants.h` will need to be updated.
@@ -86,16 +86,16 @@ A number of datasets are readily available online that are suitable for training
 
 * __PTB Diagnostics Dataset__: This dataset consists of ECG records from 290 subjects: 148 diagnosed as MI, 52 healthy control, and the rest are diagnosed with 7 different disease. Each record contains ECG signals from 12 leads sampled at the frequency of 1000 Hz. Please visit [Physionet](https://physionet.org/content/ptbdb/1.0.0/) for more details.
 
-## Results
+## Rhythm-level Results
 
 The results of the AFIB model when testing on 1,000 patients (not used during training) is summarized below. The baseline model is simply selecting the argmax of model ouputs (`normal`, `AFIB`). The 95% confidence version adds inconclusive label that is assigned when softmax output is less than 95% for any model output.
 
 | Metric   | Baseline | 95% Confidence |
 | -------- | -------- | -------------- |
-| Accuracy | 96.1%    | 99.3%          |
-| F1 Score | 96.1%    | 99.3%          |
+| Accuracy | 96.17%   | 99.41%         |
+| F1 Score | 96.17%   | 99.41%         |
 
-![confusion-matrix-test](./docs/assets/confusion-matrix-test.png)
+![confusion-matrix-test](./docs/assets/confusion-matrix-test.svg)
 
 ## Reference Papers
 
@@ -108,6 +108,7 @@ The results of the AFIB model when testing on 1,000 patients (not used during tr
 * [x] Create end-to-end EVB demo
 * [x] Perform model quantization
 * [x] Perform power optimization
-* [ ] Perform pre-processing in fixed-point
-* [ ] Add Atrial Flutter (AFL) to model
+* [x] Add Atrial Flutter (AFL) to model
+* [ ] Perform beat-level classification
 * [ ] Fine-tune on another dataset
+* [ ] Use PPG based dataset
