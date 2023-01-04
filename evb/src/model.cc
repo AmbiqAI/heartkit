@@ -54,7 +54,7 @@ init_model() {
     tflite::InitializeTarget();
 
     // Map the model into a usable data structure.
-    model = tflite::GetModel(g_afib_model);
+    model = tflite::GetModel(g_tflm_model);
     if (model->version() != TFLITE_SCHEMA_VERSION) {
         TF_LITE_REPORT_ERROR(errorReporter, "Model provided is schema version %d not equal to supported version %d.", model->version(),
                              TFLITE_SCHEMA_VERSION);

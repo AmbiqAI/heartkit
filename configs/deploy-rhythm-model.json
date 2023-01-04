@@ -6,6 +6,6 @@
     "model_file": "./results/runs/rhythm-full-model/model.tf",
     "quantization": true,
     "threshold": 0.95,
-    "tflm_var_name": "g_afib_model",
+    "tflm_var_name": "g_tflm_model",
     "tflm_file": "./evb/src/model_buffer.h"
 }
