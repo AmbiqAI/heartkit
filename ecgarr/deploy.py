@@ -82,7 +82,7 @@ def deploy_model(params: EcgDeployParams):
             task=params.task,
             frame_size=params.frame_size,
             num_patients=1000,
-            samples_per_patient=[100, 1000],
+            samples_per_patient=params.samples_per_patient,
             sample_size=100000,
         )
     # END WITH

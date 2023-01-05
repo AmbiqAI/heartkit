@@ -183,6 +183,9 @@ class EcgDeployParams(BaseModel):
     # Dataset arguments
     db_path: Path = Field(default_factory=Path, description="Database directory")
     frame_size: int = Field(1250, description="Frame size")
+    samples_per_patient: Union[int, List[int]] = Field(
+        100, description="# test samples per patient"
+    )
     model_file: Optional[str] = Field(None, description="Path to model file")
     threshold: Optional[float] = Field(None, description="Model output threshold")
     quantization: Optional[bool] = Field(
