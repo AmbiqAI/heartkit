@@ -8,14 +8,14 @@
  * @copyright Copyright (c) 2022
  *
  */
-#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
+#include "model.h"
+#include "model_buffer.h"
 #include "tensorflow/lite/micro/kernels/micro_ops.h"
 #include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
+#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 #include "tensorflow/lite/micro/system_setup.h"
 #include "tensorflow/lite/schema/schema_generated.h"
-#include "model.h"
-#include "model_buffer.h"
 
 //*****************************************************************************
 //*** Tensorflow Globals
@@ -27,7 +27,8 @@ TfLiteTensor *modelOutput = nullptr;
 constexpr int kTensorArenaSize = 1024 * 50;
 alignas(16) uint8_t tensorArena[kTensorArenaSize];
 
-int init_model() {
+int
+init_model() {
     /**
      * @brief Initialize TFLM model block
      *
@@ -53,19 +54,15 @@ int init_model() {
     tflite::InitializeTarget();
 
     // Map the model into a usable data structure.
-    model = tflite::GetModel(g_afib_model);
+    model = tflite::GetModel(g_tflm_model);
     if (model->version() != TFLITE_SCHEMA_VERSION) {
-        TF_LITE_REPORT_ERROR(errorReporter,
-            "Model provided is schema version %d not equal to supported version %d.",
-            model->version(), TFLITE_SCHEMA_VERSION
-        );
+        TF_LITE_REPORT_ERROR(errorReporter, "Model provided is schema version %d not equal to supported version %d.", model->version(),
+                             TFLITE_SCHEMA_VERSION);
         return 1;
     }
 
     // Build an TFLM interpreter
-    static tflite::MicroInterpreter static_interpreter(
-        model, model_op_resolver, tensorArena, kTensorArenaSize, errorReporter
-    );
+    static tflite::MicroInterpreter static_interpreter(model, model_op_resolver, tensorArena, kTensorArenaSize, errorReporter);
     interpreter = &static_interpreter;
 
     // Allocate memory from the tensorArena for the model's tensors.
@@ -77,10 +74,7 @@ int init_model() {
 
     size_t bytesUsed = interpreter->arena_used_bytes();
     if (bytesUsed > kTensorArenaSize) {
-        TF_LITE_REPORT_ERROR(errorReporter,
-            "Model requires %d bytes for arena but given only %d bytes.",
-            bytesUsed, kTensorArenaSize
-        );
+        TF_LITE_REPORT_ERROR(errorReporter, "Model requires %d bytes for arena but given only %d bytes.", bytesUsed, kTensorArenaSize);
         return 1;
     }
 
@@ -90,7 +84,8 @@ int init_model() {
     return 0;
 }
 
-int model_inference(float32_t *x, float32_t *y) {
+int
+model_inference(float32_t *x, float32_t *y) {
     /**
      * @brief Run inference
      * @param x Model inputs

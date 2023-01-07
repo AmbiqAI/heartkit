@@ -2,7 +2,8 @@ import os
 import tempfile
 from enum import Enum, IntEnum
 from pathlib import Path
-from typing import Optional, Literal, List, Union
+from typing import List, Literal, Optional, Union
+
 from pydantic import BaseModel, Field
 
 
@@ -32,8 +33,8 @@ class HeartBeat(IntEnum):
 
     normal = 0
     pac = 1
-    aberrated = 2
-    pvc = 3
+    pvc = 2
+    aberrated = 3
     noise = 4
 
 
@@ -182,6 +183,9 @@ class EcgDeployParams(BaseModel):
     # Dataset arguments
     db_path: Path = Field(default_factory=Path, description="Database directory")
     frame_size: int = Field(1250, description="Frame size")
+    samples_per_patient: Union[int, List[int]] = Field(
+        100, description="# test samples per patient"
+    )
     model_file: Optional[str] = Field(None, description="Path to model file")
     threshold: Optional[float] = Field(None, description="Model output threshold")
     quantization: Optional[bool] = Field(
@@ -204,6 +208,9 @@ class EcgDemoParams(BaseModel):
     db_path: Path = Field(default_factory=Path, description="Database directory")
     frame_size: int = Field(1250, description="Frame size")
     pad_size: int = Field(0, description="Pad size")
+    samples_per_patient: Union[int, List[int]] = Field(
+        1000, description="# train samples per patient"
+    )
     # EVB arguments
     vid_pid: Optional[str] = Field(
         "51966:16385",

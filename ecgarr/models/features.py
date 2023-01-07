@@ -1,8 +1,10 @@
 from typing import Optional
+
 import tensorflow as tf
 from keras.engine.keras_tensor import KerasTensor
-from .resnet1d import generate_resnet
+
 from ..types import ArchitectureType
+from .resnet1d import generate_resnet
 
 
 def ecg_feature_extractor(
@@ -51,7 +53,7 @@ def ecg_feature_extractor(
             include_top=False,
         )
     else:
-        raise ValueError("unknown architecture: {}".format(arch))
+        raise ValueError(f"unknown architecture: {arch}")
 
     x = tf.keras.layers.GlobalAveragePooling1D()(x)
     return x

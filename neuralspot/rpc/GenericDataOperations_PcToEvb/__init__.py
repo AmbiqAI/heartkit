@@ -17,7 +17,4 @@ Install newer version by running "python setup.py install" in folder erpc/erpc_p
         % repr(version)
     )
 
-from . import common
-from . import client
-from . import server
-from . import interface
+from . import client, common, interface, server

@@ -5,6 +5,7 @@
 #
 
 import erpc
+
 from . import common, interface
 
 # import callbacks declaration from other groups

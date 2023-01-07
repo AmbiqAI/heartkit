@@ -1,2 +1,1 @@
-from . import resnet1d
-from . import utils
+from . import resnet1d, utils

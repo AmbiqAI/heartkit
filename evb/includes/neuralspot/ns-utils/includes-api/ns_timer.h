@@ -4,34 +4,43 @@
  * @brief Simple timer facility
  * @version 0.1
  * @date 2022-10-11
- * 
+ *
  * @copyright Copyright (c) 2022
- * 
+ *
  */
 
 #ifndef NS_TIMER
 #define NS_TIMER
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-#include "am_mcu_apollo.h"
 #include "am_bsp.h"
+#include "am_mcu_apollo.h"
 #include "am_util.h"
 #include "ns_core.h"
 
-#define NS_TIMER_VERSION "0.0.1"
-#define NS_TIMER_MAGIC    0xCA0002
-#define NS_TIMER_CHK_HANDLE(h) ((h) && ((am_hal_handle_prefix_t *)(h))->s.bInit && (((am_hal_handle_prefix_t *)(h))->s.magic == NS_TIMER_MAGIC))
+#define NS_TIMER_V0_0_1                                                                            \
+    { .major = 0, .minor = 0, .revision = 1 }
+#define NS_TIMER_V1_0_0                                                                            \
+    { .major = 1, .minor = 0, .revision = 0 }
+
+#define NS_TIMER_OLDEST_SUPPORTED_VERSION NS_TIMER_V0_0_1
+#define NS_TIMER_CURRENT_VERSION NS_TIMER_V1_0_0
+#define NS_TIMER_API_ID 0xCA0002
+
+extern const ns_core_api_t ns_timer_V0_0_1;
+extern const ns_core_api_t ns_timer_V1_0_0;
+extern const ns_core_api_t ns_timer_oldest_supported_version;
+extern const ns_core_api_t ns_timer_current_version;
 
 struct ns_timer_config;
 typedef void (*ns_timer_callback_cb)(struct ns_timer_config *);
 
 /**
  * @brief Supported Timers
- * 
+ *
  */
 typedef enum {
     NS_TIMER_COUNTER = 0,   ///< Intended use is reading timerticks
@@ -41,15 +50,17 @@ typedef enum {
 } ns_timers_e;
 
 typedef struct ns_timer_config {
-    am_hal_handle_prefix_t prefix;
-    ns_timers_e timer; ///< NS_TIMER_COUNTER, NS_TIMER_INTERRUPT, or NS_TIMER_USB
-    bool        enableInterrupt; ///< Will generate interrupts, needs callback
-    uint32_t    periodInMicroseconds; ///< For interrupts
+    const ns_core_api_t *api;      ///< API prefix
+    ns_timers_e timer;             ///< NS_TIMER_COUNTER, NS_TIMER_INTERRUPT, or NS_TIMER_USB
+    bool enableInterrupt;          ///< Will generate interrupts, needs callback
+    uint32_t periodInMicroseconds; ///< For interrupts
     ns_timer_callback_cb callback; ///< Invoked when timer ticks
 } ns_timer_config_t;
 
-extern uint32_t ns_timer_init(ns_timer_config_t *cfg);
-extern uint32_t ns_us_ticker_read(ns_timer_config_t *cfg);
+extern uint32_t
+ns_timer_init(ns_timer_config_t *cfg);
+extern uint32_t
+ns_us_ticker_read(ns_timer_config_t *cfg);
 
 #ifdef __cplusplus
 }

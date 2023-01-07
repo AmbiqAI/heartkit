@@ -1,21 +1,28 @@
 import os
-import logging
+import sys
 from typing import List, Optional, Tuple, Union
-import pydantic_argparse
-import wandb
-from wandb.keras import WandbCallback
+
 import numpy as np
+import pydantic_argparse
 import tensorflow as tf
-from sklearn.metrics import f1_score
 import tensorflow_model_optimization as tfmot
+import wandb
+from sklearn.metrics import f1_score
+from wandb.keras import WandbCallback
+
 from . import datasets as ds
 from .datasets import icentia11k
 from .metrics import confusion_matrix_plot
 from .models.utils import generate_task_model
-from .utils import set_random_seed, load_pkl, save_pkl, env_flag, setup_logger
-from .types import EcgTrainParams, EcgTask
+from .types import EcgTask, EcgTrainParams
+from .utils import env_flag, load_pkl, save_pkl, set_random_seed, setup_logger
 
-logger = logging.getLogger("ECGARR")
+logger = setup_logger(__name__)
+
+if sys.platform == "darwin":
+    Adam = tf.keras.optimizers.legacy.Adam
+else:
+    Adam = tf.keras.optimizers.Adam
 
 
 @tf.function
@@ -213,6 +220,13 @@ def train_model(params: EcgTrainParams):
         num_parallel_calls=tf.data.experimental.AUTOTUNE,
     )
 
+    def decay(epoch):
+        if epoch < 15:
+            return 1e-3
+        if epoch < 30:
+            return 1e-4
+        return 1e-5
+
     strategy = tf.distribute.MirroredStrategy()
     with strategy.scope():
         logger.info("Building model")
@@ -224,9 +238,7 @@ def train_model(params: EcgTrainParams):
             inputs, params.task, params.arch, stages=params.stages
         )
         model.compile(
-            optimizer=tf.keras.optimizers.Adam(
-                learning_rate=5e-4, beta_1=0.9, beta_2=0.98, epsilon=1e-9
-            ),
+            optimizer=Adam(learning_rate=5e-4, beta_1=0.9, beta_2=0.98, epsilon=1e-9),
             loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
             metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="acc")],
         )
@@ -258,7 +270,8 @@ def train_model(params: EcgTrainParams):
             verbose=1,
         )
         tf_logger = tf.keras.callbacks.CSVLogger(str(params.job_dir / "history.csv"))
-        model_callbacks = [early_stopping, checkpoint, tf_logger]
+        lr_scheduler = tf.keras.callbacks.LearningRateScheduler(decay)
+        model_callbacks = [early_stopping, checkpoint, tf_logger, lr_scheduler]
         if env_flag("WANDB"):
             model_callbacks.append(WandbCallback())
 
@@ -350,6 +363,5 @@ def create_parser():
 
 
 if __name__ == "__main__":
-    setup_logger("ECGARR")
     parser = create_parser()
     train_model(parser.parse_typed_args())

@@ -1,55 +1,23 @@
-import logging
 import shutil
 from typing import List, Optional, Tuple, Union
+
 import numpy as np
 import numpy.typing as npt
-import tensorflow as tf
-from sklearn.metrics import f1_score
 import pydantic_argparse
+import tensorflow as tf
 from rich.console import Console
-from .models.utils import get_predicted_threshold_indices, predict_tflite, load_model
-from .utils import xxd_c_dump, setup_logger
+from sklearn.metrics import f1_score
+
+from neuralspot.tflite.convert import convert_tflite, predict_tflite
+
 from . import datasets as ds
-from .types import EcgTask, EcgDeployParams
+from .models.utils import get_predicted_threshold_indices, load_model
+from .types import EcgDeployParams, EcgTask
+from .utils import setup_logger, xxd_c_dump
 
 console = Console()
-logger = logging.getLogger("ECGARR")
 
-
-def convert_tflite(
-    model: tf.keras.Model,
-    quantize: bool = False,
-    test_x: Optional[npt.ArrayLike] = None,
-) -> bytes:
-    """Convert TF model into TFLite model content
-
-    Args:
-        model (tf.keras.Model): TF model
-        quantize (bool, optional): Enable PTQ. Defaults to False.
-        test_x (Optional[npt.ArrayLike], optional): Enables full integer PTQ. Defaults to None.
-
-    Returns:
-        bytes: TFLite content
-
-    """
-    converter = tf.lite.TFLiteConverter.from_keras_model(model=model)
-
-    # Optionally quantize model
-    if quantize:
-        converter.optimizations = [tf.lite.Optimize.DEFAULT]
-        if test_x is not None:
-            # NOTE: Once preprocess stage is Q15 we can enable this
-            # converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-            # converter.inference_input_type = tf.int8
-            # converter.inference_output_type = tf.int8
-            def rep_dataset():
-                for i in range(test_x.shape[0]):
-                    yield [test_x[i : i + 1]]
-
-            converter.representative_dataset = rep_dataset
-        # END IF
-    # Convert model
-    return converter.convert()
+logger = setup_logger(__name__)
 
 
 def create_dataset(
@@ -114,14 +82,19 @@ def deploy_model(params: EcgDeployParams):
             task=params.task,
             frame_size=params.frame_size,
             num_patients=1000,
-            samples_per_patient=[100, 1000],
+            samples_per_patient=params.samples_per_patient,
             sample_size=100000,
         )
     # END WITH
 
     logger.info("Converting model to TFLite")
     tflite_model = convert_tflite(
-        model, quantize=params.quantization, test_x=test_x[:1000]
+        model,
+        quantize=params.quantization,
+        test_x=test_x[:1000],
+        # NOTE: Make input/output uint8
+        input_type=tf.float32,
+        output_type=tf.float32,
     )
 
     # Save TFLite model
@@ -205,6 +178,5 @@ def create_parser():
 
 
 if __name__ == "__main__":
-    setup_logger("ECGARR")
     parser = create_parser()
     deploy_model(parser.parse_typed_args())

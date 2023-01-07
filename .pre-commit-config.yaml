@@ -1,0 +1,36 @@
+exclude: ^(evb/includes/|docs/)
+repos:
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v15.0.6
+    hooks:
+      - id: clang-format
+        files: evb/src/
+        types_or: [c++, c]
+  - repo: https://github.com/psf/black
+    rev: 22.12.0
+    hooks:
+      - id: black
+        language_version: python3
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-toml
+      - id: check-yaml
+      - id: debug-statements
+      - id: end-of-file-fixer
+      - id: name-tests-test
+      - id: no-commit-to-branch
+      - id: trailing-whitespace
+  - repo: https://github.com/pycqa/isort
+    rev: 5.11.2
+    hooks:
+      - id: isort
+        args: ["--profile", "black", "--filter-files"]
+  - repo: local
+    hooks:
+      - id: pylint
+        name: pylint
+        entry: bash -c 'poetry run task lint'
+        language: system
+        types: [python]

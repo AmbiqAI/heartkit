@@ -1,13 +1,12 @@
-import time
 import logging
+import time
 from typing import Optional
-from rich.console import Console
-from erpc.transport import SerialTransport
-from serial.tools.list_ports_common import ListPortInfo
-from serial.tools.list_ports import comports as list_ports
 
-logger = logging.getLogger("ECGARR")
-console = Console()
+from erpc.transport import SerialTransport
+from serial.tools.list_ports import comports as list_ports
+from serial.tools.list_ports_common import ListPortInfo
+
+logger = logging.getLogger(__name__)
 
 
 def _find_serial_device(
@@ -42,30 +41,27 @@ def _find_serial_device(
 
 
 def get_serial_transport(
-    vid_pid: Optional[str] = None, baudrate: Optional[int] = None
+    vid_pid: Optional[str] = None, baudrate: Optional[int] = None, timeout: float = 30
 ) -> SerialTransport:
-    """Create serial transport to EVB. Scans looking for port for 30 seconds before giving up.
+    """Create serial transport to EVB. Scans looking for port matching criteria.
 
     Args:
         vid_pid (Optional[str], optional): VID & PID. Defaults to None.
         baudrate (Optional[int], optional): Baudrate. Defaults to None.
 
     Raises:
-        NotFoundErr: Unable to find serial device
+        TimeoutError: Unable to find serial device within timeout
 
     Returns:
         SerialTransport: Serial device
     """
     port = None
-    with console.status("[bold green] Searching for EVB  port..."):
-        tic = time.time()
-        while not port and (time.time() - tic) < 30:
-            port = _find_serial_device(vid_pid=vid_pid)
-            if not port:
-                time.sleep(0.5)
-        if port is None:
-            raise TimeoutError(
-                "Unable to locate EVB serial port. Please verify connection"
-            )
+    tic = time.time()
+    while not port and (time.time() - tic) < timeout:
+        port = _find_serial_device(vid_pid=vid_pid)
+        if not port:
+            time.sleep(0.5)
+    if port is None:
+        raise TimeoutError("Unable to locate EVB serial port. Please verify connection")
     logger.info(f"Found serial device @ {port.device}")
     return SerialTransport(port.device, baudrate=baudrate)

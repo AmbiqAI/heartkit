@@ -19,6 +19,7 @@ AR = $(TOOLCHAIN)-ar
 SIZE = $(TOOLCHAIN)-size
 LINT = clang-tidy
 RM = $(shell which rm 2>/dev/null)
+MKD = "mkdir"
 DOX = doxygen
 
 # EXECUTABLES = CC LD CP OD AR RD SIZE GCC JLINK JLINK_SWO
@@ -37,16 +38,16 @@ CFLAGS+= -mthumb -mcpu=$(CPU) -mfpu=$(FPU) -mfloat-abi=$(FABI)
 CFLAGS+= -ffunction-sections -fdata-sections -fomit-frame-pointer -fno-exceptions
 CCFLAGS+= -fno-use-cxa-atexit
 CFLAGS+= -MMD -MP -Wall
-CONLY_FLAGS+= -std=c99 
+CONLY_FLAGS+= -std=c99
 CFLAGS+= -g -O3
 # CFLAGS+= -g -O0
-CFLAGS+= 
+CFLAGS+=
 
 LFLAGS = -mthumb -mcpu=$(CPU) -mfpu=$(FPU) -mfloat-abi=$(FABI)
 LFLAGS+= -nostartfiles -static -fno-exceptions
 LFLAGS+= -Wl,--gc-sections,--entry,Reset_Handler,-Map,$(BINDIR)/output.map
 LFLAGS+= -Wl,--start-group -lm -lc -lgcc -lnosys $(libraries) $(lib_prebuilt) -lstdc++ -Wl,--end-group
-LFLAGS+= 
+LFLAGS+=
 
 CPFLAGS = -Obinary
 ODFLAGS = -S
@@ -76,6 +77,10 @@ endif
 ifeq ($(ENERGY_MODE),1)
 DEFINES+= ENERGYMODE
 endif
+
+DEFINES+= STACK_SIZE=$(STACK_SIZE)
+DEFINES+= NS_MALLOC_HEAP_SIZE_IN_K=$(NS_MALLOC_HEAP_SIZE_IN_K)
+
 
 DEFINES+= NS_AMBIQSUITE_VERSION_$(subst .,_,$(AS_VERSION))
 DEFINES+= NS_TF_VERSION_$(subst .,_,$(TF_VERSION))

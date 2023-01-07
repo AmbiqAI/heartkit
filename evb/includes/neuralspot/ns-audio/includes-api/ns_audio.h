@@ -59,16 +59,26 @@ extern "C" {
 #include "am_bsp.h"
 #include "am_mcu_apollo.h"
 #include "am_util.h"
+#include "ns_core.h"
 #include "ns_ipc_ring_buffer.h"
 
-#define NS_AUDIO_VERSION "0.0.1"
-#define NS_AUDIO_MAGIC    0xCA0001
-#define NS_AUDIO_CHK_HANDLE(h) ((h) && ((am_hal_handle_prefix_t *)(h))->s.bInit && (((am_hal_handle_prefix_t *)(h))->s.magic == NS_AUDIO_MAGIC))
+#define NS_AUDIO_V0_0_1                                                                            \
+    { .major = 0, .minor = 0, .revision = 1 }
+#define NS_AUDIO_V1_0_0                                                                            \
+    { .major = 1, .minor = 0, .revision = 0 }
+
+#define NS_AUDIO_OLDEST_SUPPORTED_VERSION NS_AUDIO_V0_0_1
+#define NS_AUDIO_CURRENT_VERSION NS_AUDIO_V1_0_0
+#define NS_AUDIO_API_ID 0xCA0001
+
+extern const ns_core_api_t ns_audio_V0_0_1;
+extern const ns_core_api_t ns_audio_V1_0_0;
+extern const ns_core_api_t ns_audio_oldest_supported_version;
+extern const ns_core_api_t ns_audio_current_version;
 
 #ifndef NS_AUDIO_DMA_BUFFER_SIZE
-#define NS_AUDIO_DMA_BUFFER_SIZE 480
+    #define NS_AUDIO_DMA_BUFFER_SIZE 480
 #endif
-
 
 /// Audio IPC Modes
 typedef enum {
@@ -79,7 +89,7 @@ typedef enum {
 
 /// Audio Source (current only AUDADC is supported)
 typedef enum {
-    NS_AUDIO_SOURCE_AUDADC  ///< Collect data from AUDADC
+    NS_AUDIO_SOURCE_AUDADC ///< Collect data from AUDADC
 } ns_audio_source_e;
 
 // Forward declaration to get around using it in cb
@@ -89,19 +99,18 @@ struct ns_audio_cfg;
 typedef void (*ns_audio_callback_cb)(struct ns_audio_cfg *, uint16_t);
 
 /// NeuralSPOT Audio API Configuration Struct
-/// 
+///
 /// Audio configuration is via this struct, which also serves
 /// as a handle after ns_audio_init() has been invoked
-/// 
+///
 typedef struct ns_audio_cfg {
-    am_hal_handle_prefix_t prefix;
-
+    const ns_core_api_t *api;          ///< API prefix
     ns_audio_api_mode_e eAudioApiMode; /**< Defines how the audio system will
                                             interact with the applications */
 
     /** IPC */
     ns_audio_callback_cb callback; ///< Invoked when there is audio in buffer
-    void *audioBuffer; ///< Where the audio will be located when callback occurs
+    void *audioBuffer;             ///< Where the audio will be located when callback occurs
 
     /** Audio Config */
     ns_audio_source_e eAudioSource; ///< Choose audio source such as AUDADC
@@ -111,7 +120,7 @@ typedef struct ns_audio_cfg {
     uint16_t sampleRate;            ///< In Hz
 
     /** Internals */
-    void *audioSystemHandle;                  ///< Handle, filled by init
+    void *audioSystemHandle;            ///< Handle, filled by init
     ns_ipc_ring_buffer_t *bufferHandle; ///< Filled by init
 
 } ns_audio_config_t;
@@ -123,7 +132,18 @@ extern ns_audio_config_t *g_ns_audio_config;
  *
  * @param cfg : desired configuration
  */
-extern uint32_t ns_audio_init(ns_audio_config_t *);
+extern uint32_t
+ns_audio_init(ns_audio_config_t *);
+
+/**
+ * @brief Extract int16 PCM from data collected by ADC
+ *
+ * @param pcm - resulting PCM data
+ * @param raw - incoming data from ADC engine
+ * @param len - number of sample words to convert
+ */
+extern void
+ns_audio_getPCM(int16_t *pcm, uint32_t *raw, int16_t len);
 
 #ifdef __cplusplus
 }
