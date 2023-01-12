@@ -20,11 +20,11 @@
     </text>
     <text transform="matrix(1, 0, 0, 1, 215.511, 437)">
       <tspan x="-28.898" y="-10.5" font-family="Menlo-Regular" font-size="24" fill="#FFFFFF">1413</tspan>
-      <tspan x="-32.511" y="12.5" font-family="Menlo-Regular" font-size="18" fill="#FFFFFF">99.3%)</tspan>
+      <tspan x="-32.511" y="12.5" font-family="Menlo-Regular" font-size="18" fill="#FFFFFF">(0.7%)</tspan>
     </text>
     <text transform="matrix(1, 0, 0, 1, 480, 437)">
       <tspan x="-43.348" y="-10.5" font-family="Menlo-Regular" font-size="24" fill="#000000">187589</tspan>
-      <tspan x="-32.511" y="12.5" font-family="Menlo-Regular" font-size="18" fill="#000000">(0.7%)</tspan>
+      <tspan x="-37.929" y="12.5" font-family="Menlo-Regular" font-size="18" fill="#000000">(99.3%)</tspan>
     </text>
     <text transform="matrix(1, 0, 0, 1, 215.511, 560)">
       <tspan x="-16.255" y="1" font-family="Menlo-Regular" font-size="18" fill="#000000">NSR</tspan>
