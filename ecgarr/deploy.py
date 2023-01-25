@@ -92,9 +92,8 @@ def deploy_model(params: EcgDeployParams):
         model,
         quantize=params.quantization,
         test_x=test_x[:1000],
-        # NOTE: Make input/output uint8
-        input_type=tf.float32,
-        output_type=tf.float32,
+        input_type=tf.int8 if params.quantization else None,
+        output_type=tf.int8 if params.quantization else None,
     )
 
     # Save TFLite model
@@ -160,7 +159,7 @@ def deploy_model(params: EcgDeployParams):
     else:
         logger.info("Validation passed")
 
-    if params.tflm_file:
+    if params.tflm_file and tflm_model_path != params.tflm_file:
         logger.info(f"Copying TFLM header to {params.tflm_file}")
         shutil.copyfile(tflm_model_path, params.tflm_file)
 

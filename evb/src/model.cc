@@ -94,15 +94,19 @@ model_inference(float32_t *x, float32_t *y) {
      */
     int y_idx = -1;
     float32_t y_val = -9999;
+    // Quantize input
     for (int i = 0; i < modelInput->dims->data[1]; i++) {
-        modelInput->data.f[i] = x[i];
+        modelInput->data.int8[i] = x[i] / modelInput->params.scale + modelInput->params.zero_point;
     }
+    // Invoke model
     TfLiteStatus invokeStatus = interpreter->Invoke();
     if (invokeStatus != kTfLiteOk) {
         return -1;
     }
+    // Dequantize output
     for (int i = 0; i < modelOutput->dims->data[1]; i++) {
-        y[i] = modelOutput->data.f[i];
+        y[i] = ((float32_t)modelOutput->data.int8[i] - modelOutput->params.zero_point) * modelOutput->params.scale;
+        modelOutput->data.f[i];
         if ((y_idx == -1) || (y[i] > y_val)) {
             y_val = y[i];
             y_idx = i;
