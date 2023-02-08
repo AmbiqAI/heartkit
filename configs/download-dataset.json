@@ -1,5 +1,5 @@
 {
     "db_root_path": "./datasets",
-    "datasets": ["icentia11k"],
+    "datasets": ["icentia11k", "ludb"],
     "progress": true
 }

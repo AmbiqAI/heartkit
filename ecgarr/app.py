@@ -98,8 +98,8 @@ def run(inputs: Optional[List[str]] = None):
     """
     parser = pydantic_argparse.ArgumentParser(
         model=AppArguments,
-        prog="Heart arrhythmia Demo",
-        description="Heart arrhythmia demo",
+        prog="ECG Heart Demo",
+        description="ECG Heart demo",
     )
     args = parser.parse_typed_args(inputs)
 

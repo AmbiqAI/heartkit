@@ -21,8 +21,8 @@ logger = setup_logger(__name__)
 
 
 def create_dataset(
-    db_path: str,
-    task: EcgTask = EcgTask.rhythm,
+    ds_path: str,
+    task: EcgTask,
     frame_size: Optional[int] = 1250,
     num_patients: int = 100,
     samples_per_patient: Union[int, List[int]] = 100,
@@ -32,8 +32,8 @@ def create_dataset(
     """Generate test dataset
 
     Args:
-        db_path (str): Database path
-        task (EcgTask, optional): ECG Task. Defaults to EcgTask.rhythm.
+        ds_path (str): Dataset path
+        task (EcgTask, optional): ECG Task.
         frame_size (Optional[int], optional): ECG Frame size. Defaults to 1250.
         num_patients (int, optional): # of patients. Defaults to 100.
         samples_per_patient (int, optional): # samples per patient. Defaults to 100.
@@ -47,7 +47,7 @@ def create_dataset(
     np.random.shuffle(patient_ids)
     dataset = ds.create_dataset_from_generator(
         task=task,
-        db_path=db_path,
+        ds_path=ds_path,
         patient_ids=patient_ids,
         frame_size=frame_size,
         samples_per_patient=samples_per_patient,
@@ -76,15 +76,16 @@ def deploy_model(params: EcgDeployParams):
     model(input_layer)
 
     # Load dataset
-    with console.status("[bold green] Loading dataset..."):
-        test_x, test_y = create_dataset(
-            db_path=str(params.db_path),
+    with console.status("[bold green] Loading test dataset..."):
+        test_ds = ds.load_test_dataset(
+            ds_path=str(params.ds_path),
             task=params.task,
             frame_size=params.frame_size,
-            num_patients=1000,
-            samples_per_patient=params.samples_per_patient,
-            sample_size=100000,
+            # test_patients=params.test_patients,
+            test_pt_samples=params.samples_per_patient,
+            # num_workers=params.data_parallelism,
         )
+        test_x, test_y = next(test_ds.batch(100000).as_numpy_iterator())
     # END WITH
 
     logger.info("Converting model to TFLite")
@@ -171,8 +172,8 @@ def create_parser():
     """
     return pydantic_argparse.ArgumentParser(
         model=EcgDeployParams,
-        prog="Heart arrhythmia deploy command",
-        description="Deploy heart arrhythmia model to EVB",
+        prog="Heart deploy command",
+        description="Deploy heart model to EVB",
     )
 
 

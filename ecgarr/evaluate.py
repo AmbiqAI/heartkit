@@ -1,5 +1,3 @@
-from typing import List, Optional, Union
-
 import numpy as np
 import pydantic_argparse
 import tensorflow as tf
@@ -8,106 +6,12 @@ from sklearn.metrics import f1_score
 
 from . import datasets as ds
 from .metrics import confusion_matrix_plot, roc_auc_plot
-from .models.utils import get_predicted_threshold_indices, load_model
-from .types import EcgTask, EcgTestParams
+from .models.utils import get_predicted_threshold_indices, get_strategy, load_model
+from .types import EcgTestParams
 from .utils import set_random_seed, setup_logger
 
 console = Console()
-
 logger = setup_logger(__name__)
-
-
-@tf.function
-def parallelize_dataset(
-    db_path: str,
-    patient_ids: int = None,
-    task: EcgTask = EcgTask.rhythm,
-    frame_size: int = 1250,
-    samples_per_patient: int = 100,
-    repeat: bool = False,
-    num_workers: int = 1,
-):
-    """Generates datasets for given task in parallel using TF `interleave`
-
-    Args:
-        db_path (str): Database path
-        patient_ids (int, optional): List of patient IDs. Defaults to None.
-        task (EcgTask, optional): ECG Task routine. Defaults to EcgTask.rhythm.
-        frame_size (int, optional): Frame size. Defaults to 1250.
-        samples_per_patient (int, optional): # Samples per pateint. Defaults to 100.
-        repeat (bool, optional): Should data generator repeat. Defaults to False.
-        num_workers (int, optional): Number of parallel workers. Defaults to 1.
-    """
-
-    def _make_train_dataset(i, split):
-        return ds.create_dataset_from_generator(
-            task=task,
-            db_path=db_path,
-            patient_ids=patient_ids[i * split : (i + 1) * split],
-            frame_size=frame_size,
-            samples_per_patient=samples_per_patient,
-            repeat=repeat,
-        )
-
-    split = len(patient_ids) // num_workers
-    datasets = [_make_train_dataset(i, split) for i in range(num_workers)]
-    par_ds = tf.data.Dataset.from_tensor_slices(datasets)
-    return par_ds.interleave(
-        lambda x: x,
-        cycle_length=num_workers,
-        num_parallel_calls=tf.data.experimental.AUTOTUNE,
-    )
-
-
-def load_test_dataset(
-    db_path: str,
-    task: str = "rhythm",
-    frame_size: int = 1250,
-    test_patients: Optional[float] = None,
-    test_pt_samples: Optional[Union[int, List[int]]] = None,
-    test_size: Optional[int] = None,
-    num_workers: int = 1,
-):
-    """Load testing datasets
-    Args:
-        db_path (str): Database path
-        task (EcgTask, optional): ECG Task. Defaults to EcgTask.rhythm.
-        frame_size (int, optional): Frame size. Defaults to 1250.
-        train_patients (Optional[float], optional): # or proportion of train patients. Defaults to None.
-        val_patients (Optional[float], optional): # or proportion of train patients. Defaults to None.
-        train_pt_samples (Optional[int], optional): # samples per patient for training. Defaults to None.
-        val_pt_samples (Optional[int], optional): # samples per patient for training. Defaults to None.
-        train_file (Optional[str], optional): Path to existing picked training file. Defaults to None.
-        val_file (Optional[str], optional): Path to existing picked validation file. Defaults to None.
-        num_workers (int, optional): # of parallel workers. Defaults to 1.
-
-    Returns:
-        Tuple[tf.data.Dataset, tf.data.Dataset]: Training and validation datasets
-    """
-    test_patient_ids = ds.icentia11k.get_test_patient_ids()
-    if test_patients is not None:
-        num_pts = (
-            int(test_patients)
-            if test_patients > 1
-            else int(test_patients * len(test_patient_ids))
-        )
-        test_patient_ids = test_patient_ids[:num_pts]
-    if test_size is None:
-        test_size = 200 * len(test_patient_ids)
-    logger.info(f"Collecting {test_size} test samples")
-    test_patient_ids = tf.convert_to_tensor(test_patient_ids)
-    test_data = parallelize_dataset(
-        db_path=db_path,
-        patient_ids=test_patient_ids,
-        task=task,
-        frame_size=frame_size,
-        samples_per_patient=test_pt_samples,
-        repeat=True,
-        num_workers=num_workers,
-    )
-    with console.status("[bold green] Loading test dataset..."):
-        test_x, test_y = next(test_data.batch(test_size).as_numpy_iterator())
-    return test_x, test_y
 
 
 def evaluate_model(params: EcgTestParams):
@@ -120,17 +24,18 @@ def evaluate_model(params: EcgTestParams):
     logger.info(f"Random seed {params.seed}")
 
     logger.info("Loading test dataset")
-    test_x, test_y = load_test_dataset(
-        db_path=str(params.db_path),
+    test_ds = ds.load_test_dataset(
+        ds_path=str(params.ds_path),
         task=params.task,
         frame_size=params.frame_size,
         test_patients=params.test_patients,
         test_pt_samples=params.samples_per_patient,
-        test_size=params.test_size,
         num_workers=params.data_parallelism,
     )
+    with console.status("[bold green] Loading test dataset..."):
+        test_x, test_y = next(test_ds.batch(params.test_size).as_numpy_iterator())
 
-    strategy = tf.distribute.MirroredStrategy()
+    strategy = get_strategy()
     with strategy.scope():
         logger.info("Loading model")
         model = load_model(str(params.model_file))
@@ -143,7 +48,6 @@ def evaluate_model(params: EcgTestParams):
 
         # Summarize results
         logger.info("Testing Results")
-
         test_acc = np.sum(y_pred == y_true) / len(y_true)
         test_f1 = f1_score(y_true, y_pred, average="macro")
         logger.info(f"[TEST SET] ACC={test_acc:.2%}, F1={test_f1:.2%}")
@@ -189,8 +93,8 @@ def create_parser():
     """
     return pydantic_argparse.ArgumentParser(
         model=EcgTestParams,
-        prog="Heart arrhythmia test command",
-        description="Test heart arrhythmia model",
+        prog="Heart test command",
+        description="Test heart model",
     )
 
 

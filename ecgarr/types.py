@@ -8,11 +8,12 @@ from pydantic import BaseModel, Field
 
 
 class EcgTask(str, Enum):
-    """Heart arrhythmia task"""
+    """Heart task"""
 
-    rhythm = "rhythm"
+    rhythm = "arrhythmia"
     beat = "beat"
     hr = "hr"
+    segmentation = "segmentation"
 
 
 ArchitectureType = Literal["resnet12", "resnet18", "resnet34", "resnet50"]
@@ -47,6 +48,15 @@ class HeartRate(IntEnum):
     noise = 3
 
 
+class HeartSegment(IntEnum):
+    """ "Heart segment labels"""
+
+    pwave = 1
+    qrs = 2
+    twave = 3
+    uwave = 4
+
+
 class HeartBeatName(str, Enum):
     """Heart beat label names"""
 
@@ -75,6 +85,15 @@ class HeartRateName(str, Enum):
     noise = "noise"
 
 
+class HeartSegmentName(str, Enum):
+    """Heart segment names"""
+
+    pwave = "pwave"
+    qrs = "qrs"
+    twave = "twave"
+    uwave = "uwave"
+
+
 class EcgDownloadParams(BaseModel):
     """Download command params"""
 
@@ -96,12 +115,12 @@ class EcgTrainParams(BaseModel):
     """Train command params"""
 
     # Task arguments
-    task: EcgTask = Field(EcgTask.rhythm, description="Heart arrhythmia task")
+    task: EcgTask = Field(EcgTask.rhythm, description="Heart task")
     job_dir: Path = Field(
         default_factory=tempfile.gettempdir, description="Job output directory"
     )
     # Dataset arguments
-    db_path: Path = Field(default_factory=Path, description="Database directory")
+    ds_path: Path = Field(default_factory=Path, description="Database directory")
     frame_size: int = Field(1250, description="Frame size")
     samples_per_patient: Union[int, List[int]] = Field(
         1000, description="# train samples per patient"
@@ -148,12 +167,12 @@ class EcgTestParams(BaseModel):
     """Test command params"""
 
     # Task arguments
-    task: EcgTask = Field(EcgTask.rhythm, description="Heart arrhythmia task")
+    task: EcgTask = Field(EcgTask.rhythm, description="Heart task")
     job_dir: Path = Field(
         default_factory=tempfile.gettempdir, description="Job output directory"
     )
     # Dataset arguments
-    db_path: Path = Field(default_factory=Path, description="Database directory")
+    ds_path: Path = Field(default_factory=Path, description="Database directory")
     frame_size: int = Field(1250, description="Frame size")
     samples_per_patient: Union[int, List[int]] = Field(
         1000, description="# test samples per patient"
@@ -176,12 +195,12 @@ class EcgTestParams(BaseModel):
 class EcgDeployParams(BaseModel):
     """Deploy command params"""
 
-    task: EcgTask = Field(EcgTask.rhythm, description="Heart arrhythmia task")
+    task: EcgTask = Field(EcgTask.rhythm, description="Heart task")
     job_dir: Path = Field(
         default_factory=tempfile.gettempdir, description="Job output directory"
     )
     # Dataset arguments
-    db_path: Path = Field(default_factory=Path, description="Database directory")
+    ds_path: Path = Field(default_factory=Path, description="Database directory")
     frame_size: int = Field(1250, description="Frame size")
     samples_per_patient: Union[int, List[int]] = Field(
         100, description="# test samples per patient"
@@ -200,12 +219,12 @@ class EcgDeployParams(BaseModel):
 class EcgDemoParams(BaseModel):
     """Demo command params"""
 
-    task: EcgTask = Field(EcgTask.rhythm, description="Heart arrhythmia task")
+    task: EcgTask = Field(EcgTask.rhythm, description="Heart task")
     job_dir: Path = Field(
         default_factory=tempfile.gettempdir, description="Job output directory"
     )
     # Dataset arguments
-    db_path: Path = Field(default_factory=Path, description="Database directory")
+    ds_path: Path = Field(default_factory=Path, description="Database directory")
     frame_size: int = Field(1250, description="Frame size")
     pad_size: int = Field(0, description="Pad size")
     samples_per_patient: Union[int, List[int]] = Field(

@@ -106,7 +106,7 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
             Tuple[npt.ArrayLike, npt.ArrayLike]: x,y
         """
         test_x, test_y = create_dataset(
-            db_path=str(self.params.db_path),
+            ds_path=str(self.params.ds_path),
             task=self.params.task,
             frame_size=self.window_size,
             num_patients=200,
@@ -208,7 +208,6 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
         return 0  # SUCCESS
 
     def ns_rpc_data_remotePrintOnPC(self, msg):
-
         # Check for EVB state machine updates
         self.state = next((s for s in EvbAppState if s in msg), self.state)
         if self.state == EvbAppState.IDLE_STATE:
@@ -275,7 +274,7 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
 
         with Live(layout, refresh_per_second=4) as live:
             while self._run:
-                title = f"♥️  Heart Arrhythmia Demo [{self.state.value}]"
+                title = f"♥️  Heart Demo [{self.state.value}]"
                 headerLayout.update(Text(title, justify="left"))
                 livePanel = Panel(PlotextMixin(make_plot=self.make_live_plot))
                 liveLayout.update(livePanel)
@@ -314,8 +313,8 @@ def create_parser():
     """Create CLI parser"""
     return pydantic_argparse.ArgumentParser(
         model=EcgDemoParams,
-        prog="Heart arrhythmia EVB demo",
-        description="Demo heart arrhythmia model on EVB",
+        prog="Heart EVB demo",
+        description="Demo heart model on EVB",
     )
 
 

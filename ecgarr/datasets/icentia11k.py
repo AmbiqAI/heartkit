@@ -177,7 +177,7 @@ WfdbRhythmMap = {"": 0, "(N": 1, "(AFIB": 2, "(AFL": 3, ")": 4}
 WfdbBeatMap = {"Q": 0, "N": 1, "S": 2, "a": 3, "V": 4}
 
 ##
-# These map Icentia specific labels to common arrhythmia labels
+# These map Icentia specific labels to common labels
 ##
 
 HeartRhythmMap = {
@@ -456,7 +456,7 @@ def signal_generator(patient_generator, frame_size=2048, samples_per_patient=1):
 
 
 def uniform_patient_generator(
-    db_path: str,
+    ds_path: str,
     patient_ids: npt.ArrayLike,
     repeat: bool = True,
     shuffle: bool = True,
@@ -464,7 +464,7 @@ def uniform_patient_generator(
     """Yield data for each patient in the array.
 
     Args:
-        db_path (str): Database path
+        ds_path (str): Dataset path
         patient_ids (pt.ArrayLike): Array of patient ids
         repeat (bool, optional): Whether to repeat generator. Defaults to True.
         shuffle (bool, optional): Whether to shuffle patient ids.. Defaults to True.
@@ -482,7 +482,7 @@ def uniform_patient_generator(
             np.random.shuffle(patient_ids)
         for patient_id in patient_ids:
             pt_key = f"p{patient_id:05d}"
-            with h5py.File(os.path.join(db_path, f"{pt_key}.h5"), mode="r") as h5:
+            with h5py.File(os.path.join(ds_path, f"{pt_key}.h5"), mode="r") as h5:
                 patient_data = h5[pt_key]
                 yield patient_id, patient_data
         # END FOR
@@ -492,14 +492,14 @@ def uniform_patient_generator(
 
 
 def random_patient_generator(
-    db_path: str,
+    ds_path: str,
     patient_ids: List[int],
     patient_weights: Optional[List[int]] = None,
 ) -> PatientGenerator:
     """Samples patient data from the provided patient distribution.
 
     Args:
-        db_path (str): Database path
+        ds_path (str): Dataset path
         patient_ids (List[int]): Patient ids
         patient_weights (Optional[List[int]], optional): Probabilities associated with each patient. Defaults to None.
 
@@ -512,7 +512,7 @@ def random_patient_generator(
     while True:
         for patient_id in np.random.choice(patient_ids, size=1024, p=patient_weights):
             pt_key = f"p{patient_id:05d}"
-            with h5py.File(os.path.join(db_path, f"{pt_key}.h5"), mode="r") as h5:
+            with h5py.File(os.path.join(ds_path, f"{pt_key}.h5"), mode="r") as h5:
                 patient_data = h5[pt_key]
                 yield patient_id, patient_data
             # END WITH
@@ -752,14 +752,14 @@ def _choose_random_segment(
 
 
 def get_rhythm_statistics(
-    db_path: str,
+    ds_path: str,
     patient_ids: Optional[npt.ArrayLike] = None,
     save_path: Optional[str] = None,
 ):
     """Utility function to extract rhythm statics across entire dataset. Useful for EDA.
 
     Args:
-        db_path (str): Database path containing HDF5 files
+        ds_path (str): Dataset path containing HDF5 files
         patient_ids (Optional[npt.ArrayLike], optional): Patients IDs to include. Defaults to all.
         save_path (Optional[str], optional): Parquet file path to save results. Defaults to None.
 
@@ -770,7 +770,7 @@ def get_rhythm_statistics(
     if patient_ids is None:
         patient_ids = get_patient_ids()
     pt_gen = uniform_patient_generator(
-        db_path=db_path, patient_ids=patient_ids, repeat=False
+        ds_path=ds_path, patient_ids=patient_ids, repeat=False
     )
     stats = []
     for pt, segments in pt_gen:  # , total=len(patient_ids):
@@ -808,14 +808,14 @@ def get_rhythm_statistics(
 
 
 def convert_dataset_pt_zip_to_hdf5(
-    patient: int, zip_path: str, db_path: str, force: bool = False
+    patient: int, zip_path: str, ds_path: str, force: bool = False
 ):
     """Extract patient data from Icentia zipfile. Pulls out ECG data along with all labels.
 
     Args:
         patient (int): Patient id
         zip_path (str): Zipfile path
-        db_path (str): Destination DB folder path
+        ds_path (str): Destination DB folder path
         force (bool, optional): Whether to override destination if it exists. Defaults to False.
     """
     import re  # pylint: disable=import-outside-toplevel
@@ -824,7 +824,7 @@ def convert_dataset_pt_zip_to_hdf5(
 
     logger.info(f"Processing patient {patient}")
     pt_id = f"p{patient:05d}"
-    pt_path = os.path.join(db_path, f"{pt_id}.h5")
+    pt_path = os.path.join(ds_path, f"{pt_id}.h5")
     if not force and os.path.exists(pt_path):
         print("skipping patient")
         return
@@ -887,7 +887,7 @@ def convert_dataset_pt_zip_to_hdf5(
 
 def convert_dataset_zip_to_hdf5(
     zip_path: str,
-    db_path: str,
+    ds_path: str,
     patient_ids: Optional[npt.ArrayLike] = None,
     force: bool = False,
     num_workers: Optional[int] = None,
@@ -896,7 +896,7 @@ def convert_dataset_zip_to_hdf5(
 
     Args:
         zip_path (str): Zipfile path
-        db_path (str): Destination DB path
+        ds_path (str): Destination DB path
         patient_ids (Optional[npt.ArrayLike], optional): List of patient IDs to extract. Defaults to all.
         force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
         num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
@@ -904,19 +904,19 @@ def convert_dataset_zip_to_hdf5(
     if not patient_ids:
         patient_ids = get_patient_ids()
     f = functools.partial(
-        convert_dataset_pt_zip_to_hdf5, zip_path=zip_path, db_path=db_path, force=force
+        convert_dataset_pt_zip_to_hdf5, zip_path=zip_path, ds_path=ds_path, force=force
     )
     with Pool(processes=num_workers) as pool:
         _ = list(tqdm(pool.imap(f, patient_ids), total=len(patient_ids)))
 
 
 def download_dataset(
-    db_path: str, num_workers: Optional[int] = None, force: bool = False
+    ds_path: str, num_workers: Optional[int] = None, force: bool = False
 ):
     """Download icentia11k dataset
 
     Args:
-        db_path (str): Path to store dataset
+        ds_path (str): Path to store dataset
         num_workers (Optional[int], optional): # parallel workers. Defaults to None.
         force (bool, optional): Force redownload. Defaults to False.
     """
@@ -939,7 +939,7 @@ def download_dataset(
     s3_bucket = "ambiqai-ecg-icentia11k-dataset"
     s3_prefix = "patients"
 
-    os.makedirs(db_path, exist_ok=True)
+    os.makedirs(ds_path, exist_ok=True)
 
     patient_ids = get_patient_ids()
 
@@ -959,7 +959,7 @@ def download_dataset(
                 executor.submit(
                     func,
                     f"{s3_prefix}/p{patient_id:05d}.h5",
-                    os.path.join(db_path, f"p{patient_id:05d}.h5"),
+                    os.path.join(ds_path, f"p{patient_id:05d}.h5"),
                 )
                 for patient_id in patient_ids
             )
@@ -977,8 +977,8 @@ def download_dataset(
     #     "https://physionet.org/static/published-projects/icentia11k-continuous-ecg/"
     #     "icentia11k-single-lead-continuous-raw-electrocardiogram-dataset-1.0.zip"
     # )
-    # db_zip_path = os.path.join(db_path, "icentia11k.zip")
-    # os.makedirs(db_path, exist_ok=True)
+    # db_zip_path = os.path.join(ds_path, "icentia11k.zip")
+    # os.makedirs(ds_path, exist_ok=True)
     # if os.path.exists(db_zip_path) and not force:
     #     logger.warning(
     #         f"Zip file already exists. Please delete or set `force` flag to redownload. PATH={db_zip_path}"
@@ -990,7 +990,7 @@ def download_dataset(
     # logger.info("Generating icentia11k patient data")
     # convert_dataset_zip_to_hdf5(
     #     zip_path=db_zip_path,
-    #     db_path=db_path,
+    #     ds_path=ds_path,
     #     force=force,
     #     num_workers=num_workers
     # )

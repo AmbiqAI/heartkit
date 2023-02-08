@@ -56,11 +56,11 @@ def generate_task_model(
     arch: ArchitectureType = "resnet18",
     stages: Optional[int] = None,
 ) -> tf.keras.Model:
-    """Generate model for given arrhythmia task
+    """Generate model for given task
 
     Args:
         inputs (KerasTensor): Model inputs
-        task (EcgTask): Heart arrhythmia task
+        task (EcgTask): Heart task
         arch (ArchitectureType, optional): Architecture type. Defaults to 'resnet18'.
         stages (Optional[int], optional): # stages in network. Defaults to None.
 
@@ -74,6 +74,8 @@ def generate_task_model(
         num_classes = 3  # 5
     elif task == EcgTask.hr:
         num_classes = 4
+    elif task == EcgTask.segmentation:
+        num_classes = 3
     else:
         raise ValueError(f"unknown task: {task}")
     x = ecg_feature_extractor(inputs, arch, stages=stages)
@@ -93,7 +95,7 @@ def get_pretrained_weights(
 
     Args:
         checkpoint_file (str): TensorFlow checkpoint file containing weights
-        task (EcgTask): Hear arrhythmia task
+        task (EcgTask): Hear task
         arch (ArchitectureType, optional): Architecture type. Defaults to 'resnet18'.
         stages (Optional[int], optional): # stages in network. Defaults to None.
 
@@ -163,3 +165,22 @@ def load_model(model_path: str) -> tf.keras.Model:
     # Local file
     model_path = model_path.removeprefix("file://")
     return tf.keras.models.load_model(model_path)
+
+
+def get_strategy(use_mixed_precision: bool = False) -> tf.distribute.Strategy:
+    """Select best distribution strategy.
+    Args:
+        use_mixed_precision (bool, optional): Use mixed precision on TPU. Defaults to False.
+    Returns:
+        tf.distribute.Strategy: Strategy
+    """
+    # Try to detect an available TPU. If none is present, default to MirroredStrategy
+    try:
+        tpu = tf.distribute.cluster_resolver.TPUClusterResolver.connect()
+        strategy = tf.distribute.TPUStrategy(tpu)
+        if use_mixed_precision:
+            tf.keras.mixed_precision.set_global_policy("mixed_bfloat16")
+    except ValueError:
+        # MirroredStrategy is best for a single machine with one or multiple GPUs
+        strategy = tf.distribute.MirroredStrategy()
+    return strategy
