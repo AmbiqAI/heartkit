@@ -1,62 +1,22 @@
 import shutil
-from typing import List, Optional, Tuple, Union
 
 import numpy as np
-import numpy.typing as npt
 import pydantic_argparse
 import tensorflow as tf
 from rich.console import Console
 from sklearn.metrics import f1_score
 
 from neuralspot.tflite.convert import convert_tflite, predict_tflite
+from neuralspot.tflite.model import load_model
 
-from . import datasets as ds
-from .models.utils import get_predicted_threshold_indices, load_model
-from .types import EcgDeployParams, EcgTask
+from .datasets.icentia11k import IcentiaDataset
+from .models.utils import get_predicted_threshold_indices
+from .types import EcgDeployParams
 from .utils import setup_logger, xxd_c_dump
 
 console = Console()
 
 logger = setup_logger(__name__)
-
-
-def create_dataset(
-    ds_path: str,
-    task: EcgTask,
-    frame_size: Optional[int] = 1250,
-    num_patients: int = 100,
-    samples_per_patient: Union[int, List[int]] = 100,
-    sample_size: Optional[int] = None,
-    normalize: bool = True,
-) -> Tuple[npt.ArrayLike, npt.ArrayLike]:
-    """Generate test dataset
-
-    Args:
-        ds_path (str): Dataset path
-        task (EcgTask, optional): ECG Task.
-        frame_size (Optional[int], optional): ECG Frame size. Defaults to 1250.
-        num_patients (int, optional): # of patients. Defaults to 100.
-        samples_per_patient (int, optional): # samples per patient. Defaults to 100.
-
-    Returns:
-        Tuple[npt.ArrayLike, npt.ArrayLike]: (test_x, test_y)
-    """
-    if sample_size is None:
-        sample_size = 100 * num_patients
-    patient_ids = ds.icentia11k.get_train_patient_ids()[:num_patients]
-    np.random.shuffle(patient_ids)
-    dataset = ds.create_dataset_from_generator(
-        task=task,
-        ds_path=ds_path,
-        patient_ids=patient_ids,
-        frame_size=frame_size,
-        samples_per_patient=samples_per_patient,
-        normalize=normalize,
-        repeat=False,
-    )
-
-    data_x, data_y = next(dataset.batch(sample_size).as_numpy_iterator())
-    return data_x, data_y
 
 
 def deploy_model(params: EcgDeployParams):
@@ -77,10 +37,12 @@ def deploy_model(params: EcgDeployParams):
 
     # Load dataset
     with console.status("[bold green] Loading test dataset..."):
-        test_ds = ds.load_test_dataset(
+        ds = IcentiaDataset(
             ds_path=str(params.ds_path),
             task=params.task,
             frame_size=params.frame_size,
+        )
+        test_ds = ds.load_test_dataset(
             # test_patients=params.test_patients,
             test_pt_samples=params.samples_per_patient,
             # num_workers=params.data_parallelism,

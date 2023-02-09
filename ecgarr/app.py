@@ -15,7 +15,6 @@ from .types import (
 )
 from .utils import setup_logger
 
-# os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 logger = setup_logger(__name__)
 
 

@@ -97,7 +97,7 @@ class HeartSegmentName(str, Enum):
 class EcgDownloadParams(BaseModel):
     """Download command params"""
 
-    db_root_path: Path = Field(
+    ds_root_path: Path = Field(
         default_factory=Path, description="Dataset root directory"
     )
     datasets: List[DatasetTypes] = Field(default_factory=list, description="Datasets")

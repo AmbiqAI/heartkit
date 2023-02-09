@@ -1,7 +1,7 @@
 {
-    "task": "rhythm",
-    "job_dir": "./results/runs/evb-demo",
-    "db_path": "./datasets/icentia11k",
+    "task": "arrhythmia",
+    "job_dir": "./results/evb-demo",
+    "ds_path": "./datasets",
     "samples_per_patient": [10, 100, 50],
     "frame_size": 1250,
     "pad_size": 250,

@@ -1,4 +1,3 @@
-import tempfile
 from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -136,35 +135,6 @@ def get_predicted_threshold_indices(
     ).squeeze(axis=-1)
     y_thresh_idx = np.where(y_pred_prob > threshold)[0]
     return y_thresh_idx
-
-
-def load_model(model_path: str) -> tf.keras.Model:
-    """Loads a TF model stored either remotely or locally.
-    NOTE: Currently only WANDB and local files are supported.
-
-    Args:
-        model_path (str): Source path
-            WANDB: wandb://[[entity/]project/]collectionName:[alias]
-            FILE: file://path/to/model.tf
-            S3: S3://bucket/prefix/model.tf
-    Returns:
-        tf.keras.Model: Model
-    """
-    # Stored as WANDB artifact (assumes user is authenticated)
-    if model_path.startswith("wandb://"):
-        # pylint: disable=C0415
-        import wandb
-
-        api = wandb.Api()
-        model_path = model_path.removeprefix("wandb://")
-        artifact = api.artifact(model_path, type="model")
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            artifact.download(tmpdirname)
-            model = tf.keras.models.load_model(tmpdirname)
-        return model
-    # Local file
-    model_path = model_path.removeprefix("file://")
-    return tf.keras.models.load_model(model_path)
 
 
 def get_strategy(use_mixed_precision: bool = False) -> tf.distribute.Strategy:

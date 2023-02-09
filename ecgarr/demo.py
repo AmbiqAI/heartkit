@@ -25,8 +25,8 @@ from neuralspot.rpc import GenericDataOperations_EvbToPc as gen_evb2pc
 from neuralspot.rpc import GenericDataOperations_PcToEvb as gen_pc2evb
 from neuralspot.rpc.utils import get_serial_transport
 
-from . import datasets as ds
-from .deploy import create_dataset
+from .datasets.icentia11k import IcentiaDataset
+from .datasets.utils import get_class_names
 from .types import EcgDemoParams
 from .utils import setup_logger
 
@@ -85,7 +85,7 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
     @property
     def class_labels(self) -> List[str]:
         """Get class labels for demo."""
-        return ds.get_class_names(self.params.task)
+        return get_class_names(self.params.task)
 
     @property
     def window_size(self) -> int:
@@ -105,15 +105,17 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
         Returns:
             Tuple[npt.ArrayLike, npt.ArrayLike]: x,y
         """
-        test_x, test_y = create_dataset(
+        ds = IcentiaDataset(
             ds_path=str(self.params.ds_path),
             task=self.params.task,
             frame_size=self.window_size,
-            num_patients=200,
-            samples_per_patient=self.params.samples_per_patient,
-            sample_size=2000,
-            normalize=False,
         )
+        test_ds = ds.load_test_dataset(
+            test_patients=200,
+            test_pt_samples=self.params.samples_per_patient,
+            num_workers=self.params.data_parallelism,
+        )
+        test_x, test_y = next(test_ds.batch(2000).as_numpy_iterator())
         return shuffle(test_x, test_y)
 
     def clear_plot_data(self):

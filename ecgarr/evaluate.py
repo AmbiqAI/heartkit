@@ -4,9 +4,12 @@ import tensorflow as tf
 from rich.console import Console
 from sklearn.metrics import f1_score
 
-from . import datasets as ds
+from neuralspot.tflite.model import load_model
+
+from .datasets.icentia11k import IcentiaDataset
+from .datasets.utils import get_class_names
 from .metrics import confusion_matrix_plot, roc_auc_plot
-from .models.utils import get_predicted_threshold_indices, get_strategy, load_model
+from .models.utils import get_predicted_threshold_indices, get_strategy
 from .types import EcgTestParams
 from .utils import set_random_seed, setup_logger
 
@@ -23,16 +26,17 @@ def evaluate_model(params: EcgTestParams):
     params.seed = set_random_seed(params.seed)
     logger.info(f"Random seed {params.seed}")
 
-    logger.info("Loading test dataset")
-    test_ds = ds.load_test_dataset(
-        ds_path=str(params.ds_path),
-        task=params.task,
-        frame_size=params.frame_size,
-        test_patients=params.test_patients,
-        test_pt_samples=params.samples_per_patient,
-        num_workers=params.data_parallelism,
-    )
     with console.status("[bold green] Loading test dataset..."):
+        ds = IcentiaDataset(
+            ds_path=str(params.ds_path),
+            task=params.task,
+            frame_size=params.frame_size,
+        )
+        test_ds = ds.load_test_dataset(
+            test_patients=params.test_patients,
+            test_pt_samples=params.samples_per_patient,
+            num_workers=params.data_parallelism,
+        )
         test_x, test_y = next(test_ds.batch(params.test_size).as_numpy_iterator())
 
     strategy = get_strategy()
@@ -68,7 +72,7 @@ def evaluate_model(params: EcgTestParams):
             )
         # END IF
 
-        class_names = ds.get_class_names(params.task)
+        class_names = get_class_names(params.task)
         confusion_matrix_plot(
             y_true,
             y_pred,

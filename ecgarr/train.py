@@ -10,7 +10,8 @@ from wandb.keras import WandbCallback
 
 from neuralspot.tflite.metrics import get_flops
 
-from . import datasets as ds
+from .datasets.icentia11k import IcentiaDataset
+from .datasets.utils import get_class_names
 from .metrics import confusion_matrix_plot
 from .models.optimizers import Adam
 from .models.utils import generate_task_model, get_strategy
@@ -41,11 +42,12 @@ def train_model(params: EcgTrainParams):
         )
         wandb.config.update(params.dict())
 
+    ds = IcentiaDataset(
+        str(params.ds_path), task=params.task, frame_size=params.frame_size
+    )
+
     # Create TF datasets
-    train_ds, val_ds = ds.load_datasets(
-        ds_path=str(params.ds_path),
-        task=params.task,
-        frame_size=params.frame_size,
+    train_ds, val_ds = ds.load_train_datasets(
         train_patients=params.train_patients,
         val_patients=params.val_patients,
         train_pt_samples=params.samples_per_patient,
@@ -54,6 +56,7 @@ def train_model(params: EcgTrainParams):
         val_size=params.val_size,
         num_workers=params.data_parallelism,
     )
+    # NOTE: Apply pre-process and augmentations
 
     # Shuffle and batch datasets for training
     train_ds = (
@@ -183,7 +186,7 @@ def train_model(params: EcgTrainParams):
         y_pred = np.argmax(model.predict(val_ds), axis=1)
 
         # Summarize results
-        class_names = ds.get_class_names(task=params.task)
+        class_names = get_class_names(task=params.task)
         test_acc = np.sum(y_pred == y_true) / len(y_true)
         test_f1 = f1_score(y_true, y_pred, average="macro")
         logger.info(f"[VAL SET] ACC={test_acc:.2%}, F1={test_f1:.2%}")

@@ -10,7 +10,7 @@ from wandb.keras import WandbCallback
 
 from neuralspot.tflite.metrics import get_flops
 
-from . import datasets as ds
+from .datasets.ludb import LudbDataset
 from .models.optimizers import Adam
 from .models.utils import get_strategy
 from .types import EcgTask, EcgTrainParams
@@ -105,12 +105,12 @@ def train_model(params: EcgTrainParams):
         )
         wandb.config.update(params.dict())
 
+    ds = LudbDataset(
+        str(params.ds_path), task=params.task, frame_size=params.frame_size
+    )
     # Create TF datasets
     with strategy.scope():
-        train_ds, val_ds = ds.load_datasets(
-            ds_path=str(params.ds_path),
-            task=params.task,
-            frame_size=params.frame_size,
+        train_ds, val_ds = ds.load_train_datasets(
             train_patients=params.train_patients,
             val_patients=params.val_patients,
             train_pt_samples=params.samples_per_patient,
@@ -239,7 +239,7 @@ if __name__ == "__main__":
         EcgTrainParams(
             task=EcgTask.segmentation,
             job_dir="./results/segmentation",
-            ds_path="./datasets/ludb",
+            ds_path="./datasets",
             frame_size=1248,
             samples_per_patient=400,
             val_samples_per_patient=400,

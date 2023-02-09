@@ -1,12 +1,12 @@
 {
-    "task": "rhythm",
-    "job_dir": "./results/runs/rhythm-full-model",
-    "db_path": "./datasets/icentia11k",
+    "task": "arrhythmia",
+    "job_dir": "./results/rhythm-full-model",
+    "db_path": "./datasets",
     "frame_size": 1250,
     "samples_per_patient": [500, 4000, 2000],
     "test_patients": 1000,
     "test_size": 500000,
     "model_file_golden": "wandb://ambiq/model-registry/ecg-arrhythmia-afib:v1",
-    "model_file": "./results/runs/rhythm-full-model/model.tf",
+    "model_file": "./results/rhythm-full-model/model.tf",
     "threshold": 0.95
 }
