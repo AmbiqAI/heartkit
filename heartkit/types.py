@@ -26,7 +26,7 @@ class HeartRhythm(IntEnum):
     normal = 0
     afib = 1
     aflut = 2
-    noise = 3
+    noise = 3  # Not used
 
 
 class HeartBeat(IntEnum):
@@ -35,8 +35,8 @@ class HeartBeat(IntEnum):
     normal = 0
     pac = 1
     pvc = 2
-    aberrated = 3
-    noise = 4
+    aberrated = 3  # Not used
+    noise = 4  # Not used
 
 
 class HeartRate(IntEnum):
@@ -45,7 +45,7 @@ class HeartRate(IntEnum):
     normal = 0
     tachycardia = 1
     bradycardia = 2
-    noise = 3
+    noise = 3  # Not used
 
 
 class HeartSegment(IntEnum):
@@ -54,7 +54,7 @@ class HeartSegment(IntEnum):
     pwave = 1
     qrs = 2
     twave = 3
-    uwave = 4
+    uwave = 4  # Not used
 
 
 class HeartBeatName(str, Enum):
@@ -62,8 +62,8 @@ class HeartBeatName(str, Enum):
 
     normal = "normal"
     pac = "pac"
-    aberrated = "aberrated"
     pvc = "pvc"
+    aberrated = "aberrated"
     noise = "noise"
 
 
@@ -98,19 +98,21 @@ def get_class_names(task: HeartTask) -> List[str]:
     """Get class names for given task
 
     Args:
-        task (HeartTask): Task
+        task (HeartTask): Heart task
 
     Returns:
         List[str]: class names
     """
     if task == HeartTask.rhythm:
+        # NOTE: Bucket AFIB and AFL together
         return ["NSR", "AFIB/AFL"]
     if task == HeartTask.beat:
+        # NOTE: We exclude aberrated and noise
         return ["NORMAL", "PAC", "PVC"]
     if task == HeartTask.hr:
-        return ["normal", "tachycardia", "bradycardia"]
+        return ["NORMAL", "TACHYCARDIA", "BRADYCARDIA"]
     if task == HeartTask.segmentation:
-        return ["Other", "P Wave", "QRS", "T Wave"]
+        return ["NONE", "P-WAVE", "QRS", "T-WAVE"]
     raise ValueError(f"unknown task: {task}")
 
 
@@ -118,22 +120,12 @@ def get_num_classes(task: HeartTask) -> int:
     """Get number of classes for given task
 
     Args:
-        task (HeartTask): Hear task
+        task (HeartTask): Heart task
 
     Returns:
         int: # classes
     """
-    if task == HeartTask.rhythm:
-        # NOTE: Ideally 3 but we bucket AFIB and AFL together
-        return 2
-    if task == HeartTask.beat:
-        # NOTE: We exclude aberrated and noise
-        return 3  # 5
-    if task == HeartTask.hr:
-        return 3
-    if task == HeartTask.segmentation:
-        return 3
-    raise ValueError(f"unknown task: {task}")
+    return len(get_class_names(task=task))
 
 
 class HeartDownloadParams(BaseModel):

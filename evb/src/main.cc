@@ -28,8 +28,9 @@
 #include "sensor.h"
 
 static const char *heart_rhythm_labels[] = {"NSR", "AFIB/AFL"};
-// const char *heart_beat_labels[] = { "normal", "pac", "aberrated", "pvc", "noise" };
-// const char *hear_rate_labels[] = { "normal", "tachycardia", "bradycardia", "noise" };
+// const char *heart_beat_labels[] = { "NORMAL", "PAC", "PVC" };
+// const char *hear_rate_labels[] = { "NORMAL", "TACHYCARDIA", "BRADYCARDIA" };
+// const char *heart_seg_labels[] = { "NONE", "P-WAVE", "QRS", "T-WAVE" };
 
 // Application globals
 static uint32_t numSamples = 0;
@@ -297,7 +298,7 @@ setup() {
     init_preprocess();
     init_model();
     ns_peripheral_button_init(&button_config);
-    ns_printf("♥️ Heart Arrhythmia Classifier Demo\n\n");
+    ns_printf("♥️ Heart Kit Demo\n\n");
     ns_printf("Please select data collection options:\n\n\t1. BTN1=sensor\n\t2. BTN2=client\n");
 }
 
