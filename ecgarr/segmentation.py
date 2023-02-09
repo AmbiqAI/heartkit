@@ -30,14 +30,14 @@ def load_model(inputs: KerasTensor, num_classes: int) -> tf.keras.Model:
         tf.keras.Model: Model
     """
     # Entry block
-    x = tf.keras.layers.Conv1D(32, 3, strides=2, padding="same")(inputs)
+    x = tf.keras.layers.Conv1D(24, 3, strides=2, padding="same")(inputs)
     x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.Activation("relu")(x)
 
     previous_block_activation = x  # Set aside residual
 
     # Blocks 1, 2, 3 are identical apart from the feature depth.
-    for filters in [64, 128, 256]:
+    for filters in [48, 96, 128]:
         x = tf.keras.layers.Activation("relu")(x)
         x = tf.keras.layers.SeparableConv1D(filters, 3, padding="same")(x)
         x = tf.keras.layers.BatchNormalization()(x)
@@ -57,7 +57,7 @@ def load_model(inputs: KerasTensor, num_classes: int) -> tf.keras.Model:
 
     ### [Second half of the network: upsampling inputs] ###
 
-    for filters in [256, 128, 64, 32]:
+    for filters in [128, 96, 48, 24]:
         x = tf.keras.layers.Activation("relu")(x)
         x = tf.keras.layers.Conv1DTranspose(filters, 3, padding="same")(x)
         x = tf.keras.layers.BatchNormalization()(x)
@@ -139,12 +139,13 @@ def train_model(params: EcgTrainParams):
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
 
-    def decay(epoch):
-        if epoch < 15:
-            return 1e-3
-        if epoch < 30:
-            return 1e-4
-        return 1e-5
+    total_steps = params.steps_per_epoch * params.epochs
+    lr_scheduler = tf.keras.optimizers.schedules.CosineDecayRestarts(
+        initial_learning_rate=1e-3,
+        first_decay_steps=int(0.1 * total_steps),
+        t_mul=1.661,  # Creates 4 cycles
+        m_mul=0.50,
+    )
 
     with strategy.scope():
         logger.info("Building model")
@@ -156,9 +157,10 @@ def train_model(params: EcgTrainParams):
         #     inputs, params.task, params.arch, stages=params.stages
         # )
         flops = get_flops(model, batch_size=1)
+        optimizer = Adam(lr_scheduler)
         model.compile(
             # optimizer="rmsprop",
-            optimizer=Adam(learning_rate=5e-4, beta_1=0.9, beta_2=0.98, epsilon=1e-9),
+            optimizer=optimizer,
             # loss=tfa.losses.SigmoidFocalCrossEntropy(from_logits=True),
             loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
             metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="acc")],
@@ -191,7 +193,6 @@ def train_model(params: EcgTrainParams):
             tf.keras.callbacks.TensorBoard(
                 log_dir=str(params.job_dir), write_steps_per_second=True
             ),
-            tf.keras.callbacks.LearningRateScheduler(decay),
         ]
         if env_flag("WANDB"):
             model_callbacks.append(WandbCallback())
@@ -241,14 +242,14 @@ if __name__ == "__main__":
             job_dir="./results/segmentation",
             ds_path="./datasets",
             frame_size=1248,
-            samples_per_patient=400,
+            samples_per_patient=800,
             val_samples_per_patient=400,
             val_patients=0.10,
-            val_size=3_000,
+            val_size=6_000,
             batch_size=64,
             buffer_size=8092,
             epochs=100,
-            steps_per_epoch=1125,  # (200*0.9*400)/64
+            steps_per_epoch=600,  # (200*0.9*400)/64
             val_metric="loss",
             data_parallelism=8,
         )

@@ -17,7 +17,7 @@ class EcgTask(str, Enum):
 
 
 ArchitectureType = Literal["resnet12", "resnet18", "resnet34", "resnet50"]
-DatasetTypes = Literal["icentia11k"]
+DatasetTypes = Literal["icentia11k", "ludb"]
 
 
 class HeartRhythm(IntEnum):
