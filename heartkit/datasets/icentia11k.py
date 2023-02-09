@@ -21,12 +21,10 @@ from botocore import UNSIGNED
 from botocore.client import Config
 from tqdm import tqdm
 
-from ..types import EcgTask, HeartBeat, HeartRate, HeartRhythm
+from ..types import HeartBeat, HeartRate, HeartRhythm, HeartTask
 from ..utils import download_file
 from .dataset import EcgDataset
 from .types import PatientGenerator, SampleGenerator
-
-# from .utils import butter_bp_filter
 
 logger = logging.getLogger(__name__)
 
@@ -193,7 +191,7 @@ class IcentiaDataset(EcgDataset):
     """Icentia dataset"""
 
     def __init__(
-        self, ds_path: str, task: EcgTask = EcgTask.rhythm, frame_size: int = 1250
+        self, ds_path: str, task: HeartTask = HeartTask.rhythm, frame_size: int = 1250
     ) -> None:
         super().__init__(os.path.join(ds_path, "icentia11k"), task, frame_size)
 
@@ -251,17 +249,17 @@ class IcentiaDataset(EcgDataset):
         Returns:
             SampleGenerator: Sample data generator
         """
-        if self.task == EcgTask.rhythm:
+        if self.task == HeartTask.rhythm:
             return self.rhythm_data_generator(
                 patient_generator=patient_generator,
                 samples_per_patient=samples_per_patient,
             )
-        if self.task == EcgTask.beat:
+        if self.task == HeartTask.beat:
             return self.beat_data_generator(
                 patient_generator=patient_generator,
                 samples_per_patient=samples_per_patient,
             )
-        if self.task == EcgTask.hr:
+        if self.task == HeartTask.hr:
             return self.heart_rate_data_generator(
                 patient_generator=patient_generator,
                 samples_per_patient=samples_per_patient,
@@ -276,13 +274,13 @@ class IcentiaDataset(EcgDataset):
         Args:
             patient_ids (npt.ArrayLike): Patient ids
             test_size (float): # or proportion of patients to
-            task (EcgTask, optional): _description_. Defaults to EcgTask.rhythm.
+            task (HeartTask, optional): Task. Defaults to HeartTask.rhythm.
 
         Returns:
             List[npt.ArrayLike, npt.ArrayLike]: Training and validation patient IDs
         """
 
-        if self.task == EcgTask.rhythm:
+        if self.task == HeartTask.rhythm:
             arr_pt_ids = np.intersect1d(np.array(arr_rhythm_patients), patient_ids)
             norm_pt_ids = np.setdiff1d(patient_ids, arr_pt_ids)
             (
@@ -668,42 +666,14 @@ class IcentiaDataset(EcgDataset):
             return HeartRate.normal.value
         return HeartRate.tachycardia.value
 
-    # def normalize(
-    #     self, array: npt.ArrayLike, local: bool = True, filter_enable: bool = False
-    # ) -> npt.ArrayLike:
-    #     """Normalize an array using the mean and standard deviation calculated over the entire dataset.
-
-    #     Args:
-    #         array (npt.ArrayLike):  Numpy array to normalize
-    #         inplace (bool, optional): Whether to perform the normalization steps in-place. Defaults to False.
-    #         local (bool, optional): Local mean and std or global. Defaults to True.
-    #         filter_enable (bool, optional): Enable band-pass filter. Defaults to False.
-
-    #     Returns:
-    #         npt.ArrayLike: Normalized array
-    #     """
-    #     if filter_enable:
-    #         filt_array = butter_bp_filter(
-    #             array, lowcut=0.5, highcut=40, sample_rate=self.sampling_rate, order=2
-    #         )
-    #     else:
-    #         filt_array = np.copy(array)
-    #     with warnings.catch_warnings():
-    #         warnings.simplefilter("ignore")
-    #         filt_array = sklearn.preprocessing.scale(
-    #             filt_array, with_mean=True, with_std=True, copy=False
-    #         )
-    #     return filt_array
-
     def get_rhythm_statistics(
         self,
         patient_ids: Optional[npt.ArrayLike] = None,
         save_path: Optional[str] = None,
-    ):
+    ) -> pd.DataFrame:
         """Utility function to extract rhythm statistics across entire dataset. Useful for EDA.
 
         Args:
-            ds_path (str): Dataset path containing HDF5 files
             patient_ids (Optional[npt.ArrayLike], optional): Patients IDs to include. Defaults to all.
             save_path (Optional[str], optional): Parquet file path to save results. Defaults to None.
 
@@ -858,7 +828,6 @@ class IcentiaDataset(EcgDataset):
         Args:
             patient (int): Patient id
             zip_path (str): Zipfile path
-            ds_path (str): Destination DB folder path
             force (bool, optional): Whether to override destination if it exists. Defaults to False.
         """
         import re  # pylint: disable=import-outside-toplevel
@@ -942,7 +911,6 @@ class IcentiaDataset(EcgDataset):
 
         Args:
             zip_path (str): Zipfile path
-            ds_path (str): Destination DB path
             patient_ids (Optional[npt.ArrayLike], optional): List of patient IDs to extract. Defaults to all.
             force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
             num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().

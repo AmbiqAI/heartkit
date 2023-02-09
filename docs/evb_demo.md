@@ -71,7 +71,7 @@ Now press the __reset button__ on the EVB. This will allow SWO output to be capt
 In terminal B, start the server on the PC.
 
 ```bash
-python -m ecgarr evb_demo --config-file ./configs/evb-demo.json
+python -m heartkit demo --config-file ./configs/evb-demo.json
 ```
 
 Upon start, the server will scan and connect to the EVB serial port. If no port is detected after 30 seconds, the server will exit. If successful, the server should discover the USB port and say `Server running`.

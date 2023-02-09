@@ -2,7 +2,6 @@ import functools
 import logging
 import os
 import tempfile
-import warnings
 import zipfile
 from multiprocessing import Pool
 from typing import List, Optional, Tuple, Union
@@ -10,15 +9,12 @@ from typing import List, Optional, Tuple, Union
 import h5py
 import numpy as np
 import numpy.typing as npt
-import sklearn.model_selection
-import sklearn.preprocessing
 from tqdm import tqdm
 
-from ..types import EcgTask
+from ..types import HeartTask
 from ..utils import download_file
 from .dataset import EcgDataset
 from .types import PatientGenerator, SampleGenerator
-from .utils import butter_bp_filter
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +44,7 @@ class LudbDataset(EcgDataset):
     """LUDB dataset"""
 
     def __init__(
-        self, ds_path: str, task: EcgTask = EcgTask.rhythm, frame_size: int = 1250
+        self, ds_path: str, task: HeartTask = HeartTask.rhythm, frame_size: int = 1250
     ) -> None:
         super().__init__(os.path.join(ds_path, "ludb"), task, frame_size)
 
@@ -106,7 +102,7 @@ class LudbDataset(EcgDataset):
         Returns:
             SampleGenerator: Sample data generator
         """
-        if self.task == EcgTask.segmentation:
+        if self.task == HeartTask.segmentation:
             return self.segmentation_generator(
                 patient_generator=patient_generator,
                 samples_per_patient=samples_per_patient,
@@ -118,8 +114,7 @@ class LudbDataset(EcgDataset):
         patient_generator: PatientGenerator,
         samples_per_patient: Union[int, List[int]] = 1,
     ) -> SampleGenerator:
-        """Generate a stream of short signals and their corresponding segment labels.
-        These short signals are uniformly sampled from the segments in patient data by placing a frame in a random location.
+        """Generate frames and segment labels.
 
         Args:
             patient_generator (PatientGenerator): Patient Generator
@@ -254,33 +249,6 @@ class LudbDataset(EcgDataset):
         # END IF
 
         return data, segs, fids
-
-    def normalize(
-        self, array: npt.ArrayLike, local: bool = True, filter_enable: bool = False
-    ) -> npt.ArrayLike:
-        """Normalize an array using the mean and standard deviation calculated over the entire dataset.
-
-        Args:
-            array (npt.ArrayLike):  Numpy array to normalize
-            inplace (bool, optional): Whether to perform the normalization steps in-place. Defaults to False.
-            local (bool, optional): Local mean and std or global. Defaults to True.
-            filter_enable (bool, optional): Enable band-pass filter. Defaults to False.
-
-        Returns:
-            npt.ArrayLike: Normalized array
-        """
-        if filter_enable:
-            filt_array = butter_bp_filter(
-                array, lowcut=0.5, highcut=40, sample_rate=self.sampling_rate, order=2
-            )
-        else:
-            filt_array = np.copy(array)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            filt_array = sklearn.preprocessing.scale(
-                filt_array, with_mean=True, with_std=True, copy=False
-            )
-        return filt_array
 
     def convert_dataset_zip_to_hdf5(
         self,

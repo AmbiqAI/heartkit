@@ -13,7 +13,7 @@ from neuralspot.tflite.metrics import get_flops
 from .datasets.ludb import LudbDataset
 from .models.optimizers import Adam
 from .models.utils import get_strategy
-from .types import EcgTask, EcgTrainParams
+from .types import HeartTask, HeartTrainParams
 from .utils import env_flag, set_random_seed, setup_logger
 
 logger = setup_logger(__name__)
@@ -82,11 +82,11 @@ def load_model(inputs: KerasTensor, num_classes: int) -> tf.keras.Model:
     return model
 
 
-def train_model(params: EcgTrainParams):
+def train_model(params: HeartTrainParams):
     """Train model command. This trains a model on the given task and dataset.
 
     Args:
-        params (EcgTrainParams): Training parameters
+        params (HeartTrainParams): Training parameters
     """
 
     params.seed = set_random_seed(params.seed)
@@ -153,7 +153,7 @@ def train_model(params: EcgTrainParams):
             shape=(params.frame_size, 1), batch_size=None, dtype=tf.float32
         )
         model = load_model(inputs=inputs, num_classes=4)
-        # generate_task_model(
+        # create_task_model(
         #     inputs, params.task, params.arch, stages=params.stages
         # )
         flops = get_flops(model, batch_size=1)
@@ -226,7 +226,7 @@ def create_parser():
         ArgumentParser: Arg parser
     """
     return pydantic_argparse.ArgumentParser(
-        model=EcgTrainParams,
+        model=HeartTrainParams,
         prog="Heart Train Command",
         description="Train heart model",
     )
@@ -237,8 +237,8 @@ if __name__ == "__main__":
     # train_model(parser.parse_typed_args())
     # with tf.device('/cpu:0'):
     train_model(
-        EcgTrainParams(
-            task=EcgTask.segmentation,
+        HeartTrainParams(
+            task=HeartTask.segmentation,
             job_dir="./results/segmentation",
             ds_path="./datasets",
             frame_size=1248,

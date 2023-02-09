@@ -11,21 +11,21 @@ from wandb.keras import WandbCallback
 from neuralspot.tflite.metrics import get_flops
 
 from .datasets.icentia11k import IcentiaDataset
-from .datasets.utils import get_class_names
 from .metrics import confusion_matrix_plot
 from .models.optimizers import Adam
-from .models.utils import generate_task_model, get_strategy
-from .types import EcgTrainParams
+from .models.utils import get_strategy
+from .tasks import create_task_model
+from .types import HeartTrainParams, get_class_names
 from .utils import env_flag, set_random_seed, setup_logger
 
 logger = setup_logger(__name__)
 
 
-def train_model(params: EcgTrainParams):
+def train_model(params: HeartTrainParams):
     """Train model command. This trains a model on the given task and dataset.
 
     Args:
-        params (EcgTrainParams): Training parameters
+        params (HeartTrainParams): Training parameters
     """
 
     params.seed = set_random_seed(params.seed)
@@ -90,7 +90,7 @@ def train_model(params: EcgTrainParams):
         inputs = tf.keras.Input(
             shape=(params.frame_size, 1), batch_size=None, dtype=tf.float32
         )
-        model = generate_task_model(
+        model = create_task_model(
             inputs, params.task, params.arch, stages=params.stages
         )
         flops = get_flops(model, batch_size=1)
@@ -214,7 +214,7 @@ def create_parser():
         ArgumentParser: Arg parser
     """
     return pydantic_argparse.ArgumentParser(
-        model=EcgTrainParams,
+        model=HeartTrainParams,
         prog="Heart Train Command",
         description="Train heart model",
     )

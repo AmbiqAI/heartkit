@@ -1,6 +1,6 @@
 import json
 
-from ecgarr import app
+from heartkit import app
 
 
 def test_app_cli_help():

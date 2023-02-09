@@ -15,6 +15,7 @@ def ecg_feature_extractor(
     """AI based feature extractor. Currently consists of 1D variant of ResNet
 
     Args:
+        inputs (KerasTensor): Model input
         arch (str, optional): Architecture name. Defaults to None.
         stages (int, optional): Number of stages. Defaults to None.
 

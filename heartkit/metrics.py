@@ -1,5 +1,5 @@
 import warnings
-from typing import Callable, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,10 +7,6 @@ import numpy.typing as npt
 import seaborn as sns
 import tensorflow as tf
 from sklearn.metrics import auc, f1_score, roc_curve
-
-from .utils import setup_logger
-
-logger = setup_logger(__name__)
 
 
 def f1(
@@ -28,7 +24,7 @@ def f1(
         threshold (float, optional): Decision threshold for multiclass. Defaults to None.
 
     Returns:
-        _type_: _description_
+        npt.ArrayLike: F1 scores
     """
     if y_prob.ndim != 2:
         raise ValueError(
@@ -56,7 +52,7 @@ def f_max(
     y_true: npt.ArrayLike,
     y_prob: npt.ArrayLike,
     thresholds: Optional[Union[float, List[float]]] = None,
-):
+) -> Tuple[float, float]:
     """Compute F max
     source: https://github.com/helme/ecg_ptbxl_benchmarking
     Args:
@@ -65,7 +61,7 @@ def f_max(
         thresholds (_type_, optional): _description_. Defaults to None.
 
     Returns:
-        Tuple[float]: _description_
+        Tuple[float, float]: F1 and thresholds
     """
     if thresholds is None:
         thresholds = np.linspace(0, 1, 100)
@@ -140,7 +136,7 @@ def roc_auc_plot(
     plt.close()
 
 
-def macro_precision_recall(y_true, y_prob, thresholds):  # multi-class multi-output
+def macro_precision_recall(y_true, y_prob, thresholds):
     """source: https://github.com/helme/ecg_ptbxl_benchmarking"""
     # expand analysis to the number of thresholds
     y_true = np.repeat(y_true[None, :, :], len(thresholds), axis=0)
@@ -227,75 +223,3 @@ def multi_f1(y_true: npt.ArrayLike, y_prob: npt.ArrayLike):
         _type_: _description_
     """
     return f1(y_true, y_prob, multiclass=True, threshold=0.5)
-
-
-class CustomCheckpoint(tf.keras.callbacks.Callback):
-    """Custom keras callback checkpoint"""
-
-    def __init__(
-        self,
-        filepath: str,
-        data: Tuple[npt.ArrayLike, npt.ArrayLike],
-        score_fn: Callable[[Tuple[npt.ArrayLike, npt.ArrayLike]], npt.ArrayLike],
-        best: float = -np.Inf,
-        save_best_only: bool = False,
-        batch_size: Optional[bool] = None,
-        verbose: int = 0,
-    ):
-        """Custom keras callback checkpoint
-
-        Args:
-            filepath (str): Save checkpoint filepath
-            data (Tuple[npt.ArrayLike, npt.ArrayLike]): Data
-            score_fn (Callable[[Tuple[npt.ArrayLike, npt.ArrayLike]], npt.ArrayLike]): Scoring function
-            best (float, optional): Current best score. Defaults to -np.Inf.
-            save_best_only (bool, optional): Save best checkpoint only. Defaults to False.
-            batch_size (Optional[bool], optional): Batch size. Defaults to None.
-            verbose (int, optional): Verbosity. Defaults to 0.
-        """
-        super().__init__()
-        self.filepath = filepath
-        self.data = data
-        self.score_fn = score_fn
-        self.save_best_only = save_best_only
-        self.batch_size = batch_size
-        self.verbose = verbose
-        self.best = best
-
-    def on_epoch_end(self, epoch: int, logs=None):
-        logs = logs or {}
-        x, y_true = self.data
-        y_prob = self.model.predict(x, batch_size=self.batch_size)
-        score = self.score_fn(y_true, y_prob)
-        logs.update({self.metric_name: score})
-        filepath = self.filepath.format(epoch=epoch + 1, **logs)
-        if score > self.best:
-            logger.debug(
-                (
-                    f"\nEpoch {epoch+1:05d}: {self.metric_name} ({score:.05f}) improved from {self.best:0.5f}"
-                    f"saving model to {self.filepath}"
-                )
-            )
-            self.model.save_weights(filepath, overwrite=True)
-            self.best = score
-        elif not self.save_best_only:
-            logger.debug(
-                (
-                    f"\nEpoch {epoch+1:05d}: {self.metric_name} ({score:.05f}) did not improve from {self.best:0.5f}"
-                    f"saving model to {self.filepath}"
-                )
-            )
-            self.model.save_weights(filepath, overwrite=True)
-        else:
-            logger.debug(
-                f"\nEpoch {epoch+1:05d}: {self.metric_name} ({score:.05f}) did not improve from {self.best:0.5f}"
-            )
-
-    @property
-    def metric_name(self) -> str:
-        """Get metric name
-
-        Returns:
-            str: name
-        """
-        return self.score_fn.__name__

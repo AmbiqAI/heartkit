@@ -7,10 +7,11 @@ import numpy.typing as npt
 import sklearn
 import tensorflow as tf
 
-from ..types import EcgTask
+from ..tasks import get_task_spec
+from ..types import HeartTask
 from ..utils import load_pkl, save_pkl
 from .types import PatientGenerator, SampleGenerator
-from .utils import create_dataset_from_data, get_task_spec
+from .utils import create_dataset_from_data
 
 logger = logging.getLogger(__name__)
 
@@ -19,11 +20,11 @@ class EcgDataset:
     """ECG dataset base class"""
 
     ds_path: str
-    task: EcgTask
+    task: HeartTask
     frame_size: int
 
     def __init__(
-        self, ds_path: str, task: EcgTask = EcgTask.rhythm, frame_size: int = 1250
+        self, ds_path: str, task: HeartTask = HeartTask.rhythm, frame_size: int = 1250
     ) -> None:
         """ECG dataset base class"""
         self.ds_path = ds_path
@@ -39,22 +40,20 @@ class EcgDataset:
         """Sampling rate in Hz"""
         return 0
 
-    @property
-    def mean(self) -> float:
-        """Dataset mean"""
-        return 0
-
-    @property
-    def std(self) -> float:
-        """Dataset st dev"""
-        return 1
-
     def get_train_patient_ids(self) -> npt.ArrayLike:
-        """Get list of training patient Ids."""
+        """Get training patient IDs
+
+        Returns:
+            npt.ArrayLike: patient IDs
+        """
         raise NotImplementedError()
 
     def get_test_patient_ids(self) -> npt.ArrayLike:
-        """Get list of test patient Ids."""
+        """Get patient IDs reserved for testing only
+
+        Returns:
+            npt.ArrayLike: patient IDs
+        """
         raise NotImplementedError()
 
     def task_data_generator(
@@ -62,11 +61,24 @@ class EcgDataset:
         patient_generator: PatientGenerator,
         samples_per_patient: Union[int, List[int]] = 1,
     ) -> SampleGenerator:
-        """Task data generator."""
+        """Task-level data generator.
+
+        Args:
+            patient_generator (PatientGenerator): Patient data generator
+            samples_per_patient (Union[int, List[int]], optional): # samples per patient. Defaults to 1.
+
+        Returns:
+            SampleGenerator: Sample data generator
+        """
         raise NotImplementedError()
 
     def download(self, num_workers: Optional[int] = None, force: bool = False):
-        """Download dataset."""
+        """Download dataset
+
+        Args:
+            num_workers (Optional[int], optional): # parallel workers. Defaults to None.
+            force (bool, optional): Force redownload. Defaults to False.
+        """
         raise NotImplementedError()
 
     def uniform_patient_generator(
@@ -109,6 +121,7 @@ class EcgDataset:
             val_patients (Optional[float], optional): # or proportion of val patients. Defaults to None.
             train_pt_samples (Optional[Union[int, List[int]]], optional): # samples per patient for training. Defaults to None.
             val_pt_samples (Optional[Union[int, List[int]]], optional): # samples per patient for validation. Defaults to None.
+            val_size (Optional[int], optional): Validation size. Defaults to 200*len(val_patient_ids).
             val_file (Optional[str], optional): Path to existing pickled validation file. Defaults to None.
             num_workers (int, optional): # of parallel workers. Defaults to 1.
 
@@ -141,7 +154,7 @@ class EcgDataset:
             logger.info(f"Loading validation data from file {val_file}")
             val = load_pkl(val_file)
             val_ds = create_dataset_from_data(
-                val["x"], val["y"], task=self.task, frame_size=self.frame_size
+                val["x"], val["y"], get_task_spec(self.task, self.frame_size)
             )
             val_patient_ids = val["patient_ids"]
             train_patient_ids = np.setdiff1d(train_patient_ids, val_patient_ids)
@@ -154,7 +167,7 @@ class EcgDataset:
                 val_size = 200 * len(val_patient_ids)
 
             logger.info(f"Collecting {val_size} validation samples")
-            val_ds = self.parallelize_dataset(
+            val_ds = self._parallelize_dataset(
                 patient_ids=val_patient_ids,
                 samples_per_patient=val_pt_samples,
                 repeat=False,
@@ -162,7 +175,7 @@ class EcgDataset:
             )
             val_x, val_y = next(val_ds.batch(val_size).as_numpy_iterator())
             val_ds = create_dataset_from_data(
-                val_x, val_y, task=self.task, frame_size=self.frame_size
+                val_x, val_y, get_task_spec(self.task, self.frame_size)
             )
 
             # Cache validation set
@@ -174,7 +187,7 @@ class EcgDataset:
         # END IF
 
         logger.info("Building train dataset")
-        train_ds = self.parallelize_dataset(
+        train_ds = self._parallelize_dataset(
             patient_ids=train_patient_ids,
             samples_per_patient=train_pt_samples,
             repeat=True,
@@ -207,7 +220,7 @@ class EcgDataset:
             )
             test_patient_ids = test_patient_ids[:num_pts]
         test_patient_ids = tf.convert_to_tensor(test_patient_ids)
-        test_ds = self.parallelize_dataset(
+        test_ds = self._parallelize_dataset(
             patient_ids=test_patient_ids,
             samples_per_patient=test_pt_samples,
             repeat=True,
@@ -216,7 +229,7 @@ class EcgDataset:
         return test_ds
 
     @tf.function
-    def parallelize_dataset(
+    def _parallelize_dataset(
         self,
         patient_ids: int = None,
         samples_per_patient: Union[int, List[int]] = 100,
@@ -226,13 +239,12 @@ class EcgDataset:
         """Generates datasets for given task in parallel using TF `interleave`
 
         Args:
-            ds_path (str): Dataset path
-            task (EcgTask, optional): ECG Task routine.
             patient_ids (int, optional): List of patient IDs. Defaults to None.
-            frame_size (int, optional): Frame size. Defaults to 1250.
             samples_per_patient (int, optional): # Samples per pateint. Defaults to 100.
             repeat (bool, optional): Should data generator repeat. Defaults to False.
             num_workers (int, optional): Number of parallel workers. Defaults to 1.
+        Returns:
+            tf.data.Dataset: Parallelize dataset
         """
 
         def _make_train_dataset(i, split):
@@ -259,7 +271,6 @@ class EcgDataset:
         """Perform train/test split on patients for given task.
 
         Args:
-            task (EcgTask): Heart task
             patient_ids (npt.ArrayLike): Patient Ids
             test_size (float): Test size
 

@@ -10,16 +10,16 @@ def batch_norm() -> tf.keras.layers.Layer:
 
 
 def relu() -> tf.keras.layers.Layer:
-    "ReLU layer"
+    """ReLU layer"""
     return tf.keras.layers.ReLU()
 
 
 def relu6() -> tf.keras.layers.Layer:
-    "ReLU6 layer"
+    """ReLU6 layer"""
     return tf.keras.layers.Activation(tf.nn.relu6)
 
 
-def conv12d(
+def conv1d(
     filters: int, kernel_size: int = 3, strides: int = 1
 ) -> tf.keras.layers.Layer:
     """1D convolutional layer using 2D convolutional layer"""
@@ -27,20 +27,6 @@ def conv12d(
         filters,
         kernel_size=(1, kernel_size),
         strides=(1, strides),
-        padding="same",
-        use_bias=False,
-        kernel_initializer=tf.keras.initializers.VarianceScaling(),
-    )
-
-
-def conv1d(
-    filters: int, kernel_size: int = 3, strides: int = 1
-) -> tf.keras.layers.Layer:
-    """1D convolutional layer"""
-    return tf.keras.layers.Conv1D(
-        filters,
-        kernel_size,
-        strides=strides,
         padding="same",
         use_bias=False,
         kernel_initializer=tf.keras.initializers.VarianceScaling(),
@@ -70,19 +56,19 @@ def generate_bottleneck_block(
         num_chan = x.shape[-1]
         projection = num_chan != filters * expansion or strides > 1
 
-        bx = conv12d(filters, 1, 1)(x)
+        bx = conv1d(filters, 1, 1)(x)
         bx = batch_norm()(bx)
         bx = relu6()(bx)
 
-        bx = conv12d(filters, kernel_size, strides)(x)
+        bx = conv1d(filters, kernel_size, strides)(x)
         bx = batch_norm()(bx)
         bx = relu6()(bx)
 
-        bx = conv12d(filters * expansion, 1, 1)(bx)
+        bx = conv1d(filters * expansion, 1, 1)(bx)
         bx = batch_norm()(bx)
 
         if projection:
-            x = conv12d(filters * expansion, 1, strides)(x)
+            x = conv1d(filters * expansion, 1, strides)(x)
             x = batch_norm()(x)
         x = tf.keras.layers.add([bx, x])
         x = relu6()(x)
@@ -112,14 +98,14 @@ def generate_residual_block(
         num_chan = x.shape[-1]
         projection = num_chan != filters or strides > 1
 
-        bx = conv12d(filters, kernel_size, strides)(x)
+        bx = conv1d(filters, kernel_size, strides)(x)
         bx = batch_norm()(bx)
         bx = relu6()(bx)
 
-        bx = conv12d(filters, kernel_size, 1)(bx)
+        bx = conv1d(filters, kernel_size, 1)(bx)
         bx = batch_norm()(bx)
         if projection:
-            x = conv12d(filters, 1, strides)(x)
+            x = conv1d(filters, 1, strides)(x)
             x = batch_norm()(x)
         x = tf.keras.layers.add([bx, x])
         x = relu6()(x)
@@ -149,13 +135,14 @@ def generate_resnet(
         filters (Tuple[int, ...], optional): Stage filter sizes. Defaults to (64, 128, 256, 512).
         kernel_size (Tuple[int, ...], optional): Stage kernel sizes. Defaults to (3, 3, 3, 3).
         input_conv (Tuple[int, ...], optional): Initial conv layer attributes. Defaults to (64, 7, 2).
+        use_bottleneck (bool, optional): Use bottleneck block. Defaults to false.
         include_top (bool, optional): Include classifier layers. Defaults to True.
 
     Returns:
         KerasTensor: Outputs
     """
     x = tf.keras.layers.Reshape([1] + inputs.shape[1:])(inputs)
-    x = conv12d(*input_conv)(x)
+    x = conv1d(*input_conv)(x)
     x = batch_norm()(x)
     x = relu6()(x)
     x = tf.keras.layers.MaxPooling2D(3, (1, 2), padding="same")(x)

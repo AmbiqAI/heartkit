@@ -7,21 +7,20 @@ from sklearn.metrics import f1_score
 from neuralspot.tflite.model import load_model
 
 from .datasets.icentia11k import IcentiaDataset
-from .datasets.utils import get_class_names
 from .metrics import confusion_matrix_plot, roc_auc_plot
 from .models.utils import get_predicted_threshold_indices, get_strategy
-from .types import EcgTestParams
+from .types import HeartTestParams, get_class_names
 from .utils import set_random_seed, setup_logger
 
 console = Console()
 logger = setup_logger(__name__)
 
 
-def evaluate_model(params: EcgTestParams):
+def evaluate_model(params: HeartTestParams):
     """Test model command. This evaluates a trained network on the given task and dataset.
 
     Args:
-        params (EcgTestParams): Testing/evaluation parameters
+        params (HeartTestParams): Testing/evaluation parameters
     """
     params.seed = set_random_seed(params.seed)
     logger.info(f"Random seed {params.seed}")
@@ -96,7 +95,7 @@ def create_parser():
         ArgumentParser: Arg parser
     """
     return pydantic_argparse.ArgumentParser(
-        model=EcgTestParams,
+        model=HeartTestParams,
         prog="Heart test command",
         description="Test heart model",
     )

@@ -26,8 +26,7 @@ from neuralspot.rpc import GenericDataOperations_PcToEvb as gen_pc2evb
 from neuralspot.rpc.utils import get_serial_transport
 
 from .datasets.icentia11k import IcentiaDataset
-from .datasets.utils import get_class_names
-from .types import EcgDemoParams
+from .types import HeartDemoParams, get_class_names
 from .utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -70,7 +69,7 @@ class PlotextMixin(JupyterMixin):
 class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
     """EVB Demo app. Acts as delegate for eRPC generic data operations."""
 
-    def __init__(self, params: EcgDemoParams) -> None:
+    def __init__(self, params: HeartDemoParams) -> None:
         super().__init__()
         self.params = params
         self.test_data: Tuple[npt.ArrayLike, npt.ArrayLike] = self.load_test_data()
@@ -295,11 +294,11 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
         # END WITH
 
 
-def evb_demo(params: EcgDemoParams):
+def evb_demo(params: HeartDemoParams):
     """EVB Demo
 
     Args:
-        params (EcgDemoParams): Demo parameters
+        params (HeartDemoParams): Demo parameters
     """
     try:
         demo = EvbDemo(params=params)
@@ -314,7 +313,7 @@ def evb_demo(params: EcgDemoParams):
 def create_parser():
     """Create CLI parser"""
     return pydantic_argparse.ArgumentParser(
-        model=EcgDemoParams,
+        model=HeartDemoParams,
         prog="Heart EVB demo",
         description="Demo heart model on EVB",
     )

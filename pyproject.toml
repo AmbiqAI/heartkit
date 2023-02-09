@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "ecg-arr"
+name = "heartkit"
 version = "0.2.0"
-description = "Perform AI-based heart arrhythmia classification"
+description = "Perform AI-based heart tasks"
 authors = ["Adam Page <adam.page@ambiq.com>"]
 packages = [
-    { include = "ecgarr" },
+    { include = "heartkit" },
     { include = "neuralspot" },
 ]
 
@@ -13,8 +13,8 @@ include = [
 ]
 
 [tool.taskipy.tasks]
-black = "black ecgarr neuralspot"
-lint = "pylint ecgarr neuralspot"
+format = "isort --profile black heartkit neuralspot && black heartkit neuralspot"
+lint = "pylint heartkit neuralspot"
 test = "pytest tests/"
 clean = "make -C ./evb clean"
 build = "make -C ./evb"
@@ -78,7 +78,6 @@ profile = 'black'
 ignore-paths = [
     "neuralspot/rpc/GenericDataOperations_EvbToPc",
     "neuralspot/rpc/GenericDataOperations_PcToEvb"
-    # "ecgarr/models"
 ]
 extension-pkg-whitelist = "pydantic"
 

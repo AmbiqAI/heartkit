@@ -6,23 +6,23 @@ import tensorflow as tf
 from rich.console import Console
 from sklearn.metrics import f1_score
 
-from neuralspot.tflite.convert import convert_tflite, predict_tflite
+from neuralspot.tflite.convert import convert_tflite, predict_tflite, xxd_c_dump
 from neuralspot.tflite.model import load_model
 
 from .datasets.icentia11k import IcentiaDataset
 from .models.utils import get_predicted_threshold_indices
-from .types import EcgDeployParams
-from .utils import setup_logger, xxd_c_dump
+from .types import HeartExportParams
+from .utils import setup_logger
 
 console = Console()
 
 logger = setup_logger(__name__)
 
 
-def deploy_model(params: EcgDeployParams):
+def export_model(params: HeartExportParams):
     """Deploy model command. This will convert saved model to TFLite and TFLite micro.
     Args:
-        params (EcgDeployParams): Deployment parameters
+        params (HeartDemoParams): Deployment parameters
     """
     tfl_model_path = str(params.job_dir / "model.tflite")
     tflm_model_path = str(params.job_dir / "model_buffer.h")
@@ -133,7 +133,7 @@ def create_parser():
         ArgumentParser: Arg parser
     """
     return pydantic_argparse.ArgumentParser(
-        model=EcgDeployParams,
+        model=HeartExportParams,
         prog="Heart deploy command",
         description="Deploy heart model to EVB",
     )
@@ -141,4 +141,4 @@ def create_parser():
 
 if __name__ == "__main__":
     parser = create_parser()
-    deploy_model(parser.parse_typed_args())
+    export_model(parser.parse_typed_args())
