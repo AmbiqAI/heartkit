@@ -177,7 +177,7 @@ def train_model(params: EcgTrainParams):
         model_callbacks = [
             tf.keras.callbacks.EarlyStopping(
                 monitor=f"val_{params.val_metric}",
-                patience=20,
+                patience=40,
                 mode="max" if params.val_metric == "f1" else "auto",
                 restore_best_weights=True,
             ),
@@ -243,9 +243,9 @@ if __name__ == "__main__":
             ds_path="./datasets",
             frame_size=1248,
             samples_per_patient=800,
-            val_samples_per_patient=400,
+            val_samples_per_patient=800,
             val_patients=0.10,
-            val_size=6_000,
+            val_size=8_000,
             batch_size=64,
             buffer_size=8092,
             epochs=100,

@@ -106,10 +106,9 @@ class EcgDataset:
         """Load training and validation TF datasets
         Args:
             train_patients (Optional[float], optional): # or proportion of train patients. Defaults to None.
-            val_patients (Optional[float], optional): # or proportion of train patients. Defaults to None.
+            val_patients (Optional[float], optional): # or proportion of val patients. Defaults to None.
             train_pt_samples (Optional[Union[int, List[int]]], optional): # samples per patient for training. Defaults to None.
-            val_pt_samples (Optional[Union[int, List[int]]], optional): # samples per patient for training. Defaults to None.
-            train_file (Optional[str], optional): Path to existing pickled training file. Defaults to None.
+            val_pt_samples (Optional[Union[int, List[int]]], optional): # samples per patient for validation. Defaults to None.
             val_file (Optional[str], optional): Path to existing pickled validation file. Defaults to None.
             num_workers (int, optional): # of parallel workers. Defaults to 1.
 
@@ -168,8 +167,8 @@ class EcgDataset:
 
             # Cache validation set
             if val_file:
-                os.makedirs(os.path.dirname(val_file), exist_ok=True)
                 logger.info(f"Caching the validation set in {val_file}")
+                os.makedirs(os.path.dirname(val_file), exist_ok=True)
                 save_pkl(val_file, x=val_x, y=val_y, patient_ids=val_patient_ids)
             # END IF
         # END IF
@@ -235,12 +234,6 @@ class EcgDataset:
             repeat (bool, optional): Should data generator repeat. Defaults to False.
             num_workers (int, optional): Number of parallel workers. Defaults to 1.
         """
-        if num_workers <= 1:
-            return self._create_dataset_from_generator(
-                patient_ids=patient_ids,
-                samples_per_patient=samples_per_patient,
-                repeat=repeat,
-            )
 
         def _make_train_dataset(i, split):
             return self._create_dataset_from_generator(
@@ -251,8 +244,10 @@ class EcgDataset:
 
         split = len(patient_ids) // num_workers
         datasets = [_make_train_dataset(i, split) for i in range(num_workers)]
-        par_ds = tf.data.Dataset.from_tensor_slices(datasets)
-        return par_ds.interleave(
+        if num_workers <= 1:
+            return datasets[0]
+
+        return tf.data.Dataset.from_tensor_slices(datasets).interleave(
             lambda x: x,
             cycle_length=num_workers,
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
