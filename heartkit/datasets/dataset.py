@@ -7,10 +7,10 @@ import numpy.typing as npt
 import sklearn
 import tensorflow as tf
 
+from ..defines import HeartTask
 from ..tasks import get_task_spec
-from ..types import HeartTask
 from ..utils import load_pkl, save_pkl
-from .types import PatientGenerator, SampleGenerator
+from .defines import PatientGenerator, SampleGenerator
 from .utils import create_dataset_from_data
 
 logger = logging.getLogger(__name__)

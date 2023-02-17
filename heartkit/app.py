@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from . import datasets as ds
 from . import demo, evaluate, export, train
-from .types import (
+from .defines import (
     HeartDemoParams,
     HeartDownloadParams,
     HeartExportParams,
@@ -29,7 +29,7 @@ class AppArguments(BaseModel):
 
     download: Optional[AppCommandArgments] = Field(description="Fetch dataset")
     train: Optional[AppCommandArgments] = Field(description="Train model")
-    evaluate: Optional[AppCommandArgments] = Field(description="Test model")
+    evaluate: Optional[AppCommandArgments] = Field(description="Evaluate model")
     export: Optional[AppCommandArgments] = Field(description="Export model")
     demo: Optional[AppCommandArgments] = Field(description="EVB demo")
 
@@ -97,8 +97,8 @@ def run(inputs: Optional[List[str]] = None):
     """
     parser = pydantic_argparse.ArgumentParser(
         model=AppArguments,
-        prog="Heart Kit Demo",
-        description="Heart Kit demo",
+        prog="Heart Kit CLI",
+        description="Heart Kit leverages AI for heart monitoring tasks.",
     )
     args = parser.parse_typed_args(inputs)
 

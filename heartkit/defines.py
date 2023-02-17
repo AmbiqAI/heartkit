@@ -35,8 +35,7 @@ class HeartBeat(IntEnum):
     normal = 0
     pac = 1
     pvc = 2
-    aberrated = 3  # Not used
-    noise = 4  # Not used
+    noise = 3  # Not used
 
 
 class HeartRate(IntEnum):
@@ -51,6 +50,7 @@ class HeartRate(IntEnum):
 class HeartSegment(IntEnum):
     """ "Heart segment labels"""
 
+    normal = 0
     pwave = 1
     qrs = 2
     twave = 3
@@ -63,7 +63,6 @@ class HeartBeatName(str, Enum):
     normal = "normal"
     pac = "pac"
     pvc = "pvc"
-    aberrated = "aberrated"
     noise = "noise"
 
 
@@ -88,6 +87,7 @@ class HeartRateName(str, Enum):
 class HeartSegmentName(str, Enum):
     """Heart segment names"""
 
+    normal = "normal"
     pwave = "pwave"
     qrs = "qrs"
     twave = "twave"
@@ -107,8 +107,7 @@ def get_class_names(task: HeartTask) -> List[str]:
         # NOTE: Bucket AFIB and AFL together
         return ["NSR", "AFIB/AFL"]
     if task == HeartTask.beat:
-        # NOTE: We exclude aberrated and noise
-        return ["NORMAL", "PAC", "PVC"]
+        return ["NORMAL", "PAC", "PVC", "NOISE"]
     if task == HeartTask.hr:
         return ["NORMAL", "TACHYCARDIA", "BRADYCARDIA"]
     if task == HeartTask.segmentation:

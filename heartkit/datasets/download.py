@@ -2,7 +2,7 @@ import os
 
 import pydantic_argparse
 
-from ..types import HeartDownloadParams
+from ..defines import HeartDownloadParams
 from .icentia11k import IcentiaDataset
 from .ludb import LudbDataset
 

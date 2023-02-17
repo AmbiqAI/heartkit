@@ -26,7 +26,7 @@ from neuralspot.rpc import GenericDataOperations_PcToEvb as gen_pc2evb
 from neuralspot.rpc.utils import get_serial_transport
 
 from .datasets.icentia11k import IcentiaDataset
-from .types import HeartDemoParams, get_class_names
+from .defines import HeartDemoParams, get_class_names
 from .utils import setup_logger
 
 logger = setup_logger(__name__)

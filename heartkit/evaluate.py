@@ -7,9 +7,9 @@ from sklearn.metrics import f1_score
 from neuralspot.tflite.model import load_model
 
 from .datasets.icentia11k import IcentiaDataset
+from .defines import HeartTestParams, get_class_names
 from .metrics import confusion_matrix_plot, roc_auc_plot
 from .models.utils import get_predicted_threshold_indices, get_strategy
-from .types import HeartTestParams, get_class_names
 from .utils import set_random_seed, setup_logger
 
 console = Console()

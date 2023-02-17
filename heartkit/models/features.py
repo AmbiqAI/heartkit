@@ -3,7 +3,7 @@ from typing import Optional
 import tensorflow as tf
 from keras.engine.keras_tensor import KerasTensor
 
-from ..types import ArchitectureType
+from ..defines import ArchitectureType
 from .resnet1d import generate_resnet
 
 

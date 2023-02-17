@@ -18,7 +18,7 @@ def f1(
     """Compute F1 scores
 
     Args:
-        y_true ( npt.ArrayLike): _description_
+        y_true ( npt.ArrayLike): Y true
         y_prob ( npt.ArrayLike): 2D matrix with class probs
         multiclass (bool, optional): If multiclass. Defaults to False.
         threshold (float, optional): Decision threshold for multiclass. Defaults to None.
@@ -56,9 +56,9 @@ def f_max(
     """Compute F max
     source: https://github.com/helme/ecg_ptbxl_benchmarking
     Args:
-        y_true (npt.ArrayLike): _description_
-        y_prob (npt.ArrayLike): _description_
-        thresholds (_type_, optional): _description_. Defaults to None.
+        y_true (npt.ArrayLike): Y True
+        y_prob (npt.ArrayLike): Y probs
+        thresholds (_type_, optional): Thresholds. Defaults to None.
 
     Returns:
         Tuple[float, float]: F1 and thresholds

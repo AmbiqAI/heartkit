@@ -16,7 +16,7 @@ Compute advanced heart rate variability (HRV) metrics.
 
 Identify heart arrhythmias using single lead ECG. Classification can be performed on either rhythm (e.g. NSR, AFIB, AFL) or beat (e.g. PAC, PVC). The current arrhythmia model is able to perform rhythm-level classification with over 99% accuracy. Longer term goal is to perform beat-level classification.
 
-### Cardio Fitness
+### Cardio Fitness / respiration
 
 ## Prerequisite
 
@@ -48,7 +48,7 @@ The `download` command is used to download all datasets specified in the configu
 
 
 ```bash
-python -m heartkit download --config-file ./configs/download-datasets.json
+heartkit download --config-file ./configs/download-datasets.json
 ```
 
 > NOTE: The __Icentia11k dataset__ requires roughly 200 GB of disk space and can take around 2 hours to download.
@@ -59,7 +59,7 @@ python -m heartkit download --config-file ./configs/download-datasets.json
 The `train` command is used to train a heart kit model. The following command will train the arrhythmia model using the reference configuration. Please refer to `configs/train-rhythm-model.json` and `heartkit/types.py` to see supported options.
 
 ```bash
-python -m heartkit train --config-file ./configs/train-arrhythmia-model.json
+heartkit train --config-file ./configs/train-arrhythmia-model.json
 ```
 
 > Due to the large dataset and class imbalance, the batch size and buffer size are large to ensure properly shuffling of patients as well as classes. The first epoch will take much longer as it fills up this shuffled buffer. To train on a dedicated GPU, it's recommended to have at least 10 GB of VRAM.
@@ -69,7 +69,7 @@ python -m heartkit train --config-file ./configs/train-arrhythmia-model.json
 The `evaluate` command will evaluate the performance of the model on the reserved test set. A confidence threshold can also be set such that a label is only assigned when the model's probability is greater than the threshold; otherwise, a label of inconclusive will be assigned.
 
 ```bash
-python -m heartkit evaluate --config-file ./configs/test-arrhythmia-model.json
+heartkit evaluate --config-file ./configs/test-arrhythmia-model.json
 ```
 
 #### 4. Export Model
@@ -77,7 +77,7 @@ python -m heartkit evaluate --config-file ./configs/test-arrhythmia-model.json
 The `export` command will convert the trained TensorFlow model into both TFLite (TFL) and TFLite for microcontroller (TFLM) variants. The command will also verify the models' outputs match. Post-training quantization can also be enabled by setting the `quantization` flag in the configuration.
 
 ```bash
-python -m heartkit export --config-file ./configs/export-arrhythmia-model.json
+heartkit export --config-file ./configs/export-arrhythmia-model.json
 ```
 
 Once converted, the TFLM header file will be copied to `./evb/src/model_buffer.h`. If parameters were changed (e.g. window size, quantization), `./evb/src/constants.h` will need to be updated.
@@ -87,7 +87,7 @@ Once converted, the TFLM header file will be copied to `./evb/src/model_buffer.h
 The `demo` command is used to run the model on an Apollo 4 evaluation board (EVB). This setup requires both a host PC along with an Apollo 4 EVB. The host PC acts as a server and provides test samples to the EVB. The host PC is also used to provide status updates and model results from the EVB. The EVB runs in client mode- its job is to fetch samples and perform real-time inference using the arrhythmia model. Please refer to [EVB Demo Setup](./docs/evb_demo.md) for additional details.
 
 ```bash
-python -m heartkit demo --config-file ./configs/evb-arrhythmia-demo.json
+heartkit demo --config-file ./configs/evb-arrhythmia-demo.json
 ```
 
 ## Architecture

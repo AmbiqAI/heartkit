@@ -1,20 +1,19 @@
 {
     "task": "arrhythmia",
-    "job_dir": "./results/rhythm-full-model",
-    "db_path": "./datasets",
+    "job_dir": "./results/arrhythmia-full-model",
+    "ds_path": "./datasets",
     "frame_size": 1250,
     "samples_per_patient": [500, 4000, 2000],
     "val_samples_per_patient": [250, 2000, 1000],
     "train_patients": 10000,
-    "val_file": "./results/rhythm-10000pt-5s.pkl",
+    "val_file": "./results/arrhythmia-10000pt-5s.pkl",
     "val_patients": 0.20,
     "val_size": 500000,
     "arch": "resnet12",
     "quantization": false,
-    "batch_size": 8192,
+    "batch_size": 6144,
     "buffer_size": 1000000,
-    "epochs": 100,
+    "epochs": 80,
     "steps_per_epoch": 20,
-    "val_metric": "loss",
-    "seed": 10416
+    "val_metric": "loss"
 }

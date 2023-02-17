@@ -11,11 +11,11 @@ from wandb.keras import WandbCallback
 from neuralspot.tflite.metrics import get_flops
 
 from .datasets.icentia11k import IcentiaDataset
+from .defines import HeartTrainParams, get_class_names
 from .metrics import confusion_matrix_plot
 from .models.optimizers import Adam
 from .models.utils import get_strategy
 from .tasks import create_task_model
-from .types import HeartTrainParams, get_class_names
 from .utils import env_flag, set_random_seed, setup_logger
 
 logger = setup_logger(__name__)
@@ -77,12 +77,13 @@ def train_model(params: HeartTrainParams):
         num_parallel_calls=tf.data.experimental.AUTOTUNE,
     )
 
-    def decay(epoch):
-        if epoch < 15:
-            return 1e-3
-        if epoch < 30:
-            return 1e-4
-        return 1e-5
+    total_steps = params.steps_per_epoch * params.epochs
+    lr_scheduler = tf.keras.optimizers.schedules.CosineDecayRestarts(
+        initial_learning_rate=1e-3,
+        first_decay_steps=int(0.1 * total_steps),
+        t_mul=1.661,  # Creates 4 cycles
+        m_mul=0.50,
+    )
 
     strategy = get_strategy()
     with strategy.scope():
@@ -94,13 +95,13 @@ def train_model(params: HeartTrainParams):
             inputs, params.task, params.arch, stages=params.stages
         )
         flops = get_flops(model, batch_size=1)
+        optimizer = Adam(lr_scheduler, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
         model.compile(
-            optimizer=Adam(learning_rate=5e-4, beta_1=0.9, beta_2=0.98, epsilon=1e-9),
+            optimizer=optimizer,
             loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
             metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="acc")],
         )
         model(inputs)
-        # logger.info(f"# model parameters: {model.count_params()}")
         model.summary()
         logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
@@ -112,7 +113,7 @@ def train_model(params: HeartTrainParams):
         model_callbacks = [
             tf.keras.callbacks.EarlyStopping(
                 monitor=f"val_{params.val_metric}",
-                patience=10,
+                patience=20,
                 mode="max" if params.val_metric == "f1" else "auto",
                 restore_best_weights=True,
             ),
@@ -128,7 +129,6 @@ def train_model(params: HeartTrainParams):
             tf.keras.callbacks.TensorBoard(
                 log_dir=str(params.job_dir), write_steps_per_second=True
             ),
-            tf.keras.callbacks.LearningRateScheduler(decay),
         ]
         if env_flag("WANDB"):
             model_callbacks.append(WandbCallback())

@@ -11,9 +11,9 @@ from wandb.keras import WandbCallback
 from neuralspot.tflite.metrics import get_flops
 
 from .datasets.ludb import LudbDataset
+from .defines import HeartTask, HeartTrainParams
 from .models.optimizers import Adam
 from .models.utils import get_strategy
-from .types import HeartTask, HeartTrainParams
 from .utils import env_flag, set_random_seed, setup_logger
 
 logger = setup_logger(__name__)

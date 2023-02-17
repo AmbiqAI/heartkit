@@ -10,8 +10,8 @@ from neuralspot.tflite.convert import convert_tflite, predict_tflite, xxd_c_dump
 from neuralspot.tflite.model import load_model
 
 from .datasets.icentia11k import IcentiaDataset
+from .defines import HeartExportParams
 from .models.utils import get_predicted_threshold_indices
-from .types import HeartExportParams
 from .utils import setup_logger
 
 console = Console()

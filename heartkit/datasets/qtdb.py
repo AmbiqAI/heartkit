@@ -18,13 +18,14 @@ from .defines import PatientGenerator, SampleGenerator
 
 logger = logging.getLogger(__name__)
 
-LudbSymbolMap = {
+QtdbSymbolMap = {
     "o": 0,  # Other
     "p": 1,  # P Wave
     "N": 2,  # QRS complex
     "t": 3,  # T Wave
 }
-LudbLeadsMap = {
+
+QtdbLeadsMap = {
     "i": 0,
     "ii": 1,
     "iii": 2,
@@ -32,26 +33,26 @@ LudbLeadsMap = {
     "avl": 4,
     "avf": 5,
     "v1": 6,
-    "v2": 7,
+    "v2": 7,  # *
     "v3": 8,
     "v4": 9,
-    "v5": 10,
+    "v5": 10,  # *
     "v6": 11,
 }
 
 
-class LudbDataset(EcgDataset):
-    """LUDB dataset"""
+class QtdbDataset(EcgDataset):
+    """QT dataset"""
 
     def __init__(
         self, ds_path: str, task: HeartTask = HeartTask.rhythm, frame_size: int = 1250
     ) -> None:
-        super().__init__(os.path.join(ds_path, "ludb"), task, frame_size)
+        super().__init__(os.path.join(ds_path, "qtdb"), task, frame_size)
 
     @property
     def sampling_rate(self) -> int:
         """Sampling rate in Hz"""
-        return 500
+        return 250
 
     @property
     def mean(self) -> float:
@@ -212,7 +213,7 @@ class LudbDataset(EcgDataset):
     def convert_pt_wfdb_to_hdf5(
         self, patient: int, src_path: str, dst_path: str, force: bool = False
     ) -> Tuple[npt.ArrayLike, npt.ArrayLike, npt.ArrayLike]:
-        """Convert LUDB patient data from WFDB to more consumable HDF5 format.
+        """Convert QTDB patient data from WFDB to more consumable HDF5 format.
 
         Args:
             patient (int): Patient id (1-based)
@@ -231,7 +232,7 @@ class LudbDataset(EcgDataset):
         segs = []
         fids = []
         for i, lead in enumerate(rec.sig_name):
-            lead_id = LudbLeadsMap.get(lead)
+            lead_id = QtdbLeadsMap.get(lead)
             ann = wfdb.rdann(pt_src_path, extension=lead)
             seg_start = seg_stop = sym_id = None
             data[:, lead_id] = rec.p_signal[:, i]
@@ -241,8 +242,8 @@ class LudbDataset(EcgDataset):
                     seg_start = ann.sample[j]
                     seg_stop = None
                 # Fiducial / segment type
-                elif symbol in LudbSymbolMap:
-                    sym_id = LudbSymbolMap.get(symbol)
+                elif symbol in QtdbSymbolMap:
+                    sym_id = QtdbSymbolMap.get(symbol)
                     if seg_start is None:
                         seg_start = ann.sample[j]
                     fids.append([lead_id, sym_id, ann.sample[j]])
@@ -288,17 +289,17 @@ class LudbDataset(EcgDataset):
         if not patient_ids:
             patient_ids = self.patient_ids
 
-        subdir = "lobachevsky-university-electrocardiography-database-1.0.1"
+        subdir = "qt-database-1.0.0"
         with Pool(
             processes=num_workers
         ) as pool, tempfile.TemporaryDirectory() as tmpdir, zipfile.ZipFile(
             zip_path, mode="r"
         ) as zp:
-            ludb_dir = os.path.join(tmpdir, "ludb")
-            zp.extractall(ludb_dir)
+            qtdb_dir = os.path.join(tmpdir, "qtdb")
+            zp.extractall(qtdb_dir)
             f = functools.partial(
                 self.convert_pt_wfdb_to_hdf5,
-                src_path=os.path.join(ludb_dir, subdir, "data"),
+                src_path=os.path.join(qtdb_dir, subdir),
                 dst_path=self.ds_path,
                 force=force,
             )
@@ -306,7 +307,7 @@ class LudbDataset(EcgDataset):
         # END WITH
 
     def download(self, num_workers: Optional[int] = None, force: bool = False):
-        """Download LUDB dataset
+        """Download QT dataset
 
         Args:
             ds_path (str): Path to store dataset
@@ -314,12 +315,11 @@ class LudbDataset(EcgDataset):
             force (bool, optional): Force redownload. Defaults to False.
         """
 
-        logger.info("Downloading LUDB dataset")
+        logger.info("Downloading QTDB dataset")
         ds_url = (
-            "https://physionet.org/static/published-projects/ludb/"
-            "lobachevsky-university-electrocardiography-database-1.0.1.zip"
+            "https://physionet.org/static/published-projects/qtdb/qt-database-1.0.0.zip"
         )
-        ds_zip_path = os.path.join(self.ds_path, "ludb.zip")
+        ds_zip_path = os.path.join(self.ds_path, "qtdb.zip")
         os.makedirs(self.ds_path, exist_ok=True)
         if os.path.exists(ds_zip_path) and not force:
             logger.warning(
@@ -329,8 +329,8 @@ class LudbDataset(EcgDataset):
             download_file(ds_url, ds_zip_path, progress=True)
 
         # 2. Extract and convert patient ECG data to H5 files
-        logger.info("Generating LUDB patient data")
+        logger.info("Generating QT patient data")
         self.convert_dataset_zip_to_hdf5(
             zip_path=ds_zip_path, force=force, num_workers=num_workers
         )
-        logger.info("Finished LUDB patient data")
+        logger.info("Finished QTDB patient data")

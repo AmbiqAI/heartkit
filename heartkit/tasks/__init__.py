@@ -3,8 +3,8 @@ from typing import Optional, Tuple
 import tensorflow as tf
 from keras.engine.keras_tensor import KerasTensor
 
+from ..defines import ArchitectureType, HeartTask, get_num_classes
 from ..models.features import ecg_feature_extractor
-from ..types import ArchitectureType, HeartTask, get_num_classes
 
 
 def create_task_model(

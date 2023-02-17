@@ -21,101 +21,12 @@ from botocore import UNSIGNED
 from botocore.client import Config
 from tqdm import tqdm
 
-from ..types import HeartBeat, HeartRate, HeartRhythm, HeartTask
+from ..defines import HeartBeat, HeartRate, HeartRhythm, HeartTask
 from ..utils import download_file
 from .dataset import EcgDataset
-from .types import PatientGenerator, SampleGenerator
+from .defines import PatientGenerator, SampleGenerator
 
 logger = logging.getLogger(__name__)
-
-# Patients containing AFIB/AFLUT events
-# fmt: off
-arr_rhythm_patients = [
-    16,    20,    53,    60,    65,    75,    84,    91,   119,
-    139,   148,   159,   166,   177,   198,   230,   247,   268,
-    271,   281,   287,   292,   295,   299,   303,   323,   328,
-    337,   365,   404,   417,   418,   434,   446,   456,   457,
-    462,   464,   471,   484,   487,   499,   507,   508,   529,
-    534,   535,   580,   584,   591,   614,   618,   636,   680,
-    719,   809,   825,   831,   832,   836,   843,   886,   903,
-    907,   911,   922,   957,   963,   967,   1022,  1034,  1041,
-    1066,  1100,  1117,  1124,  1162,  1163,  1166,  1215,  1219,
-    1221,  1231,  1233,  1251,  1271,  1281,  1293,  1325,  1331,
-    1340,  1342,  1361,  1386,  1397,  1416,  1420,  1443,  1461,
-    1503,  1528,  1530,  1543,  1556,  1562,  1609,  1620,  1624,
-    1628,  1634,  1645,  1673,  1679,  1680,  1693,  1698,  1705,
-    1738,  1744,  1749,  1753,  1781,  1807,  1809,  1824,  1836,
-    1847,  1848,  1850,  1892,  1894,  1904,  1933,  1934,  1949,
-    1964,  1975,  1978,  1980,  1989,  2001,  2015,  2017,  2050,
-    2093,  2108,  2125,  2134,  2140,  2155,  2166,  2188,  2224,
-    2231,  2240,  2252,  2255,  2269,  2298,  2361,  2362,  2404,
-    2428,  2478,  2479,  2496,  2499,  2508,  2521,  2541,  2569,
-    2590,  2601,  2643,  2648,  2650,  2653,  2664,  2679,  2680,
-    2690,  2701,  2710,  2712,  2748,  2753,  2760,  2767,  2773,
-    2837,  2842,  2844,  2845,  2860,  2862,  2867,  2869,  2871,
-    2878,  2884,  2903,  2906,  2908,  2917,  2959,  2968,  2991,
-    3017,  3024,  3039,  3047,  3058,  3059,  3066,  3076,  3085,
-    3086,  3126,  3169,  3179,  3183,  3210,  3217,  3218,  3232,
-    3235,  3264,  3266,  3283,  3287,  3288,  3293,  3324,  3330,
-    3348,  3369,  3370,  3386,  3400,  3404,  3410,  3424,  3426,
-    3456,  3458,  3468,  3484,  3485,  3490,  3499,  3523,  3528,
-    3531,  3560,  3594,  3638,  3648,  3650,  3662,  3666,  3677,
-    3693,  3698,  3706,  3720,  3725,  3728,  3730,  3745,  3749,
-    3751,  3765,  3834,  3871,  3881,  3882,  3905,  3909,  3910,
-    3927,  3946,  3949,  3956,  3982,  3985,  3991,  4007,  4025,
-    4030,  4035,  4041,  4050,  4068,  4086,  4096,  4103,  4122,
-    4128,  4152,  4226,  4240,  4248,  4263,  4267,  4282,  4283,
-    4294,  4301,  4308,  4314,  4324,  4331,  4333,  4341,  4353,
-    4354,  4355,  4396,  4397,  4401,  4411,  4417,  4424,  4429,
-    4455,  4459,  4488,  4497,  4506,  4516,  4538,  4561,  4567,
-    4568,  4572,  4574,  4617,  4618,  4620,  4621,  4629,  4647,
-    4652,  4661,  4685,  4687,  4716,  4721,  4753,  4759,  4773,
-    4776,  4793,  4815,  4834,  4838,  4862,  4884,  4892,  4915,
-    4936,  4983,  4986,  5007,  5065,  5081,  5087,  5094,  5103,
-    5111,  5125,  5160,  5162,  5163,  5184,  5223,  5234,  5296,
-    5297,  5300,  5306,  5348,  5354,  5355,  5361,  5380,  5407,
-    5447,  5453,  5469,  5476,  5488,  5555,  5559,  5595,  5599,
-    5604,  5621,  5629,  5670,  5672,  5708,  5715,  5716,  5719,
-    5739,  5741,  5824,  5827,  5839,  5845,  5856,  5865,  5867,
-    5895,  5901,  5902,  5922,  5934,  5935,  5963,  5968,  5982,
-    6002,  6026,  6041,  6043,  6072,  6074,  6081,  6083,  6084,
-    6120,  6122,  6129,  6172,  6212,  6218,  6248,  6249,  6266,
-    6270,  6292,  6294,  6298,  6355,  6360,  6373,  6375,  6381,
-    6389,  6408,  6441,  6446,  6447,  6492,  6493,  6503,  6504,
-    6521,  6523,  6535,  6542,  6575,  6594,  6597,  6606,  6665,
-    6671,  6681,  6697,  6716,  6722,  6753,  6754,  6755,  6756,
-    6763,  6776,  6803,  6845,  6895,  6900,  6923,  6947,  6949,
-    6969,  6978,  6994,  7024,  7040,  7043,  7072,  7073,  7075,
-    7095,  7116,  7139,  7152,  7153,  7175,  7186,  7188,  7189,
-    7192,  7198,  7211,  7232,  7236,  7249,  7271,  7277,  7308,
-    7328,  7359,  7368,  7378,  7380,  7390,  7391,  7434,  7459,
-    7462,  7489,  7503,  7508,  7512,  7553,  7570,  7571,  7589,
-    7612,  7638,  7653,  7668,  7684,  7686,  7710,  7713,  7715,
-    7721,  7730,  7749,  7786,  7790,  7804,  7809,  7822,  7825,
-    7839,  7846,  7863,  7893,  7897,  7905,  7950,  7964,  7968,
-    7984,  8008,  8009,  8025,  8092,  8098,  8101,  8106,  8114,
-    8141,  8144,  8162,  8193,  8195,  8212,  8222,  8233,  8241,
-    8282,  8289,  8295,  8329,  8335,  8353,  8357,  8392,  8398,
-    8412,  8455,  8473,  8500,  8514,  8532,  8547,  8559,  8582,
-    8599,  8600,  8640,  8651,  8689,  8718,  8736,  8773,  8820,
-    8836,  8838,  8840,  8851,  8853,  8866,  8900,  8975,  9026,
-    9123,  9157,  9158,  9160,  9164,  9173,  9183,  9210,  9216,
-    9234,  9254,  9257,  9282,  9284,  9302,  9309,  9318,  9322,
-    9331,  9351,  9366,  9383,  9400,  9420,  9468,  9475,  9476,
-    9484,  9493,  9495,  9536,  9574,  9600,  9635,  9704,  9705,
-    9741,  9747,  9764,  9779,  9784,  9788,  9795,  9803,  9839,
-    9849,  9855,  9867,  9868,  9909,  9915,  9942,  9965,  9968,
-    9976,  9977,  10034, 10048, 10070, 10103, 10112, 10151, 10160,
-    10172, 10184, 10188, 10195, 10198, 10201, 10206, 10211, 10212,
-    10224, 10228, 10248, 10259, 10268, 10274, 10284, 10293, 10303,
-    10339, 10340, 10344, 10375, 10390, 10396, 10397, 10402, 10430,
-    10449, 10450, 10462, 10476, 10491, 10519, 10528, 10541, 10544,
-    10573, 10576, 10600, 10602, 10605, 10615, 10619, 10620, 10629,
-    10672, 10687, 10694, 10702, 10726, 10750, 10759, 10760, 10764,
-    10778, 10784, 10812, 10813, 10839, 10852, 10853, 10915, 10949,
-    10951, 10958, 10961, 10966, 10969, 10974, 10979, 10994, 10995
-]
-# fmt: on
 
 
 class IcentiaRhythm(IntEnum):
@@ -145,13 +56,13 @@ class IcentiaBeat(IntEnum):
     undefined = 0
     normal = 1
     pac = 2
-    aberrated = 3
+    # aberrated = 3
     pvc = 4
 
     @classmethod
     def hi_priority(cls) -> List[int]:
         """High priority labels"""
-        return [cls.pac, cls.aberrated, cls.pvc]
+        return [cls.pac, cls.pvc]
 
     @classmethod
     def lo_priority(cls) -> List[int]:
@@ -182,7 +93,7 @@ HeartBeatMap = {
     IcentiaBeat.undefined: HeartBeat.noise,
     IcentiaBeat.normal: HeartBeat.normal,
     IcentiaBeat.pac: HeartBeat.pac,
-    IcentiaBeat.aberrated: HeartBeat.pac,
+    # IcentiaBeat.aberrated: HeartBeat.pac,
     IcentiaBeat.pvc: HeartBeat.pvc,
 }
 
@@ -235,6 +146,18 @@ class IcentiaDataset(EcgDataset):
         """
         return self.patient_ids[10_000:]
 
+    @functools.cached_property
+    def arr_rhythm_patients(self) -> npt.ArrayLike:
+        """Find all patients with AFIB/AFLUT events. This takes roughly 10 secs.
+        Returns:
+            npt.ArrayLike: Patient ids
+        """
+        patient_ids = self.patient_ids.tolist()
+        with Pool() as pool:
+            arr_pts_bool = list(pool.imap(self._pt_has_rhythm_arrhythmia, patient_ids))
+        patient_ids = np.where(arr_pts_bool)[0]
+        return patient_ids
+
     def task_data_generator(
         self,
         patient_generator: PatientGenerator,
@@ -281,7 +204,7 @@ class IcentiaDataset(EcgDataset):
         """
 
         if self.task == HeartTask.rhythm:
-            arr_pt_ids = np.intersect1d(np.array(arr_rhythm_patients), patient_ids)
+            arr_pt_ids = np.intersect1d(self.arr_rhythm_patients, patient_ids)
             norm_pt_ids = np.setdiff1d(patient_ids, arr_pt_ids)
             (
                 norm_train_pt_ids,
@@ -396,7 +319,9 @@ class IcentiaDataset(EcgDataset):
         samples_per_patient: int = 1,
     ) -> SampleGenerator:
         """Generate frames and beat label using patient generator.
-
+        There are over 2.5 billion normal and undefined while less than 40 million arrhythmia beats.
+        The following routine sorts each patient's beats by type and then approx. uniformly samples them by amount requested.
+        We start with arrhythmia types followed by undefined and normal. For each beat we resplit remaining samples requested.
         Args:
             patient_generator (PatientGenerator): Patient generator
             frame_size (int, optional): Frame size. Defaults to 2048.
@@ -408,26 +333,65 @@ class IcentiaDataset(EcgDataset):
         Yields:
             Iterator[SampleGenerator]
         """
+        tgt_beat_labels = [
+            IcentiaBeat.pvc,
+            IcentiaBeat.pac,
+            IcentiaBeat.undefined,
+            IcentiaBeat.normal,
+        ]
         for _, segments in patient_generator:
-            for _ in range(samples_per_patient):
-                segment = segments[np.random.choice(list(segments.keys()))]
-                segment_size: int = segment["data"].shape[0]
-                frame_start = np.random.randint(segment_size - self.frame_size)
+            # This maps segment index to segment key
+            seg_map: List[str] = list(segments.keys())
+
+            num_rem_samples = samples_per_patient
+            num_rem_beats = len(tgt_beat_labels)
+
+            # For each beat type, locate all beats in segments
+            pt_segs_beat_idxs: List[Tuple[int, int, int]] = []
+            for beat in tgt_beat_labels:
+                beat_segs_idxs: List[Tuple[int, int, int]] = []
+                for seg_idx, seg_key in enumerate(seg_map):
+                    blabels = segments[seg_key]["blabels"][:]
+                    if blabels.shape[0] == 0:
+                        continue
+                    # NOTE: Could remove beats too close to start or end
+                    beat_idxs = np.where(blabels[:, 1] == beat.value)[0].tolist()
+                    if len(beat_idxs):
+                        beat_segs_idxs += [
+                            (seg_idx, beat_idx, beat) for beat_idx in beat_idxs
+                        ]
+                    # END IF
+                # END FOR
+
+                # Shuffle all beats for given beat type
+                random.shuffle(beat_segs_idxs)
+
+                # Grab N samples of given beat type
+                num_beat_samples = min(
+                    int(num_rem_samples / num_rem_beats), len(beat_segs_idxs)
+                )
+                num_rem_samples -= num_beat_samples
+                num_rem_beats -= 1
+                if num_beat_samples:
+                    beat_segs_idxs = beat_segs_idxs[:num_beat_samples]
+                    pt_segs_beat_idxs += beat_segs_idxs
+            # END FOR
+
+            random.shuffle(pt_segs_beat_idxs)
+
+            # Yield selected samples for patient
+            for seg_idx, beat_idx, beat_label in pt_segs_beat_idxs:
+                frame_start = max(0, beat_idx - int(self.frame_size / 2))
                 frame_end = frame_start + self.frame_size
-                if not segment["blabels"].shape[0]:
+                x = segments[seg_map[seg_idx]]["data"][frame_start:frame_end].astype(
+                    np.float32
+                )
+                y = beat_label
+                if x.shape[0] != self.frame_size:
                     continue
-                x = segment["data"][frame_start:frame_end]
-                beat_indices, beat_labels = (
-                    segment["blabels"][:, 0],
-                    segment["blabels"][:, 1],
-                )
-                # calculate the count of each beat type in the frame and determine the final label
-                _, frame_beat_labels = self.get_complete_beats(
-                    beat_indices, beat_labels, frame_start, frame_end
-                )
-                y = self.get_beat_label(frame_beat_labels)
                 yield x, y
             # END FOR
+
         # END FOR
 
     def heart_rate_data_generator(
@@ -467,7 +431,7 @@ class IcentiaDataset(EcgDataset):
                 frame_beat_indices = self.get_complete_beats(
                     beat_indices, start=label_frame_start, end=label_frame_end
                 )
-                y = self.get_heart_rate_label(frame_beat_indices, self.sampling_rate)
+                y = self._get_heart_rate_label(frame_beat_indices, self.sampling_rate)
                 yield x, y
             # END FOR
         # END FOR
@@ -520,7 +484,7 @@ class IcentiaDataset(EcgDataset):
                 logger.debug("X")
                 np.random.shuffle(patient_ids)
             for patient_id in patient_ids:
-                pt_key = f"p{patient_id:05d}"
+                pt_key = self._pt_key(patient_id)
                 with h5py.File(
                     os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r"
                 ) as h5:
@@ -552,15 +516,17 @@ class IcentiaDataset(EcgDataset):
             for patient_id in np.random.choice(
                 patient_ids, size=1024, p=patient_weights
             ):
-                pt_key = f"p{patient_id:05d}"
+                pt_key = self._pt_key(patient_id)
                 with h5py.File(
                     os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r"
                 ) as h5:
                     patient_data = h5[pt_key]
                     yield patient_id, patient_data
-                # END WITH
             # END FOR
         # END WHILE
+
+    def _pt_key(self, patient_id: int):
+        return f"p{patient_id:05d}"
 
     def get_complete_beats(
         self,
@@ -592,7 +558,7 @@ class IcentiaDataset(EcgDataset):
         label_slice = labels[start_index:end_index]
         return indices_slice, label_slice
 
-    def get_rhythm_label(self, durations: npt.ArrayLike, labels: npt.ArrayLike):
+    def _get_rhythm_label(self, durations: npt.ArrayLike, labels: npt.ArrayLike):
         """Determine rhythm label based on the longest rhythm among arrhythmias.
         Args:
             durations (npt.ArrayLike): Array of rhythm durations
@@ -616,7 +582,7 @@ class IcentiaDataset(EcgDataset):
                 y = HeartRhythmMap[IcentiaRhythm.noise]
         return y
 
-    def get_beat_label(self, labels: npt.ArrayLike):
+    def _get_beat_label(self, labels: npt.ArrayLike):
         """Determine beat label based on the occurrence of pac / abberated / pvc,
             otherwise pick the most common beat type among the normal / undefined.
 
@@ -640,7 +606,7 @@ class IcentiaDataset(EcgDataset):
                 y = HeartBeatMap[IcentiaBeat.undefined]
         return y
 
-    def get_heart_rate_label(self, qrs_indices, fs=None) -> int:
+    def _get_heart_rate_label(self, qrs_indices, fs=None) -> int:
         """Determine the heart rate label based on an array of QRS indices (separating individual heartbeats).
             The QRS indices are assumed to be measured in seconds if sampling frequency `fs` is not specified.
             The heartbeat label is based on the following BPM (beats per minute) values: (0) tachycardia <60 BPM,
@@ -665,6 +631,23 @@ class IcentiaDataset(EcgDataset):
         if bpm <= 100:
             return HeartRate.normal.value
         return HeartRate.tachycardia.value
+
+    def _pt_has_rhythm_arrhythmia(self, patient_id: int):
+        pt_key = self._pt_key(patient_id)
+        with h5py.File(os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r") as h5:
+            for _, segment in h5[pt_key].items():
+                rlabels = segment["rlabels"][:]
+                if not rlabels.shape[0]:
+                    continue
+                rlabels = rlabels[:, 1]
+                if len(
+                    np.where(
+                        (rlabels == IcentiaRhythm.afib)
+                        | (rlabels == IcentiaRhythm.aflut)
+                    )[0]
+                ):
+                    return True
+            return False
 
     def get_rhythm_statistics(
         self,
@@ -768,14 +751,15 @@ class IcentiaDataset(EcgDataset):
         with tqdm(
             desc="Downloading icentia11k dataset from S3", total=len(patient_ids)
         ) as pbar:
+            pt_keys = [self._pt_key(patient_id) for patient_id in patient_ids]
             with ThreadPoolExecutor(max_workers=2 * num_workers) as executor:
                 futures = (
                     executor.submit(
                         func,
-                        f"{s3_prefix}/p{patient_id:05d}.h5",
-                        os.path.join(self.ds_path, f"p{patient_id:05d}.h5"),
+                        f"{s3_prefix}/{pt_key}.h5",
+                        os.path.join(self.ds_path, f"{pt_key}.h5"),
                     )
-                    for patient_id in patient_ids
+                    for pt_key in pt_keys
                 )
                 for future in as_completed(futures):
                     err = future.exception()
@@ -839,7 +823,7 @@ class IcentiaDataset(EcgDataset):
         WfdbBeatMap = {"Q": 0, "N": 1, "S": 2, "a": 3, "V": 4}
 
         logger.info(f"Processing patient {patient}")
-        pt_id = f"p{patient:05d}"
+        pt_id = self._pt_key(patient)
         pt_path = os.path.join(self.ds_path, f"{pt_id}.h5")
         if not force and os.path.exists(pt_path):
             print("skipping patient")
