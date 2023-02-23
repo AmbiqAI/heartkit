@@ -1,4 +1,4 @@
-from typing import Callable, Tuple
+from typing import Callable
 
 import tensorflow as tf
 from keras.engine.keras_tensor import KerasTensor
@@ -117,10 +117,10 @@ def generate_residual_block(
 def generate_resnet(
     inputs: KerasTensor,
     num_outputs: int = 1,
-    blocks: Tuple[int, ...] = (2, 2, 2, 2),
-    filters: Tuple[int, ...] = (64, 128, 256, 512),
-    kernel_size: Tuple[int, ...] = (3, 3, 3, 3),
-    input_conv: Tuple[int, ...] = (64, 7, 2),
+    blocks: tuple[int, ...] = (2, 2, 2, 2),
+    filters: tuple[int, ...] = (64, 128, 256, 512),
+    kernel_size: tuple[int, ...] = (3, 3, 3, 3),
+    input_conv: tuple[int, ...] = (64, 7, 2),
     use_bottleneck: bool = False,
     include_top: bool = True,
 ) -> KerasTensor:
@@ -131,10 +131,10 @@ def generate_resnet(
     Args:
         inputs (KerasTensor): Inputs
         num_outputs (int, optional): # class outputs. Defaults to 1.
-        blocks (Tuple[int, ...], optional): Stage block sizes. Defaults to (2, 2, 2, 2).
-        filters (Tuple[int, ...], optional): Stage filter sizes. Defaults to (64, 128, 256, 512).
-        kernel_size (Tuple[int, ...], optional): Stage kernel sizes. Defaults to (3, 3, 3, 3).
-        input_conv (Tuple[int, ...], optional): Initial conv layer attributes. Defaults to (64, 7, 2).
+        blocks (tuple[int, ...], optional): Stage block sizes. Defaults to (2, 2, 2, 2).
+        filters (tuple[int, ...], optional): Stage filter sizes. Defaults to (64, 128, 256, 512).
+        kernel_size (tuple[int, ...], optional): Stage kernel sizes. Defaults to (3, 3, 3, 3).
+        input_conv (tuple[int, ...], optional): Initial conv layer attributes. Defaults to (64, 7, 2).
         use_bottleneck (bool, optional): Use bottleneck block. Defaults to false.
         include_top (bool, optional): Include classifier layers. Defaults to True.
 

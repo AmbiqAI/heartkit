@@ -1,5 +1,3 @@
-from typing import Optional
-
 import tensorflow as tf
 from tensorflow.python.framework import graph_util, ops
 from tensorflow.python.framework.convert_to_constants import (
@@ -45,7 +43,7 @@ def _flops_add(graph, node):
     return _binary_per_element_op_flops(graph, node)
 
 
-def get_flops(model: tf.keras.Model, batch_size: Optional[int] = None) -> float:
+def get_flops(model: tf.keras.Model, batch_size: int | None = None) -> float:
     """
     Calculate FLOPS for tf.keras.Model or tf.keras.Sequential .
     Ignore operations used in only training mode such as Initialization.

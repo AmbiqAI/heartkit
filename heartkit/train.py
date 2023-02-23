@@ -3,6 +3,7 @@ import os
 import numpy as np
 import pydantic_argparse
 import tensorflow as tf
+import tensorflow_addons as tfa
 import tensorflow_model_optimization as tfmot
 import wandb
 from sklearn.metrics import f1_score
@@ -81,8 +82,8 @@ def train_model(params: HeartTrainParams):
     lr_scheduler = tf.keras.optimizers.schedules.CosineDecayRestarts(
         initial_learning_rate=1e-3,
         first_decay_steps=int(0.1 * total_steps),
-        t_mul=1.661,  # Creates 4 cycles
-        m_mul=0.50,
+        t_mul=1.8 / (0.1 * 3 * (3 - 1)),  # 3 cycles
+        m_mul=0.40,
     )
 
     strategy = get_strategy()
@@ -98,8 +99,10 @@ def train_model(params: HeartTrainParams):
         optimizer = Adam(lr_scheduler, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
         model.compile(
             optimizer=optimizer,
-            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-            metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="acc")],
+            # loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+            # metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="acc")],
+            loss=tfa.losses.SigmoidFocalCrossEntropy(from_logits=True),
+            metrics=[tf.keras.metrics.CategoricalAccuracy(name="acc")],
         )
         model(inputs)
         model.summary()

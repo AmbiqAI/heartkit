@@ -1,5 +1,4 @@
 import warnings
-from typing import List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -51,17 +50,17 @@ def f1(
 def f_max(
     y_true: npt.ArrayLike,
     y_prob: npt.ArrayLike,
-    thresholds: Optional[Union[float, List[float]]] = None,
-) -> Tuple[float, float]:
+    thresholds: float | list[float] | None = None,
+) -> tuple[float, float]:
     """Compute F max
     source: https://github.com/helme/ecg_ptbxl_benchmarking
     Args:
         y_true (npt.ArrayLike): Y True
         y_prob (npt.ArrayLike): Y probs
-        thresholds (_type_, optional): Thresholds. Defaults to None.
+        thresholds (float|list[float]|None, optional): Thresholds. Defaults to None.
 
     Returns:
-        Tuple[float, float]: F1 and thresholds
+        tuple[float, float]: F1 and thresholds
     """
     if thresholds is None:
         thresholds = np.linspace(0, 1, 100)
@@ -74,8 +73,8 @@ def f_max(
 def confusion_matrix_plot(
     y_true: npt.ArrayLike,
     y_pred: npt.ArrayLike,
-    labels: List[str],
-    save_path: Optional[str] = None,
+    labels: list[str],
+    save_path: str | None = None,
     **kwargs,
 ):
     """Generate confusion matrix plot via matplotlib/seaborn
@@ -83,8 +82,8 @@ def confusion_matrix_plot(
     Args:
         y_true (npt.ArrayLike): True y labels
         y_pred (npt.ArrayLike): Predicted y labels
-        labels (List[str]): Label names
-        save_path (Optional[str]): Path to save plot. Defaults to None.
+        labels (list[str]): Label names
+        save_path (str | None): Path to save plot. Defaults to None.
     """
     confusion_mtx = tf.math.confusion_matrix(y_true, y_pred)
     plt.figure(figsize=kwargs.get("figsize", (10, 8)))
@@ -101,16 +100,16 @@ def confusion_matrix_plot(
 def roc_auc_plot(
     y_true: npt.ArrayLike,
     y_prob: npt.ArrayLike,
-    labels: List[str],
-    save_path: Optional[str] = None,
+    labels: list[str],
+    save_path: str | None = None,
     **kwargs,
 ):
     """Generate ROC plot via matplotlib/seaborn
     Args:
         y_true (npt.ArrayLike): True y labels
         y_prob (npt.ArrayLike): Predicted y labels
-        labels (List[str]): Label names
-        save_path (Optional[str]): Path to save plot. Defaults to None.
+        labels (list[str]): Label names
+        save_path (str | None): Path to save plot. Defaults to None.
     """
 
     fpr, tpr, _ = roc_curve(y_true, y_prob)

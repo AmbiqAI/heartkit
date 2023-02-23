@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List, Optional
 
 import pydantic_argparse
 from pydantic import BaseModel, Field
@@ -21,17 +20,17 @@ logger = setup_logger(__name__)
 class AppCommandArgments(BaseModel):
     """App command arguments as configuration file."""
 
-    config_file: Optional[Path] = Field(None, description="Configuration JSON file")
+    config_file: Path | None = Field(None, description="Configuration JSON file")
 
 
 class AppArguments(BaseModel):
     """App CLI arguments"""
 
-    download: Optional[AppCommandArgments] = Field(description="Fetch dataset")
-    train: Optional[AppCommandArgments] = Field(description="Train model")
-    evaluate: Optional[AppCommandArgments] = Field(description="Evaluate model")
-    export: Optional[AppCommandArgments] = Field(description="Export model")
-    demo: Optional[AppCommandArgments] = Field(description="EVB demo")
+    download: AppCommandArgments | None = Field(description="Fetch dataset")
+    train: AppCommandArgments | None = Field(description="Train model")
+    evaluate: AppCommandArgments | None = Field(description="Evaluate model")
+    export: AppCommandArgments | None = Field(description="Export model")
+    demo: AppCommandArgments | None = Field(description="EVB demo")
 
 
 def download_dataset(command: AppCommandArgments):
@@ -90,10 +89,10 @@ def evb_demo(command: AppCommandArgments):
     logger.info("#FINISHED evb demo")
 
 
-def run(inputs: Optional[List[str]] = None):
+def run(inputs: list[str] | None = None):
     """Main CLI app runner
     Args:
-        inputs (Optional[List[str]], optional): App arguments. Defaults to CLI arguments.
+        inputs (list[str] | None, optional): App arguments. Defaults to CLI arguments.
     """
     parser = pydantic_argparse.ArgumentParser(
         model=AppArguments,

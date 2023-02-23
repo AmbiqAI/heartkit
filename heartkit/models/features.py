@@ -1,5 +1,3 @@
-from typing import Optional
-
 import tensorflow as tf
 from keras.engine.keras_tensor import KerasTensor
 
@@ -9,8 +7,8 @@ from .resnet1d import generate_resnet
 
 def ecg_feature_extractor(
     inputs: KerasTensor,
-    arch: Optional[ArchitectureType] = None,
-    stages: Optional[int] = None,
+    arch: ArchitectureType | None = None,
+    stages: int | None = None,
 ) -> KerasTensor:
     """AI based feature extractor. Currently consists of 1D variant of ResNet
 

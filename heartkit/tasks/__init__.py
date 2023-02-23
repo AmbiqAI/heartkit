@@ -1,5 +1,3 @@
-from typing import Optional, Tuple
-
 import tensorflow as tf
 from keras.engine.keras_tensor import KerasTensor
 
@@ -11,7 +9,7 @@ def create_task_model(
     inputs: KerasTensor,
     task: HeartTask,
     arch: ArchitectureType = "resnet18",
-    stages: Optional[int] = None,
+    stages: int | None = None,
 ) -> tf.keras.Model:
     """Generate model for given task
 
@@ -19,7 +17,7 @@ def create_task_model(
         inputs (KerasTensor): Model inputs
         task (HeartTask): Heart task
         arch (ArchitectureType, optional): Architecture type. Defaults to 'resnet18'.
-        stages (Optional[int], optional): # stages in network. Defaults to None.
+        stages (int | None, optional): # stages in network. Defaults to None.
 
     Returns:
         tf.keras.Model: Model
@@ -31,7 +29,7 @@ def create_task_model(
     return model
 
 
-def get_task_spec(task: HeartTask, frame_size: int) -> Tuple[tf.TensorSpec]:
+def get_task_spec(task: HeartTask, frame_size: int) -> tuple[tf.TensorSpec]:
     """Get task model spec
 
     Args:
@@ -39,12 +37,18 @@ def get_task_spec(task: HeartTask, frame_size: int) -> Tuple[tf.TensorSpec]:
         frame_size (int): Frame size
 
     Returns:
-        Tuple[tf.TensorSpec]: TF spec for task
+        tuple[tf.TensorSpec]: TF spec for task
     """
-    if task in [HeartTask.rhythm, HeartTask.beat, HeartTask.hr]:
+    num_classes = get_num_classes(task)
+    if task in [HeartTask.rhythm, HeartTask.hr]:
         return (
             tf.TensorSpec((frame_size, 1), tf.float32),
             tf.TensorSpec((), tf.int32),
+        )
+    if task in [HeartTask.beat]:
+        return (
+            tf.TensorSpec((frame_size, 1), tf.float32),
+            tf.TensorSpec((num_classes), tf.int32),
         )
     if task in [HeartTask.segmentation]:
         return (

@@ -8,7 +8,6 @@ from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from enum import IntEnum
 from multiprocessing import Pool
-from typing import Dict, List, Optional, Tuple, Union
 
 import boto3
 import h5py
@@ -40,12 +39,12 @@ class IcentiaRhythm(IntEnum):
     unknown = 5
 
     @classmethod
-    def hi_priority(cls) -> List[int]:
+    def hi_priority(cls) -> list[int]:
         """High priority labels"""
         return [cls.afib, cls.aflut]
 
     @classmethod
-    def lo_priority(cls) -> List[int]:
+    def lo_priority(cls) -> list[int]:
         """Low priority labels"""
         return [cls.noise, cls.normal, cls.end, cls.unknown]
 
@@ -60,12 +59,12 @@ class IcentiaBeat(IntEnum):
     pvc = 4
 
     @classmethod
-    def hi_priority(cls) -> List[int]:
+    def hi_priority(cls) -> list[int]:
         """High priority labels"""
         return [cls.pac, cls.pvc]
 
     @classmethod
-    def lo_priority(cls) -> List[int]:
+    def lo_priority(cls) -> list[int]:
         """Low priority labels"""
         return [cls.undefined, cls.normal]
 
@@ -161,13 +160,13 @@ class IcentiaDataset(EcgDataset):
     def task_data_generator(
         self,
         patient_generator: PatientGenerator,
-        samples_per_patient: Union[int, List[int]] = 1,
+        samples_per_patient: int | list[int] = 1,
     ) -> SampleGenerator:
         """Task-level data generator.
 
         Args:
             patient_generator (PatientGenerator): Patient data generator
-            samples_per_patient (Union[int, List[int]], optional): # samples per patient. Defaults to 1.
+            samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
 
         Returns:
             SampleGenerator: Sample data generator
@@ -191,7 +190,7 @@ class IcentiaDataset(EcgDataset):
 
     def _split_train_test_patients(
         self, patient_ids: npt.ArrayLike, test_size: float
-    ) -> List[List[int]]:
+    ) -> list[list[int]]:
         """Split dataset into training and validation. We customize based on task.
             NOTE: We only perform inter-patient splits and not intra-patient.
         Args:
@@ -200,7 +199,7 @@ class IcentiaDataset(EcgDataset):
             task (HeartTask, optional): Task. Defaults to HeartTask.rhythm.
 
         Returns:
-            List[npt.ArrayLike, npt.ArrayLike]: Training and validation patient IDs
+            list[npt.ArrayLike, npt.ArrayLike]: Training and validation patient IDs
         """
 
         if self.task == HeartTask.rhythm:
@@ -231,13 +230,13 @@ class IcentiaDataset(EcgDataset):
     def rhythm_data_generator(
         self,
         patient_generator: PatientGenerator,
-        samples_per_patient: Union[int, List[int]] = 1,
+        samples_per_patient: int | list[int] = 1,
     ) -> SampleGenerator:
         """Generate frames and rhythm label using patient generator.
         Args:
             patient_generator (PatientGenerator): Patient Generator
             frame_size (int, optional): Size of frame. Defaults to 2048.
-            samples_per_patient (Union[int, List[int]], optional): # samples per patient. Defaults to 1.
+            samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
 
         Returns:
             SampleGenerator: Sample generator
@@ -260,7 +259,7 @@ class IcentiaDataset(EcgDataset):
 
         # Group patient rhythms by type (segment, start, stop)
         for _, segments in patient_generator:
-            seg_label_map: Dict[str, List[Tuple[str, int, int]]] = {
+            seg_label_map: dict[str, list[tuple[str, int, int]]] = {
                 lbl: [] for lbl in tgt_rhythm_labels
             }
             for seg_key, segment in segments.items():
@@ -281,12 +280,12 @@ class IcentiaDataset(EcgDataset):
             # END FOR
 
             # Grab target segments
-            seg_samples: List[Tuple[str, int, int, int]] = []
+            seg_samples: list[tuple[str, int, int, int]] = []
             for i, label in enumerate(tgt_rhythm_labels):
                 tgt_segments = seg_label_map.get(label, [])
                 if not tgt_segments:
                     continue
-                tgt_seg_indices: List[int] = random.choices(
+                tgt_seg_indices: list[int] = random.choices(
                     list(range(len(tgt_segments))),
                     weights=[s[2] - s[1] for s in tgt_segments],
                     k=samples_per_tgt[i],
@@ -336,20 +335,21 @@ class IcentiaDataset(EcgDataset):
         tgt_beat_labels = [
             IcentiaBeat.pvc,
             IcentiaBeat.pac,
-            IcentiaBeat.undefined,
+            # IcentiaBeat.undefined,
             IcentiaBeat.normal,
         ]
         for _, segments in patient_generator:
             # This maps segment index to segment key
-            seg_map: List[str] = list(segments.keys())
+            seg_map: list[str] = list(segments.keys())
 
             num_rem_samples = samples_per_patient
             num_rem_beats = len(tgt_beat_labels)
 
             # For each beat type, locate all beats in segments
-            pt_segs_beat_idxs: List[Tuple[int, int, int]] = []
+            pt_segs_beat_idxs: list[tuple[int, int, int]] = []
+            dbg_str = ""
             for beat in tgt_beat_labels:
-                beat_segs_idxs: List[Tuple[int, int, int]] = []
+                beat_segs_idxs: list[tuple[int, int, int]] = []
                 for seg_idx, seg_key in enumerate(seg_map):
                     blabels = segments[seg_key]["blabels"][:]
                     if blabels.shape[0] == 0:
@@ -358,7 +358,8 @@ class IcentiaDataset(EcgDataset):
                     beat_idxs = np.where(blabels[:, 1] == beat.value)[0].tolist()
                     if len(beat_idxs):
                         beat_segs_idxs += [
-                            (seg_idx, beat_idx, beat) for beat_idx in beat_idxs
+                            (seg_idx, beat_idx, HeartBeatMap[beat])
+                            for beat_idx in beat_idxs
                         ]
                     # END IF
                 # END FOR
@@ -375,18 +376,18 @@ class IcentiaDataset(EcgDataset):
                 if num_beat_samples:
                     beat_segs_idxs = beat_segs_idxs[:num_beat_samples]
                     pt_segs_beat_idxs += beat_segs_idxs
+                dbg_str += f" | {len(beat_segs_idxs):05d}"
             # END FOR
-
             random.shuffle(pt_segs_beat_idxs)
 
             # Yield selected samples for patient
-            for seg_idx, beat_idx, beat_label in pt_segs_beat_idxs:
+            for seg_idx, beat_idx, beat in pt_segs_beat_idxs:
                 frame_start = max(0, beat_idx - int(self.frame_size / 2))
                 frame_end = frame_start + self.frame_size
                 x = segments[seg_map[seg_idx]]["data"][frame_start:frame_end].astype(
                     np.float32
                 )
-                y = beat_label
+                y = beat
                 if x.shape[0] != self.frame_size:
                     continue
                 yield x, y
@@ -497,14 +498,14 @@ class IcentiaDataset(EcgDataset):
 
     def random_patient_generator(
         self,
-        patient_ids: List[int],
-        patient_weights: Optional[List[int]] = None,
+        patient_ids: list[int],
+        patient_weights: list[int] | None = None,
     ) -> PatientGenerator:
         """Samples patient data from the provided patient distribution.
 
         Args:
-            patient_ids (List[int]): Patient ids
-            patient_weights (Optional[List[int]], optional): Probabilities associated with each patient. Defaults to None.
+            patient_ids (list[int]): Patient ids
+            patient_weights (list[int] | None, optional): Probabilities associated with each patient. Defaults to None.
 
         Returns:
             PatientGenerator: Patient generator
@@ -533,7 +534,7 @@ class IcentiaDataset(EcgDataset):
         indices: npt.ArrayLike,
         labels: npt.ArrayLike = None,
         start: int = 0,
-        end: Optional[int] = None,
+        end: int | None = None,
     ):
         """
         Find all complete beats within a frame i.e. start and end of the beat lie within the frame.
@@ -542,9 +543,9 @@ class IcentiaDataset(EcgDataset):
             indices (np.ArrayLike): List of sorted beat indices.
             labels (np.ArrayLike): List of beat labels.
             start (int): Index of the first sample in the frame.
-            end (Optional[int]): Index of the last sample in the frame.
+            end (int | None): Index of the last sample in the frame.
         Returns:
-            Tuple[npt.ArrayLike, npt.ArrayLine] (beat indices, beat labels)
+            tuple[npt.ArrayLike, npt.ArrayLine] (beat indices, beat labels)
         """
         if end is None:
             end = indices[-1]
@@ -587,7 +588,7 @@ class IcentiaDataset(EcgDataset):
             otherwise pick the most common beat type among the normal / undefined.
 
         Args:
-            labels (List[int]): Array of beat labels.
+            labels (list[int]): Array of beat labels.
 
         Returns:
             int:  Beat label as an integer.
@@ -613,7 +614,7 @@ class IcentiaDataset(EcgDataset):
             (1) bradycardia >100 BPM, (2) healthy 60-100 BPM, (3) noisy if QRS detection failed.
 
         Args:
-            qrs_indices (List[int]): Array of QRS indices.
+            qrs_indices (list[int]): Array of QRS indices.
             fs (float, optional): Sampling frequency of the signal. Defaults to None.
 
         Returns:
@@ -651,14 +652,14 @@ class IcentiaDataset(EcgDataset):
 
     def get_rhythm_statistics(
         self,
-        patient_ids: Optional[npt.ArrayLike] = None,
-        save_path: Optional[str] = None,
+        patient_ids: npt.ArrayLike | None = None,
+        save_path: str | None = None,
     ) -> pd.DataFrame:
         """Utility function to extract rhythm statistics across entire dataset. Useful for EDA.
 
         Args:
-            patient_ids (Optional[npt.ArrayLike], optional): Patients IDs to include. Defaults to all.
-            save_path (Optional[str], optional): Parquet file path to save results. Defaults to None.
+            patient_ids (npt.ArrayLike | None, optional): Patients IDs to include. Defaults to all.
+            save_path (str | None, optional): Parquet file path to save results. Defaults to None.
 
         Returns:
             pd.DataFrame: DataFrame of statistics
@@ -670,7 +671,7 @@ class IcentiaDataset(EcgDataset):
         stats = []
         for pt, segments in pt_gen:
             # Group patient rhythms by type (segment, start, stop)
-            segment_label_map: Dict[str, List[Tuple[str, int, int]]] = {}
+            segment_label_map: dict[str, list[tuple[str, int, int]]] = {}
             for seg_key, segment in segments.items():
                 rlabels = segment["rlabels"][:]
                 if rlabels.shape[0] == 0:
@@ -710,11 +711,11 @@ class IcentiaDataset(EcgDataset):
             df.to_parquet(save_path)
         return df
 
-    def download(self, num_workers: Optional[int] = None, force: bool = False):
+    def download(self, num_workers: int | None = None, force: bool = False):
         """Download dataset
 
         Args:
-            num_workers (Optional[int], optional): # parallel workers. Defaults to None.
+            num_workers (int | None, optional): # parallel workers. Defaults to None.
             force (bool, optional): Force redownload. Defaults to False.
         """
 
@@ -770,14 +771,12 @@ class IcentiaDataset(EcgDataset):
             # END WITH
         # END WITH
 
-    def download_raw_dataset(
-        self, num_workers: Optional[int] = None, force: bool = False
-    ):
+    def download_raw_dataset(self, num_workers: int | None = None, force: bool = False):
         """Downloads full Icentia dataset zipfile and converts into individial patient HDF5 files.
         NOTE: This is a very long process (e.g. 24 hrs). Please use `icentia11k.download_dataset` instead.
         Args:
             zip_path (str): Zipfile path
-            patient_ids (Optional[npt.ArrayLike], optional): List of patient IDs to extract. Defaults to all.
+            patient_ids (npt.ArrayLike | None, optional): List of patient IDs to extract. Defaults to all.
             force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
             num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
         """
@@ -887,15 +886,15 @@ class IcentiaDataset(EcgDataset):
     def _convert_dataset_zip_to_hdf5(
         self,
         zip_path: str,
-        patient_ids: Optional[npt.ArrayLike] = None,
+        patient_ids: npt.ArrayLike | None = None,
         force: bool = False,
-        num_workers: Optional[int] = None,
+        num_workers: int | None = None,
     ):
         """Convert zipped Icentia dataset into individial patient HDF5 files.
 
         Args:
             zip_path (str): Zipfile path
-            patient_ids (Optional[npt.ArrayLike], optional): List of patient IDs to extract. Defaults to all.
+            patient_ids (npt.ArrayLike | None, optional): List of patient IDs to extract. Defaults to all.
             force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
             num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
         """

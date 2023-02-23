@@ -3,7 +3,6 @@ import logging
 import os
 import pickle
 import random
-from typing import Optional
 
 import numpy as np
 import requests
@@ -12,11 +11,11 @@ from rich.logging import RichHandler
 from tqdm import tqdm
 
 
-def set_random_seed(seed: Optional[int] = None) -> int:
+def set_random_seed(seed: int | None = None) -> int:
     """Set random seed across libraries: TF, Numpy, Python
 
     Args:
-        seed (Optional[int], optional): Random seed state to use. Defaults to None.
+        seed (int | None, optional): Random seed state to use. Defaults to None.
 
     Returns:
         int: Random seed

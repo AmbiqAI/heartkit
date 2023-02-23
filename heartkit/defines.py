@@ -2,7 +2,7 @@ import os
 import tempfile
 from enum import Enum, IntEnum
 from pathlib import Path
-from typing import List, Literal, Optional, Union
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -94,20 +94,20 @@ class HeartSegmentName(str, Enum):
     uwave = "uwave"
 
 
-def get_class_names(task: HeartTask) -> List[str]:
+def get_class_names(task: HeartTask) -> list[str]:
     """Get class names for given task
 
     Args:
         task (HeartTask): Heart task
 
     Returns:
-        List[str]: class names
+        list[str]: class names
     """
     if task == HeartTask.rhythm:
         # NOTE: Bucket AFIB and AFL together
         return ["NSR", "AFIB/AFL"]
     if task == HeartTask.beat:
-        return ["NORMAL", "PAC", "PVC", "NOISE"]
+        return ["NORMAL", "PAC", "PVC"]
     if task == HeartTask.hr:
         return ["NORMAL", "TACHYCARDIA", "BRADYCARDIA"]
     if task == HeartTask.segmentation:
@@ -131,7 +131,7 @@ class HeartDownloadParams(BaseModel):
     """Download command params"""
 
     ds_path: Path = Field(default_factory=Path, description="Dataset root directory")
-    datasets: List[DatasetTypes] = Field(default_factory=list, description="Datasets")
+    datasets: list[DatasetTypes] = Field(default_factory=list, description="Datasets")
     progress: bool = Field(True, description="Display progress bar")
     force: bool = Field(
         False, description="Force download dataset- overriding existing files"
@@ -153,19 +153,19 @@ class HeartTrainParams(BaseModel):
     # Dataset arguments
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
     frame_size: int = Field(1250, description="Frame size")
-    samples_per_patient: Union[int, List[int]] = Field(
+    samples_per_patient: int | list[int] = Field(
         1000, description="# train samples per patient"
     )
-    val_samples_per_patient: Union[int, List[int]] = Field(
+    val_samples_per_patient: int | list[int] = Field(
         1000, description="# validation samples per patient"
     )
-    train_patients: Optional[float] = Field(
+    train_patients: float | None = Field(
         None, description="# or proportion of patients for training"
     )
-    val_patients: Optional[float] = Field(
+    val_patients: float | None = Field(
         None, description="# or proportion of patients for validation"
     )
-    val_file: Optional[Path] = Field(
+    val_file: Path | None = Field(
         None, description="Path to load/store pickled validation file"
     )
     val_size: int = Field(200_000, description="# samples for validation")
@@ -174,12 +174,12 @@ class HeartTrainParams(BaseModel):
         description="# of data loaders running in parallel",
     )
     # Model arguments
-    weights_file: Optional[Path] = Field(
+    weights_file: Path | None = Field(
         None, description="Path to a checkpoint weights to load"
     )
     arch: ArchitectureType = Field("resnet12", description="Network architecture")
-    stages: Optional[int] = Field(None, description="# of resnet stages")
-    quantization: Optional[bool] = Field(
+    stages: int | None = Field(None, description="# of resnet stages")
+    quantization: bool | None = Field(
         None, description="Enable quantization aware training (QAT)"
     )
     # Training arguments
@@ -191,7 +191,7 @@ class HeartTrainParams(BaseModel):
         "loss", description="Performance metric"
     )
     # Extra arguments
-    seed: Optional[int] = Field(None, description="Random state seed")
+    seed: int | None = Field(None, description="Random state seed")
 
 
 class HeartTestParams(BaseModel):
@@ -205,10 +205,10 @@ class HeartTestParams(BaseModel):
     # Dataset arguments
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
     frame_size: int = Field(1250, description="Frame size")
-    samples_per_patient: Union[int, List[int]] = Field(
+    samples_per_patient: int | list[int] = Field(
         1000, description="# test samples per patient"
     )
-    test_patients: Optional[float] = Field(
+    test_patients: float | None = Field(
         None, description="# or proportion of patients for testing"
     )
     test_size: int = Field(200_000, description="# samples for testing")
@@ -217,10 +217,10 @@ class HeartTestParams(BaseModel):
         description="# of data loaders running in parallel",
     )
     # Model arguments
-    model_file: Optional[str] = Field(None, description="Path to model file")
-    threshold: Optional[float] = Field(None, description="Model output threshold")
+    model_file: str | None = Field(None, description="Path to model file")
+    threshold: float | None = Field(None, description="Model output threshold")
     # Extra arguments
-    seed: Optional[int] = Field(None, description="Random state seed")
+    seed: int | None = Field(None, description="Random state seed")
 
 
 class HeartExportParams(BaseModel):
@@ -233,16 +233,16 @@ class HeartExportParams(BaseModel):
     # Dataset arguments
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
     frame_size: int = Field(1250, description="Frame size")
-    samples_per_patient: Union[int, List[int]] = Field(
+    samples_per_patient: int | list[int] = Field(
         100, description="# test samples per patient"
     )
-    model_file: Optional[str] = Field(None, description="Path to model file")
-    threshold: Optional[float] = Field(None, description="Model output threshold")
-    quantization: Optional[bool] = Field(
+    model_file: str | None = Field(None, description="Path to model file")
+    threshold: float | None = Field(None, description="Model output threshold")
+    quantization: bool | None = Field(
         None, description="Enable post training quantization (PQT)"
     )
     tflm_var_name: str = Field("g_model", description="TFLite Micro C variable name")
-    tflm_file: Optional[Path] = Field(
+    tflm_file: Path | None = Field(
         None, description="Path to copy TFLM header file (e.g. ./model_buffer.h)"
     )
 
@@ -258,11 +258,11 @@ class HeartDemoParams(BaseModel):
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
     frame_size: int = Field(1250, description="Frame size")
     pad_size: int = Field(0, description="Pad size")
-    samples_per_patient: Union[int, List[int]] = Field(
+    samples_per_patient: int | list[int] = Field(
         1000, description="# train samples per patient"
     )
     # EVB arguments
-    vid_pid: Optional[str] = Field(
+    vid_pid: str | None = Field(
         "51966:16385",
         description="VID and PID of serial device formatted as `VID:PID` both values in base-10",
     )

@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -8,9 +7,10 @@ import sklearn
 import tensorflow as tf
 
 from ..defines import HeartTask
-from ..tasks import get_task_spec
+from ..tasks import get_num_classes, get_task_spec
 from ..utils import load_pkl, save_pkl
 from .defines import PatientGenerator, SampleGenerator
+from .preprocess import preprocess_signal
 from .utils import create_dataset_from_data
 
 logger = logging.getLogger(__name__)
@@ -59,24 +59,24 @@ class EcgDataset:
     def task_data_generator(
         self,
         patient_generator: PatientGenerator,
-        samples_per_patient: Union[int, List[int]] = 1,
+        samples_per_patient: int | list[int] = 1,
     ) -> SampleGenerator:
         """Task-level data generator.
 
         Args:
             patient_generator (PatientGenerator): Patient data generator
-            samples_per_patient (Union[int, List[int]], optional): # samples per patient. Defaults to 1.
+            samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
 
         Returns:
             SampleGenerator: Sample data generator
         """
         raise NotImplementedError()
 
-    def download(self, num_workers: Optional[int] = None, force: bool = False):
+    def download(self, num_workers: int | None = None, force: bool = False):
         """Download dataset
 
         Args:
-            num_workers (Optional[int], optional): # parallel workers. Defaults to None.
+            num_workers (int | None, optional): # parallel workers. Defaults to None.
             force (bool, optional): Force redownload. Defaults to False.
         """
         raise NotImplementedError()
@@ -107,26 +107,26 @@ class EcgDataset:
 
     def load_train_datasets(
         self,
-        train_patients: Optional[float] = None,
-        val_patients: Optional[float] = None,
-        train_pt_samples: Optional[Union[int, List[int]]] = None,
-        val_pt_samples: Optional[Union[int, List[int]]] = None,
-        val_size: Optional[int] = None,
-        val_file: Optional[str] = None,
+        train_patients: float | None = None,
+        val_patients: float | None = None,
+        train_pt_samples: int | list[int] | None = None,
+        val_pt_samples: int | list[int] | None = None,
+        val_size: int | None = None,
+        val_file: str | None = None,
         num_workers: int = 1,
-    ) -> Tuple[tf.data.Dataset, tf.data.Dataset]:
+    ) -> tuple[tf.data.Dataset, tf.data.Dataset]:
         """Load training and validation TF datasets
         Args:
-            train_patients (Optional[float], optional): # or proportion of train patients. Defaults to None.
-            val_patients (Optional[float], optional): # or proportion of val patients. Defaults to None.
-            train_pt_samples (Optional[Union[int, List[int]]], optional): # samples per patient for training. Defaults to None.
-            val_pt_samples (Optional[Union[int, List[int]]], optional): # samples per patient for validation. Defaults to None.
-            val_size (Optional[int], optional): Validation size. Defaults to 200*len(val_patient_ids).
-            val_file (Optional[str], optional): Path to existing pickled validation file. Defaults to None.
+            train_patients (float | None, optional): # or proportion of train patients. Defaults to None.
+            val_patients (float | None, optional): # or proportion of val patients. Defaults to None.
+            train_pt_samples (int | list[int] | None, optional): # samples per patient for training. Defaults to None.
+            val_pt_samples (int | list[int] | None, optional): # samples per patient for validation. Defaults to None.
+            val_size (int | None, optional): Validation size. Defaults to 200*len(val_patient_ids).
+            val_file (str | None, optional): Path to existing pickled validation file. Defaults to None.
             num_workers (int, optional): # of parallel workers. Defaults to 1.
 
         Returns:
-            Tuple[tf.data.Dataset, tf.data.Dataset]: Training and validation datasets
+            tuple[tf.data.Dataset, tf.data.Dataset]: Training and validation datasets
         """
 
         if val_patients is not None and val_patients >= 1:
@@ -197,14 +197,14 @@ class EcgDataset:
 
     def load_test_dataset(
         self,
-        test_patients: Optional[float] = None,
-        test_pt_samples: Optional[Union[int, List[int]]] = None,
+        test_patients: float | None = None,
+        test_pt_samples: int | list[int] | None = None,
         num_workers: int = 1,
     ) -> tf.data.Dataset:
         """Load testing datasets
         Args:
-            test_patients (Optional[float], optional): # or proportion of test patients. Defaults to None.
-            test_pt_samples (Optional[int], optional): # samples per patient for testing. Defaults to None.
+            test_patients (float | None, optional): # or proportion of test patients. Defaults to None.
+            test_pt_samples (int | None, optional): # samples per patient for testing. Defaults to None.
             num_workers (int, optional): # of parallel workers. Defaults to 1.
 
         Returns:
@@ -232,7 +232,7 @@ class EcgDataset:
     def _parallelize_dataset(
         self,
         patient_ids: int = None,
-        samples_per_patient: Union[int, List[int]] = 100,
+        samples_per_patient: int | list[int] = 100,
         repeat: bool = False,
         num_workers: int = 1,
     ) -> tf.data.Dataset:
@@ -267,7 +267,7 @@ class EcgDataset:
 
     def _split_train_test_patients(
         self, patient_ids: npt.ArrayLike, test_size: float
-    ) -> List[List[int]]:
+    ) -> list[list[int]]:
         """Perform train/test split on patients for given task.
 
         Args:
@@ -275,7 +275,7 @@ class EcgDataset:
             test_size (float): Test size
 
         Returns:
-            List[List[int]]: Train and test sets of patient ids
+            list[list[int]]: Train and test sets of patient ids
         """
         return sklearn.model_selection.train_test_split(
             patient_ids, test_size=test_size
@@ -284,14 +284,14 @@ class EcgDataset:
     def _create_dataset_from_generator(
         self,
         patient_ids: npt.ArrayLike,
-        samples_per_patient: Union[int, List[int]] = 1,
+        samples_per_patient: int | list[int] = 1,
         repeat: bool = True,
     ) -> tf.data.Dataset:
         """Creates TF dataset generator for task.
 
         Args:
             patient_ids (npt.ArrayLike): Patient IDs
-            samples_per_patient (Union[int, List[int]], optional): Samples per patient. Defaults to 1.
+            samples_per_patient (int | list[int], optional): Samples per patient. Defaults to 1.
             repeat (bool, optional): Repeat. Defaults to True.
 
         Returns:
@@ -307,22 +307,34 @@ class EcgDataset:
     def _dataset_sample_generator(
         self,
         patient_ids: npt.ArrayLike,
-        samples_per_patient: Union[int, List[int]] = 1,
+        samples_per_patient: int | list[int] = 1,
         repeat: bool = True,
     ) -> SampleGenerator:
         """Internal sample generator for task.
 
         Args:
             patient_ids (npt.ArrayLike): Patient IDs
-            samples_per_patient (Union[int, List[int]], optional): Samples per patient. Defaults to 1.
+            samples_per_patient (int | list[int], optional): Samples per patient. Defaults to 1.
             repeat (bool, optional): Repeat. Defaults to True.
 
         Returns:
             SampleGenerator: Task sample generator
         """
+        num_classes = get_num_classes(self.task)
         patient_generator = self.uniform_patient_generator(patient_ids, repeat=repeat)
         data_generator = self.task_data_generator(
             patient_generator,
             samples_per_patient=samples_per_patient,
         )
+        data_generator = map(
+            lambda x_y: (
+                preprocess_signal(
+                    data=x_y[0], sample_rate=self.sampling_rate, target_rate=250
+                ),
+                tf.one_hot(x_y[1], num_classes)
+                # x_y[1]
+            ),
+            data_generator,
+        )
+
         return data_generator

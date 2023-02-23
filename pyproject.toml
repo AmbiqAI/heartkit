@@ -38,7 +38,7 @@ filterwarnings = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.11"
+python = ">=3.10,<3.11"
 tensorflow-macos = {version = "^2.11.0", platform = "darwin"}
 tensorflow = {version = "^2.11.0", markers = "sys_platform != 'darwin'"}
 numpy = "^1.23.0"
@@ -102,7 +102,7 @@ disable = [
 max-line-length = 140
 
 [tool.pylint.design]
-max-args = 10
+max-args = 15
 max-locals = 30
 max-statements = 80
 max-module-lines = 2000

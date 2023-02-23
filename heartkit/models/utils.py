@@ -1,5 +1,3 @@
-from typing import List, Optional
-
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -8,7 +6,7 @@ import tensorflow as tf
 
 def get_predicted_threshold_indices(
     y_prob: npt.ArrayLike,
-    y_pred: Optional[npt.ArrayLike] = None,
+    y_pred: npt.ArrayLike | None = None,
     threshold: float = 0.5,
 ) -> npt.ArrayLike:
     """Get prediction indices that are above threshold (confidence level).
@@ -53,18 +51,18 @@ def get_strategy(use_mixed_precision: bool = False) -> tf.distribute.Strategy:
 
 def create_predictions_frame(
     y_prob: npt.ArrayLike,
-    y_true: Optional[npt.ArrayLike] = None,
-    y_pred: Optional[npt.ArrayLike] = None,
-    class_names: Optional[List[str]] = None,
-    record_ids: Optional[List[str]] = None,
+    y_true: npt.ArrayLike | None = None,
+    y_pred: npt.ArrayLike | None = None,
+    class_names: list[str] | None = None,
+    record_ids: list[str] | None = None,
 ):
     """Create predictions matrix.
     Args:
         y_prob (npt.ArrayLike): Array of class probabilities of shape (num_samples,) or (num_samples, num_classes).
-        y_true (Optional[npt.ArrayLike]): Integer array with true labels of shape (num_samples,) or (num_samples, num_classes).
-        y_pred (Optional[npt.ArrayLike]): Integer array with class predictions of shape (num_samples,) or (num_samples, num_classes).
-        class_names (Optional[List[str]]): Array of class names of shape (num_classes,).
-        record_ids (Optional[List[str]]): Array of record names of shape (num_samples,).
+        y_true (npt.ArrayLike | None): Integer array with true labels of shape (num_samples,) or (num_samples, num_classes).
+        y_pred (npt.ArrayLike | None): Integer array with class predictions of shape (num_samples,) or (num_samples, num_classes).
+        class_names (list[str] | None): Array of class names of shape (num_classes,).
+        record_ids (list[str] | None): Array of record names of shape (num_samples,).
     Returns:
         pd.DataFrame: Predictions matrix.
     """

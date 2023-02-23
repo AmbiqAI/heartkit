@@ -1,4 +1,4 @@
-# ♥️ HeartKit
+# ♥️ Heart Kit
 
 We leverage the latest AI techniques paired with Ambiq's ultra low-power microcontrollers to enable running a variety of real-time, wearable heart monitoring tasks.
 

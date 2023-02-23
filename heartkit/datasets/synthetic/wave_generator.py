@@ -1,23 +1,28 @@
-# This script generates the wavelets of the ECG
 import numpy as np
+import numpy.typing as npt
 
 
-# P wave generator
-# p_length = length of p wave in mS
-# p_voltage = magnitude of p wave in mV
-# p_biphasic = whether p wave is p_biphasic
-# p_biphasic_ratio = magnitude of second peak as a multiple of first peak
-# (whichever wave is larger will be normalised to size of p_voltage)
-# p_lean = skew of p wave (does not apply to biphasic p waves). < 1 skews left, > 1 skews right
-# flipper = voltage multiplier applied uniformly to entire wave (1 has no effect, -1 flips whole wave)
-def P_wave(
-    p_length=100,
-    p_voltage=0.25,
-    p_biphasic=False,
-    p_biphasic_ratio=1.5,
-    p_lean=0.8,
-    flipper=1,
-):
+def syn_p_wave(
+    p_length: float = 100,
+    p_voltage: float = 0.25,
+    p_biphasic: bool = False,
+    p_biphasic_ratio: float = 1.5,
+    p_lean: float = 0.8,
+    flipper: float = 1,
+) -> tuple[npt.NDArray, npt.NDArray]:
+    """P wave generator
+
+    Args:
+        p_length (float, optional): Length of p wave in mS. Defaults to 100.
+        p_voltage (float, optional): Magnitude of p wave in mV. Defaults to 0.25.
+        p_biphasic (bool, optional): Whether p wave is biphasic. Defaults to False.
+        p_biphasic_ratio (float, optional): Magnitude of second peak as a multiple of first peak. Defaults to 1.5.
+        p_lean (float, optional): Skew of p wave (does not apply to biphasic p waves). < 1 skews left, > 1 skews right. Defaults to 0.8.
+        flipper (float, optional): Voltage multiplier applied uniformly to wave (1: no effect, -1: flips wave). Defaults to 1.
+
+    Returns:
+        tuple[npt.NDArray, npt.NDArray]: x,y
+    """
     if p_biphasic:
         x = np.linspace(-2.172, 2.172, p_length) ** 2
         y = np.sin(x) * p_voltage
@@ -43,50 +48,73 @@ def P_wave(
     return x, y
 
 
-# Helper function for QRS complex
-def sin_wave_generator(start, stop, duration, duration_counter, waves):
+def sin_wave_generator(
+    start: float,
+    stop: float,
+    duration: npt.NDArray,
+    duration_counter: int,
+    waves: npt.NDArray,
+) -> tuple[npt.NDArray, int]:
+    """Helper function for QRS complex
+
+    Args:
+        start (float): Start position
+        stop (float): Stop position
+        duration (npt.NDArray): Duration of wave
+        duration_counter (int): Duration index
+        waves (npt.NDArray): Wave singla
+
+    Returns:
+        tuple[npt.NDArray, int]: x, duration_index
+    """
     x = np.linspace(np.pi * start, np.pi * stop, duration[duration_counter])
     duration_counter += 1
     return x, duration_counter
 
 
-# QRS complex generator
-# qrs_duration = length of QRS complex in mS
-# q_depth = magnitude of Q wave in mV
-# q_to_qr_duration_ratio = ratio of Q wave duration to QR complex duration
-# r_height = magnitude of R wave in mV
-# r_1_upswing_ratio = duration of R wave upswing as a fraction of total R wave duration
-# r_1_downswing_ratio = duration of initial R wave downswing as a fraction of total R wave duration
-# r_prime_present = boolean denoting presence of R' wave
-# r_to_r_prime_duration_ratio = ratio of duration of R : R'
-# r_prime_height = magnitude of R' wave in mV
-# r_2_upswing_ratio = duration of R' wave upswing as a fraction of total R' wave duration
-# r_2_downswing_ratio = duration of initial R' wave downswing as a fraction of total R' wave duration
-# s_prime_height = if S wave is "W" shaped, magnitude of positive mid-wave inflection in mV
-# s_present = boolean denoting presence of S wave
-# s_to_qrs_duration_ratio = ratio of S wave duration to QRS complex duration
-# s_depth = magnitude of S wave in mV
-# flipper = voltage multiplier applied uniformly to entire wave (1 has no effect, -1 flips whole wave)
-# j_point = magnitude of J point in mV
-def QRS_complex(
-    qrs_duration=80,
-    q_depth=0.2,
-    q_to_qr_duration_ratio=0.2,
-    r_height=1,
-    r_1_upswing_ratio=0.5,
-    r_1_downswing_ratio=0.25,
-    r_prime_present=True,
-    r_to_r_prime_duration_ratio=1,
-    r_prime_height=1,
-    r_2_upswing_ratio=0.5,
-    r_2_downswing_ratio=0.25,
-    s_prime_height=0.2,
-    s_present=True,
-    s_to_qrs_duration_ratio=0.1,
-    s_depth=0.1,
-    flipper=1,
-    j_point=0,
-):
+def syn_qrs_complex(
+    qrs_duration: float = 80,
+    q_depth: float = 0.2,
+    q_to_qr_duration_ratio: float = 0.2,
+    r_height: float = 1,
+    r_1_upswing_ratio: float = 0.5,
+    r_1_downswing_ratio: float = 0.25,
+    r_prime_present: float = True,
+    r_to_r_prime_duration_ratio: float = 1,
+    r_prime_height: float = 1,
+    r_2_upswing_ratio: float = 0.5,
+    r_2_downswing_ratio: float = 0.25,
+    s_prime_height: float = 0.2,
+    s_present: bool = True,
+    s_to_qrs_duration_ratio: float = 0.1,
+    s_depth: float = 0.1,
+    flipper: float = 1,
+    j_point: float = 0,
+) -> tuple[npt.NDArray, npt.NDArray, list[int]]:
+    """QRS complex generator
+
+    Args:
+        qrs_duration (float, optional): Length of QRS complex in mS. Defaults to 80.
+        q_depth (float, optional): Magnitude of Q wave in mV. Defaults to 0.2.
+        q_to_qr_duration_ratio (float, optional): Ratio of Q wave duration to QR complex duration. Defaults to 0.2.
+        r_height (float, optional): Magnitude of R wave in mV. Defaults to 1.
+        r_1_upswing_ratio (float, optional): Duration of R wave upswing as a fraction of total R wave duration. Defaults to 0.5.
+        r_1_downswing_ratio (float, optional): Duration of initial R wave downswing as a fraction of total R wave duration. Defaults to 0.25.
+        r_prime_present (float, optional): Boolean denoting presence of R' wave. Defaults to True.
+        r_to_r_prime_duration_ratio (float, optional): Ratio of duration of R : R'. Defaults to 1.
+        r_prime_height (float, optional): Magnitude of R' wave in mV. Defaults to 1.
+        r_2_upswing_ratio (float, optional): Duration of R' wave upswing as a fraction of total R' wave duration. Defaults to 0.5.
+        r_2_downswing_ratio (float, optional): Duration of initial R' wave downswing as a fraction of total R' wave duration. Defaults to 0.25.
+        s_prime_height (float, optional): If S wave is "W" shaped, magnitude of positive mid-wave inflection in mV. Defaults to 0.2.
+        s_present (bool, optional): Boolean denoting presence of S wave. Defaults to True.
+        s_to_qrs_duration_ratio (float, optional): Ratio of S wave duration to QRS complex duration. Defaults to 0.1.
+        s_depth (float, optional): Magnitude of S wave in mV. Defaults to 0.1.
+        flipper (float, optional): Voltage multiplier applied uniformly to entire wave (1 has no effect, -1 flips whole wave). Defaults to 1.
+        j_point (float, optional): Magnitude of J point in mV. Defaults to 0.
+
+    Returns:
+        tuple[npt.NDArray, npt.NDArray]: x,y, fiducials
+    """
     q_peak = -1
     r_peak = -1
     r_prime_peak = -1
@@ -297,13 +325,25 @@ def QRS_complex(
     return x, y, wave_peak_list
 
 
-# ST segment generator
-# j_point = magnitude of J point in mV
-# st_delta = change in magnitude of ST segment over the course of the wave in mV (0.1 slopes up, -0.1 slopes down)
-# st_length = duration of ST segment in mS
-# t_height = not used
-# flipper = voltage multiplier applied uniformly to entire wave (1 has no effect, -1 flips whole wave)
-def ST_segment(j_point=0, st_delta=0, st_length=50, t_height=0.5, flipper=1):
+def syn_st_segment(
+    j_point: float = 0,
+    st_delta: float = 0,
+    st_length: float = 50,
+    t_height: float = 0.5,
+    flipper: float = 1,
+) -> tuple[npt.NDArray, npt.NDArray]:
+    """ST segment generator
+
+    Args:
+        j_point (float, optional): magnitude of J point in mV. Defaults to 0.
+        st_delta (float, optional): Change in magnitude of ST segment over the course of the wave in mV (0.1 slopes up, -0.1 slopes down). Defaults to 0.
+        st_length (float, optional): Duration of ST segment in mS. Defaults to 50.
+        t_height (float, optional): Not used. Defaults to 0.5.
+        flipper (float, optional): Voltage multiplier applied uniformly to wave (1: no effect, -1: flips wave). Defaults to 1.
+
+    Returns:
+        tuple[npt.NDArray, npt.NDArray]: x, y
+    """
     if st_delta < 0:
         x = np.linspace(0.5 * np.pi, 1.75 * np.pi, st_length)
         y = ((np.sin(x) + 1) / 2) * -st_delta
@@ -326,13 +366,25 @@ def ST_segment(j_point=0, st_delta=0, st_length=50, t_height=0.5, flipper=1):
     return x, y
 
 
-# T wave generator
-# st_end = magnitude of the end of the ST segment in mV
-# t_height = magnitude of the T wave in mV
-# t_length = duration of the T wave in mS
-# flipper = voltage multiplier applied uniformly to entire wave (1 has no effect, -1 flips whole wave)
-# t_lean = variable that skews T wave in order to increase variation in morphology
-def T_wave(st_end=0, t_height=0.5, t_length=150, flipper=1, t_lean=1):
+def syn_t_wave(
+    st_end: float = 0,
+    t_height: float = 0.5,
+    t_length: int = 150,
+    flipper: float = 1,
+    t_lean: float = 1,
+) -> tuple[npt.NDArray, npt.NDArray]:
+    """T wave generator
+
+    Args:
+        st_end (float, optional): Magnitude of the end of the ST segment in mV. Defaults to 0.
+        t_height (float, optional): Magnitude of the T wave in mV. Defaults to 0.5.
+        t_length (int, optional): Duration of the T wave in mS. Defaults to 150.
+        flipper (float, optional): Voltage multiplier applied uniformly to entire wave (1: no effect, -1: flips wave). Defaults to 1.
+        t_lean (float, optional): Skews T wave in order to increase variation in morphology. Defaults to 1.
+
+    Returns:
+        tuple[npt.NDArray, npt.NDArray]: x, y
+    """
     x = np.linspace(-np.pi * 0.5, np.pi * 1.5, t_length)
     y = ((np.sin(x) + 1) / 2) * (t_height - (st_end / 2))
 

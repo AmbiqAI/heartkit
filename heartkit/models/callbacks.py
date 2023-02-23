@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Tuple
+from typing import Callable
 
 import numpy as np
 import numpy.typing as npt
@@ -15,22 +15,22 @@ class CustomCheckpoint(tf.keras.callbacks.Callback):
     def __init__(
         self,
         filepath: str,
-        data: Tuple[npt.ArrayLike, npt.ArrayLike],
-        score_fn: Callable[[Tuple[npt.ArrayLike, npt.ArrayLike]], npt.ArrayLike],
+        data: tuple[npt.ArrayLike, npt.ArrayLike],
+        score_fn: Callable[[tuple[npt.ArrayLike, npt.ArrayLike]], npt.ArrayLike],
         best: float = -np.Inf,
         save_best_only: bool = False,
-        batch_size: Optional[bool] = None,
+        batch_size: bool | None = None,
         verbose: int = 0,
     ):
         """Custom keras callback checkpoint
 
         Args:
             filepath (str): Save checkpoint filepath
-            data (Tuple[npt.ArrayLike, npt.ArrayLike]): Data
-            score_fn (Callable[[Tuple[npt.ArrayLike, npt.ArrayLike]], npt.ArrayLike]): Scoring function
+            data (tuple[npt.ArrayLike, npt.ArrayLike]): Data
+            score_fn (Callable[[tuple[npt.ArrayLike, npt.ArrayLike]], npt.ArrayLike]): Scoring function
             best (float, optional): Current best score. Defaults to -np.Inf.
             save_best_only (bool, optional): Save best checkpoint only. Defaults to False.
-            batch_size (Optional[bool], optional): Batch size. Defaults to None.
+            batch_size (bool | None, optional): Batch size. Defaults to None.
             verbose (int, optional): Verbosity. Defaults to 0.
         """
         super().__init__()

@@ -4,7 +4,6 @@ import os
 import tempfile
 import zipfile
 from multiprocessing import Pool
-from typing import List, Optional, Tuple, Union
 
 import h5py
 import numpy as np
@@ -91,13 +90,13 @@ class LudbDataset(EcgDataset):
     def task_data_generator(
         self,
         patient_generator: PatientGenerator,
-        samples_per_patient: Union[int, List[int]] = 1,
+        samples_per_patient: int | list[int] = 1,
     ) -> SampleGenerator:
         """Task-level data generator.
 
         Args:
             patient_generator (PatientGenerator): Patient data generator
-            samples_per_patient (Union[int, List[int]], optional): # samples per patient. Defaults to 1.
+            samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
 
         Returns:
             SampleGenerator: Sample data generator
@@ -112,13 +111,13 @@ class LudbDataset(EcgDataset):
     def segmentation_generator(
         self,
         patient_generator: PatientGenerator,
-        samples_per_patient: Union[int, List[int]] = 1,
+        samples_per_patient: int | list[int] = 1,
     ) -> SampleGenerator:
         """Generate frames and segment labels.
 
         Args:
             patient_generator (PatientGenerator): Patient Generator
-            samples_per_patient (Union[int, List[int]], optional): # samples per patient. Defaults to 1.
+            samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
         Returns:
             SampleGenerator: Sample generator
         Yields:
@@ -157,13 +156,13 @@ class LudbDataset(EcgDataset):
 
     def get_patient_data_segments(
         self, patient: int
-    ) -> Tuple[npt.ArrayLike, npt.ArrayLike]:
+    ) -> tuple[npt.ArrayLike, npt.ArrayLike]:
         """Get patient's entire data and segments
         Args:
             patient (int): Patient ID (1-based)
 
         Returns:
-            Tuple[npt.ArrayLike, npt.ArrayLike]: (data, segment labels)
+            tuple[npt.ArrayLike, npt.ArrayLike]: (data, segment labels)
         """
         pt_key = f"p{patient:05d}"
         with h5py.File(os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r") as pt:
@@ -211,7 +210,7 @@ class LudbDataset(EcgDataset):
 
     def convert_pt_wfdb_to_hdf5(
         self, patient: int, src_path: str, dst_path: str, force: bool = False
-    ) -> Tuple[npt.ArrayLike, npt.ArrayLike, npt.ArrayLike]:
+    ) -> tuple[npt.ArrayLike, npt.ArrayLike, npt.ArrayLike]:
         """Convert LUDB patient data from WFDB to more consumable HDF5 format.
 
         Args:
@@ -220,7 +219,7 @@ class LudbDataset(EcgDataset):
             dst_path (str): Destination path to store HDF5 file
 
         Returns:
-            Tuple[npt.ArrayLike, npt.ArrayLike, npt.ArrayLike]: data, segments, and fiducials
+            tuple[npt.ArrayLike, npt.ArrayLike, npt.ArrayLike]: data, segments, and fiducials
         """
         import wfdb  # pylint: disable=import-outside-toplevel
 
@@ -273,15 +272,15 @@ class LudbDataset(EcgDataset):
     def convert_dataset_zip_to_hdf5(
         self,
         zip_path: str,
-        patient_ids: Optional[npt.ArrayLike] = None,
+        patient_ids: npt.ArrayLike | None = None,
         force: bool = False,
-        num_workers: Optional[int] = None,
+        num_workers: int | None = None,
     ):
         """Convert dataset into individial patient HDF5 files.
 
         Args:
             zip_path (str): Zip path
-            patient_ids (Optional[npt.ArrayLike], optional): List of patient IDs to extract. Defaults to all.
+            patient_ids (npt.ArrayLike | None, optional): List of patient IDs to extract. Defaults to all.
             force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
             num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
         """
@@ -305,12 +304,12 @@ class LudbDataset(EcgDataset):
             _ = list(tqdm(pool.imap(f, patient_ids), total=len(patient_ids)))
         # END WITH
 
-    def download(self, num_workers: Optional[int] = None, force: bool = False):
+    def download(self, num_workers: int | None = None, force: bool = False):
         """Download LUDB dataset
 
         Args:
             ds_path (str): Path to store dataset
-            num_workers (Optional[int], optional): # parallel workers. Defaults to None.
+            num_workers (int | None, optional): # parallel workers. Defaults to None.
             force (bool, optional): Force redownload. Defaults to False.
         """
 

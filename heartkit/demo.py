@@ -2,7 +2,6 @@ import os
 import threading
 import time
 from enum import Enum
-from typing import List, Optional, Tuple
 
 import erpc
 import numpy as np
@@ -72,17 +71,17 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
     def __init__(self, params: HeartDemoParams) -> None:
         super().__init__()
         self.params = params
-        self.test_data: Tuple[npt.ArrayLike, npt.ArrayLike] = self.load_test_data()
+        self.test_data: tuple[npt.ArrayLike, npt.ArrayLike] = self.load_test_data()
         self.state = EvbAppState.IDLE_STATE
         self._sample_idx = 0
         self._frame_idx = 0
         self._plot_data = np.array([])
         self._plot_results = np.zeros(len(self.class_labels))
-        self._true_label: Optional[int] = None
+        self._true_label: int | None = None
         self._run = False
 
     @property
-    def class_labels(self) -> List[str]:
+    def class_labels(self) -> list[str]:
         """Get class labels for demo."""
         return get_class_names(self.params.task)
 
@@ -98,11 +97,11 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
             return "Unknown"
         return self.class_labels[self._true_label]
 
-    def load_test_data(self) -> Tuple[npt.ArrayLike, npt.ArrayLike]:
+    def load_test_data(self) -> tuple[npt.ArrayLike, npt.ArrayLike]:
         """Load test data
 
         Returns:
-            Tuple[npt.ArrayLike, npt.ArrayLike]: x,y
+            tuple[npt.ArrayLike, npt.ArrayLike]: x,y
         """
         ds = IcentiaDataset(
             ds_path=str(self.params.ds_path),
