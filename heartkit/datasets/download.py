@@ -1,10 +1,9 @@
 import os
 
-import pydantic_argparse
-
 from ..defines import HeartDownloadParams
 from .icentia11k import IcentiaDataset
 from .ludb import LudbDataset
+from .qtdb import QtdbDataset
 
 
 def download_datasets(params: HeartDownloadParams):
@@ -27,17 +26,8 @@ def download_datasets(params: HeartDownloadParams):
             force=params.force,
         )
 
-
-def create_parser():
-    """Create CLI parser"""
-    return pydantic_argparse.ArgumentParser(
-        model=HeartDownloadParams,
-        prog="ECG Dataset",
-        description="ECG dataset",
-    )
-
-
-if __name__ == "__main__":
-    parser = create_parser()
-    args = parser.parse_typed_args()
-    download_datasets(args)
+    if "qtdb" in params.datasets:
+        QtdbDataset(str(params.ds_path)).download(
+            num_workers=params.data_parallelism,
+            force=params.force,
+        )

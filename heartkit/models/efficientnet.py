@@ -53,9 +53,7 @@ def EfficientNetV2(
     if input_filters > 0:
         name = "stem"
         filters = make_divisible(input_filters, 8)
-        y = conv2d(
-            filters, kernel_size=input_kernel_size, strides=input_strides, name=name
-        )(x)
+        y = conv2d(filters, kernel_size=input_kernel_size, strides=input_strides, name=name)(x)
         y = batch_norm(name=name)(y)
         y = relu6(name=name)(y)
     else:
@@ -83,9 +81,7 @@ def EfficientNetV2(
     if output_filters:
         name = "neck"
         filters = make_divisible(output_filters, 8)
-        y = conv2d(
-            filters, kernel_size=(1, 1), strides=(1, 1), padding="same", name=name
-        )(y)
+        y = conv2d(filters, kernel_size=(1, 1), strides=(1, 1), padding="same", name=name)(y)
         y = batch_norm(name=name)(y)
         y = relu6(name=name)(y)
 

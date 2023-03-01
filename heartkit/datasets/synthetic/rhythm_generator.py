@@ -1,9 +1,21 @@
+# pylint: skip-file
+""" Generate synthetic ECG signals. Adapted from following:
+    authors:
+    - family-names: "Brisk"
+      given-names: "Rob"
+      orcid: "https://orcid.org/0000-0002-3865-0792"
+    title: "WaSP-ECG"
+    version: 1.0.0
+    doi: 0.3389/fphys.2022.760000
+    date-released: 2022-03-17
+    url: "https://github.com/docbrisky/WaSP-ECG"
+"""
 import logging
 import random
 
 import numpy as np
 import numpy.typing as npt
-import scipy.ndimage as ndi
+import scipy.signal
 
 from . import presets
 from . import wave_generator as wg
@@ -13,15 +25,57 @@ from .helper_functions import evenly_spaced_y, smooth_and_noise
 logger = logging.getLogger(__name__)
 
 
+def _resample_syn_signals(
+    x: npt.NDArray,
+    y: npt.NDArray,
+    y_segs: npt.NDArray,
+    y_fids: npt.NDArray,
+    sampling_frequency: int,
+    target_frequency: int,
+) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
+    """Resample synthetic ECG signal to target sampling rate
+
+    Args:
+        x (npt.NDArray): Time domain [leads x data]
+        y (npt.NDArray): ECG data [leads x data]
+        y_segs (npt.NDArray): Segmentations
+        y_fids (npt.NDArray): Fiducials
+        sampling_frequency (int): Original Fs
+        target_frequency (int): Target Fs
+
+    Returns:
+        tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]: Resampled signals
+    """
+    numel = int((target_frequency / sampling_frequency) * x.shape[1])
+
+    # Resample ECG using FFT method
+    yr = scipy.signal.resample(y, numel, axis=1)
+    xr = np.zeros_like(yr)
+    yr_segs = np.zeros_like(yr)
+    yr_fids = np.zeros_like(yr)
+    for l in range(xr.shape[0]):
+        # Time might not be evenly space so we interpolate it
+        ts_fn = scipy.interpolate.interp1d(np.arange(x[l].size), x[l], fill_value="extrapolate")
+        xr[l] = ts_fn(np.linspace(x[l][0], x[l][-1], numel))
+        # Use nearest neighbor for segmentation and fiducials
+        segs_fn = scipy.interpolate.interp1d(x[l], y_segs[l], kind="nearest", fill_value="extrapolate")
+        yr_segs[l] = segs_fn(xr[l])
+        fids_fn = scipy.interpolate.interp1d(x[l], y_fids[l], kind="nearest", fill_value="extrapolate")
+        yr_fids[l] = fids_fn(xr[l])
+    return xr, yr, yr_segs, yr_fids
+
+
 def generate_nsr(
     leads: int = 12,
     signal_frequency: float = 200,
-    rate: int = 60,
+    rate: float = 60,
     preset: str = "SR",
     noise_multiplier: float = 1.0,
     impedance: float = 1.0,
     p_multiplier: float = 1.0,
     t_multiplier: float = 1.0,
+    duration: float = 10,
+    voltage_factor=1,
 ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray, SyntheticParameters]:
     """Generate normal sinus rhythm (NSR) ECG signals
 
@@ -34,14 +88,14 @@ def generate_nsr(
         impedance (float, optional): Lead impedance to adjust y scale. Defaults to 1.0.
         p_multiplier (float, optional): P wave multiplier. Defaults to 1.0.
         t_multiplier (float, optional): T wave multiplier. Defaults to 1.0.
-
+        duration (float, optional): Duration in seconds. Defaults to 10.
+        voltage_factor (float, optional): Voltage scaling factor Defaults to 1.
     Returns:
         tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray, SyntheticParameters]: x, y, segs, fids, params
     """
     frequency = 1000
     gap = int((60 / rate) * frequency)
 
-    voltage_factor = 0.002
     leads = min(leads, 12)
 
     if signal_frequency > 1000:
@@ -49,7 +103,7 @@ def generate_nsr(
         logger.warning("Setting frequency to 1000 Hz")
         signal_frequency = 1000
 
-    sizer = 11 * frequency
+    sizer = int(duration * frequency) + frequency
     X = np.zeros((leads, sizer))
     Y = np.zeros((leads, sizer))
     Y_segs = np.zeros((leads, sizer))
@@ -74,10 +128,7 @@ def generate_nsr(
             + parameters.t_length
         )
 
-        if (
-            beat_length
-            > gap + parameters.qrs_duration + parameters.st_length + parameters.t_length
-        ):
+        if beat_length > gap + parameters.qrs_duration + parameters.st_length + parameters.t_length:
             logger.exception("Error, heart rate too high for beat length")
 
         overlap = beat_length - gap
@@ -110,9 +161,7 @@ def generate_nsr(
                 y_segs[start : start + overlap] = SyntheticSegments.tp_overlap
 
             if start + y_p.size < sizer:
-                y_segs[
-                    start + y_p.size : start + parameters.pr_interval
-                ] = SyntheticSegments.pr_interval
+                y_segs[start + y_p.size : start + parameters.pr_interval] = SyntheticSegments.pr_interval
 
             y_fids[start] = SyntheticFiducials.p_wave
 
@@ -145,12 +194,19 @@ def generate_nsr(
             y_segs[start : start + y_qrs.size] = SyntheticSegments.qrs_complex
 
             # # check if QRS complex predominantly negative:
-            # if parameters.s_presents[h] and parameters.s_depths[h] > parameters.r_heights[h] and parameters.s_depths[h] > parameters.r_prime_heights[h]:
+            # if (
+            #     parameters.s_presents[h]
+            #     and parameters.s_depths[h] > parameters.r_heights[h]
+            #     and parameters.s_depths[h] > parameters.r_prime_heights[h]
+            # ):
             #     # check if broad QRS
             #     if parameters.qrs_duration > 120:
             #         # check if RSR pattern:
-            #         if parameters.r_prime_presents[h] and parameters.r_prime_heights[h] > parameters.s_prime_heights[h] \
-            #                 and parameters.r_heights[h] > parameters.s_prime_heights[h]:
+            #         if (
+            #             parameters.r_prime_presents[h]
+            #             and parameters.r_prime_heights[h] > parameters.s_prime_heights[h]
+            #             and parameters.r_heights[h] > parameters.s_prime_heights[h]
+            #         ):
             #             y_segs[start : min(start + y_qrs.size, sizer)] = SyntheticSegments.qrs_complex_wide_inv_rsr
             #         # if no RSR pattern:
             #         else:
@@ -230,28 +286,17 @@ def generate_nsr(
             y_segs[start : start + x_t.size] = SyntheticSegments.t_wave
 
             if parameters.st_length > 5 and min(start + x_t.size, sizer) - start > 5:
-                t_grad = (
-                    np.amax(
-                        np.abs(
-                            np.gradient(y[start : min(start + x_t.size, sizer)] * 1e5)
-                        )
-                    )
-                    / 10
-                )
+                t_grad = np.amax(np.abs(np.gradient(y[start : min(start + x_t.size, sizer)] * 1e5))) / 10
 
                 st_grad = np.mean(np.abs(np.gradient(y[start - 5 : start - 1] * 1e5)))
 
-                grad = np.abs(
-                    np.gradient(y[start : min(start + x_t.size, sizer)] * 1e5)
-                )
+                grad = np.abs(np.gradient(y[start : min(start + x_t.size, sizer)] * 1e5))
 
                 for t_value in range(start, min(start + x_t.size, sizer), 1):
                     if abs(st_grad - grad[t_value - start]) < t_grad:
                         y_segs[t_value] = SyntheticSegments.st_segment
                     else:
-                        y_segs[
-                            t_value : min(start + x_t.size, sizer)
-                        ] = SyntheticSegments.t_wave
+                        y_segs[t_value : min(start + x_t.size, sizer)] = SyntheticSegments.t_wave
                         break
 
             # # if T wave inverted:
@@ -268,28 +313,16 @@ def generate_nsr(
             # calculate end of QT interval using max slope method
             qt_end_set = False
             if x_t.size > 1 and start + x_t.size < sizer:
-                grad = np.gradient(
-                    y[
-                        max(start, x_t.size - 100) : max(start, x_t.size - 100)
-                        + x_t.size
-                    ]
-                )
+                grad = np.gradient(y[max(start, x_t.size - 100) : max(start, x_t.size - 100) + x_t.size])
                 if parameters.flippers[h] > 0:
                     max_slope_x_coordinate = np.argmin(grad)
                 else:
                     max_slope_x_coordinate = np.argmax(grad)
 
-                if (
-                    y[start + max_slope_x_coordinate] != 0
-                    and grad[max_slope_x_coordinate] != 0
-                ):
+                if y[start + max_slope_x_coordinate] != 0 and grad[max_slope_x_coordinate] != 0:
                     # x intercept of maximum slope = x value of maximum slope + (y value of maximum slope * -gradient)
                     qt_end = int(
-                        max_slope_x_coordinate
-                        + (
-                            y[start + max_slope_x_coordinate]
-                            / -grad[max_slope_x_coordinate]
-                        )
+                        max_slope_x_coordinate + (y[start + max_slope_x_coordinate] / -grad[max_slope_x_coordinate])
                     )
                     if start + qt_end < sizer and qt_end > 0:
                         y_fids[start + qt_end] = SyntheticFiducials.qt_segment
@@ -314,52 +347,12 @@ def generate_nsr(
     for lead in range(X.shape[0]):
         X[lead, :] = X[lead, :] - X[lead, 0]
 
-    Y = Y[:, delay_start:delay_end]
+    Y = voltage_factor * Y[:, delay_start:delay_end]
     Y_segs = Y_segs[:, delay_start:delay_end]
     Y_fids = Y_fids[:, delay_start:delay_end]
 
     if signal_frequency < frequency:
-        X_max = np.amax(X)
-        Y_max = np.amax(Y)
-        Y_segs_max = np.amax(Y_segs)
-        Y_fids_max = np.amax(Y_fids)
-
-        X /= X_max
-        Y /= Y_max
-        Y_segs /= Y_segs_max
-        Y_fids /= Y_fids_max
-
-        X = (
-            ndi.zoom(
-                X, (1, (10 * signal_frequency) / frequency), order=1, grid_mode=True
-            )
-            * X_max
-        )
-        Y = (
-            ndi.zoom(
-                Y, (1, (10 * signal_frequency) / frequency), order=1, grid_mode=True
-            )
-            * Y_max
-        )
-        Y_segs = (
-            ndi.zoom(
-                Y_segs,
-                (1, (10 * signal_frequency) / frequency),
-                order=1,
-                grid_mode=True,
-            )
-            * Y_segs_max
-        )
-        Y_fids = (
-            ndi.zoom(
-                Y_fids,
-                (1, (10 * signal_frequency) / frequency),
-                order=1,
-                grid_mode=True,
-            )
-            * Y_fids_max
-        )
-    # END IF
+        X, Y, Y_segs, Y_fids = _resample_syn_signals(X, Y, Y_segs, Y_fids, frequency, signal_frequency)
 
     return X, Y, Y_segs.astype(int), Y_fids.astype(int), parameters
 
@@ -374,6 +367,8 @@ def generate_af(
     impedance: float = 1.0,
     p_multiplier: float = 1.0,
     t_multiplier: float = 1.0,
+    duration: float = 10,
+    voltage_factor=1,
 ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray, SyntheticParameters]:
     """Generate AF rhythm ECG signals
 
@@ -386,6 +381,8 @@ def generate_af(
         impedance (float, optional): Lead impedance to adjust y scale. Defaults to 1.0.
         p_multiplier (float, optional): P wave multiplier. Defaults to 1.0.
         t_multiplier (float, optional): T wave multiplier. Defaults to 1.0.
+        duration (float, optional): Duration in seconds. Defaults to 10.
+        voltage_factor (float, optional): Voltage scaling factor Defaults to 1.
 
     Returns:
         tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray, SyntheticParameters]: x, y, segs, fids, params
@@ -402,7 +399,7 @@ def generate_af(
         print("Setting frequency to 1000Hz")
         signal_frequency = 1000
 
-    sizer = 11 * frequency
+    sizer = int(duration * frequency) + frequency
     X = np.zeros((leads, sizer))
     Y = np.zeros((leads, sizer))
     Y_segs = np.zeros((leads, sizer))
@@ -431,10 +428,7 @@ def generate_af(
 
         if (
             beat_length
-            > int(gap - (variability * gap))
-            + parameters.qrs_duration
-            + parameters.st_length
-            + parameters.t_length
+            > int(gap - (variability * gap)) + parameters.qrs_duration + parameters.st_length + parameters.t_length
         ):
             logger.exception("Error, heart rate too high for beat length")
 
@@ -463,18 +457,18 @@ def generate_af(
 
             # # check if QRS complex predominantly negative:
             # if s_present and s_depth > r_height and s_depth > r_prime_height:
-            # 	# check if broad QRS
-            # 	if parameters.qrs_duration > 120:
-            # 		# check if RSR pattern:
-            # 		if parameters.r_prime_presents[h] and parameters.r_prime_height[h] > parameters.s_prime_heights[h] \
-            # 				and parameters.r_height[h] > parameters.s_prime_heights[h]:
-            # 			y_segs[start : min(start + y_qrs.size, sizer)] = SyntheticSegments.qrs_complex_wide_inv_rsr
-            # 		# if no RSR pattern:
-            # 		else:
-            # 			y_segs[start : min(start + y_qrs.size, sizer)] = SyntheticSegments.qrs_complex_wide_inv
-            # 	# if QRS narrow:
-            # 	else:
-            # 		y_segs[start : min(start + y_qrs.size, sizer)] = SyntheticSegments.qrs_complex_inv
+            #     # check if broad QRS
+            #     if parameters.qrs_duration > 120:
+            #         # check if RSR pattern:
+            #         if parameters.r_prime_presents[h] and parameters.r_prime_height[h] > parameters.s_prime_heights[h] \
+            #                 and parameters.r_height[h] > parameters.s_prime_heights[h]:
+            #             y_segs[start : min(start + y_qrs.size, sizer)] = SyntheticSegments.qrs_complex_wide_inv_rsr
+            #         # if no RSR pattern:
+            #         else:
+            #             y_segs[start : min(start + y_qrs.size, sizer)] = SyntheticSegments.qrs_complex_wide_inv
+            #     # if QRS narrow:
+            #     else:
+            #         y_segs[start : min(start + y_qrs.size, sizer)] = SyntheticSegments.qrs_complex_inv
             # # if QRS predominantly positive:
             # else:
             #     # check if broad QRS
@@ -528,9 +522,7 @@ def generate_af(
                     break
 
             st_end = (
-                parameters.j_points[h] + parameters.st_deltas[h]
-                if parameters.st_length > 0
-                else parameters.j_points[h]
+                parameters.j_points[h] + parameters.st_deltas[h] if parameters.st_length > 0 else parameters.j_points[h]
             )
             x_t, y_t = wg.syn_t_wave(
                 st_end=st_end,
@@ -546,28 +538,17 @@ def generate_af(
             )
 
             if parameters.st_length > 5 and min(start + x_t.size, sizer) - start > 5:
-                t_grad = (
-                    np.amax(
-                        np.abs(
-                            np.gradient(y[start : min(start + x_t.size, sizer)] * 1e5)
-                        )
-                    )
-                    / 10
-                )
+                t_grad = np.amax(np.abs(np.gradient(y[start : min(start + x_t.size, sizer)] * 1e5))) / 10
 
                 st_grad = np.mean(np.abs(np.gradient(y[start - 5 : start - 1] * 1e5)))
 
-                grad = np.abs(
-                    np.gradient(y[start : min(start + x_t.size, sizer)] * 1e5)
-                )
+                grad = np.abs(np.gradient(y[start : min(start + x_t.size, sizer)] * 1e5))
 
                 for t_value in range(start, min(start + x_t.size, sizer), 1):
                     if abs(st_grad - grad[t_value - start]) < t_grad:
                         y_segs[t_value] = SyntheticSegments.st_segment
                     else:
-                        y_segs[
-                            t_value : min(start + x_t.size, sizer)
-                        ] = SyntheticSegments.t_wave
+                        y_segs[t_value : min(start + x_t.size, sizer)] = SyntheticSegments.t_wave
                         break
             else:
                 y_segs[start : min(start + x_t.size, sizer)] = SyntheticSegments.t_wave
@@ -589,31 +570,19 @@ def generate_af(
             qt_end_set = False
             if x_t.size > 1 and start + x_t.size < sizer:
                 qt_end = -1
-                grad = np.gradient(
-                    y[
-                        max(start, x_t.size - 100) : max(start, x_t.size - 100)
-                        + x_t.size
-                    ]
-                )
-                if flipper > 0:
+                grad = np.gradient(y[max(start, x_t.size - 100) : max(start, x_t.size - 100) + x_t.size])
+                if parameters.flippers[h] > 0:
                     max_slope_x_coordinate = np.argmin(grad)
                 else:
                     max_slope_x_coordinate = np.argmax(grad)
 
-                if (
-                    y[start + max_slope_x_coordinate] != 0
-                    and grad[max_slope_x_coordinate] != 0
-                ):
+                if y[start + max_slope_x_coordinate] != 0 and grad[max_slope_x_coordinate] != 0:
                     # x intercept of maximum slope = x value of maximum slope + (y value of maximum slope * -gradient)
                     qt_end = int(
-                        max_slope_x_coordinate
-                        + (
-                            y[start + max_slope_x_coordinate]
-                            / -grad[max_slope_x_coordinate]
-                        )
+                        max_slope_x_coordinate + (y[start + max_slope_x_coordinate] / -grad[max_slope_x_coordinate])
                     )
                     if start + qt_end < sizer and qt_end > 0:
-                        y_label[start + qt_end] = SyntheticFiducials.qt_segment
+                        y_fids[start + qt_end] = SyntheticFiducials.qt_segment
                         qt_end_set = True
                 y_fids[start + x_t.size] = SyntheticFiducials.t_wave
             # END IF
@@ -637,51 +606,11 @@ def generate_af(
     for lead in range(X.shape[0]):
         X[lead, :] = X[lead, :] - X[lead, 0]
 
-    Y = Y[:, delay_start:delay_end]
+    Y = voltage_factor * Y[:, delay_start:delay_end]
     Y_segs = Y_segs[:, delay_start:delay_end]
     Y_fids = Y_fids[:, delay_start:delay_end]
 
     if signal_frequency < frequency:
-        X_max = np.amax(X)
-        Y_max = np.amax(Y)
-        Y_segs_max = np.amax(Y_segs)
-        Y_fids_max = np.amax(Y_fids)
-
-        X /= X_max
-        Y /= Y_max
-        Y_segs /= Y_segs_max
-        Y_fids /= Y_fids_max
-
-        X = (
-            ndi.zoom(
-                X, (1, (10 * signal_frequency) / frequency), order=1, grid_mode=True
-            )
-            * X_max
-        )
-        Y = (
-            ndi.zoom(
-                Y, (1, (10 * signal_frequency) / frequency), order=1, grid_mode=True
-            )
-            * Y_max
-        )
-        Y_segs = (
-            ndi.zoom(
-                Y_segs,
-                (1, (10 * signal_frequency) / frequency),
-                order=1,
-                grid_mode=True,
-            )
-            * Y_segs_max
-        )
-        Y_fids = (
-            ndi.zoom(
-                Y_fids,
-                (1, (10 * signal_frequency) / frequency),
-                order=1,
-                grid_mode=True,
-            )
-            * Y_fids_max
-        )
-    # END IF
+        X, Y, Y_segs, Y_fids = _resample_syn_signals(X, Y, Y_segs, Y_fids, frequency, signal_frequency)
 
     return X, Y, Y_segs.astype(int), Y_fids.astype(int), parameters

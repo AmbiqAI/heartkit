@@ -43,9 +43,7 @@ QtdbLeadsMap = {
 class QtdbDataset(EcgDataset):
     """QT dataset"""
 
-    def __init__(
-        self, ds_path: str, task: HeartTask = HeartTask.rhythm, frame_size: int = 1250
-    ) -> None:
+    def __init__(self, ds_path: str, task: HeartTask = HeartTask.rhythm, frame_size: int = 1250) -> None:
         super().__init__(os.path.join(ds_path, "qtdb"), task, frame_size)
 
     @property
@@ -139,25 +137,15 @@ class QtdbDataset(EcgDataset):
                 # Randomly pick an ECG lead
                 lead_idx = np.random.randint(data.shape[1])
                 # Randomly select frame center point
-                frame_start = np.random.randint(
-                    start_offset, data.shape[0] - self.frame_size - stop_offset
-                )
+                frame_start = np.random.randint(start_offset, data.shape[0] - self.frame_size - stop_offset)
                 frame_end = frame_start + self.frame_size
-                x = (
-                    data[frame_start:frame_end, lead_idx]
-                    .astype(np.float32)
-                    .reshape((self.frame_size, 1))
-                )
-                y = labels[frame_start:frame_end, lead_idx].reshape(
-                    (self.frame_size, 1)
-                )
+                x = data[frame_start:frame_end, lead_idx].astype(np.float32).reshape((self.frame_size, 1))
+                y = labels[frame_start:frame_end, lead_idx].reshape((self.frame_size, 1))
                 yield x, y
             # END FOR
         # END FOR
 
-    def get_patient_data_segments(
-        self, patient: int
-    ) -> tuple[npt.ArrayLike, npt.ArrayLike]:
+    def get_patient_data_segments(self, patient: int) -> tuple[npt.ArrayLike, npt.ArrayLike]:
         """Get patient's entire data and segments
         Args:
             patient (int): Patient ID (1-based)
@@ -200,9 +188,7 @@ class QtdbDataset(EcgDataset):
                 np.random.shuffle(patient_ids)
             for patient_id in patient_ids:
                 pt_key = f"p{patient_id:05d}"
-                with h5py.File(
-                    os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r"
-                ) as h5:
+                with h5py.File(os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r") as h5:
                     yield patient_id, h5
             # END FOR
             if not repeat:
@@ -289,9 +275,7 @@ class QtdbDataset(EcgDataset):
             patient_ids = self.patient_ids
 
         subdir = "qt-database-1.0.0"
-        with Pool(
-            processes=num_workers
-        ) as pool, tempfile.TemporaryDirectory() as tmpdir, zipfile.ZipFile(
+        with Pool(processes=num_workers) as pool, tempfile.TemporaryDirectory() as tmpdir, zipfile.ZipFile(
             zip_path, mode="r"
         ) as zp:
             qtdb_dir = os.path.join(tmpdir, "qtdb")
@@ -315,9 +299,7 @@ class QtdbDataset(EcgDataset):
         """
 
         logger.info("Downloading QTDB dataset")
-        ds_url = (
-            "https://physionet.org/static/published-projects/qtdb/qt-database-1.0.0.zip"
-        )
+        ds_url = "https://physionet.org/static/published-projects/qtdb/qt-database-1.0.0.zip"
         ds_zip_path = os.path.join(self.ds_path, "qtdb.zip")
         os.makedirs(self.ds_path, exist_ok=True)
         if os.path.exists(ds_zip_path) and not force:
@@ -329,7 +311,5 @@ class QtdbDataset(EcgDataset):
 
         # 2. Extract and convert patient ECG data to H5 files
         logger.info("Generating QT patient data")
-        self.convert_dataset_zip_to_hdf5(
-            zip_path=ds_zip_path, force=force, num_workers=num_workers
-        )
+        self.convert_dataset_zip_to_hdf5(zip_path=ds_zip_path, force=force, num_workers=num_workers)
         logger.info("Finished QTDB patient data")

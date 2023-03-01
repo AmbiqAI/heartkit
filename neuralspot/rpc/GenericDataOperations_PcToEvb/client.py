@@ -61,9 +61,7 @@ class pc_to_evbClient(interface.Ipc_to_evb):
         return _result
 
     def ns_rpc_data_computeOnEVB(self, in_block, result_block):
-        assert (
-            type(result_block) is erpc.Reference
-        ), "out parameter must be a Reference object"
+        assert type(result_block) is erpc.Reference, "out parameter must be a Reference object"
 
         # Build remote function invocation message.
         request = self._clientManager.create_request()

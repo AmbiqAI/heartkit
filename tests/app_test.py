@@ -1,11 +1,11 @@
 import json
 
-from heartkit import app
+from heartkit import cli
 
 
 def test_app_cli_help():
     """Verify APP CLI provides help dialog."""
-    args = json.loads(app.AppArguments.schema_json())
+    args = json.loads(cli.AppArguments.schema_json())
     assert isinstance(args, dict)
 
 

@@ -7,7 +7,6 @@ import erpc
 import numpy as np
 import numpy.typing as npt
 import plotext as plt
-import pydantic_argparse
 from rich.ansi import AnsiDecoder
 from rich.console import Group
 from rich.jupyter import JupyterMixin
@@ -25,7 +24,8 @@ from neuralspot.rpc import GenericDataOperations_PcToEvb as gen_pc2evb
 from neuralspot.rpc.utils import get_serial_transport
 
 from .datasets.icentia11k import IcentiaDataset
-from .defines import HeartDemoParams, get_class_names
+from .defines import HeartDemoParams, HeartTask
+from .tasks import get_class_names
 from .utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -68,8 +68,9 @@ class PlotextMixin(JupyterMixin):
 class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
     """EVB Demo app. Acts as delegate for eRPC generic data operations."""
 
-    def __init__(self, params: HeartDemoParams) -> None:
+    def __init__(self, task: HeartTask, params: HeartDemoParams) -> None:
         super().__init__()
+        self.task = task
         self.params = params
         self.test_data: tuple[npt.ArrayLike, npt.ArrayLike] = self.load_test_data()
         self.state = EvbAppState.IDLE_STATE
@@ -83,7 +84,7 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
     @property
     def class_labels(self) -> list[str]:
         """Get class labels for demo."""
-        return get_class_names(self.params.task)
+        return get_class_names(self.task)
 
     @property
     def window_size(self) -> int:
@@ -105,7 +106,7 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
         """
         ds = IcentiaDataset(
             ds_path=str(self.params.ds_path),
-            task=self.params.task,
+            task=self.task,
             frame_size=self.window_size,
         )
         test_ds = ds.load_test_dataset(
@@ -118,9 +119,7 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
 
     def clear_plot_data(self):
         """Clear plot data."""
-        self._plot_data: npt.ArrayLike = np.full(
-            self.window_size, fill_value=np.nan, dtype=np.float32
-        )
+        self._plot_data: npt.ArrayLike = np.full(self.window_size, fill_value=np.nan, dtype=np.float32)
         self._plot_results = np.zeros(len(self.class_labels))
 
     def make_live_plot(self, width: float, height: float) -> str:
@@ -172,24 +171,18 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
                 self._plot_data[self._frame_idx] = v
                 self.increment_frame_idx(1)
         if DemoBlockCommands.SEND_RESULTS in block.description:
-            self._plot_results: npt.NDArray = 100 * softmax(
-                np.frombuffer(block.buffer, dtype=np.float32)
-            )
+            self._plot_results: npt.NDArray = 100 * softmax(np.frombuffer(block.buffer, dtype=np.float32))
         return 0  # SUCCESS
 
     def ns_rpc_data_fetchBlockFromPC(self, block):
         return 0  # SUCCESS
 
-    def ns_rpc_data_computeOnPC(
-        self, in_block: gen_evb2pc.common.dataBlock, result_block
-    ):
+    def ns_rpc_data_computeOnPC(self, in_block: gen_evb2pc.common.dataBlock, result_block):
         if DemoBlockCommands.FETCH_SAMPLES in in_block.description:
             num_samples = in_block.length
             f_len = min(self.window_size - self._frame_idx, num_samples)
             x = (
-                self.test_data[0][
-                    self._sample_idx, self._frame_idx : self._frame_idx + f_len
-                ]
+                self.test_data[0][self._sample_idx, self._frame_idx : self._frame_idx + f_len]
                 .squeeze()
                 .astype(np.float32)
             )
@@ -255,9 +248,7 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
         self._run = True
         os.makedirs(str(self.params.job_dir), exist_ok=True)
 
-        transport = get_serial_transport(
-            vid_pid=self.params.vid_pid, baudrate=self.params.baudrate
-        )
+        transport = get_serial_transport(vid_pid=self.params.vid_pid, baudrate=self.params.baudrate)
         server = erpc.simple_server.ServerThread(transport, erpc.basic_codec.BasicCodec)
         server.add_service(gen_evb2pc.server.evb_to_pcService(self))
 
@@ -293,31 +284,17 @@ class EvbDemo(gen_evb2pc.interface.Ievb_to_pc):
         # END WITH
 
 
-def evb_demo(params: HeartDemoParams):
+def evb_demo(task: HeartTask, params: HeartDemoParams):
     """EVB Demo
 
     Args:
         params (HeartDemoParams): Demo parameters
     """
     try:
-        demo = EvbDemo(params=params)
+        demo = EvbDemo(task, params=params)
         demo.start()
     except (KeyboardInterrupt, SerialException):
         logger.info("Server stopping")
         demo.stop()
     except Exception as err:  # pylint: disable=broad-except
         logger.exception(f"Unhandled error {err}")
-
-
-def create_parser():
-    """Create CLI parser"""
-    return pydantic_argparse.ArgumentParser(
-        model=HeartDemoParams,
-        prog="Heart EVB demo",
-        description="Demo heart model on EVB",
-    )
-
-
-if __name__ == "__main__":
-    parser = create_parser()
-    evb_demo(parser.parse_typed_args())

@@ -1,3 +1,4 @@
+# pylint: skip-file
 import numpy as np
 import numpy.typing as npt
 
@@ -27,9 +28,7 @@ def syn_p_wave(
         x = np.linspace(-2.172, 2.172, p_length) ** 2
         y = np.sin(x) * p_voltage
         multiplier = np.linspace(1, p_biphasic_ratio, (p_length * 3) // 4)
-        multiplier = np.append(
-            multiplier, np.linspace(p_biphasic_ratio, 1, p_length - multiplier.size)
-        )
+        multiplier = np.append(multiplier, np.linspace(p_biphasic_ratio, 1, p_length - multiplier.size))
     else:
         x = np.linspace(-0.5 * np.pi, 1.5 * np.pi, p_length)
         y = ((np.sin(x) + 1) / 2) * p_voltage
@@ -71,7 +70,7 @@ def sin_wave_generator(
     duration_counter += 1
     return x, duration_counter
 
-
+# pylint: disable=too-many-locals
 def syn_qrs_complex(
     qrs_duration: float = 80,
     q_depth: float = 0.2,
@@ -99,17 +98,17 @@ def syn_qrs_complex(
         q_to_qr_duration_ratio (float, optional): Ratio of Q wave duration to QR complex duration. Defaults to 0.2.
         r_height (float, optional): Magnitude of R wave in mV. Defaults to 1.
         r_1_upswing_ratio (float, optional): Duration of R wave upswing as a fraction of total R wave duration. Defaults to 0.5.
-        r_1_downswing_ratio (float, optional): Duration of initial R wave downswing as a fraction of total R wave duration. Defaults to 0.25.
+        r_1_downswing_ratio (float, optional): Duration of initial R wave downswing as fraction of total R wave. Defaults to 0.25.
         r_prime_present (float, optional): Boolean denoting presence of R' wave. Defaults to True.
         r_to_r_prime_duration_ratio (float, optional): Ratio of duration of R : R'. Defaults to 1.
         r_prime_height (float, optional): Magnitude of R' wave in mV. Defaults to 1.
         r_2_upswing_ratio (float, optional): Duration of R' wave upswing as a fraction of total R' wave duration. Defaults to 0.5.
-        r_2_downswing_ratio (float, optional): Duration of initial R' wave downswing as a fraction of total R' wave duration. Defaults to 0.25.
+        r_2_downswing_ratio (float, optional): Duration of initial R' wave downswing as fraction of total R' wave. Defaults to 0.25.
         s_prime_height (float, optional): If S wave is "W" shaped, magnitude of positive mid-wave inflection in mV. Defaults to 0.2.
         s_present (bool, optional): Boolean denoting presence of S wave. Defaults to True.
         s_to_qrs_duration_ratio (float, optional): Ratio of S wave duration to QRS complex duration. Defaults to 0.1.
         s_depth (float, optional): Magnitude of S wave in mV. Defaults to 0.1.
-        flipper (float, optional): Voltage multiplier applied uniformly to entire wave (1 has no effect, -1 flips whole wave). Defaults to 1.
+        flipper (float, optional): Voltage multiplier applied uniformly to entire wave (1: no effect, -1: flip). Defaults to 1.
         j_point (float, optional): Magnitude of J point in mV. Defaults to 0.
 
     Returns:
@@ -159,7 +158,7 @@ def syn_qrs_complex(
     waves.append("R1_1")
     duration.append(r1_ds)
     waves.append("R1_2")
-    if r_prime_present == False and s_present == False:
+    if not r_prime_present and not s_present:
         duration.append(qrs_duration - sum(duration))
         waves.append("R1_3")
     else:
@@ -175,7 +174,7 @@ def syn_qrs_complex(
         waves.append("R2_1")
         duration.append(r2_ds)
         waves.append("R2_2")
-        if s_present == False:
+        if not s_present:
             duration.append(qrs_duration - sum(duration))
             waves.append("R2_3")
         else:
@@ -193,9 +192,7 @@ def syn_qrs_complex(
     # Calculate voltage of wavelets:
     # Q wave
     if q_depth > 0:
-        x, duration_counter = sin_wave_generator(
-            0.5, 1.5, duration, duration_counter, waves
-        )
+        x, duration_counter = sin_wave_generator(0.5, 1.5, duration, duration_counter, waves)
         q = ((np.sin(x) - 1) / 2) * q_depth
         q_peak = np.argmin(q)
     else:
@@ -204,11 +201,9 @@ def syn_qrs_complex(
     # QR wavelet
     x, duration_counter = sin_wave_generator(-0.5, 0, duration, duration_counter, waves)
     qr = (((np.sin(x) + 1)) * (r_height + q_depth)) - q_depth
-    if (
-        not r_prime_present
-        or (s_prime_height <= r_height)
-        or (r_height > 0 and s_prime_height < 0)
-    ) and (not (r_prime_height > r_height and s_prime_height > r_height)):
+    if (not r_prime_present or (s_prime_height <= r_height) or (r_height > 0 and s_prime_height < 0)) and (
+        not (r_prime_height > r_height and s_prime_height > r_height)
+    ):
         r_peak = q.size + qr.size
 
     # RS wave
@@ -216,64 +211,39 @@ def syn_qrs_complex(
     if r_prime_present:
         # rs1 is first half of downwards inflection after R peak
         rs1 = (((np.sin(x) + 1) / 2) * (r_height - s_prime_height)) + s_prime_height
-        x, duration_counter = sin_wave_generator(
-            1, 1.5, duration, duration_counter, waves
-        )
+        x, duration_counter = sin_wave_generator(1, 1.5, duration, duration_counter, waves)
         # rs2 is second half of downwards inflection after R peak
         rs2 = (((np.sin(x) + 1) / 2) * (r_height - s_prime_height)) + s_prime_height
         rs = np.concatenate((rs1, rs2[1:]))
         if s_prime_height > r_height and s_prime_height > r_prime_height:
             r_peak = q.size + qr.size + rs.size
-        elif (
-            r_height > 0
-            and r_prime_height < 0
-            and (abs(s_prime_height - r_prime_height) <= abs(r_prime_height) / 10)
-        ):
+        elif r_height > 0 and r_prime_height < 0 and (abs(s_prime_height - r_prime_height) <= abs(r_prime_height) / 10):
             s_peak = q.size + qr.size + rs.size
-        x, duration_counter = sin_wave_generator(
-            -0.5, 0.5, duration, duration_counter, waves
-        )
+        x, duration_counter = sin_wave_generator(-0.5, 0.5, duration, duration_counter, waves)
         # sr is upwards inflect from S prime towards R prime
-        sr = (
-            ((np.sin(x) + 1) / 2) * (r_prime_height - s_prime_height)
-        ) + s_prime_height
+        sr = (((np.sin(x) + 1) / 2) * (r_prime_height - s_prime_height)) + s_prime_height
         if (
             r_height >= s_prime_height
-            and (
-                r_prime_height > s_prime_height
-                or abs(s_prime_height - r_prime_height) <= abs(r_prime_height) / 10
-            )
+            and (r_prime_height > s_prime_height or abs(s_prime_height - r_prime_height) <= abs(r_prime_height) / 10)
         ) or (
-            r_height > 0
-            and r_prime_height < 0
-            and (abs(s_prime_height - r_prime_height) <= abs(r_prime_height) / 10)
+            r_height > 0 and r_prime_height < 0 and (abs(s_prime_height - r_prime_height) <= abs(r_prime_height) / 10)
         ):
             r_prime_peak = q.size + qr.size + rs.size + sr.size
-        elif (
-            r_height > 0
-            and r_prime_height < 0
-            and (abs(s_prime_height - r_prime_height) > abs(r_prime_height))
-        ):
+        elif r_height > 0 and r_prime_height < 0 and (abs(s_prime_height - r_prime_height) > abs(r_prime_height)):
             s_peak = q.size + qr.size + rs.size + sr.size
         elif r_prime_height > r_height and r_prime_height > s_prime_height:
             r_peak = q.size + qr.size + rs.size + sr.size
-        x, duration_counter = sin_wave_generator(
-            0.5, 1, duration, duration_counter, waves
-        )
+        x, duration_counter = sin_wave_generator(0.5, 1, duration, duration_counter, waves)
         # rs1 is first half of downwards inflection after R prime peak
         rs3 = ((np.sin(x) + 1) / 2) * (r_prime_height)
-        x, duration_counter = sin_wave_generator(
-            1, 1.5, duration, duration_counter, waves
-        )
+        x, duration_counter = sin_wave_generator(1, 1.5, duration, duration_counter, waves)
         rs1 = np.concatenate((rs, sr, rs3))
         if s_present:
             # rs2 is second half of downwards inflection after R prime peak (to S trough)
             rs2 = (((np.sin(x) + 1) / 2) * (r_prime_height + (s_depth * 2))) - s_depth
             rs = np.concatenate((rs1, rs2[1:]))
             s_peak = q.size + qr.size + rs.size
-            x, duration_counter = sin_wave_generator(
-                -0.5, 0.5, duration, duration_counter, waves
-            )
+            x, duration_counter = sin_wave_generator(-0.5, 0.5, duration, duration_counter, waves)
             # s is upwards inflection from S trough to J point
             s = (((np.sin(x) + 1) / 2) * (s_depth + j_point)) - s_depth
             y = np.concatenate((q, qr, rs, s))
@@ -286,17 +256,13 @@ def syn_qrs_complex(
     else:
         # rs1 is first half of downwards inflection after R peak
         rs1 = ((np.sin(x) + 1) / 2) * (r_height)
-        x, duration_counter = sin_wave_generator(
-            1.25, 1.5, duration, duration_counter, waves
-        )
+        x, duration_counter = sin_wave_generator(1.25, 1.5, duration, duration_counter, waves)
         if s_present:
             # rs2 is second half of downwards inflection after R prime peak (to S trough)
             rs2 = (((np.sin(x) + 1)) * (r_height + s_depth)) - s_depth
             rs = np.concatenate((rs1, rs2[1:]))
             s_peak = q.size + qr.size + rs.size
-            x, duration_counter = sin_wave_generator(
-                -0.5, 0.5, duration, duration_counter, waves
-            )
+            x, duration_counter = sin_wave_generator(-0.5, 0.5, duration, duration_counter, waves)
             # s is upwards inflection from S trough to J point
             s = ((np.sin(x) / 2) + 0.5) * (s_depth + j_point) - s_depth
             y = np.concatenate((q, qr, rs, s))
@@ -313,9 +279,7 @@ def syn_qrs_complex(
     x_log = (x_log / np.amax(x_log)) * (rs2.size - 1)
     x_norm = np.linspace(x_log[0], 0, x_log.size)
     x_log = x_log - x_norm
-    x[q.size + qr.size + rs1.size : q.size + qr.size + rs.size] = (
-        x_log + q.size + qr.size + rs1.size
-    )
+    x[q.size + qr.size + rs1.size : q.size + qr.size + rs.size] = x_log + q.size + qr.size + rs1.size
 
     # Flip and scale voltages
     y = y * flipper * 0.001
@@ -336,7 +300,7 @@ def syn_st_segment(
 
     Args:
         j_point (float, optional): magnitude of J point in mV. Defaults to 0.
-        st_delta (float, optional): Change in magnitude of ST segment over the course of the wave in mV (0.1 slopes up, -0.1 slopes down). Defaults to 0.
+        st_delta (float, optional): Change in magnitude of ST segment over entire wave in mV (0.1: up, -0.1: down). Defaults to 0.
         st_length (float, optional): Duration of ST segment in mS. Defaults to 50.
         t_height (float, optional): Not used. Defaults to 0.5.
         flipper (float, optional): Voltage multiplier applied uniformly to wave (1: no effect, -1: flips wave). Defaults to 1.

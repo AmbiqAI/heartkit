@@ -1,8 +1,7 @@
 from typing import Callable
 
 import tensorflow as tf
-
-# import tensorflow_addons as tfa
+import tensorflow_addons as tfa
 from keras.engine.keras_tensor import KerasTensor
 
 
@@ -42,8 +41,11 @@ def relu6(name: str | None = None) -> tf.keras.layers.Layer:
     """Hard ReLU activation layer"""
     name = name + ".act" if name else None
     return tf.keras.layers.Activation(tf.nn.relu6, name=name)
-    # return tf.keras.layers.Activation(tfa.activations.mish)
-    # return tf.keras.layers.Activation(tf.nn.swish, name=name)
+
+
+def mish(name: str | None = None) -> tf.keras.layers.Layer:
+    """Mish activation layer"""
+    return tf.keras.layers.Activation(tfa.activations.mish)
 
 
 def gelu(name: str | None = None) -> tf.keras.layers.Layer:
@@ -73,6 +75,7 @@ def conv2d(
         kernel_size (int | tuple[int, int], optional): Kernel size. Defaults to 3.
         strides (int | tuple[int, int], optional): Stride length. Defaults to 1.
         padding (str, optional): Padding. Defaults to "same".
+        use_bias (bool, optional): Add bias. Defaults to False.
         name (str|None, optional): Layer name. Defaults to None.
 
     Returns:
@@ -90,9 +93,40 @@ def conv2d(
     )
 
 
-def se_block(
-    ratio: int = 8, name: str | None = None
-) -> Callable[[KerasTensor], KerasTensor]:
+def conv1d(
+    filters: int,
+    kernel_size: int = 3,
+    strides: int = 1,
+    padding: str = "same",
+    use_bias: bool = False,
+    name: str | None = None,
+) -> tf.keras.layers.Layer:
+    """1D convolutional layer using 2D convolutional layer
+
+    Args:
+        filters (int): # filters
+        kernel_size (int, optional): Kernel size. Defaults to 3.
+        strides (int, optional): Stride length. Defaults to 1.
+        padding (str, optional): Padding. Defaults to "same".
+        use_bias (bool, optional): Add bias. Defaults to False.
+        name (str | None, optional): _description_. Defaults to None.
+
+    Returns:
+        tf.keras.layers.Layer: _description_
+    """
+    name = name + ".conv" if name else None
+    return tf.keras.layers.Conv2D(
+        filters,
+        kernel_size=(1, kernel_size),
+        strides=(1, strides),
+        padding=padding,
+        use_bias=use_bias,
+        kernel_initializer=tf.keras.initializers.VarianceScaling(),
+        name=name,
+    )
+
+
+def se_block(ratio: int = 8, name: str | None = None) -> Callable[[KerasTensor], KerasTensor]:
     """Squeeze & excite block
 
     Args:
@@ -109,9 +143,7 @@ def se_block(
         name_pool = f"{name}.pool" if name else None
         name_sq = f"{name}.sq" if name else None
         y = tf.keras.layers.GlobalAveragePooling2D(name=name_pool, keepdims=True)(x)
-        y = conv2d(num_chan // ratio, kernel_size=(1, 1), use_bias=True, name=name_sq)(
-            y
-        )
+        y = conv2d(num_chan // ratio, kernel_size=(1, 1), use_bias=True, name=name_sq)(y)
         y = relu6(name=name_sq)(y)
         # Excite
         name_ex = f"{name}.ex" if name else None
@@ -149,9 +181,8 @@ def mbconv_block(
 
     def layer(x: KerasTensor) -> KerasTensor:
         input_filters = x.shape[-1]
-        add_residual = input_filters == output_filters and (
-            strides == 1 if isinstance(strides, int) else strides[0] == 1
-        )
+        is_downsample = strides != 1 if isinstance(strides, int) else sum(strides) != 1
+        add_residual = input_filters == output_filters and not is_downsample
         # Expand: narrow -> wide
         if expand_ratio > 1:
             name_ex = f"{name}.exp" if name else None
@@ -163,16 +194,20 @@ def mbconv_block(
             y = x
 
         # Apply: wide -> wide
+        # NOTE: DepthwiseConv2D only supports equal size stride
+        # Using Pooling operator for now
         name_dp = f"{name}.dp" if name else None
         y = tf.keras.layers.DepthwiseConv2D(
             kernel_size=kernel_size,
-            strides=strides,
+            strides=(1, 1),  # strides,
             padding="same",
             use_bias=False,
             name=name_dp,
         )(y)
         y = batch_norm(name=name_dp)(y)
         y = relu6(name=name_dp)(y)
+        if is_downsample:
+            y = tf.keras.layers.MaxPool2D(pool_size=strides, padding="same")(y)
 
         # SE: wide -> wide
         if se_ratio:

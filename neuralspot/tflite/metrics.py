@@ -22,11 +22,7 @@ def _flops_fused_batch_norm_v3(graph, node):
     if node.attr["is_training"].b is True:
         raise ValueError("Only supports inference mode")
 
-    num_flops = (
-        2 * in_shape.num_elements()
-        + 5 * variance_shape.num_elements()
-        + mean_shape.num_elements()
-    )
+    num_flops = 2 * in_shape.num_elements() + 5 * variance_shape.num_elements() + mean_shape.num_elements()
     return ops.OpStats("flops", num_flops)
 
 
@@ -50,25 +46,19 @@ def get_flops(model: tf.keras.Model, batch_size: int | None = None) -> float:
     Use tf.profiler of tensorflow v1 api.
     """
     if not isinstance(model, (tf.keras.Model, tf.keras.Sequential)):
-        raise KeyError(
-            "model arguments must be tf.keras.Model or tf.keras.Sequential instanse"
-        )
+        raise KeyError("model arguments must be tf.keras.Model or tf.keras.Sequential instanse")
 
     if batch_size is None:
         batch_size = 1
 
     # convert tf.keras model into frozen graph to count FLOPS about operations used at inference
     # FLOPS depends on batch size
-    inputs = [
-        tf.TensorSpec([batch_size] + inp.shape[1:], inp.dtype) for inp in model.inputs
-    ]
+    inputs = [tf.TensorSpec([batch_size] + inp.shape[1:], inp.dtype) for inp in model.inputs]
     real_model = tf.function(model).get_concrete_function(inputs)
     frozen_func, _ = convert_variables_to_constants_v2_as_graph(real_model)
 
     # Calculate FLOPS with tf.profiler
     run_meta = tf.compat.v1.RunMetadata()
     opts = tf.compat.v1.profiler.ProfileOptionBuilder.float_operation()
-    flops = tf.compat.v1.profiler.profile(
-        graph=frozen_func.graph, run_meta=run_meta, cmd="scope", options=opts
-    )
+    flops = tf.compat.v1.profiler.profile(graph=frozen_func.graph, run_meta=run_meta, cmd="scope", options=opts)
     return float(flops.total_float_ops)  # pylint: disable=no-member

@@ -6,9 +6,7 @@ import numpy.typing as npt
 import scipy.signal
 
 
-def preprocess_signal(
-    data: npt.ArrayLike, sample_rate: float, target_rate: float | None = None
-) -> npt.ArrayLike:
+def preprocess_signal(data: npt.ArrayLike, sample_rate: float, target_rate: float | None = None) -> npt.ArrayLike:
     """Pre-process signal
 
     Args:
@@ -21,8 +19,8 @@ def preprocess_signal(
     """
     axis = 0
     norm_en = True
-    norm_eps = 0
-    filter_en = False
+    norm_eps = 1e-6
+    filter_en = True
     filt_lo = 0.5
     filt_hi = 40
     resample_en = target_rate is not None and sample_rate != target_rate
@@ -30,13 +28,9 @@ def preprocess_signal(
     x = np.copy(data)
 
     if filter_en:
-        x = filter_signal(
-            x, lowcut=filt_lo, highcut=filt_hi, sample_rate=sample_rate, axis=axis
-        )
+        x = filter_signal(x, lowcut=filt_lo, highcut=filt_hi, sample_rate=sample_rate, axis=axis)
     if resample_en:
-        x = resample_signal(
-            x, sample_rate=sample_rate, target_rate=target_rate, axis=axis
-        )
+        x = resample_signal(x, sample_rate=sample_rate, target_rate=target_rate, axis=axis)
     if norm_en:
         x = normalize_signal(x, eps=norm_eps)
     return x
@@ -86,15 +80,11 @@ def filter_signal(
     Returns:
         npt.ArrayLike: Filtered signal
     """
-    sos = get_butter_bp_sos(
-        lowcut=lowcut, highcut=highcut, sample_rate=sample_rate, order=order
-    )
+    sos = get_butter_bp_sos(lowcut=lowcut, highcut=highcut, sample_rate=sample_rate, order=order)
     return scipy.signal.sosfiltfilt(sos, data, axis=axis)
 
 
-def resample_signal(
-    data: npt.ArrayLike, sample_rate: float, target_rate: float, axis: int = 0
-) -> npt.ArrayLike:
+def resample_signal(data: npt.ArrayLike, sample_rate: float, target_rate: float, axis: int = 0) -> npt.ArrayLike:
     """Resample signal using scipy FFT-based resample routine.
 
     Args:
@@ -110,9 +100,7 @@ def resample_signal(
     return scipy.signal.resample(data, desired_length, axis=axis)
 
 
-def normalize_signal(
-    data: npt.ArrayLike, eps: float = 1e-3, axis: int = 0
-) -> npt.ArrayLike:
+def normalize_signal(data: npt.ArrayLike, eps: float = 1e-3, axis: int = 0) -> npt.ArrayLike:
     """Normalize signal about its mean and std.
 
     Args:
@@ -141,19 +129,13 @@ def rolling_standardize(x: npt.ArrayLike, win_len: int) -> npt.ArrayLike:
     x_roll = np.lib.stride_tricks.sliding_window_view(x, win_len)
     x_roll_std = np.std(x_roll, axis=-1)
     x_roll_mu = np.mean(x_roll, axis=-1)
-    x_std = np.concatenate(
-        (np.repeat(x_roll_std[0], x.shape[0] - x_roll_std.shape[0]), x_roll_std)
-    )
-    x_mu = np.concatenate(
-        (np.repeat(x_roll_mu[0], x.shape[0] - x_roll_mu.shape[0]), x_roll_mu)
-    )
+    x_std = np.concatenate((np.repeat(x_roll_std[0], x.shape[0] - x_roll_std.shape[0]), x_roll_std))
+    x_mu = np.concatenate((np.repeat(x_roll_mu[0], x.shape[0] - x_roll_mu.shape[0]), x_roll_mu))
     x_norm = (x - x_mu) / x_std
     return x_norm
 
 
-def running_mean_std(
-    iterator, dtype: npt.DTypeLike | None = None
-) -> tuple[float, float]:
+def running_mean_std(iterator, dtype: npt.DTypeLike | None = None) -> tuple[float, float]:
     """Calculate mean and standard deviation while iterating over the data iterator.
         iterator (Iterable): Data iterator.
         dtype (npt.DTypeLike | None): Type of accumulators.

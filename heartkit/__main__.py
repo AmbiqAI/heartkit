@@ -1,3 +1,3 @@
-from heartkit import app
+from heartkit import cli
 
-app.run()
+cli.run()

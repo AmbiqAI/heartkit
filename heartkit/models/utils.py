@@ -1,7 +1,6 @@
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import tensorflow as tf
 
 
 def get_predicted_threshold_indices(
@@ -23,30 +22,9 @@ def get_predicted_threshold_indices(
     if y_pred is None:
         y_pred = np.argmax(y_prob, axis=1)
 
-    y_pred_prob = np.take_along_axis(
-        y_prob, np.expand_dims(y_pred, axis=-1), axis=-1
-    ).squeeze(axis=-1)
+    y_pred_prob = np.take_along_axis(y_prob, np.expand_dims(y_pred, axis=-1), axis=-1).squeeze(axis=-1)
     y_thresh_idx = np.where(y_pred_prob > threshold)[0]
     return y_thresh_idx
-
-
-def get_strategy(use_mixed_precision: bool = False) -> tf.distribute.Strategy:
-    """Select best distribution strategy.
-    Args:
-        use_mixed_precision (bool, optional): Use mixed precision on TPU. Defaults to False.
-    Returns:
-        tf.distribute.Strategy: Strategy
-    """
-    # Try to detect an available TPU. If none is present, default to MirroredStrategy
-    try:
-        tpu = tf.distribute.cluster_resolver.TPUClusterResolver.connect()
-        strategy = tf.distribute.TPUStrategy(tpu)
-        if use_mixed_precision:
-            tf.keras.mixed_precision.set_global_policy("mixed_bfloat16")
-    except ValueError:
-        # MirroredStrategy is best for a single machine with one or multiple GPUs
-        strategy = tf.distribute.MirroredStrategy()
-    return strategy
 
 
 def create_predictions_frame(
@@ -74,9 +52,7 @@ def create_predictions_frame(
         # use index of the label as a class name
         class_names = np.arange(num_classes)
     elif len(class_names) != num_classes:
-        raise ValueError(
-            "length of class_names does not match with the number of classes"
-        )
+        raise ValueError("length of class_names does not match with the number of classes")
     columns = [f"prob_{label}" for label in class_names]
     data = {column: y_prob[:, i] for i, column in enumerate(columns)}
     if y_pred is not None:
@@ -151,13 +127,9 @@ def matches_spec(o, spec, ignore_batch_dim: bool = False):
     """
     if isinstance(spec, (list, tuple)):
         if not isinstance(o, (list, tuple)):
-            raise ValueError(
-                f"data object is not a list or tuple which is required by the spec: {spec}"
-            )
+            raise ValueError(f"data object is not a list or tuple which is required by the spec: {spec}")
         if len(spec) != len(o):
-            raise ValueError(
-                f"data object has a different number of elements than the spec: {spec}"
-            )
+            raise ValueError(f"data object has a different number of elements than the spec: {spec}")
         for i, ispec in enumerate(spec):
             if not matches_spec(o[i], ispec, ignore_batch_dim=ignore_batch_dim):
                 return False
@@ -165,13 +137,9 @@ def matches_spec(o, spec, ignore_batch_dim: bool = False):
 
     if isinstance(spec, dict):
         if not isinstance(o, dict):
-            raise ValueError(
-                f"data object is not a dict which is required by the spec: {spec}"
-            )
+            raise ValueError(f"data object is not a dict which is required by the spec: {spec}")
         if spec.keys() != o.keys():
-            raise ValueError(
-                f"data object has different keys than those specified in the spec: {spec}"
-            )
+            raise ValueError(f"data object has different keys than those specified in the spec: {spec}")
         for k in spec:
             if not matches_spec(o[k], spec[k], ignore_batch_dim=ignore_batch_dim):
                 return False

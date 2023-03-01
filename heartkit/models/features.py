@@ -2,7 +2,7 @@ import tensorflow as tf
 from keras.engine.keras_tensor import KerasTensor
 
 from ..defines import ArchitectureType
-from .resnet1d import generate_resnet
+from .resnet1d import ResNet1D
 
 
 def ecg_feature_extractor(
@@ -21,7 +21,7 @@ def ecg_feature_extractor(
         tf.keras.Sequential: Feature extractor model
     """
     if arch is None or arch == "resnet12":
-        x = generate_resnet(
+        x = ResNet1D(
             inputs=inputs,
             input_conv=(32, 7, 2),
             blocks=(1, 1, 1)[:stages],
@@ -30,21 +30,21 @@ def ecg_feature_extractor(
             include_top=False,
         )
     elif arch == "resnet18":
-        x = generate_resnet(
+        x = ResNet1D(
             inputs=inputs,
             blocks=(2, 2, 2, 2)[:stages],
             kernel_size=(7, 5, 5, 3),
             include_top=False,
         )
     elif arch == "resnet34":
-        x = generate_resnet(
+        x = ResNet1D(
             inputs=inputs,
             blocks=(3, 4, 6, 3)[:stages],
             kernel_size=(7, 5, 5, 3),
             include_top=False,
         )
     elif arch == "resnet50":
-        x = generate_resnet(
+        x = ResNet1D(
             inputs=inputs,
             blocks=(3, 4, 6, 3)[:stages],
             kernel_size=(7, 5, 5, 3),
@@ -54,5 +54,5 @@ def ecg_feature_extractor(
     else:
         raise ValueError(f"unknown architecture: {arch}")
 
-    x = tf.keras.layers.GlobalAveragePooling1D()(x)
+    x = tf.keras.layers.GlobalAveragePooling2D()(x)
     return x

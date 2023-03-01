@@ -23,9 +23,7 @@ class EcgDataset:
     task: HeartTask
     frame_size: int
 
-    def __init__(
-        self, ds_path: str, task: HeartTask = HeartTask.rhythm, frame_size: int = 1250
-    ) -> None:
+    def __init__(self, ds_path: str, task: HeartTask = HeartTask.rhythm, frame_size: int = 1250) -> None:
         """ECG dataset base class"""
         self.ds_path = ds_path
         self.task = task
@@ -87,11 +85,11 @@ class EcgDataset:
         repeat: bool = True,
         shuffle: bool = True,
     ) -> PatientGenerator:
-        """Yield data for each patient in the array.
+        """Yield data uniformly for each patient in the array.
         Args:
             patient_ids (pt.ArrayLike): Array of patient ids
             repeat (bool, optional): Whether to repeat generator. Defaults to True.
-            shuffle (bool, optional): Whether to shuffle patient ids.. Defaults to True.
+            shuffle (bool, optional): Whether to shuffle patient ids. Defaults to True.
 
         Returns:
             PatientGenerator: Patient generator
@@ -141,11 +139,7 @@ class EcgDataset:
 
         # Use subset of training patients
         if train_patients is not None:
-            num_pts = (
-                int(train_patients)
-                if train_patients > 1
-                else int(train_patients * len(train_patient_ids))
-            )
+            num_pts = int(train_patients) if train_patients > 1 else int(train_patients * len(train_patient_ids))
             train_patient_ids = train_patient_ids[:num_pts]
         # END IF
 
@@ -153,9 +147,7 @@ class EcgDataset:
         if val_file and os.path.isfile(val_file):
             logger.info(f"Loading validation data from file {val_file}")
             val = load_pkl(val_file)
-            val_ds = create_dataset_from_data(
-                val["x"], val["y"], get_task_spec(self.task, self.frame_size)
-            )
+            val_ds = create_dataset_from_data(val["x"], val["y"], get_task_spec(self.task, self.frame_size))
             val_patient_ids = val["patient_ids"]
             train_patient_ids = np.setdiff1d(train_patient_ids, val_patient_ids)
         else:
@@ -164,7 +156,7 @@ class EcgDataset:
                 patient_ids=train_patient_ids, test_size=val_patients
             )
             if val_size is None:
-                val_size = 200 * len(val_patient_ids)
+                val_size = val_pt_samples * len(val_patient_ids)
 
             logger.info(f"Collecting {val_size} validation samples")
             val_ds = self._parallelize_dataset(
@@ -174,9 +166,7 @@ class EcgDataset:
                 num_workers=num_workers,
             )
             val_x, val_y = next(val_ds.batch(val_size).as_numpy_iterator())
-            val_ds = create_dataset_from_data(
-                val_x, val_y, get_task_spec(self.task, self.frame_size)
-            )
+            val_ds = create_dataset_from_data(val_x, val_y, get_task_spec(self.task, self.frame_size))
 
             # Cache validation set
             if val_file:
@@ -213,13 +203,9 @@ class EcgDataset:
         test_patient_ids = self.get_test_patient_ids()
 
         if test_patients is not None:
-            num_pts = (
-                int(test_patients)
-                if test_patients > 1
-                else int(test_patients * len(test_patient_ids))
-            )
+            num_pts = int(test_patients) if test_patients > 1 else int(test_patients * len(test_patient_ids))
             test_patient_ids = test_patient_ids[:num_pts]
-        test_patient_ids = tf.convert_to_tensor(test_patient_ids)
+        # test_patient_ids = tf.convert_to_tensor(test_patient_ids)
         test_ds = self._parallelize_dataset(
             patient_ids=test_patient_ids,
             samples_per_patient=test_pt_samples,
@@ -262,12 +248,10 @@ class EcgDataset:
         return tf.data.Dataset.from_tensor_slices(datasets).interleave(
             lambda x: x,
             cycle_length=num_workers,
-            num_parallel_calls=tf.data.experimental.AUTOTUNE,
+            num_parallel_calls=tf.data.AUTOTUNE,
         )
 
-    def _split_train_test_patients(
-        self, patient_ids: npt.ArrayLike, test_size: float
-    ) -> list[list[int]]:
+    def _split_train_test_patients(self, patient_ids: npt.ArrayLike, test_size: float) -> list[list[int]]:
         """Perform train/test split on patients for given task.
 
         Args:
@@ -277,9 +261,7 @@ class EcgDataset:
         Returns:
             list[list[int]]: Train and test sets of patient ids
         """
-        return sklearn.model_selection.train_test_split(
-            patient_ids, test_size=test_size
-        )
+        return sklearn.model_selection.train_test_split(patient_ids, test_size=test_size)
 
     def _create_dataset_from_generator(
         self,
@@ -328,11 +310,10 @@ class EcgDataset:
         )
         data_generator = map(
             lambda x_y: (
-                preprocess_signal(
-                    data=x_y[0], sample_rate=self.sampling_rate, target_rate=250
-                ),
-                tf.one_hot(x_y[1], num_classes)
-                # x_y[1]
+                # Apply augmentations
+                # Pre-process signal and convert to 2D shape
+                preprocess_signal(data=x_y[0], sample_rate=self.sampling_rate, target_rate=None).reshape((1, -1, 1)),
+                tf.one_hot(x_y[1], num_classes),  # x_y[1]
             ),
             data_generator,
         )

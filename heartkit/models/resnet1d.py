@@ -3,34 +3,7 @@ from typing import Callable
 import tensorflow as tf
 from keras.engine.keras_tensor import KerasTensor
 
-
-def batch_norm() -> tf.keras.layers.Layer:
-    """Batch normalization layer"""
-    return tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-5)
-
-
-def relu() -> tf.keras.layers.Layer:
-    """ReLU layer"""
-    return tf.keras.layers.ReLU()
-
-
-def relu6() -> tf.keras.layers.Layer:
-    """ReLU6 layer"""
-    return tf.keras.layers.Activation(tf.nn.relu6)
-
-
-def conv1d(
-    filters: int, kernel_size: int = 3, strides: int = 1
-) -> tf.keras.layers.Layer:
-    """1D convolutional layer using 2D convolutional layer"""
-    return tf.keras.layers.Conv2D(
-        filters,
-        kernel_size=(1, kernel_size),
-        strides=(1, strides),
-        padding="same",
-        use_bias=False,
-        kernel_initializer=tf.keras.initializers.VarianceScaling(),
-    )
+from .blocks import batch_norm, conv1d, relu6
 
 
 def generate_bottleneck_block(
@@ -114,7 +87,7 @@ def generate_residual_block(
     return layer
 
 
-def generate_resnet(
+def ResNet1D(
     inputs: KerasTensor,
     num_outputs: int = 1,
     blocks: tuple[int, ...] = (2, 2, 2, 2),
@@ -141,8 +114,7 @@ def generate_resnet(
     Returns:
         KerasTensor: Outputs
     """
-    x = tf.keras.layers.Reshape([1] + inputs.shape[1:])(inputs)
-    x = conv1d(*input_conv)(x)
+    x = conv1d(*input_conv)(inputs)
     x = batch_norm()(x)
     x = relu6()(x)
     x = tf.keras.layers.MaxPooling2D(3, (1, 2), padding="same")(x)
@@ -163,9 +135,8 @@ def generate_resnet(
                 )(x)
         # END FOR
     # END FOR
-    x = tf.keras.layers.Reshape(x.shape[2:])(x)
     if include_top:
         out_act = "sigmoid" if num_outputs == 1 else "softmax"
-        x = tf.keras.layers.GlobalAveragePooling1D()(x)
+        x = tf.keras.layers.GlobalAveragePooling2D()(x)
         x = tf.keras.layers.Dense(num_outputs, out_act)(x)
     return x

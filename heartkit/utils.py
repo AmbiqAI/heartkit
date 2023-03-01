@@ -27,27 +27,6 @@ def set_random_seed(seed: int | None = None) -> int:
     return seed
 
 
-def buffered_generator(generator, buffer_size: int):
-    """Buffer the elements yielded by a generator. New elements replace the oldest elements in the buffer.
-
-    Args:
-        generator (Generator): Generator object.
-        buffer_size (int): Number of elements in the buffer.
-
-    Returns:
-        Generator: Yields a buffer.
-    """
-    buffer = []
-    for e in generator:
-        buffer.append(e)
-        if len(buffer) == buffer_size:
-            break
-    yield buffer
-    for e in generator:
-        buffer = buffer[1:] + [e]
-        yield buffer
-
-
 def load_pkl(file: str, compress: bool = True):
     """Load pickled file.
 

@@ -6,23 +6,19 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 import wandb
 from rich.console import Console
+from sklearn.metrics import f1_score
 from wandb.keras import WandbCallback
 
 from neuralspot.tflite.convert import convert_tflite, predict_tflite, xxd_c_dump
 from neuralspot.tflite.metrics import get_flops
 from neuralspot.tflite.model import get_strategy, load_model
 
-from .datasets.ludb import LudbDataset
-from .datasets.synthetic import SyntheticDataset
-from .defines import (
-    HeartExportParams,
-    HeartSegment,
-    HeartTask,
-    HeartTestParams,
-    HeartTrainParams,
-)
+from .datasets import IcentiaDataset
+from .defines import HeartExportParams, HeartTask, HeartTestParams, HeartTrainParams
+from .metrics import confusion_matrix_plot, roc_auc_plot
 from .models.optimizers import Adam
-from .tasks import create_task_model, get_num_classes, get_task_shape
+from .models.utils import get_predicted_threshold_indices
+from .tasks import create_task_model, get_class_names, get_task_shape
 from .utils import env_flag, set_random_seed, setup_logger
 
 console = Console()
@@ -30,7 +26,7 @@ logger = setup_logger(__name__)
 
 
 def train_model(params: HeartTrainParams):
-    """Train segmentation model.
+    """Train rhythm-level arrhythmia model.
 
     Args:
         params (HeartTrainParams): Training parameters
@@ -45,33 +41,24 @@ def train_model(params: HeartTrainParams):
         fp.write(params.json(indent=2))
 
     if env_flag("WANDB"):
-        wandb.init(project=f"ecg-{HeartTask.segmentation}", entity="ambiq", dir=str(params.job_dir))
+        wandb.init(project=f"ecg-{HeartTask.rhythm}", entity="ambiq", dir=str(params.job_dir))
         wandb.config.update(params.dict())
 
-    datasets = [
-        SyntheticDataset(str(params.ds_path), task=HeartTask.segmentation, frame_size=params.frame_size, num_pts=10000),
-        # LudbDataset(str(params.ds_path), task=HeartTask.segmentation, frame_size=params.frame_size)
-    ]
-    train_datasets = []
-    val_datasets = []
-    for ds in datasets:
-        # Create TF datasets
-        train_ds, val_ds = ds.load_train_datasets(
-            train_patients=params.train_patients,
-            val_patients=params.val_patients,
-            train_pt_samples=params.samples_per_patient,
-            val_pt_samples=params.val_samples_per_patient,
-            val_file=params.val_file,
-            val_size=params.val_size,
-            num_workers=params.data_parallelism,
-        )
-        train_datasets.append(train_ds)
-        val_datasets.append(val_ds)
-    # END FOR
-    train_ds = tf.data.Dataset.sample_from_datasets(train_datasets)
-    # val_ds = tf.data.Dataset.sample_from_datasets(val_datasets)
-    train_ds = train_datasets[-1]
-    val_ds = val_datasets[-1]
+    # Create TF datasets
+    ds = IcentiaDataset(
+        ds_path=str(params.ds_path),
+        task=HeartTask.rhythm,
+        frame_size=params.frame_size,
+    )
+    train_ds, val_ds = ds.load_train_datasets(
+        train_patients=params.train_patients,
+        val_patients=params.val_patients,
+        train_pt_samples=params.samples_per_patient,
+        val_pt_samples=params.val_samples_per_patient,
+        val_file=params.val_file,
+        val_size=params.val_size,
+        num_workers=params.data_parallelism,
+    )
 
     # Shuffle and batch datasets for training
     train_ds = (
@@ -92,31 +79,26 @@ def train_model(params: HeartTrainParams):
         num_parallel_calls=tf.data.AUTOTUNE,
     )
 
-    total_steps = params.steps_per_epoch * params.epochs
-    lr_scheduler = tf.keras.optimizers.schedules.CosineDecayRestarts(
-        initial_learning_rate=1e-4,
-        first_decay_steps=int(0.1 * total_steps),
-        t_mul=1.65 / (0.1 * 3 * (3 - 1)),
-        m_mul=0.4,
-    )
-
     strategy = get_strategy()
     with strategy.scope():
         logger.info("Building model")
-        in_shape, _ = get_task_shape(HeartTask.segmentation, params.frame_size)
-        inputs = tf.keras.Input(shape=in_shape, batch_size=None, dtype=tf.float32)
-        model = create_task_model(inputs, HeartTask.segmentation, params.arch, stages=params.stages)
+        in_shape, _ = get_task_shape(HeartTask.rhythm, params.frame_size)
+        inputs = tf.keras.Input(in_shape, batch_size=None, dtype=tf.float32)
+        model = create_task_model(inputs, HeartTask.rhythm, params.arch, stages=params.stages)
         flops = get_flops(model, batch_size=1)
-        optimizer = Adam(lr_scheduler, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
-        loss_fn = tfa.losses.SigmoidFocalCrossEntropy(from_logits=True)
-        metrics = [
-            tf.keras.metrics.CategoricalAccuracy(name="acc"),
-            tf.keras.metrics.OneHotIoU(
-                num_classes=get_num_classes(HeartTask.segmentation),
-                target_class_ids=(HeartSegment.normal, HeartSegment.pwave, HeartSegment.qrs, HeartSegment.twave),
-                name="iou",
+        optimizer = Adam(
+            tf.keras.optimizers.schedules.CosineDecayRestarts(
+                initial_learning_rate=1e-3,
+                first_decay_steps=int(0.1 * params.steps_per_epoch * params.epochs),
+                t_mul=1.8 / (0.1 * 3 * (3 - 1)),  # 3 cycles
+                m_mul=0.40,
             ),
-        ]
+            beta_1=0.9,
+            beta_2=0.98,
+            epsilon=1e-9,
+        )
+        loss_fn = tfa.losses.SigmoidFocalCrossEntropy(from_logits=True)
+        metrics = [tf.keras.metrics.CategoricalAccuracy(name="acc")]
         model.compile(optimizer=optimizer, loss=loss_fn, metrics=metrics)
         model(inputs)
 
@@ -168,11 +150,34 @@ def train_model(params: HeartTrainParams):
         tf_model_path = str(params.job_dir / "model.tf")
         logger.info(f"Model saved to {tf_model_path}")
         model.save(tf_model_path)
+
+        # Get full validation results
+        logger.info("Performing full validation")
+        test_labels = [label.numpy() for _, label in val_ds]
+        y_true = np.argmax(np.concatenate(test_labels), axis=1)
+        y_pred = np.argmax(model.predict(val_ds), axis=1)
+
+        # Summarize results
+        class_names = get_class_names(task=HeartTask.rhythm)
+        test_acc = np.sum(y_pred == y_true) / len(y_true)
+        test_f1 = f1_score(y_true, y_pred, average="macro")
+        logger.info(f"[VAL SET] ACC={test_acc:.2%}, F1={test_f1:.2%}")
+        cm_path = str(params.job_dir / "confusion_matrix.png")
+        confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path)
+        if env_flag("WANDB"):
+            wandb.log(
+                {
+                    "conf_mat": wandb.plot.confusion_matrix(
+                        probs=None, preds=y_pred, y_true=y_true, class_names=class_names
+                    )
+                }
+            )
+        # END IF
     # END WITH
 
 
 def evaluate_model(params: HeartTestParams):
-    """Test segmentation model.
+    """Test arrhythmia model.
 
     Args:
         params (HeartTestParams): Testing/evaluation parameters
@@ -181,7 +186,11 @@ def evaluate_model(params: HeartTestParams):
     logger.info(f"Random seed {params.seed}")
 
     with console.status("[bold green] Loading test dataset..."):
-        ds = LudbDataset(str(params.ds_path), task=HeartTask.segmentation, frame_size=params.frame_size)
+        ds = IcentiaDataset(
+            ds_path=str(params.ds_path),
+            task=HeartTask.rhythm,
+            frame_size=params.frame_size,
+        )
         test_ds = ds.load_test_dataset(
             test_patients=params.test_patients,
             test_pt_samples=params.samples_per_patient,
@@ -204,13 +213,34 @@ def evaluate_model(params: HeartTestParams):
         # Summarize results
         logger.info("Testing Results")
         test_acc = np.sum(y_pred == y_true) / len(y_true)
-        test_iou = -1
-        logger.info(f"[TEST SET] ACC={test_acc:.2%}, IoU={test_iou:.2%}")
+        test_f1 = f1_score(y_true, y_pred, average="macro")
+        logger.info(f"[TEST SET] ACC={test_acc:.2%}, F1={test_f1:.2%}")
+
+        # If threshold given, only count predictions above threshold
+        if params.threshold is not None:
+            y_thresh_idx = get_predicted_threshold_indices(y_prob, y_pred, params.threshold)
+            drop_perc = 1 - len(y_thresh_idx) / len(y_true)
+            y_prob = y_prob[y_thresh_idx]
+            y_pred = y_pred[y_thresh_idx]
+            y_true = y_true[y_thresh_idx]
+            test_acc = np.sum(y_pred == y_true) / len(y_true)
+            test_f1 = f1_score(y_true, y_pred, average="macro")
+            logger.info(
+                f"[TEST SET] ACC={test_acc:.2%}, F1={test_f1:.2%}, THRESH={params.threshold:0.2%}, DROP={drop_perc:.2%}"
+            )
+        # END IF
+        cm_path = str(params.job_dir / "confusion_matrix_test.png")
+        class_names = get_class_names(HeartTask.rhythm)
+        confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path)
+        if len(class_names) == 2:
+            roc_path = str(params.job_dir / "roc_auc_test.png")
+            roc_auc_plot(y_true, y_prob[:, 1], labels=class_names, save_path=roc_path)
+        # END IF
     # END WITH
 
 
 def export_model(params: HeartExportParams):
-    """Export segmentation model.
+    """Export arrhythmia model.
 
     Args:
         params (HeartDemoParams): Deployment parameters
@@ -221,15 +251,15 @@ def export_model(params: HeartExportParams):
     # Load model and set fixed batch size of 1
     logger.info("Loading trained model")
     model = load_model(str(params.model_file))
-    in_shape, _ = get_task_shape(HeartTask.segmentation, params.frame_size)
+    in_shape, _ = get_task_shape(HeartTask.rhythm, params.frame_size)
     inputs = tf.keras.layers.Input(in_shape, dtype=tf.float32, batch_size=1)
     model(inputs)
 
     # Load dataset
     with console.status("[bold green] Loading test dataset..."):
-        ds = LudbDataset(
+        ds = IcentiaDataset(
             ds_path=str(params.ds_path),
-            task=HeartTask.segmentation,
+            task=HeartTask.rhythm,
             frame_size=params.frame_size,
         )
         test_ds = ds.load_test_dataset(
@@ -272,11 +302,35 @@ def export_model(params: HeartExportParams):
     y_pred_tfl = np.argmax(y_prob_tfl, axis=1)
 
     tf_acc = np.sum(y_pred_tf == y_true) / len(y_true)
-    tf_iou = -1
+    tf_f1 = f1_score(y_true, y_pred_tf, average="macro")
     tfl_acc = np.sum(y_pred_tfl == y_true) / len(y_true)
-    tfl_iou = -1
-    logger.info(f"[TEST SET]  TF: ACC={tf_acc:.2%}, F1={tf_iou:.2%}")
-    logger.info(f"[TEST SET] TFL: ACC={tfl_acc:.2%}, F1={tfl_iou:.2%}")
+    tfl_f1 = f1_score(y_true, y_pred_tfl, average="macro")
+    logger.info(f"[TEST SET]  TF: ACC={tf_acc:.2%}, F1={tf_f1:.2%}")
+    logger.info(f"[TEST SET] TFL: ACC={tfl_acc:.2%}, F1={tfl_f1:.2%}")
+
+    if params.threshold is not None:
+        y_thresh_idx = np.union1d(
+            get_predicted_threshold_indices(y_prob_tf, y_pred_tf, params.threshold),
+            get_predicted_threshold_indices(y_prob_tfl, y_pred_tfl, params.threshold),
+        )
+        y_thresh_idx.sort()
+        drop_perc = 1 - len(y_thresh_idx) / len(y_true)
+        y_pred_tf = y_pred_tf[y_thresh_idx]
+        y_pred_tfl = y_pred_tfl[y_thresh_idx]
+        y_true = y_true[y_thresh_idx]
+
+        tf_acc = np.sum(y_pred_tf == y_true) / len(y_true)
+        tf_f1 = f1_score(y_true, y_pred_tf, average="macro")
+        tfl_acc = np.sum(y_pred_tfl == y_true) / len(y_true)
+        tfl_f1 = f1_score(y_true, y_pred_tfl, average="macro")
+
+        logger.info(
+            f"[TEST SET]  TF: ACC={tf_acc:.2%}, F1={tf_f1:.2%}, THRESH={params.threshold:0.2%}, DROP={drop_perc:.2%}"
+        )
+        logger.info(
+            f"[TEST SET] TFL: ACC={tfl_acc:.2%}, F1={tfl_f1:.2%}, THRESH={params.threshold:0.2%}, DROP={drop_perc:.2%}"
+        )
+    # END IF
 
     # Check accuracy hit
     acc_diff = tf_acc - tfl_acc
@@ -288,31 +342,3 @@ def export_model(params: HeartExportParams):
     if params.tflm_file and tflm_model_path != params.tflm_file:
         logger.info(f"Copying TFLM header to {params.tflm_file}")
         shutil.copyfile(tflm_model_path, params.tflm_file)
-
-
-if __name__ == "__main__":
-    num_pts = 10000 + 0  # Synthetic + LUDB
-    num_datasets = 1
-    batch_size = 64
-    samples_per_patient = 200
-    val_samples_per_patient = 100
-    val_patients = 0.20
-    val_size = int(val_patients * num_pts) * (val_samples_per_patient - 20)
-    steps_per_epoch = int((int((1 - val_patients) * num_pts) * samples_per_patient) / batch_size)
-    train_model(
-        HeartTrainParams(
-            task=HeartTask.segmentation,
-            job_dir="./results/segmentation",
-            ds_path="./datasets",
-            frame_size=1248,
-            samples_per_patient=samples_per_patient,
-            val_samples_per_patient=val_samples_per_patient,
-            val_patients=val_patients,
-            val_size=int(val_size / num_datasets),
-            batch_size=batch_size,
-            buffer_size=8092,
-            epochs=80,
-            steps_per_epoch=steps_per_epoch,
-            val_metric="loss",
-        )
-    )

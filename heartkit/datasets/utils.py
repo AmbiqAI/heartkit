@@ -21,9 +21,7 @@ def numpy_dataset_generator(
         yield x[i], y[i]
 
 
-def create_dataset_from_data(
-    x: npt.ArrayLike, y: npt.ArrayLike, spec: tuple[tf.TensorSpec]
-):
+def create_dataset_from_data(x: npt.ArrayLike, y: npt.ArrayLike, spec: tuple[tf.TensorSpec]):
     """Helper function to create dataset from static data
     Args:
         x (npt.ArrayLike): Numpy data
@@ -32,3 +30,24 @@ def create_dataset_from_data(
     gen = functools.partial(numpy_dataset_generator, x=x, y=y)
     dataset = tf.data.Dataset.from_generator(generator=gen, output_signature=spec)
     return dataset
+
+
+def buffered_generator(generator, buffer_size: int):
+    """Buffer the elements yielded by a generator. New elements replace the oldest elements in the buffer.
+
+    Args:
+        generator (Generator): Generator object.
+        buffer_size (int): Number of elements in the buffer.
+
+    Returns:
+        Generator: Yields a buffer.
+    """
+    buffer = []
+    for e in generator:
+        buffer.append(e)
+        if len(buffer) == buffer_size:
+            break
+    yield buffer
+    for e in generator:
+        buffer = buffer[1:] + [e]
+        yield buffer

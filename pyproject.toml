@@ -16,10 +16,10 @@ include = [
 ]
 
 [tool.poetry.scripts]
-heartkit = 'heartkit.app:run'
+heartkit = 'heartkit.cli:run'
 
 [tool.taskipy.tasks]
-format = "isort --profile black heartkit neuralspot && black heartkit neuralspot"
+format = "isort --profile black heartkit neuralspot && black --line-length 120 heartkit neuralspot"
 lint = "pylint heartkit neuralspot"
 test = "pytest tests/"
 clean = "make -C ./evb clean"
@@ -102,7 +102,7 @@ disable = [
 max-line-length = 140
 
 [tool.pylint.design]
-max-args = 15
+max-args = 30
 max-locals = 30
 max-statements = 80
 max-module-lines = 2000

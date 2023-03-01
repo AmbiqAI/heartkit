@@ -1,11 +1,9 @@
 import random
 
-from .defines import Preset, SyntheticParameters
+from .defines import EcgPresets, SyntheticParameters
 
 
-def _generate_lahb_parameters(
-    parameters: SyntheticParameters, rate: float
-) -> SyntheticParameters:
+def _generate_lahb_parameters(parameters: SyntheticParameters, rate: float) -> SyntheticParameters:
     """Generate LAHB parameters
 
     Args:
@@ -47,9 +45,7 @@ def _generate_lahb_parameters(
     return parameters
 
 
-def _generate_lphb_parameters(
-    parameters: SyntheticParameters, rate: float
-) -> SyntheticParameters:
+def _generate_lphb_parameters(parameters: SyntheticParameters, rate: float) -> SyntheticParameters:
     """Generate LPHB parameters
 
     Args:
@@ -82,9 +78,7 @@ def _generate_lphb_parameters(
     return parameters
 
 
-def _generate_htoff_parameters(
-    parameters: SyntheticParameters, rate: float
-) -> SyntheticParameters:
+def _generate_htoff_parameters(parameters: SyntheticParameters, rate: float) -> SyntheticParameters:
     """Generate high take-off parameters
 
     Args:
@@ -96,17 +90,12 @@ def _generate_htoff_parameters(
     """
     parameters.st_length = 20
     parameters.j_points = [random.randint(0, 15) * 0.01 for _ in range(12)]
-    parameters.t_heights = [
-        random.randint(int(i * 100) + 20, int(i * 100) + 50) * 0.1
-        for i in parameters.j_points
-    ]
+    parameters.t_heights = [random.randint(int(i * 100) + 20, int(i * 100) + 50) * 0.1 for i in parameters.j_points]
     parameters.t_leans = [random.randint(2, 4) * 0.1] * 12
     return parameters
 
 
-def _generate_lbbb_parameters(
-    parameters: SyntheticParameters, rate: float
-) -> SyntheticParameters:
+def _generate_lbbb_parameters(parameters: SyntheticParameters, rate: float) -> SyntheticParameters:
     """Generate LBBB parameters
 
     Args:
@@ -122,18 +111,14 @@ def _generate_lbbb_parameters(
         parameters.st_length = 0
     parameters.t_length = int(
         max(
-            (random.randint(420, 460) + (parameters.qrs_duration - 120))
-            * ((60 / rate) ** 0.5),
-            parameters.qrs_duration
-            + parameters.st_length
-            + 100
-            + parameters.qrs_duration,
+            (random.randint(420, 460) + (parameters.qrs_duration - 120)) * ((60 / rate) ** 0.5),
+            parameters.qrs_duration + parameters.st_length + 100 + parameters.qrs_duration,
         )
         - parameters.qrs_duration
         - parameters.st_length
     )
     parameters.qt = parameters.qrs_duration + parameters.st_length + parameters.t_length
-    parameters.qtc = parameters["qt"] / ((60 / rate) ** 0.5)
+    parameters.qtc = parameters.qt / ((60 / rate) ** 0.5)
     parameters.q_depths = [0.1, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0, 0]
     parameters.r_heights = [
         random.randint(50, 200) * 0.01,
@@ -156,7 +141,7 @@ def _generate_lbbb_parameters(
     v4_depth = v1_depth * random.uniform(0.7, 1.1)
     parameters.r_prime_heights = [
         parameters.r_heights[0] - (random.randint(10, 50) * 0.01),
-        parameters.r_heights[1] + (parameters["r_heights"][1] * 0.8),
+        parameters.r_heights[1] + (parameters.r_heights[1] * 0.8),
         random.randint(40, 80) * -0.01,
         parameters.r_heights[3] - (random.randint(10, 50) * 0.01),
         parameters.r_heights[4] - (random.randint(10, 50) * 0.01),
@@ -185,42 +170,26 @@ def _generate_lbbb_parameters(
         0,
     ]
     parameters.s_prime_heights = [
-        parameters.r_prime_heights[0]
-        - ((parameters.r_heights[0] - parameters.r_prime_heights[0]) / 2)
+        parameters.r_prime_heights[0] - ((parameters.r_heights[0] - parameters.r_prime_heights[0]) / 2)
     ]
-    parameters["s_prime_heights"] += [
-        (parameters["r_heights"][1] + parameters.r_prime_heights[1]) / 2
-    ]
+    parameters.s_prime_heights += [(parameters.r_heights[1] + parameters.r_prime_heights[1]) / 2]
+    parameters.s_prime_heights += [-(parameters.r_prime_heights[2] - (random.randint(10, 30) * 0.01))]
     parameters.s_prime_heights += [
-        -(parameters.r_prime_heights[2] - (random.randint(10, 30) * 0.01))
-    ]
-    parameters.s_prime_heights += [
-        parameters.r_prime_heights[3]
-        - ((parameters.r_heights[3] - parameters.r_prime_heights[3]) / 2)
+        parameters.r_prime_heights[3] - ((parameters.r_heights[3] - parameters.r_prime_heights[3]) / 2)
     ]
     parameters.s_prime_heights += [
         parameters.r_prime_heights[4]
-        - (
-            (parameters.r_heights[4] - parameters.r_prime_heights[4])
-            / random.randint(2, 4)
-        )
+        - ((parameters.r_heights[4] - parameters.r_prime_heights[4]) / random.randint(2, 4))
     ]
-    parameters.s_prime_heights += [
-        random.uniform(parameters.r_heights[5], parameters.r_prime_heights[5])
-    ]
+    parameters.s_prime_heights += [random.uniform(parameters.r_heights[5], parameters.r_prime_heights[5])]
     parameters.s_prime_heights += [(v1_depth + random.uniform(0, 0.1)) * -1]
     parameters.s_prime_heights += [(v2_depth + random.uniform(0, 0.1)) * -1]
     parameters.s_prime_heights += [(v3_depth + random.uniform(0, 0.1)) * -1]
     parameters.s_prime_heights += [(v4_depth + random.uniform(0, 0.1)) * -1]
-    parameters.s_prime_heights += [
-        random.uniform(parameters.r_heights[10], parameters.r_prime_heights[5])
-    ]
+    parameters.s_prime_heights += [random.uniform(parameters.r_heights[10], parameters.r_prime_heights[5])]
     parameters.s_prime_heights += [
         parameters.r_prime_heights[11]
-        - (
-            (parameters.r_heights[11] - parameters.r_prime_heights[11])
-            / random.randint(2, 4)
-        )
+        - ((parameters.r_heights[11] - parameters.r_prime_heights[11]) / random.randint(2, 4))
     ]
     parameters.s_to_qrs_duration_ratio = [1, 1, 2] + [1] * 9
     parameters.st_deltas = [0] * 12
@@ -243,9 +212,7 @@ def _generate_lbbb_parameters(
     return parameters
 
 
-def _generate_ant_stemi_parameters(
-    parameters: SyntheticParameters, rate: float
-) -> SyntheticParameters:
+def _generate_ant_stemi_parameters(parameters: SyntheticParameters, rate: float) -> SyntheticParameters:
     """Generate ANT STEMI parameters
 
     Args:
@@ -270,15 +237,11 @@ def _generate_ant_stemi_parameters(
         random.randint(2, 6) * 0.1,
         random.randint(2, 6) * 0.1,
     ]
-    parameters.t_heights = [
-        parameters.j_points[i] * (random.randint(10, 30)) for i in range(12)
-    ]
+    parameters.t_heights = [parameters.j_points[i] * (random.randint(10, 30)) for i in range(12)]
     return parameters
 
 
-def _generate_rand_morph_parameters(
-    parameters: SyntheticParameters, rate: float
-) -> SyntheticParameters:
+def _generate_rand_morph_parameters(parameters: SyntheticParameters, rate: float) -> SyntheticParameters:
     """Generate random morphology parameters
 
     Args:
@@ -292,53 +255,35 @@ def _generate_rand_morph_parameters(
     parameters.pr_interval = random.randint(80, 110)
     parameters.qrs_duration = random.randint(50, 220)
     parameters.r_prime_presents = [bool(random.getrandbits(1)) for _ in range(12)]
-    parameters.r_prime_heights = [
-        parameters.r_heights[num] - (random.randint(-50, 50) * 0.01)
-        for num in range(12)
-    ]
-    parameters.s_prime_heights = [
-        parameters.r_heights[num] - (random.randint(-50, 50) * 0.01)
-        for num in range(12)
-    ]
+    parameters.r_prime_heights = [parameters.r_heights[num] - (random.randint(-50, 50) * 0.01) for num in range(12)]
+    parameters.s_prime_heights = [parameters.r_heights[num] - (random.randint(-50, 50) * 0.01) for num in range(12)]
     parameters.s_presents = [0] * 12
     parameters.j_points = [random.randint(-6, 6) * 0.1 for _ in range(12)]
     parameters.t_heights = [random.randint(-30, 30) * 0.1 for _ in range(12)]
 
     label_vector = []
     for p in parameters.q_depths:
-        if p > 0.01:
-            label_vector.append(1)
-        else:
-            label_vector.append(0)
-    if parameters.p_length + parameters.pr_interval > 200:
-        label_vector.append(1)
-    else:
-        label_vector.append(0)
-    if parameters.qrs_duration > 120:
-        label_vector.append(1)
-    else:
-        label_vector.append(0)
+        label_vector.append(int(p > 0.01))
+
+    label_vector.append(int(parameters.p_length + parameters.pr_interval > 200))
+
+    label_vector.append(int(parameters.qrs_duration > 120))
+
     for p in parameters.r_prime_presents:
         label_vector.append(p * 1)
+
     for p in parameters.j_points:
-        if p > 0.2:
-            label_vector.append(1)
-        else:
-            label_vector.append(0)
+        label_vector.append(int(p > 0.2))
+
     for p in parameters.j_points:
-        if p < -0.2:
-            label_vector.append(1)
-        else:
-            label_vector.append(0)
+        label_vector.append(int(p < -0.2))
+
     for p in parameters.t_heights:
-        if p < 0:
-            label_vector.append(1)
-        else:
-            label_vector.append(0)
+        label_vector.append(int(p < 0))
     return parameters
 
 
-def generate_parameters(preset: Preset, rate: float) -> SyntheticParameters:
+def generate_parameters(preset: EcgPresets, rate: float) -> SyntheticParameters:
     """Generate synthetic ECG parameters
 
     Args:
@@ -356,9 +301,7 @@ def generate_parameters(preset: Preset, rate: float) -> SyntheticParameters:
     )
     parameters.qrs_duration = random.randint(50, 120)
     parameters.noisiness = random.randint(0, 30) * 0.0001
-    parameters.st_length = (
-        random.randint(50, 150) if preset == "ant_STEMI" else random.randint(20, 150)
-    )
+    parameters.st_length = random.randint(50, 150) if preset == "ant_STEMI" else random.randint(20, 150)
 
     parameters.t_length = int(
         max(
@@ -401,16 +344,16 @@ def generate_parameters(preset: Preset, rate: float) -> SyntheticParameters:
     parameters.t_heights = [random.randint(5, 30) * 0.1 for _ in range(12)]
     parameters.t_leans = [random.randint(5, 10) * -0.1] * 12
 
-    if preset == "LAHB":
+    if preset == EcgPresets.LAHB:
         parameters = _generate_lahb_parameters(parameters, rate)
-    elif preset == "LPHB":
+    elif preset == EcgPresets.LPHB:
         parameters = _generate_lphb_parameters(parameters, rate)
-    elif preset == "high_take_off":
+    elif preset == EcgPresets.high_take_off:
         parameters = _generate_htoff_parameters(parameters, rate)
-    elif preset == "LBBB":
+    elif preset == EcgPresets.LBBB:
         parameters = _generate_lbbb_parameters(parameters, rate)
-    elif preset == "ant_STEMI":
+    elif preset == EcgPresets.ant_STEMI:
         parameters = _generate_ant_stemi_parameters(parameters, rate)
-    elif preset == "random_morphology":
+    elif preset == EcgPresets.random_morphology:
         parameters = _generate_rand_morph_parameters(parameters, rate)
     return parameters
