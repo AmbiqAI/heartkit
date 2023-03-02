@@ -4,7 +4,7 @@ from enum import Enum, IntEnum
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Extra, Field
 
 
 class HeartTask(str, Enum):
@@ -65,7 +65,7 @@ class HeartSegment(IntEnum):
     pwave = 1
     qrs = 2
     twave = 3
-    uwave = 4  # Not used
+    # uwave = 4  # Not used
 
 
 class HeartBeatName(str, Enum):
@@ -118,7 +118,7 @@ class HeartDownloadParams(BaseModel):
     )
 
 
-class HeartTrainParams(BaseModel):
+class HeartTrainParams(BaseModel, extra=Extra.allow):
     """Train command params"""
 
     job_dir: Path = Field(default_factory=tempfile.gettempdir, description="Job output directory")
@@ -130,7 +130,7 @@ class HeartTrainParams(BaseModel):
     train_patients: float | None = Field(None, description="# or proportion of patients for training")
     val_patients: float | None = Field(None, description="# or proportion of patients for validation")
     val_file: Path | None = Field(None, description="Path to load/store pickled validation file")
-    val_size: int = Field(200_000, description="# samples for validation")
+    val_size: int | None = Field(None, description="# samples for validation")
     data_parallelism: int = Field(
         default_factory=lambda: os.cpu_count() or 1,
         description="# of data loaders running in parallel",
@@ -144,13 +144,13 @@ class HeartTrainParams(BaseModel):
     batch_size: int = Field(32, description="Batch size")
     buffer_size: int = Field(100, description="Buffer size")
     epochs: int = Field(50, description="Number of epochs")
-    steps_per_epoch: int = Field(100, description="Number of steps per epoch")
+    steps_per_epoch: int | None = Field(None, description="Number of steps per epoch")
     val_metric: Literal["loss", "acc", "f1"] = Field("loss", description="Performance metric")
     # Extra arguments
     seed: int | None = Field(None, description="Random state seed")
 
 
-class HeartTestParams(BaseModel):
+class HeartTestParams(BaseModel, extra=Extra.allow):
     """Test command params"""
 
     job_dir: Path = Field(default_factory=tempfile.gettempdir, description="Job output directory")
@@ -171,7 +171,7 @@ class HeartTestParams(BaseModel):
     seed: int | None = Field(None, description="Random state seed")
 
 
-class HeartExportParams(BaseModel):
+class HeartExportParams(BaseModel, extra=Extra.allow):
     """Export command params"""
 
     job_dir: Path = Field(default_factory=tempfile.gettempdir, description="Job output directory")
@@ -191,7 +191,7 @@ class HeartExportParams(BaseModel):
     )
 
 
-class HeartDemoParams(BaseModel):
+class HeartDemoParams(BaseModel, extra=Extra.allow):
     """Demo command params"""
 
     task: HeartTask = Field(HeartTask.rhythm, description="Heart task")

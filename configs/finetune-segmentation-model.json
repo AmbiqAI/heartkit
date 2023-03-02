@@ -1,0 +1,18 @@
+{
+    "task": "segmentation",
+    "job_dir": "./results/segmentation-finetune",
+    "ds_path": "./datasets",
+    "frame_size": 1248,
+    "samples_per_patient": 100,
+    "val_samples_per_patient": 100,
+    "val_patients": 0.20,
+    "arch": "unet",
+    "batch_size": 128,
+    "buffer_size": 16384,
+    "epochs": 60,
+    "steps_per_epoch": 500,
+    "val_metric": "loss",
+    "lr_rate": 1e-5,
+    "datasets": ["ludb", "synthetic"],
+    "num_pts": 200
+}

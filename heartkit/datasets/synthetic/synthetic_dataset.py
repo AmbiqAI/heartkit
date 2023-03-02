@@ -18,15 +18,21 @@ class SyntheticDataset(EcgDataset):
     """Synthetic dataset"""
 
     def __init__(
-        self, ds_path: str, task: HeartTask = HeartTask.rhythm, frame_size: int = 1250, num_pts: int = 250
+        self,
+        ds_path: str,
+        task: HeartTask = HeartTask.rhythm,
+        frame_size: int = 1250,
+        num_pts: int = 250,
+        sampling_rate: int = 500,
     ) -> None:
         super().__init__(os.path.join(ds_path, "synthetic"), task, frame_size)
         self._num_pts = num_pts
+        self._sampling_rate = sampling_rate
 
     @property
     def sampling_rate(self) -> int:
         """Sampling rate in Hz"""
-        return 500
+        return self._sampling_rate
 
     @property
     def mean(self) -> float:
@@ -101,35 +107,31 @@ class SyntheticDataset(EcgDataset):
         Yields:
             Iterator[SampleGenerator]
         """
-        start_offset = 250
+        start_offset = self.sampling_rate
         num_leads = 12  # Use all 12 leads
-        voltage_factor = 300
-        preset = random.choices(
-            (
-                EcgPresets.SR,
-                EcgPresets.LAHB,
-                EcgPresets.LPHB,
-                EcgPresets.LBBB,
-                EcgPresets.ant_STEMI,
-                EcgPresets.random_morphology,
-                EcgPresets.high_take_off,
-            ),
-            (9, 1, 1, 1, 1, 1, 1),
-            k=1,
-        )[0]
+        presets = (
+            EcgPresets.SR,
+            EcgPresets.LAHB,
+            EcgPresets.LPHB,
+            EcgPresets.LBBB,
+            EcgPresets.ant_STEMI,
+            EcgPresets.random_morphology,
+            EcgPresets.high_take_off,
+        )
+        preset_weights = (9, 1, 1, 1, 1, 1, 1)
 
         for _ in patient_generator:
             _, syn_ecg, syn_segs_t, _, _ = generate_nsr(
                 leads=num_leads,
                 signal_frequency=self.sampling_rate,
                 rate=np.random.uniform(40, 100),
-                preset=preset.value,
-                noise_multiplier=np.random.uniform(0.6, 1.05),
+                preset=random.choices(presets, preset_weights, k=1)[0].value,
+                noise_multiplier=np.random.uniform(0.7, 1.2),
                 impedance=np.random.uniform(0.8, 1.05),
-                p_multiplier=np.random.uniform(0.6, 1.05),
-                t_multiplier=np.random.uniform(0.6, 1.05),
+                p_multiplier=np.random.uniform(0.5, 1.05),
+                t_multiplier=np.random.uniform(0.5, 1.05),
                 duration=max(10, (self.frame_size / self.sampling_rate) * (samples_per_patient / num_leads / 10)),
-                voltage_factor=voltage_factor,
+                voltage_factor=np.random.uniform(275, 325),
             )
             syn_segs = np.zeros_like(syn_segs_t)
             for i in range(syn_segs_t.shape[0]):
@@ -148,7 +150,7 @@ class SyntheticDataset(EcgDataset):
                 frame_start = np.random.randint(start_offset, syn_ecg.shape[1] - self.frame_size)
                 frame_end = frame_start + self.frame_size
                 x = syn_ecg[lead_idx, frame_start:frame_end].astype(np.float32).reshape((self.frame_size, 1))
-                y = syn_segs[lead_idx, frame_start:frame_end].astype(np.int32)  # .reshape((self.frame_size, 1))
+                y = syn_segs[lead_idx, frame_start:frame_end].astype(np.int32)
                 yield x, y
             # END FOR
         # END FOR

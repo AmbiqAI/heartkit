@@ -22,7 +22,7 @@ def preprocess_signal(data: npt.ArrayLike, sample_rate: float, target_rate: floa
     norm_eps = 1e-6
     filter_en = True
     filt_lo = 0.5
-    filt_hi = 40
+    filt_hi = 15
     resample_en = target_rate is not None and sample_rate != target_rate
 
     x = np.copy(data)

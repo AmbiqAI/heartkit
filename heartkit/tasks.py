@@ -156,55 +156,57 @@ def get_segmentation_model(inputs: KerasTensor, num_classes: int) -> tf.keras.Mo
     skip_layers = []
 
     # Entry block
-    x = tf.keras.layers.Conv2D(filter_lens[0], (1, 3), strides=(1, 2), padding="same")(inputs)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Activation("relu")(x)
+    name = "STEM"
+    x = tf.keras.layers.Conv2D(filter_lens[0], (1, 3), strides=(1, 2), padding="same", name="STEM.CONV1")(inputs)
+    x = tf.keras.layers.BatchNormalization(name="STEM.BN1")(x)
+    x = tf.keras.layers.Activation("relu", name="STEM.ACT1")(x)
     # if add_skips:
     #     skip_layers.append(x)
 
     # Downsampling layers
-    for filters in filter_lens[1:]:
-        xm = tf.keras.layers.SeparableConv2D(filters, (1, 3), padding="same")(x)
-        xm = tf.keras.layers.BatchNormalization()(xm)
-        xm = tf.keras.layers.Activation("relu")(xm)
+    for i, filters in enumerate(filter_lens[1:]):
+        name = f"ENC{i+1}"
+        xm = tf.keras.layers.SeparableConv2D(filters, (1, 3), padding="same", name=f"{name}.CONV1")(x)
+        xm = tf.keras.layers.BatchNormalization(name=f"{name}.BN1")(xm)
+        xm = tf.keras.layers.Activation("relu", name=f"{name}.ACT1")(xm)
 
-        xm = tf.keras.layers.SeparableConv2D(filters, (1, 3), padding="same")(xm)
-        xm = tf.keras.layers.BatchNormalization()(xm)
-        xm = tf.keras.layers.Activation("relu")(xm)
-
-        xm = tf.keras.layers.MaxPooling2D(3, strides=(1, 2), padding="same")(xm)
+        xm = tf.keras.layers.SeparableConv2D(filters, (1, 3), padding="same", name=f"{name}.CONV2")(xm)
+        xm = tf.keras.layers.BatchNormalization(name=f"{name}.BN2")(xm)
+        xm = tf.keras.layers.Activation("relu", name=f"{name}.ACT2")(xm)
+        xm = tf.keras.layers.MaxPooling2D(3, strides=(1, 2), padding="same", name=f"{name}.POOL1")(xm)
 
         # Project residual
-        xr = tf.keras.layers.Conv2D(filters, (1, 1), strides=(1, 2), padding="same")(x)
-        x = tf.keras.layers.add([xm, xr])
+        xr = tf.keras.layers.Conv2D(filters, (1, 1), strides=(1, 2), padding="same", name=f"{name}.CONV3")(x)
+        x = tf.keras.layers.add([xm, xr], name=f"{name}.ADD1")
         if add_skips:
             skip_layers.append(x)
     # END FOR
 
     # Upsampling layers
-    for filters in reversed(filter_lens):
-        xm = tf.keras.layers.Conv2DTranspose(filters, (1, 3), padding="same")(x)
-        xm = tf.keras.layers.BatchNormalization()(xm)
-        xm = tf.keras.layers.Activation("relu")(xm)
+    for i, filters in enumerate(reversed(filter_lens)):
+        name = f"DEC{i+1}"
+        xm = tf.keras.layers.Conv2DTranspose(filters, (1, 3), padding="same", name=f"{name}.CONV1")(x)
+        xm = tf.keras.layers.BatchNormalization(name=f"{name}.BN1")(xm)
+        xm = tf.keras.layers.Activation("relu", name=f"{name}.ACT1")(xm)
 
         if add_skips and skip_layers:
             skip_layer = skip_layers.pop()
-            xm = tf.keras.layers.add([xm, skip_layer])  # Can add or concatenate
+            xm = tf.keras.layers.concatenate([xm, skip_layer])  # Can add or concatenate
 
-        xm = tf.keras.layers.Conv2DTranspose(filters, (1, 3), padding="same")(xm)
-        xm = tf.keras.layers.BatchNormalization()(xm)
-        xm = tf.keras.layers.Activation("relu")(xm)
+        xm = tf.keras.layers.Conv2DTranspose(filters, (1, 3), padding="same", name=f"{name}.CONV2")(xm)
+        xm = tf.keras.layers.BatchNormalization(name=f"{name}.BN2")(xm)
+        xm = tf.keras.layers.Activation("relu", name=f"{name}.ACT2")(xm)
 
-        xm = tf.keras.layers.UpSampling2D((1, 2))(xm)
+        xm = tf.keras.layers.UpSampling2D((1, 2), name=f"{name}.UP1")(xm)
 
         # Project residual
-        xr = tf.keras.layers.UpSampling2D((1, 2))(x)
-        xr = tf.keras.layers.Conv2D(filters, (1, 1), padding="same")(xr)
-        x = tf.keras.layers.add([xm, xr])  # Add back residual
+        xr = tf.keras.layers.UpSampling2D((1, 2), name=f"{name}.UP2")(x)
+        xr = tf.keras.layers.Conv2D(filters, (1, 1), padding="same", name=f"{name}.CONV3")(xr)
+        x = tf.keras.layers.add([xm, xr], name=f"{name}.ADD1")  # Add back residual
     # END FOR
 
     # Add a per-point classification layer
-    x = tf.keras.layers.Conv2D(num_classes, (1, 3), activation=None, padding="same")(x)
+    x = tf.keras.layers.Conv2D(num_classes, (1, 3), activation=None, padding="same", name="NECK.CONV1")(x)
     outputs = tf.keras.layers.Reshape(x.shape[2:])(x)
 
     # Define the model

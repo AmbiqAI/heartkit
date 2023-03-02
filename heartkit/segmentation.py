@@ -12,8 +12,7 @@ from neuralspot.tflite.convert import convert_tflite, predict_tflite, xxd_c_dump
 from neuralspot.tflite.metrics import get_flops
 from neuralspot.tflite.model import get_strategy, load_model
 
-from .datasets.ludb import LudbDataset
-from .datasets.synthetic import SyntheticDataset
+from .datasets import EcgDataset, LudbDataset, SyntheticDataset
 from .defines import (
     HeartExportParams,
     HeartSegment,
@@ -35,6 +34,12 @@ def train_model(params: HeartTrainParams):
     Args:
         params (HeartTrainParams): Training parameters
     """
+    dataset_names: list[str] = getattr(params, "datasets", ["ludb"])
+    lr_rate: float = getattr(params, "lr_rate", 1e-4)
+    lr_cycles: int = getattr(params, "lr_cycles", 3)
+    lr_t_mul = 1.65 / (0.1 * lr_cycles * (lr_cycles - 1))
+    lr_m_mul = 0.4
+    num_pts = getattr(params, "num_pts", 1000)
 
     params.seed = set_random_seed(params.seed)
     logger.info(f"Random seed {params.seed}")
@@ -48,10 +53,16 @@ def train_model(params: HeartTrainParams):
         wandb.init(project=f"ecg-{HeartTask.segmentation}", entity="ambiq", dir=str(params.job_dir))
         wandb.config.update(params.dict())
 
-    datasets = [
-        SyntheticDataset(str(params.ds_path), task=HeartTask.segmentation, frame_size=params.frame_size, num_pts=10000),
-        # LudbDataset(str(params.ds_path), task=HeartTask.segmentation, frame_size=params.frame_size)
-    ]
+    datasets: list[EcgDataset] = []
+    if "synthetic" in dataset_names:
+        datasets.append(
+            SyntheticDataset(
+                str(params.ds_path), task=HeartTask.segmentation, frame_size=params.frame_size, num_pts=num_pts
+            )
+        )
+    if "ludb" in dataset_names:
+        datasets.append(LudbDataset(str(params.ds_path), task=HeartTask.segmentation, frame_size=params.frame_size))
+
     train_datasets = []
     val_datasets = []
     for ds in datasets:
@@ -68,10 +79,11 @@ def train_model(params: HeartTrainParams):
         train_datasets.append(train_ds)
         val_datasets.append(val_ds)
     # END FOR
-    train_ds = tf.data.Dataset.sample_from_datasets(train_datasets)
-    # val_ds = tf.data.Dataset.sample_from_datasets(val_datasets)
-    train_ds = train_datasets[-1]
-    val_ds = val_datasets[-1]
+    ds_weights = np.array([len(ds.get_train_patient_ids()) for ds in datasets])
+    ds_weights = ds_weights / ds_weights.sum()
+
+    train_ds = tf.data.Dataset.sample_from_datasets(train_datasets, weights=ds_weights)
+    val_ds = tf.data.Dataset.sample_from_datasets(val_datasets, weights=ds_weights)
 
     # Shuffle and batch datasets for training
     train_ds = (
@@ -91,13 +103,14 @@ def train_model(params: HeartTrainParams):
         drop_remainder=True,
         num_parallel_calls=tf.data.AUTOTUNE,
     )
+    steps_per_epoch = params.steps_per_epoch or 1000
 
-    total_steps = params.steps_per_epoch * params.epochs
+    decay_steps = int(0.1 * steps_per_epoch * params.epochs)
     lr_scheduler = tf.keras.optimizers.schedules.CosineDecayRestarts(
-        initial_learning_rate=1e-4,
-        first_decay_steps=int(0.1 * total_steps),
-        t_mul=1.65 / (0.1 * 3 * (3 - 1)),
-        m_mul=0.4,
+        initial_learning_rate=lr_rate,
+        first_decay_steps=decay_steps,
+        t_mul=lr_t_mul,
+        m_mul=lr_m_mul,
     )
 
     strategy = get_strategy()
@@ -106,6 +119,12 @@ def train_model(params: HeartTrainParams):
         in_shape, _ = get_task_shape(HeartTask.segmentation, params.frame_size)
         inputs = tf.keras.Input(shape=in_shape, batch_size=None, dtype=tf.float32)
         model = create_task_model(inputs, HeartTask.segmentation, params.arch, stages=params.stages)
+        # If fine-tune, freeze subset of model weights
+        if bool(getattr(params, "finetune", False)):
+            for layer in model.layers:
+                if layer.name.startswith("ENC"):
+                    logger.info(f"Freezing {layer.name}")
+                    layer.trainable = False
         flops = get_flops(model, batch_size=1)
         optimizer = Adam(lr_scheduler, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
         loss_fn = tfa.losses.SigmoidFocalCrossEntropy(from_logits=True)
@@ -113,7 +132,7 @@ def train_model(params: HeartTrainParams):
             tf.keras.metrics.CategoricalAccuracy(name="acc"),
             tf.keras.metrics.OneHotIoU(
                 num_classes=get_num_classes(HeartTask.segmentation),
-                target_class_ids=(HeartSegment.normal, HeartSegment.pwave, HeartSegment.qrs, HeartSegment.twave),
+                target_class_ids=tuple(s.value for s in HeartSegment),
                 name="iou",
             ),
         ]
@@ -152,7 +171,7 @@ def train_model(params: HeartTrainParams):
         try:
             model.fit(
                 train_ds,
-                steps_per_epoch=params.steps_per_epoch,
+                steps_per_epoch=steps_per_epoch,
                 verbose=2,
                 epochs=params.epochs,
                 validation_data=val_ds,
@@ -291,28 +310,47 @@ def export_model(params: HeartExportParams):
 
 
 if __name__ == "__main__":
-    num_pts = 10000 + 0  # Synthetic + LUDB
-    num_datasets = 1
-    batch_size = 64
-    samples_per_patient = 200
-    val_samples_per_patient = 100
-    val_patients = 0.20
-    val_size = int(val_patients * num_pts) * (val_samples_per_patient - 20)
-    steps_per_epoch = int((int((1 - val_patients) * num_pts) * samples_per_patient) / batch_size)
-    train_model(
-        HeartTrainParams(
-            task=HeartTask.segmentation,
-            job_dir="./results/segmentation",
-            ds_path="./datasets",
-            frame_size=1248,
-            samples_per_patient=samples_per_patient,
-            val_samples_per_patient=val_samples_per_patient,
-            val_patients=val_patients,
-            val_size=int(val_size / num_datasets),
-            batch_size=batch_size,
-            buffer_size=8092,
-            epochs=80,
-            steps_per_epoch=steps_per_epoch,
-            val_metric="loss",
+    actions = ["train"]
+    # Train Synthetic
+    if "train" in actions:
+        train_model(
+            HeartTrainParams(
+                job_dir="./results/segmentation",
+                ds_path="./datasets",
+                frame_size=1248,
+                samples_per_patient=100,
+                val_samples_per_patient=100,
+                val_patients=0.20,
+                batch_size=128,
+                buffer_size=16384,
+                epochs=120,
+                steps_per_epoch=int(0.8 * 1200 * 100 / 64),
+                val_metric="loss",
+                # Extra
+                lr_rate=1e-4,
+                datasets=["ludb", "synthetic"],
+                num_pts=1000,  # synthetic patients
+            )
         )
-    )
+    # Fine-tune on LUDB
+    if "finetune" in actions:
+        train_model(
+            HeartTrainParams(
+                job_dir="./results/segmentation-finetune",
+                ds_path="./datasets",
+                weights_file="./results/segmentation/model.weights",
+                frame_size=1248,
+                samples_per_patient=100,
+                val_samples_per_patient=100,
+                val_patients=0.20,
+                batch_size=128,
+                buffer_size=16384,
+                epochs=60,
+                steps_per_epoch=int(0.8 * 400 * 100 / 64),
+                val_metric="loss",
+                # Extra
+                lr_rate=1e-5,
+                datasets=["ludb", "synthetic"],
+                num_pts=200,  # synthetic patients
+            )
+        )

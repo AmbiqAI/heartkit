@@ -130,7 +130,7 @@ class EcgDataset:
         if val_patients is not None and val_patients >= 1:
             val_patients = int(val_patients)
 
-        train_pt_samples = train_pt_samples or 1000
+        train_pt_samples = train_pt_samples or 100
         if val_pt_samples is None:
             val_pt_samples = train_pt_samples
 
@@ -189,12 +189,14 @@ class EcgDataset:
         self,
         test_patients: float | None = None,
         test_pt_samples: int | list[int] | None = None,
+        repeat: bool = True,
         num_workers: int = 1,
     ) -> tf.data.Dataset:
         """Load testing datasets
         Args:
             test_patients (float | None, optional): # or proportion of test patients. Defaults to None.
             test_pt_samples (int | None, optional): # samples per patient for testing. Defaults to None.
+            repeat (bool, optional): Restart generator when dataset is exhausted. Defaults to True.
             num_workers (int, optional): # of parallel workers. Defaults to 1.
 
         Returns:
@@ -209,7 +211,7 @@ class EcgDataset:
         test_ds = self._parallelize_dataset(
             patient_ids=test_patient_ids,
             samples_per_patient=test_pt_samples,
-            repeat=True,
+            repeat=repeat,
             num_workers=num_workers,
         )
         return test_ds

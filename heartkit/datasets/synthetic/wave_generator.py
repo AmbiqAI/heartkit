@@ -70,6 +70,7 @@ def sin_wave_generator(
     duration_counter += 1
     return x, duration_counter
 
+
 # pylint: disable=too-many-locals
 def syn_qrs_complex(
     qrs_duration: float = 80,

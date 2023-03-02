@@ -54,6 +54,7 @@ class SyntheticFiducials(IntEnum):
 
 class SyntheticParameters(BaseModel):
     """Synthetic ECG parameters"""
+
     # pylint: disable=R0902
     p_length: int = Field(80)
     pr_interval: int = Field(80)

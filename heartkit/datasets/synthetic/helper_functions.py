@@ -78,7 +78,7 @@ def smooth_and_noise(
     y = savgol_filter(y, 31, 2)
 
     # Generate random electrical noise from leads
-    lead_noise = np.random.normal(0, 1 * 10**-5, y.size)
+    lead_noise = np.random.normal(0, 1 * 10**-4, y.size)  # IDDQD: 10**-5
 
     # Generate EMG frequency noise
     emg_noise = np.zeros(0)
