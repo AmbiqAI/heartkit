@@ -4,7 +4,9 @@ import numpy as np
 import numpy.typing as npt
 
 
-def emg_noise(y: npt.NDArray, scale: float = 1e-5, sampling_frequency: int = 1000) -> npt.NDArray:
+def emg_noise(
+    y: npt.NDArray, scale: float = 1e-5, sampling_frequency: int = 1000
+) -> npt.NDArray:
     """Add EMG noise to signal
 
     Args:
@@ -15,10 +17,11 @@ def emg_noise(y: npt.NDArray, scale: float = 1e-5, sampling_frequency: int = 100
     Returns:
         npt.NDArray: New signal
     """
-    emg_noise = np.repeat(
-        np.sin(np.linspace(-0.5 * np.pi, 1.5 * np.pi, sampling_frequency) * 10000), np.ceil(y.size / sampling_frequency)
+    noise = np.repeat(
+        np.sin(np.linspace(-0.5 * np.pi, 1.5 * np.pi, sampling_frequency) * 10000),
+        np.ceil(y.size / sampling_frequency),
     )
-    return y + scale * emg_noise[: y.size]
+    return y + scale * noise[: y.size]
 
 
 def lead_noise(y: npt.NDArray, scale: float = 1) -> npt.NDArray:
@@ -31,11 +34,13 @@ def lead_noise(y: npt.NDArray, scale: float = 1) -> npt.NDArray:
     Returns:
         npt.NDArray: New signal
     """
-    lead_noise = np.random.normal(-scale, scale, y.size)
-    return y + lead_noise
+    noise = np.random.normal(-scale, scale, y.size)
+    return y + noise
 
 
-def random_scaling(y: npt.NDArray, lower: float = 0.5, upper: float = 2.0) -> npt.NDArray:
+def random_scaling(
+    y: npt.NDArray, lower: float = 0.5, upper: float = 2.0
+) -> npt.NDArray:
     """Randomly scale signal.
 
     Args:

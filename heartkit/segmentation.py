@@ -13,7 +13,8 @@ from neuralspot.tflite.metrics import get_flops
 from neuralspot.tflite.model import get_strategy, load_model
 
 from .datasets import EcgDataset, LudbDataset, SyntheticDataset
-from .datasets.augmentation import lead_noise, random_scaling
+
+# from .datasets.augmentation import lead_noise, random_scaling
 from .defines import (
     HeartExportParams,
     HeartSegment,
@@ -51,7 +52,11 @@ def train_model(params: HeartTrainParams):
         fp.write(params.json(indent=2))
 
     if env_flag("WANDB"):
-        wandb.init(project=f"ecg-{HeartTask.segmentation}", entity="ambiq", dir=str(params.job_dir))
+        wandb.init(
+            project=f"ecg-{HeartTask.segmentation}",
+            entity="ambiq",
+            dir=str(params.job_dir),
+        )
         wandb.config.update(params.dict())
 
     datasets: list[EcgDataset] = []
@@ -89,7 +94,6 @@ def train_model(params: HeartTrainParams):
             num_workers=params.data_parallelism,
         )
 
-
         train_datasets.append(train_ds)
         val_datasets.append(val_ds)
     # END FOR
@@ -99,11 +103,10 @@ def train_model(params: HeartTrainParams):
     train_ds = tf.data.Dataset.sample_from_datasets(train_datasets, weights=ds_weights)
     val_ds = tf.data.Dataset.sample_from_datasets(val_datasets, weights=ds_weights)
 
-    def augment(x):
-        return x
-        # x = lead_noise(x, scale=1)
-        # x = random_scaling(x, lower=0.5, upper=1.5)
-        # return x
+    # def augment(x):
+    #     x = lead_noise(x, scale=1)
+    #     x = random_scaling(x, lower=0.5, upper=1.5)
+    #     return x
 
     # Shuffle and batch datasets for training
     train_ds = (
@@ -119,8 +122,7 @@ def train_model(params: HeartTrainParams):
             batch_size=params.batch_size,
             drop_remainder=True,
             num_parallel_calls=tf.data.AUTOTUNE,
-        )
-        .prefetch(buffer_size=tf.data.AUTOTUNE)
+        ).prefetch(buffer_size=tf.data.AUTOTUNE)
     )
     val_ds = val_ds.batch(
         batch_size=params.batch_size,
@@ -142,7 +144,9 @@ def train_model(params: HeartTrainParams):
         logger.info("Building model")
         in_shape, _ = get_task_shape(HeartTask.segmentation, params.frame_size)
         inputs = tf.keras.Input(shape=in_shape, batch_size=None, dtype=tf.float32)
-        model = create_task_model(inputs, HeartTask.segmentation, params.arch, stages=params.stages)
+        model = create_task_model(
+            inputs, HeartTask.segmentation, params.arch, stages=params.stages
+        )
         # If fine-tune, freeze subset of model weights
         if bool(getattr(params, "finetune", False)):
             for layer in model.layers:
@@ -187,7 +191,9 @@ def train_model(params: HeartTrainParams):
                 verbose=1,
             ),
             tf.keras.callbacks.CSVLogger(str(params.job_dir / "history.csv")),
-            tf.keras.callbacks.TensorBoard(log_dir=str(params.job_dir), write_steps_per_second=True),
+            tf.keras.callbacks.TensorBoard(
+                log_dir=str(params.job_dir), write_steps_per_second=True
+            ),
         ]
         if env_flag("WANDB"):
             model_callbacks.append(WandbCallback())
@@ -224,7 +230,11 @@ def evaluate_model(params: HeartTestParams):
     logger.info(f"Random seed {params.seed}")
 
     with console.status("[bold green] Loading test dataset..."):
-        ds = LudbDataset(str(params.ds_path), task=HeartTask.segmentation, frame_size=params.frame_size)
+        ds = LudbDataset(
+            str(params.ds_path),
+            task=HeartTask.segmentation,
+            frame_size=params.frame_size,
+        )
         test_ds = ds.load_test_dataset(
             test_patients=params.test_patients,
             test_pt_samples=params.samples_per_patient,
@@ -311,7 +321,9 @@ def export_model(params: HeartExportParams):
     y_true = np.argmax(test_y, axis=1)
     y_prob_tf = tf.nn.softmax(model.predict(test_x)).numpy()
     y_pred_tf = np.argmax(y_prob_tf, axis=1)
-    y_prob_tfl = tf.nn.softmax(predict_tflite(model_content=tflite_model, test_x=test_x)).numpy()
+    y_prob_tfl = tf.nn.softmax(
+        predict_tflite(model_content=tflite_model, test_x=test_x)
+    ).numpy()
     y_pred_tfl = np.argmax(y_prob_tfl, axis=1)
 
     tf_acc = np.sum(y_pred_tf == y_true) / len(y_true)
