@@ -1,8 +1,8 @@
 {
     "task": "arrhythmia",
     "job_dir": "./results/arrhythmia-full-model",
-    "ds_path": "./datasets/icentia11k",
-    "frame_size": 1250,
+    "ds_path": "./datasets",
+    "frame_size": 1000,
     "samples_per_patient": [100, 500, 100],
     "model_file_rmt": "wandb://ambiq/model-registry/ecg-arrhythmia-afib:v2",
     "model_file": "./results/arrhythmia-full-model/model.tf",

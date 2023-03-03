@@ -3,7 +3,7 @@
     "job_dir": "./results/evb-demo",
     "ds_path": "./datasets",
     "samples_per_patient": [10, 100, 50],
-    "frame_size": 1250,
+    "frame_size": 1000,
     "pad_size": 250,
     "vid_pid": "51966:16385",
     "baudrate": "115200"

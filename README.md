@@ -44,11 +44,12 @@ The CLI provides a number of commands discussed below. In general, reference con
 
 #### 1. Download Datasets (download)
 
-The `download` command is used to download all datasets specified in the configuration file. Please refer to [Datasets section](#datasets) for details on the available datasets. The following command will download and prepare all currently used datasets.
+The `download` command is used to download all datasets specified in the configuration file. Please refer to [Datasets section](#datasets) for details on the available datasets.
 
+The following command will download and prepare all currently used datasets.
 
 ```bash
-heartkit download --config-file ./configs/download-datasets.json
+heartkit --mode download --config-file ./configs/download-datasets.json
 ```
 
 > NOTE: The __Icentia11k dataset__ requires roughly 200 GB of disk space and can take around 2 hours to download.
@@ -56,10 +57,10 @@ heartkit download --config-file ./configs/download-datasets.json
 
 #### 2. Train Model
 
-The `train` command is used to train a heart kit model. The following command will train the arrhythmia model using the reference configuration. Please refer to `configs/train-rhythm-model.json` and `heartkit/types.py` to see supported options.
+The `train` command is used to train a heart kit model. The following command will train the arrhythmia model using the reference configuration. Please refer to `configs/train-arrhythmia-model.json` and `heartkit/defines.py` to see supported options.
 
 ```bash
-heartkit train --config-file ./configs/train-arrhythmia-model.json
+heartkit --task rhythm --mode train --config-file ./configs/train-arrhythmia-model.json
 ```
 
 > Due to the large dataset and class imbalance, the batch size and buffer size are large to ensure properly shuffling of patients as well as classes. The first epoch will take much longer as it fills up this shuffled buffer. To train on a dedicated GPU, it's recommended to have at least 10 GB of VRAM.
@@ -69,7 +70,7 @@ heartkit train --config-file ./configs/train-arrhythmia-model.json
 The `evaluate` command will evaluate the performance of the model on the reserved test set. A confidence threshold can also be set such that a label is only assigned when the model's probability is greater than the threshold; otherwise, a label of inconclusive will be assigned.
 
 ```bash
-heartkit evaluate --config-file ./configs/test-arrhythmia-model.json
+heartkit --task rhythm --mode evaluate --config-file ./configs/test-arrhythmia-model.json
 ```
 
 #### 4. Export Model
@@ -77,7 +78,7 @@ heartkit evaluate --config-file ./configs/test-arrhythmia-model.json
 The `export` command will convert the trained TensorFlow model into both TFLite (TFL) and TFLite for microcontroller (TFLM) variants. The command will also verify the models' outputs match. Post-training quantization can also be enabled by setting the `quantization` flag in the configuration.
 
 ```bash
-heartkit export --config-file ./configs/export-arrhythmia-model.json
+heartkit --task rhythm --mode export --config-file ./configs/export-arrhythmia-model.json
 ```
 
 Once converted, the TFLM header file will be copied to `./evb/src/model_buffer.h`. If parameters were changed (e.g. window size, quantization), `./evb/src/constants.h` will need to be updated.
@@ -87,16 +88,23 @@ Once converted, the TFLM header file will be copied to `./evb/src/model_buffer.h
 The `demo` command is used to run the model on an Apollo 4 evaluation board (EVB). This setup requires both a host PC along with an Apollo 4 EVB. The host PC acts as a server and provides test samples to the EVB. The host PC is also used to provide status updates and model results from the EVB. The EVB runs in client mode- its job is to fetch samples and perform real-time inference using the arrhythmia model. Please refer to [EVB Demo Setup](./docs/evb_demo.md) for additional details.
 
 ```bash
-heartkit demo --config-file ./configs/evb-arrhythmia-demo.json
+heartkit --task rhythm --mode demo --config-file ./configs/evb-arrhythmia-demo.json
 ```
 
-## Architecture
+## Model Architectures
 
-The current network is based on a 1-D CNN architecture. The CNN is based on ResNet but adapted for 1-D input and utilizes longer filter sizes. The network as input takes windows (5 seconds) of raw ECG data. The only preprocessing performed is band-pass filtering and standardization on the window of ECG data.
+The __backbone network__ performs ECG segmentation. This model utilizes a custom 1-D UNET architecture w/ additional skip connections between encoder and decoder blocks. The encoder blocks are convolutional based and include both expansion and inverted residuals layers. The only preprocessing performed is band-pass filtering and standardization on the window of ECG data.
+
+The __rhythm-level arrhythmia head__ runs auxillary to the backbone network. This arrhythmia model utilizes a 1-D CNN built using MBConv style blocks that incorporate expansion, inverted residuals, and squeeze and excitation layers. Furthermore, longer filter and stide lengths are utilized in the initial layers to capture more temporal dependencies.
+
+The __beat-level arrhythmia head__ also utilizes a 1-D CNN built using MBConv style blocks. Using the identified segments, individual beats are extracted and feed into this model.
+
+The __HRV head__ uses only DSP and statistics (i.e. no network is used). The segmentation results are stiched together and used to derive a number of usefule metrics including heart rate and RR interval.
+
 
 ## Datasets
 
-A number of datasets are readily available online that are suitable for training various heart-related models. The following datasets are ones we use or plan to use. For _arrhythmia_, we are only using [Icentia11k](#icentia11k-dataset) dataset as it contains the largest number of patients in a highly ambulatory setting- users wearing a 1-lead chest band for up to two weeks. Please make sure to review each dataset's license for terms and limitations.
+A number of datasets are readily available online that are suitable for training various heart-related models. The following datasets are ones we use or plan to use. For _arrhythmia_, we are only using [Icentia11k](#icentia11k-dataset) dataset as it contains the largest number of patients in a highly ambulatory setting- users wearing a 1-lead chest band for up to two weeks. For segmentation, synthetic and [LUDB](#ludb-dataset) datasets are being utilized. Please make sure to review each dataset's license for terms and limitations.
 
 ### Icentia11k Dataset
 
@@ -106,13 +114,13 @@ __Heart Tasks__: Arrhythmia
 
 > NOTE: The dataset is intended for evaluation purposes only and cannot be used for commercial use without permission. Please visit [Physionet](https://physionet.org/content/icentia11k-continuous-ecg/1.0/) for more details.
 
-### LUDB (Lobachevsky University Electrocardiography Database)
+### LUDB Dataset
 
-ECG signal database that consists of 200 10-second 12-lead records. The boundaries and peaks of P, T waves and QRS complexes were manually annotated by cardiologists. Each record is annotated with the corresponding diagnosis. Please visit [Physionet](https://physionet.org/content/ludb/1.0.1/) for more details.
+The Lobachevsky University Electrocardiography database (LUDB) consists of 200 10-second 12-lead records. The boundaries and peaks of P, T waves and QRS complexes were manually annotated by cardiologists. Each record is annotated with the corresponding diagnosis. Please visit [Physionet](https://physionet.org/content/ludb/1.0.1/) for more details.
 
 __Heart Tasks__: Segmentation, HRV
 
-### QT Database:
+### QT Dataset
 
 Over 100 fifteen-minute two-lead ECG recordings with onset, peak, and end markers for P, QRS, T, and (where present) U waves of from 30 to 50 selected beats in each recording. Please visit [Physionet](https://physionet.org/content/qtdb/1.0.0/) for more details.
 
@@ -151,14 +159,3 @@ The results of the arrhythmia model when testing on 1,000 patients (not used dur
 * [ECG Heartbeat classification using deep transfer learning with Convolutional Neural Network and STFT technique](https://arxiv.org/abs/2206.14200)
 * [Classification of ECG based on Hybrid Features using CNNs for Wearable Applications](https://arxiv.org/pdf/2206.07648.pdf)
 * [ECG Heartbeat classification using deep transfer learning with Convolutional Neural Network and STFT technique](https://arxiv.org/pdf/2206.14200.pdf)
-
-## Future Milestones
-
-* [x] Create end-to-end EVB demo
-* [x] Perform model quantization
-* [x] Perform power optimization
-* [x] Add Atrial Flutter (AFL) to arrhythmia model
-* [ ] Develop core network to perform ECG segmentation
-* [ ] Perform beat-level classification
-* [ ] Fine-tune on another dataset
-* [ ] Use PPG based dataset

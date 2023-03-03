@@ -8,6 +8,24 @@ import tensorflow as tf
 from sklearn.metrics import auc, f1_score, roc_curve
 
 
+def compute_iou(
+    y_true: npt.ArrayLike,
+    y_pred: npt.ArrayLike,
+) -> float:
+    """Compute IoU
+
+    Args:
+        y_true (npt.ArrayLike): Y true
+        y_pred (npt.ArrayLike): Y predicted
+
+    Returns:
+        float: IoU
+    """
+    intersect = np.logical_and(y_true, y_pred)
+    union = np.logical_or(y_true, y_pred)
+    return np.sum(intersect) / np.sum(union)
+
+
 def f1(
     y_true: npt.ArrayLike,
     y_prob: npt.ArrayLike,
@@ -26,10 +44,16 @@ def f1(
         npt.ArrayLike: F1 scores
     """
     if y_prob.ndim != 2:
-        raise ValueError("y_prob must be a 2d matrix with class probabilities for each sample")
-    if y_true.ndim == 1:  # we assume that y_true is sparse (consequently, multiclass=False)
+        raise ValueError(
+            "y_prob must be a 2d matrix with class probabilities for each sample"
+        )
+    if (
+        y_true.ndim == 1
+    ):  # we assume that y_true is sparse (consequently, multiclass=False)
         if multiclass:
-            raise ValueError("if y_true cannot be sparse and multiclass at the same time")
+            raise ValueError(
+                "if y_true cannot be sparse and multiclass at the same time"
+            )
         depth = y_prob.shape[1]
         y_true = _one_hot(y_true, depth)
     if multiclass:
@@ -81,7 +105,9 @@ def confusion_matrix_plot(
     """
     confusion_mtx = tf.math.confusion_matrix(y_true, y_pred)
     plt.figure(figsize=kwargs.get("figsize", (10, 8)))
-    sns.heatmap(confusion_mtx, xticklabels=labels, yticklabels=labels, annot=True, fmt="g")
+    sns.heatmap(
+        confusion_mtx, xticklabels=labels, yticklabels=labels, annot=True, fmt="g"
+    )
     plt.xlabel("Prediction")
     plt.ylabel("Label")
     if save_path:
@@ -153,7 +179,9 @@ def macro_precision_recall(y_true, y_prob, thresholds):
     return av_precision, av_recall
 
 
-def challenge2020_metrics(y_true, y_pred, beta_f=2, beta_g=2, class_weights=None, single=False):
+def challenge2020_metrics(
+    y_true, y_pred, beta_f=2, beta_g=2, class_weights=None, single=False
+):
     """source: https://github.com/helme/ecg_ptbxl_benchmarking"""
     num_samples, num_classes = y_true.shape
     if single:  # if evaluating single class in case of threshold-optimization
@@ -175,7 +203,11 @@ def challenge2020_metrics(y_true, y_pred, beta_f=2, beta_g=2, class_weights=None
                 tn += 1.0 / sample_weights[i]
             if y_pred[i, k] == 0 and y_true[i, k] != y_pred[i, k]:
                 fn += 1.0 / sample_weights[i]
-        f_beta += w_k * ((1 + beta_f**2) * tp) / ((1 + beta_f**2) * tp + fp + beta_f**2 * fn)
+        f_beta += (
+            w_k
+            * ((1 + beta_f**2) * tp)
+            / ((1 + beta_f**2) * tp + fp + beta_f**2 * fn)
+        )
         g_beta += w_k * tp / (tp + fp + beta_g * fn)
     f_beta /= class_weights.sum()
     g_beta /= class_weights.sum()

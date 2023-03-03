@@ -1,0 +1,10 @@
+{
+    "task": "segmentation",
+    "job_dir": "./results/segmentation",
+    "ds_path": "./datasets",
+    "frame_size": 624,
+    "sampling_rate": 250,
+    "samples_per_patient": 200,
+    "test_size": 4000,
+    "model_file": "./results/segmentation/model.tf"
+}

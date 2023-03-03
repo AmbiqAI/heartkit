@@ -11,7 +11,7 @@
     "batch_size": 128,
     "buffer_size": 16384,
     "epochs": 120,
-    "steps_per_epoch": 900,
+    "steps_per_epoch": 450,
     "val_metric": "loss",
     "lr_rate": 1e-4,
     "datasets": ["ludb", "synthetic"],

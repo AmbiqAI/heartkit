@@ -22,6 +22,7 @@ from .defines import (
     HeartTestParams,
     HeartTrainParams,
 )
+from .metrics import compute_iou
 from .models.optimizers import Adam
 from .tasks import create_task_model, get_num_classes, get_task_shape
 from .utils import env_flag, set_random_seed, setup_logger
@@ -230,10 +231,12 @@ def evaluate_model(params: HeartTestParams):
     logger.info(f"Random seed {params.seed}")
 
     with console.status("[bold green] Loading test dataset..."):
-        ds = LudbDataset(
+        ds = SyntheticDataset(
             str(params.ds_path),
             task=HeartTask.segmentation,
             frame_size=params.frame_size,
+            target_rate=params.sampling_rate,
+            num_pts=200,
         )
         test_ds = ds.load_test_dataset(
             test_patients=params.test_patients,
@@ -250,14 +253,14 @@ def evaluate_model(params: HeartTestParams):
         model.summary()
 
         logger.info("Performing inference")
-        y_true = np.argmax(test_y, axis=1)
+        y_true = np.argmax(test_y, axis=2)
         y_prob = tf.nn.softmax(model.predict(test_x)).numpy()
-        y_pred = np.argmax(y_prob, axis=1)
+        y_pred = np.argmax(y_prob, axis=2)
 
         # Summarize results
         logger.info("Testing Results")
-        test_acc = np.sum(y_pred == y_true) / len(y_true)
-        test_iou = -1
+        test_acc = np.sum(y_pred == y_true) / y_true.size
+        test_iou = compute_iou(y_true, y_pred)
         logger.info(f"[TEST SET] ACC={test_acc:.2%}, IoU={test_iou:.2%}")
     # END WITH
 
