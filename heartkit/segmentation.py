@@ -13,6 +13,7 @@ from neuralspot.tflite.metrics import get_flops
 from neuralspot.tflite.model import get_strategy, load_model
 
 from .datasets import EcgDataset, LudbDataset, SyntheticDataset
+from .datasets.augmentation import lead_noise, random_scaling
 from .defines import (
     HeartExportParams,
     HeartSegment,
@@ -57,11 +58,22 @@ def train_model(params: HeartTrainParams):
     if "synthetic" in dataset_names:
         datasets.append(
             SyntheticDataset(
-                str(params.ds_path), task=HeartTask.segmentation, frame_size=params.frame_size, num_pts=num_pts
+                str(params.ds_path),
+                task=HeartTask.segmentation,
+                frame_size=params.frame_size,
+                target_rate=params.sampling_rate,
+                num_pts=num_pts,
             )
         )
     if "ludb" in dataset_names:
-        datasets.append(LudbDataset(str(params.ds_path), task=HeartTask.segmentation, frame_size=params.frame_size))
+        datasets.append(
+            LudbDataset(
+                str(params.ds_path),
+                task=HeartTask.segmentation,
+                frame_size=params.frame_size,
+                target_rate=params.sampling_rate,
+            )
+        )
 
     train_datasets = []
     val_datasets = []
@@ -76,6 +88,8 @@ def train_model(params: HeartTrainParams):
             val_size=params.val_size,
             num_workers=params.data_parallelism,
         )
+
+
         train_datasets.append(train_ds)
         val_datasets.append(val_ds)
     # END FOR
@@ -85,12 +99,22 @@ def train_model(params: HeartTrainParams):
     train_ds = tf.data.Dataset.sample_from_datasets(train_datasets, weights=ds_weights)
     val_ds = tf.data.Dataset.sample_from_datasets(val_datasets, weights=ds_weights)
 
+    def augment(x):
+        return x
+        # x = lead_noise(x, scale=1)
+        # x = random_scaling(x, lower=0.5, upper=1.5)
+        # return x
+
     # Shuffle and batch datasets for training
     train_ds = (
         train_ds.shuffle(
             buffer_size=params.buffer_size,
             reshuffle_each_iteration=True,
         )
+        # .map(
+        #     lambda x_y: (augment(x_y[0]), x_y[1]),
+        #     num_parallel_calls=tf.data.AUTOTUNE
+        # )
         .batch(
             batch_size=params.batch_size,
             drop_remainder=True,
@@ -307,50 +331,3 @@ def export_model(params: HeartExportParams):
     if params.tflm_file and tflm_model_path != params.tflm_file:
         logger.info(f"Copying TFLM header to {params.tflm_file}")
         shutil.copyfile(tflm_model_path, params.tflm_file)
-
-
-if __name__ == "__main__":
-    actions = ["train"]
-    # Train Synthetic
-    if "train" in actions:
-        train_model(
-            HeartTrainParams(
-                job_dir="./results/segmentation",
-                ds_path="./datasets",
-                frame_size=1248,
-                samples_per_patient=100,
-                val_samples_per_patient=100,
-                val_patients=0.20,
-                batch_size=128,
-                buffer_size=16384,
-                epochs=120,
-                steps_per_epoch=int(0.8 * 1200 * 100 / 64),
-                val_metric="loss",
-                # Extra
-                lr_rate=1e-4,
-                datasets=["ludb", "synthetic"],
-                num_pts=1000,  # synthetic patients
-            )
-        )
-    # Fine-tune on LUDB
-    if "finetune" in actions:
-        train_model(
-            HeartTrainParams(
-                job_dir="./results/segmentation-finetune",
-                ds_path="./datasets",
-                weights_file="./results/segmentation/model.weights",
-                frame_size=1248,
-                samples_per_patient=100,
-                val_samples_per_patient=100,
-                val_patients=0.20,
-                batch_size=128,
-                buffer_size=16384,
-                epochs=60,
-                steps_per_epoch=int(0.8 * 400 * 100 / 64),
-                val_metric="loss",
-                # Extra
-                lr_rate=1e-5,
-                datasets=["ludb", "synthetic"],
-                num_pts=200,  # synthetic patients
-            )
-        )

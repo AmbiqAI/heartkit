@@ -2,7 +2,8 @@
     "task": "segmentation",
     "job_dir": "./results/segmentation",
     "ds_path": "./datasets",
-    "frame_size": 1248,
+    "frame_size": 624,
+    "sampling_rate": 250,
     "samples_per_patient": 100,
     "val_samples_per_patient": 100,
     "val_patients": 0.20,
@@ -10,9 +11,9 @@
     "batch_size": 128,
     "buffer_size": 16384,
     "epochs": 120,
-    "steps_per_epoch": 1500,
+    "steps_per_epoch": 900,
     "val_metric": "loss",
     "lr_rate": 1e-4,
     "datasets": ["ludb", "synthetic"],
-    "num_pts": 1000
+    "num_pts": 540
 }

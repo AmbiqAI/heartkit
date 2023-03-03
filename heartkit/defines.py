@@ -124,6 +124,7 @@ class HeartTrainParams(BaseModel, extra=Extra.allow):
     job_dir: Path = Field(default_factory=tempfile.gettempdir, description="Job output directory")
     # Dataset arguments
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
+    sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
     samples_per_patient: int | list[int] = Field(1000, description="# train samples per patient")
     val_samples_per_patient: int | list[int] = Field(1000, description="# validation samples per patient")
@@ -156,6 +157,7 @@ class HeartTestParams(BaseModel, extra=Extra.allow):
     job_dir: Path = Field(default_factory=tempfile.gettempdir, description="Job output directory")
     # Dataset arguments
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
+    sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
     samples_per_patient: int | list[int] = Field(1000, description="# test samples per patient")
     test_patients: float | None = Field(None, description="# or proportion of patients for testing")
@@ -177,6 +179,7 @@ class HeartExportParams(BaseModel, extra=Extra.allow):
     job_dir: Path = Field(default_factory=tempfile.gettempdir, description="Job output directory")
     # Dataset arguments
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
+    sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
     samples_per_patient: int | list[int] = Field(100, description="# test samples per patient")
     test_size: int = Field(100_000, description="# samples for testing")

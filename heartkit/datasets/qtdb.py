@@ -43,8 +43,10 @@ QtdbLeadsMap = {
 class QtdbDataset(EcgDataset):
     """QT dataset"""
 
-    def __init__(self, ds_path: str, task: HeartTask = HeartTask.rhythm, frame_size: int = 1250) -> None:
-        super().__init__(os.path.join(ds_path, "qtdb"), task, frame_size)
+    def __init__(
+        self, ds_path: str, task: HeartTask = HeartTask.rhythm, frame_size: int = 1250, target_rate: int = 250
+    ) -> None:
+        super().__init__(os.path.join(ds_path, "qtdb"), task, frame_size, target_rate)
 
     @property
     def sampling_rate(self) -> int:

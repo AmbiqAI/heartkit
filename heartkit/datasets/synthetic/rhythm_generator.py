@@ -67,7 +67,7 @@ def _resample_syn_signals(
 
 def generate_nsr(
     leads: int = 12,
-    signal_frequency: float = 200,
+    signal_frequency: float = 500,
     rate: float = 60,
     preset: str = "SR",
     noise_multiplier: float = 1.0,
@@ -187,11 +187,11 @@ def generate_nsr(
                 flipper=parameters.flippers[h],
                 j_point=parameters.j_points[h],
             )
-            y[start : start + y_qrs.size] = evenly_spaced_y(
+            y[start : min(start + y_qrs.size, sizer)] = evenly_spaced_y(
                 x_qrs[: min(x_qrs.size, sizer - start)],
                 y_qrs[: min(x_qrs.size, sizer - start)],
             )
-            y_segs[start : start + y_qrs.size] = SyntheticSegments.qrs_complex
+            y_segs[start : min(start + y_qrs.size, sizer)] = SyntheticSegments.qrs_complex
 
             # # check if QRS complex predominantly negative:
             # if (

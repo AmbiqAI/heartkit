@@ -3,6 +3,7 @@
     "job_dir": "./results/arrhythmia-full-model",
     "ds_path": "./datasets",
     "frame_size": 1000,
+    "sampling_rate": 250,
     "samples_per_patient": [500, 4000, 2000],
     "val_samples_per_patient": [250, 2000, 1000],
     "train_patients": 10000,

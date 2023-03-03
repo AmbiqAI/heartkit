@@ -22,17 +22,16 @@ class SyntheticDataset(EcgDataset):
         ds_path: str,
         task: HeartTask = HeartTask.rhythm,
         frame_size: int = 1250,
+        target_rate: int = 250,
         num_pts: int = 250,
-        sampling_rate: int = 500,
     ) -> None:
-        super().__init__(os.path.join(ds_path, "synthetic"), task, frame_size)
+        super().__init__(os.path.join(ds_path, "synthetic"), task, frame_size, target_rate)
         self._num_pts = num_pts
-        self._sampling_rate = sampling_rate
 
     @property
     def sampling_rate(self) -> int:
         """Sampling rate in Hz"""
-        return self._sampling_rate
+        return self.target_rate
 
     @property
     def mean(self) -> float:
@@ -118,31 +117,27 @@ class SyntheticDataset(EcgDataset):
             EcgPresets.random_morphology,
             EcgPresets.high_take_off,
         )
-        preset_weights = (9, 1, 1, 1, 1, 1, 1)
+        preset_weights = (20, 1, 1, 1, 1, 1, 1)
 
         for _ in patient_generator:
             _, syn_ecg, syn_segs_t, _, _ = generate_nsr(
                 leads=num_leads,
                 signal_frequency=self.sampling_rate,
-                rate=np.random.uniform(40, 100),
+                rate=np.random.uniform(40, 90),
                 preset=random.choices(presets, preset_weights, k=1)[0].value,
-                noise_multiplier=np.random.uniform(0.7, 1.2),
-                impedance=np.random.uniform(0.8, 1.05),
-                p_multiplier=np.random.uniform(0.5, 1.05),
-                t_multiplier=np.random.uniform(0.5, 1.05),
-                duration=max(10, (self.frame_size / self.sampling_rate) * (samples_per_patient / num_leads / 10)),
+                noise_multiplier=np.random.uniform(0.5, 0.9),
+                impedance=np.random.uniform(0.75, 1.1),
+                p_multiplier=np.random.uniform(0.75, 1.1),
+                t_multiplier=np.random.uniform(0.75, 1.1),
+                duration=max(5, (self.frame_size / self.sampling_rate) * (samples_per_patient / num_leads / 10)),
                 voltage_factor=np.random.uniform(275, 325),
             )
             syn_segs = np.zeros_like(syn_segs_t)
             for i in range(syn_segs_t.shape[0]):
-                syn_segs[
-                    i, np.where((syn_segs_t[i] == SyntheticSegments.tp_overlap.value))[0]
-                ] = HeartSegment.pwave.value
-                syn_segs[i, np.where((syn_segs_t[i] == SyntheticSegments.p_wave.value))[0]] = HeartSegment.pwave.value
-                syn_segs[
-                    i, np.where((syn_segs_t[i] == SyntheticSegments.qrs_complex.value))[0]
-                ] = HeartSegment.qrs.value
-                syn_segs[i, np.where((syn_segs_t[i] == SyntheticSegments.t_wave.value))[0]] = HeartSegment.twave.value
+                syn_segs[i, np.where((syn_segs_t[i] == SyntheticSegments.tp_overlap))[0]] = HeartSegment.pwave
+                syn_segs[i, np.where((syn_segs_t[i] == SyntheticSegments.p_wave))[0]] = HeartSegment.pwave
+                syn_segs[i, np.where((syn_segs_t[i] == SyntheticSegments.qrs_complex))[0]] = HeartSegment.qrs
+                syn_segs[i, np.where((syn_segs_t[i] == SyntheticSegments.t_wave))[0]] = HeartSegment.twave
 
             for _ in range(samples_per_patient):
                 # Randomly pick an ECG lead and frame

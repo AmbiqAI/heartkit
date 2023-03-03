@@ -2,58 +2,62 @@ import random
 
 import numpy as np
 import numpy.typing as npt
-import scipy.signal
-
-# Add baseline wonder
-# Add random jitter / gaussian noise
-# Add time warping? would need to apply for both
 
 
-def apply_noise_to_signal(
-    y: npt.NDArray,
-    noise_multiplier: float = 1.0,
-) -> npt.NDArray:
-    """Smooth and optionally add noise to signal
+def emg_noise(y: npt.NDArray, scale: float = 1e-5, sampling_frequency: int = 1000) -> npt.NDArray:
+    """Add EMG noise to signal
 
     Args:
-        y (npt.NDArray): Signal data
-        rhythm (str, optional): Rhythm preset. Defaults to "sr".
-        noise_multiplier (float, optional): Global noise multiplier. Defaults to 1.0.
-        impedance (float, optional): Performs y scaling. Defaults to 1.0.
+        y (npt.NDArray): Signal
+        scale (float, optional): Noise scale. Defaults to 1e-5.
+        sampling_frequency (int, optional): Sampling rate in Hz. Defaults to 1000.
 
     Returns:
-        npt.NDArray: Signal data
+        npt.NDArray: New signal
     """
-    # axis = 0
+    emg_noise = np.repeat(
+        np.sin(np.linspace(-0.5 * np.pi, 1.5 * np.pi, sampling_frequency) * 10000), np.ceil(y.size / sampling_frequency)
+    )
+    return y + scale * emg_noise[: y.size]
 
-    # Generate baseline noise
-    n = np.zeros((y.size,), dtype=complex)
-    n[40:100] = np.exp(1j * np.random.uniform(0, np.pi * 2, (60,)))
-    atrial_fibrillation_noise = np.fft.ifft(n)
-    atrial_fibrillation_noise = scipy.signal.savgol_filter(atrial_fibrillation_noise, 31, 2)
-    atrial_fibrillation_noise = atrial_fibrillation_noise[: y.size] * random.uniform(0.01, 0.1)
-    y = y + (atrial_fibrillation_noise * random.uniform(0, 1.3) * noise_multiplier)
-    y = scipy.signal.savgol_filter(y, 31, 2)
 
-    # Generate random electrical noise from leads
-    lead_noise = np.random.normal(0, 1 * 10**-5, y.size)
+def lead_noise(y: npt.NDArray, scale: float = 1) -> npt.NDArray:
+    """Add Lead noise
 
-    # Generate EMG frequency noise
-    emg_noise = np.zeros(0)
-    emg_noise_partial = np.sin(np.linspace(-0.5 * np.pi, 1.5 * np.pi, 1000) * 10000) * 10**-5
-    for _ in range(y.size // 1000):
-        emg_noise = np.concatenate((emg_noise, emg_noise_partial))
-    emg_noise = np.concatenate((emg_noise, emg_noise_partial[: y.size % 1000]))
+    Args:
+        y (npt.NDArray): Signal
+        scale (float, optional): Noise scale. Defaults to 1.
 
-    # Combine lead and EMG noise, add to ECG
-    noise = (emg_noise + lead_noise) * noise_multiplier
+    Returns:
+        npt.NDArray: New signal
+    """
+    lead_noise = np.random.normal(-scale, scale, y.size)
+    return y + lead_noise
 
-    # Randomly vary global amplitude
-    y = (y + noise) * random.uniform(0.5, 3)
 
-    # Add baseline wandering
+def random_scaling(y: npt.NDArray, lower: float = 0.5, upper: float = 2.0) -> npt.NDArray:
+    """Randomly scale signal.
+
+    Args:
+        y (npt.NDArray): Signal
+        noise_multiplier (float, optional): Noise multiplier. Defaults to 1.0.
+
+    Returns:
+        npt.NDArray: New signal
+    """
+    return y * random.uniform(lower, upper)
+
+
+def baseline_wander(y: npt.NDArray, scale: float = 1e-3) -> npt.NDArray:
+    """Apply baseline wander
+
+    Args:
+        y (npt.NDArray): Signal
+        scale (float, optional): Noise scale. Defaults to 1e-3.
+
+    Returns:
+        npt.NDArray: New signal
+    """
     skew = np.linspace(0, random.uniform(0, 2) * np.pi, y.size)
-    skew = np.sin(skew) * random.uniform(10**-3, 10**-4)
+    skew = np.sin(skew) * random.uniform(scale / 10, scale)
     y = y + skew
-
-    return y

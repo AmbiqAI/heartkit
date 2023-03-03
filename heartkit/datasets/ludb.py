@@ -8,6 +8,7 @@ from multiprocessing import Pool
 import h5py
 import numpy as np
 import numpy.typing as npt
+import scipy.signal
 from tqdm import tqdm
 
 from ..defines import HeartTask
@@ -39,11 +40,39 @@ LudbLeadsMap = {
 }
 
 
+def _resample_ecg_segs(
+    data: npt.NDArray,
+    segs: npt.NDArray,
+    sampling_rate: int,
+    target_rate: int,
+) -> tuple[npt.NDArray, npt.NDArray]:
+    """Resample signal to target sampling rate
+
+    Args:
+        data (npt.NDArray): ECG data [data x leads]
+        segs (npt.NDArray): Segmentations
+        sampling_rate (int): Original Fs
+        target_rate (int): Target Fs
+
+    Returns:
+        tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]: Resampled signals
+    """
+    ratio = target_rate / sampling_rate
+    numel = int(ratio * data.shape[0])
+    rdata = scipy.signal.resample(data, numel, axis=0)
+    rsegs = segs.copy()
+    rsegs[:, 2] = segs[:, 2] * ratio
+    rsegs[:, 3] = segs[:, 3] * ratio
+    return rdata, rsegs
+
+
 class LudbDataset(EcgDataset):
     """LUDB dataset"""
 
-    def __init__(self, ds_path: str, task: HeartTask = HeartTask.rhythm, frame_size: int = 1250) -> None:
-        super().__init__(os.path.join(ds_path, "ludb"), task, frame_size)
+    def __init__(
+        self, ds_path: str, task: HeartTask = HeartTask.rhythm, frame_size: int = 1250, target_rate: int = 250
+    ) -> None:
+        super().__init__(os.path.join(ds_path, "ludb"), task, frame_size, target_rate)
 
     @property
     def sampling_rate(self) -> int:
@@ -121,17 +150,19 @@ class LudbDataset(EcgDataset):
         Yields:
             Iterator[SampleGenerator]
         """
-        # NOTE: Labels are not provided on first N and last M samples so we'll discard
-        start_offset = 600
-        stop_offset = 950
         for _, pt in patient_generator:
             # NOTE: [:] will load all data into RAM- ideal for small dataset
             data = pt["data"][:]
             segs = pt["segmentations"][:]
+            if self.sampling_rate != self.target_rate:
+                data, segs = _resample_ecg_segs(data, segs, self.sampling_rate, self.target_rate)
             labels = np.zeros_like(data)
+            # NOTE: Labels are not provided on first N and last M samples so discard
+            start_offset = max(segs[0][2] - 100, 0)
+            stop_offset = max(0, data.shape[0] - segs[-1][3] + 100)
             for seg_idx in range(segs.shape[0]):
                 seg = segs[seg_idx]
-                labels[seg[2] : seg[3] + 0, seg[0]] = seg[1]
+                labels[seg[2] : seg[3], seg[0]] = seg[1]
             for _ in range(samples_per_patient):
                 # Randomly pick an ECG lead
                 lead_idx = np.random.randint(data.shape[1])
@@ -139,7 +170,7 @@ class LudbDataset(EcgDataset):
                 frame_start = np.random.randint(start_offset, data.shape[0] - self.frame_size - stop_offset)
                 frame_end = frame_start + self.frame_size
                 x = data[frame_start:frame_end, lead_idx].astype(np.float32).reshape((self.frame_size, 1))
-                y = labels[frame_start:frame_end, lead_idx]  # .reshape((self.frame_size, 1))
+                y = labels[frame_start:frame_end, lead_idx].astype(np.int32)  # .reshape((self.frame_size, 1))
                 yield x, y
             # END FOR
         # END FOR

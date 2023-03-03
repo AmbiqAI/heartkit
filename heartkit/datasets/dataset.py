@@ -19,15 +19,19 @@ logger = logging.getLogger(__name__)
 class EcgDataset:
     """ECG dataset base class"""
 
+    target_rate: int
     ds_path: str
     task: HeartTask
     frame_size: int
 
-    def __init__(self, ds_path: str, task: HeartTask = HeartTask.rhythm, frame_size: int = 1250) -> None:
+    def __init__(
+        self, ds_path: str, task: HeartTask = HeartTask.rhythm, frame_size: int = 1250, target_rate: int = 250
+    ) -> None:
         """ECG dataset base class"""
         self.ds_path = ds_path
         self.task = task
         self.frame_size = frame_size
+        self.target_rate = target_rate
 
     #############################################
     # !! Below must be implemented in subclass !!
@@ -156,7 +160,7 @@ class EcgDataset:
                 patient_ids=train_patient_ids, test_size=val_patients
             )
             if val_size is None:
-                val_size = val_pt_samples * len(val_patient_ids)
+                val_size = val_pt_samples * (len(val_patient_ids) - 1)
 
             logger.info(f"Collecting {val_size} validation samples")
             val_ds = self._parallelize_dataset(
@@ -241,7 +245,8 @@ class EcgDataset:
                 samples_per_patient=samples_per_patient,
                 repeat=repeat,
             )
-
+        if num_workers > len(patient_ids):
+            num_workers = len(patient_ids)
         split = len(patient_ids) // num_workers
         datasets = [_make_train_dataset(i, split) for i in range(num_workers)]
         if num_workers <= 1:
@@ -314,7 +319,7 @@ class EcgDataset:
             lambda x_y: (
                 # Apply augmentations
                 # Pre-process signal and convert to 2D shape
-                preprocess_signal(data=x_y[0], sample_rate=self.sampling_rate, target_rate=None).reshape((1, -1, 1)),
+                preprocess_signal(data=x_y[0], sample_rate=self.target_rate).reshape((1, -1, 1)),
                 tf.one_hot(x_y[1], num_classes),  # x_y[1]
             ),
             data_generator,
