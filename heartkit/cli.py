@@ -1,4 +1,5 @@
 import os
+from typing import Type, TypeVar
 
 import pydantic_argparse
 from pydantic import BaseModel, Field
@@ -28,6 +29,24 @@ class CliArgs(BaseModel):
     config: str = Field(description="JSON config file path or string")
 
 
+B = TypeVar("B", bound=BaseModel)
+
+
+def parse_content(cls: Type[B], content: str) -> B:
+    """Parse file or raw content into Pydantic model.
+
+    Args:
+        cls (B): Pydantic model subclasss
+        content (str): File path or raw content
+
+    Returns:
+        B: Pydantic model subclass instance
+    """
+    return (
+        cls.parse_file(content) if os.path.isfile(content) else cls.parse_raw(content)
+    )
+
+
 def run(inputs: list[str] | None = None):
     """Main CLI app runner
     Args:
@@ -42,74 +61,44 @@ def run(inputs: list[str] | None = None):
 
     logger.info(f"#STARTED {args.mode.value} model")
 
+    if args.mode == HeartKitMode.download:
+        download_datasets(parse_content(HeartDownloadParams, args.config))
+        return
+
     match args.task:
-        case HeartTask.rhythm:
+        case HeartTask.arrhythmia:
             task_handler = arrhythmia
         case HeartTask.beat:
             task_handler = beat
         case HeartTask.segmentation:
             task_handler = segmentation
-        case HeartTask.hr:
+        case HeartTask.hrv:
             task_handler = hrv
         case _:
-            task_handler = None
+            raise NotImplementedError()
     # END MATCH
 
     match args.mode:
-        case HeartKitMode.download:
-            download_datasets(
-                params=(
-                    HeartDownloadParams.parse_file(args.config)
-                    if os.path.isfile(args.config)
-                    else HeartDownloadParams.parse_raw(args.config)
-                )
-            )
         case HeartKitMode.train:
-            assert task_handler
-            task_handler.train_model(
-                (
-                    HeartTrainParams.parse_file(args.config)
-                    if os.path.isfile(args.config)
-                    else HeartTrainParams.parse_raw(args.config)
-                )
-            )
+            task_handler.train_model(parse_content(HeartTrainParams, args.config))
 
         case HeartKitMode.evaluate:
-            assert task_handler
-            task_handler.evaluate_model(
-                params=(
-                    HeartTestParams.parse_file(args.config)
-                    if os.path.isfile(args.config)
-                    else HeartTestParams.parse_raw(args.config)
-                )
-            )
+            task_handler.evaluate_model(parse_content(HeartTestParams, args.config))
 
         case HeartKitMode.export:
-            assert task_handler
-            task_handler.export_model(
-                params=(
-                    HeartExportParams.parse_file(args.config)
-                    if os.path.isfile(args.config)
-                    else HeartExportParams.parse_raw(args.config)
-                )
-            )
+            task_handler.export_model(parse_content(HeartExportParams, args.config))
 
         case HeartKitMode.demo:
-            evb_demo(
-                task=args.task,
-                params=(
-                    HeartDemoParams.parse_file(args.config)
-                    if os.path.isfile(args.config)
-                    else HeartDemoParams.parse_raw(args.config)
-                ),
-            )
+            evb_demo(task=args.task, params=parse_content(HeartDemoParams, args.config))
 
         case HeartKitMode.predict:
             raise NotImplementedError()
+
         case _:
             logger.error("Error: Unknown command")
 
     # END MATCH
+
     logger.info(f"#FINISHED {args.mode.value} model")
 
 

@@ -41,7 +41,11 @@ def train_model(params: HeartTrainParams):
         fp.write(params.json(indent=2))
 
     if env_flag("WANDB"):
-        wandb.init(project=f"ecg-{HeartTask.beat}", entity="ambiq", dir=str(params.job_dir))
+        wandb.init(
+            project=f"heartkit-{HeartTask.beat}",
+            entity="ambiq",
+            dir=str(params.job_dir),
+        )
         wandb.config.update(params.dict())
 
     # Create TF datasets
@@ -84,7 +88,9 @@ def train_model(params: HeartTrainParams):
         logger.info("Building model")
         in_shape, _ = get_task_shape(HeartTask.beat, params.frame_size)
         inputs = tf.keras.Input(in_shape, batch_size=None, dtype=tf.float32)
-        model = create_task_model(inputs, HeartTask.beat, params.arch, stages=params.stages)
+        model = create_task_model(
+            inputs, HeartTask.beat, name=params.model, params=params.model_params
+        )
         flops = get_flops(model, batch_size=1)
         optimizer = Adam(
             tf.keras.optimizers.schedules.CosineDecayRestarts(
@@ -126,7 +132,9 @@ def train_model(params: HeartTrainParams):
                 verbose=1,
             ),
             tf.keras.callbacks.CSVLogger(str(params.job_dir / "history.csv")),
-            tf.keras.callbacks.TensorBoard(log_dir=str(params.job_dir), write_steps_per_second=True),
+            tf.keras.callbacks.TensorBoard(
+                log_dir=str(params.job_dir), write_steps_per_second=True
+            ),
         ]
         if env_flag("WANDB"):
             model_callbacks.append(WandbCallback())
@@ -220,7 +228,9 @@ def evaluate_model(params: HeartTestParams):
 
         # If threshold given, only count predictions above threshold
         if params.threshold is not None:
-            y_thresh_idx = get_predicted_threshold_indices(y_prob, y_pred, params.threshold)
+            y_thresh_idx = get_predicted_threshold_indices(
+                y_prob, y_pred, params.threshold
+            )
             drop_perc = 1 - len(y_thresh_idx) / len(y_true)
             y_prob = y_prob[y_thresh_idx]
             y_pred = y_pred[y_thresh_idx]
@@ -300,7 +310,9 @@ def export_model(params: HeartExportParams):
     y_true = np.argmax(test_y, axis=1)
     y_prob_tf = tf.nn.softmax(model.predict(test_x)).numpy()
     y_pred_tf = np.argmax(y_prob_tf, axis=1)
-    y_prob_tfl = tf.nn.softmax(predict_tflite(model_content=tflite_model, test_x=test_x)).numpy()
+    y_prob_tfl = tf.nn.softmax(
+        predict_tflite(model_content=tflite_model, test_x=test_x)
+    ).numpy()
     y_pred_tfl = np.argmax(y_prob_tfl, axis=1)
 
     tf_acc = np.sum(y_pred_tf == y_true) / len(y_true)

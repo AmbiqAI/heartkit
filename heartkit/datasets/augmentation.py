@@ -34,8 +34,7 @@ def lead_noise(y: npt.NDArray, scale: float = 1) -> npt.NDArray:
     Returns:
         npt.NDArray: New signal
     """
-    noise = np.random.normal(-scale, scale, y.size)
-    return y + noise
+    return y + np.random.normal(-scale, scale, size=y.shape)
 
 
 def random_scaling(

@@ -20,12 +20,14 @@ class SyntheticDataset(EcgDataset):
     def __init__(
         self,
         ds_path: str,
-        task: HeartTask = HeartTask.rhythm,
+        task: HeartTask = HeartTask.arrhythmia,
         frame_size: int = 1250,
         target_rate: int = 250,
         num_pts: int = 250,
     ) -> None:
-        super().__init__(os.path.join(ds_path, "synthetic"), task, frame_size, target_rate)
+        super().__init__(
+            os.path.join(ds_path, "synthetic"), task, frame_size, target_rate
+        )
         self._num_pts = num_pts
 
     @property
@@ -129,22 +131,40 @@ class SyntheticDataset(EcgDataset):
                 impedance=np.random.uniform(0.75, 1.1),
                 p_multiplier=np.random.uniform(0.75, 1.1),
                 t_multiplier=np.random.uniform(0.75, 1.1),
-                duration=max(5, (self.frame_size / self.sampling_rate) * (samples_per_patient / num_leads / 10)),
+                duration=max(
+                    5,
+                    (self.frame_size / self.sampling_rate)
+                    * (samples_per_patient / num_leads / 10),
+                ),
                 voltage_factor=np.random.uniform(275, 325),
             )
             syn_segs = np.zeros_like(syn_segs_t)
             for i in range(syn_segs_t.shape[0]):
-                syn_segs[i, np.where((syn_segs_t[i] == SyntheticSegments.tp_overlap))[0]] = HeartSegment.pwave
-                syn_segs[i, np.where((syn_segs_t[i] == SyntheticSegments.p_wave))[0]] = HeartSegment.pwave
-                syn_segs[i, np.where((syn_segs_t[i] == SyntheticSegments.qrs_complex))[0]] = HeartSegment.qrs
-                syn_segs[i, np.where((syn_segs_t[i] == SyntheticSegments.t_wave))[0]] = HeartSegment.twave
+                syn_segs[
+                    i, np.where((syn_segs_t[i] == SyntheticSegments.tp_overlap))[0]
+                ] = HeartSegment.pwave
+                syn_segs[
+                    i, np.where((syn_segs_t[i] == SyntheticSegments.p_wave))[0]
+                ] = HeartSegment.pwave
+                syn_segs[
+                    i, np.where((syn_segs_t[i] == SyntheticSegments.qrs_complex))[0]
+                ] = HeartSegment.qrs
+                syn_segs[
+                    i, np.where((syn_segs_t[i] == SyntheticSegments.t_wave))[0]
+                ] = HeartSegment.twave
 
             for _ in range(samples_per_patient):
                 # Randomly pick an ECG lead and frame
                 lead_idx = np.random.randint(syn_ecg.shape[0])
-                frame_start = np.random.randint(start_offset, syn_ecg.shape[1] - self.frame_size)
+                frame_start = np.random.randint(
+                    start_offset, syn_ecg.shape[1] - self.frame_size
+                )
                 frame_end = frame_start + self.frame_size
-                x = syn_ecg[lead_idx, frame_start:frame_end].astype(np.float32).reshape((self.frame_size, 1))
+                x = (
+                    syn_ecg[lead_idx, frame_start:frame_end]
+                    .astype(np.float32)
+                    .reshape((self.frame_size, 1))
+                )
                 y = syn_segs[lead_idx, frame_start:frame_end].astype(np.int32)
                 yield x, y
             # END FOR
@@ -201,5 +221,11 @@ class SyntheticDataset(EcgDataset):
         num_workers: int = 1,
     ):
         return super().load_train_datasets(
-            train_patients, val_patients, train_pt_samples, val_pt_samples, val_size, None, num_workers  # Dont cache
+            train_patients,
+            val_patients,
+            train_pt_samples,
+            val_pt_samples,
+            val_size,
+            None,
+            num_workers,  # Dont cache
         )

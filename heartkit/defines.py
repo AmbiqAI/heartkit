@@ -2,7 +2,7 @@ import os
 import tempfile
 from enum import Enum, IntEnum
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Extra, Field
 
@@ -10,9 +10,9 @@ from pydantic import BaseModel, Extra, Field
 class HeartTask(str, Enum):
     """Heart task"""
 
-    rhythm = "arrhythmia"
+    arrhythmia = "arrhythmia"
     beat = "beat"
-    hr = "hr"
+    hrv = "hrv"
     segmentation = "segmentation"
 
 
@@ -27,9 +27,8 @@ class HeartKitMode(str, Enum):
     demo = "demo"
 
 
-ArchitectureType = Literal[
-    "resnet12", "resnet18", "resnet34", "resnet50", "efficientnet", "unet"
-]
+# resnet, efficientnet, unet
+ArchitectureType = Literal["resnet", "efficientnet", "unet"]
 DatasetTypes = Literal["icentia11k", "ludb", "qtdb", "synthetic"]
 
 
@@ -107,7 +106,7 @@ class HeartSegmentName(str, Enum):
     uwave = "uwave"
 
 
-class HeartDownloadParams(BaseModel):
+class HeartDownloadParams(BaseModel, extra=Extra.allow):
     """Download command params"""
 
     ds_path: Path = Field(default_factory=Path, description="Dataset root directory")
@@ -153,11 +152,14 @@ class HeartTrainParams(BaseModel, extra=Extra.allow):
         description="# of data loaders running in parallel",
     )
     # Model arguments
+    model: str | None = Field(default=None, description="Custom model")
+    model_params: dict[str, Any] | None = Field(
+        default=None, description="Custom model parameters"
+    )
+
     weights_file: Path | None = Field(
         None, description="Path to a checkpoint weights to load"
     )
-    arch: ArchitectureType = Field("resnet12", description="Network architecture")
-    stages: int | None = Field(None, description="# of resnet stages")
     quantization: bool | None = Field(
         None, description="Enable quantization aware training (QAT)"
     )
@@ -233,12 +235,12 @@ class HeartExportParams(BaseModel, extra=Extra.allow):
 class HeartDemoParams(BaseModel, extra=Extra.allow):
     """Demo command params"""
 
-    task: HeartTask = Field(HeartTask.rhythm, description="Heart task")
     job_dir: Path = Field(
         default_factory=tempfile.gettempdir, description="Job output directory"
     )
     # Dataset arguments
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
+    sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
     pad_size: int = Field(0, description="Pad size")
     samples_per_patient: int | list[int] = Field(
@@ -247,6 +249,6 @@ class HeartDemoParams(BaseModel, extra=Extra.allow):
     # EVB arguments
     vid_pid: str | None = Field(
         "51966:16385",
-        description="VID and PID of serial device formatted as `VID:PID` both values in base-10",
+        description="VID and PID of serial device formatted as `VID:PID` in base-10",
     )
     baudrate: int = Field(115200, description="Serial baudrate")

@@ -21,9 +21,6 @@
             "package": "black",
             "version": "latest",
             "injections": "pylint pytest"
-        },
-        "ghcr.io/devcontainers-contrib/features/poetry:2": {
-            "version": "latest"
         }
     },
 
@@ -35,7 +32,7 @@
 
     "forwardPorts": [6006],
 
-    "postCreateCommand": "sudo apt update && sudo apt install -y --no-install-recommends cuda-toolkit-11-8 && poetry install",
+    "postCreateCommand": "./.devcontainer/postCreateCommand.sh",
 
     "remoteEnv": {
         "LD_LIBRARY_PATH": "${containerEnv:LD_LIBRARY_PATH}:/usr/local/cuda/lib64",

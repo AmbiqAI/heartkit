@@ -13,8 +13,7 @@ from neuralspot.tflite.metrics import get_flops
 from neuralspot.tflite.model import get_strategy, load_model
 
 from .datasets import EcgDataset, LudbDataset, SyntheticDataset
-
-# from .datasets.augmentation import lead_noise, random_scaling
+from .datasets.augmentation import lead_noise
 from .defines import (
     HeartExportParams,
     HeartSegment,
@@ -54,7 +53,7 @@ def train_model(params: HeartTrainParams):
 
     if env_flag("WANDB"):
         wandb.init(
-            project=f"ecg-{HeartTask.segmentation}",
+            project=f"heartkit-{HeartTask.segmentation}",
             entity="ambiq",
             dir=str(params.job_dir),
         )
@@ -104,10 +103,9 @@ def train_model(params: HeartTrainParams):
     train_ds = tf.data.Dataset.sample_from_datasets(train_datasets, weights=ds_weights)
     val_ds = tf.data.Dataset.sample_from_datasets(val_datasets, weights=ds_weights)
 
-    # def augment(x):
-    #     x = lead_noise(x, scale=1)
-    #     x = random_scaling(x, lower=0.5, upper=1.5)
-    #     return x
+    def augment(x, y):
+        x = lead_noise(x, scale=0.1)
+        return x, y
 
     # Shuffle and batch datasets for training
     train_ds = (
@@ -115,15 +113,13 @@ def train_model(params: HeartTrainParams):
             buffer_size=params.buffer_size,
             reshuffle_each_iteration=True,
         )
-        # .map(
-        #     lambda x_y: (augment(x_y[0]), x_y[1]),
-        #     num_parallel_calls=tf.data.AUTOTUNE
-        # )
+        .map(augment, num_parallel_calls=tf.data.AUTOTUNE)
         .batch(
             batch_size=params.batch_size,
             drop_remainder=True,
             num_parallel_calls=tf.data.AUTOTUNE,
-        ).prefetch(buffer_size=tf.data.AUTOTUNE)
+        )
+        .prefetch(buffer_size=tf.data.AUTOTUNE)
     )
     val_ds = val_ds.batch(
         batch_size=params.batch_size,
@@ -146,7 +142,10 @@ def train_model(params: HeartTrainParams):
         in_shape, _ = get_task_shape(HeartTask.segmentation, params.frame_size)
         inputs = tf.keras.Input(shape=in_shape, batch_size=None, dtype=tf.float32)
         model = create_task_model(
-            inputs, HeartTask.segmentation, params.arch, stages=params.stages
+            inputs,
+            HeartTask.segmentation,
+            name=params.model,
+            params=params.model_params,
         )
         # If fine-tune, freeze subset of model weights
         if bool(getattr(params, "finetune", False)):
@@ -250,7 +249,10 @@ def evaluate_model(params: HeartTestParams):
     with strategy.scope():
         logger.info("Loading model")
         model = load_model(str(params.model_file))
+        flops = get_flops(model, batch_size=1)
+
         model.summary()
+        logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
         logger.info("Performing inference")
         y_true = np.argmax(test_y, axis=2)

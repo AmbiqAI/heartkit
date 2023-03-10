@@ -101,9 +101,15 @@ class IcentiaDataset(EcgDataset):
     """Icentia dataset"""
 
     def __init__(
-        self, ds_path: str, task: HeartTask = HeartTask.rhythm, frame_size: int = 1250, target_rate: int = 250
+        self,
+        ds_path: str,
+        task: HeartTask = HeartTask.arrhythmia,
+        frame_size: int = 1250,
+        target_rate: int = 250,
     ) -> None:
-        super().__init__(os.path.join(ds_path, "icentia11k"), task, frame_size, target_rate)
+        super().__init__(
+            os.path.join(ds_path, "icentia11k"), task, frame_size, target_rate
+        )
 
     @property
     def sampling_rate(self) -> int:
@@ -171,7 +177,7 @@ class IcentiaDataset(EcgDataset):
         Returns:
             SampleGenerator: Sample data generator
         """
-        if self.task == HeartTask.rhythm:
+        if self.task == HeartTask.arrhythmia:
             return self.rhythm_data_generator(
                 patient_generator=patient_generator,
                 samples_per_patient=samples_per_patient,
@@ -181,14 +187,16 @@ class IcentiaDataset(EcgDataset):
                 patient_generator=patient_generator,
                 samples_per_patient=samples_per_patient,
             )
-        if self.task == HeartTask.hr:
+        if self.task == HeartTask.hrv:
             return self.heart_rate_data_generator(
                 patient_generator=patient_generator,
                 samples_per_patient=samples_per_patient,
             )
         raise NotImplementedError()
 
-    def _split_train_test_patients(self, patient_ids: npt.ArrayLike, test_size: float) -> list[list[int]]:
+    def _split_train_test_patients(
+        self, patient_ids: npt.ArrayLike, test_size: float
+    ) -> list[list[int]]:
         """Split dataset into training and validation. We customize based on task.
             NOTE: We only perform inter-patient splits and not intra-patient.
         Args:
@@ -200,24 +208,30 @@ class IcentiaDataset(EcgDataset):
             list[npt.ArrayLike, npt.ArrayLike]: Training and validation patient IDs
         """
 
-        if self.task == HeartTask.rhythm:
+        if self.task == HeartTask.arrhythmia:
             arr_pt_ids = np.intersect1d(self.arr_rhythm_patients, patient_ids)
             norm_pt_ids = np.setdiff1d(patient_ids, arr_pt_ids)
             (
                 norm_train_pt_ids,
                 norm_val_pt_ids,
-            ) = sklearn.model_selection.train_test_split(norm_pt_ids, test_size=test_size)
+            ) = sklearn.model_selection.train_test_split(
+                norm_pt_ids, test_size=test_size
+            )
             (
                 arr_train_pt_ids,
                 afib_val_pt_ids,
-            ) = sklearn.model_selection.train_test_split(arr_pt_ids, test_size=test_size)
+            ) = sklearn.model_selection.train_test_split(
+                arr_pt_ids, test_size=test_size
+            )
             train_pt_ids = np.concatenate((norm_train_pt_ids, arr_train_pt_ids))
             val_pt_ids = np.concatenate((norm_val_pt_ids, afib_val_pt_ids))
             np.random.shuffle(train_pt_ids)
             np.random.shuffle(val_pt_ids)
             return train_pt_ids, val_pt_ids
         # END IF
-        return sklearn.model_selection.train_test_split(patient_ids, test_size=test_size)
+        return sklearn.model_selection.train_test_split(
+            patient_ids, test_size=test_size
+        )
 
     def rhythm_data_generator(
         self,
@@ -245,16 +259,22 @@ class IcentiaDataset(EcgDataset):
         if isinstance(samples_per_patient, Iterable):
             samples_per_tgt = samples_per_patient
         else:
-            samples_per_tgt = int(max(1, samples_per_patient / len(tgt_rhythm_labels))) * [len(tgt_rhythm_labels)]
+            samples_per_tgt = int(
+                max(1, samples_per_patient / len(tgt_rhythm_labels))
+            ) * [len(tgt_rhythm_labels)]
 
         # Group patient rhythms by type (segment, start, stop)
         for _, segments in patient_generator:
-            seg_label_map: dict[str, list[tuple[str, int, int]]] = {lbl: [] for lbl in tgt_rhythm_labels}
+            seg_label_map: dict[str, list[tuple[str, int, int]]] = {
+                lbl: [] for lbl in tgt_rhythm_labels
+            }
             for seg_key, segment in segments.items() or []:
                 rlabels = segment["rlabels"][:]
                 if not rlabels.shape[0]:
                     continue  # Segment has no rhythm labels
-                rlabels = rlabels[np.where(rlabels[:, 1] != IcentiaRhythm.noise.value)[0]]
+                rlabels = rlabels[
+                    np.where(rlabels[:, 1] != IcentiaRhythm.noise.value)[0]
+                ]
                 for i, l in enumerate(rlabels[::2, 1]):
                     xs, xe = rlabels[i * 2 + 0, 0], rlabels[i * 2 + 1, 0]
                     xs += random.randint(0, self.sampling_rate)
@@ -278,16 +298,22 @@ class IcentiaDataset(EcgDataset):
                 )
                 for tgt_seg_index in tgt_seg_indices:
                     seg_key, rhy_start, rhy_end = tgt_segments[tgt_seg_index]
-                    frame_start = np.random.randint(rhy_start, rhy_end - self.frame_size + 1)
+                    frame_start = np.random.randint(
+                        rhy_start, rhy_end - self.frame_size + 1
+                    )
                     frame_end = frame_start + self.frame_size
-                    seg_samples.append((seg_key, frame_start, frame_end, HeartRhythmMap[label]))
+                    seg_samples.append(
+                        (seg_key, frame_start, frame_end, HeartRhythmMap[label])
+                    )
                 # END FOR
             # END FOR
 
             # Shuffle segments
             random.shuffle(seg_samples)
             for seg_key, frame_start, frame_end, label in seg_samples:
-                x: npt.NDArray = segments[seg_key]["data"][frame_start:frame_end].astype(np.float32)
+                x: npt.NDArray = segments[seg_key]["data"][
+                    frame_start:frame_end
+                ].astype(np.float32)
                 yield x, label
             # END FOR
         # END FOR
@@ -327,7 +353,7 @@ class IcentiaDataset(EcgDataset):
 
             # For each beat type, locate all beats in segments
             pt_segs_beat_idxs: list[tuple[int, int, int]] = []
-            dbg_str = ""
+            # dbg_str = ""
             for beat in tgt_beat_labels:
                 beat_segs_idxs: list[tuple[int, int, int]] = []
                 for seg_idx, seg_key in enumerate(seg_map):
@@ -337,7 +363,10 @@ class IcentiaDataset(EcgDataset):
                     # NOTE: Could remove beats too close to start or end
                     beat_idxs = np.where(blabels[:, 1] == beat.value)[0].tolist()
                     if len(beat_idxs):
-                        beat_segs_idxs += [(seg_idx, beat_idx, HeartBeatMap[beat]) for beat_idx in beat_idxs]
+                        beat_segs_idxs += [
+                            (seg_idx, beat_idx, HeartBeatMap[beat])
+                            for beat_idx in beat_idxs
+                        ]
                     # END IF
                 # END FOR
 
@@ -345,25 +374,30 @@ class IcentiaDataset(EcgDataset):
                 random.shuffle(beat_segs_idxs)
 
                 # Grab N samples of given beat type
-                num_beat_samples = min(int(num_rem_samples / num_rem_beats), len(beat_segs_idxs))
+                num_beat_samples = min(
+                    int(num_rem_samples / num_rem_beats), len(beat_segs_idxs)
+                )
                 num_rem_samples -= num_beat_samples
                 num_rem_beats -= 1
                 if num_beat_samples:
                     beat_segs_idxs = beat_segs_idxs[:num_beat_samples]
                     pt_segs_beat_idxs += beat_segs_idxs
-                dbg_str += f" | {len(beat_segs_idxs):05d}"
+                # dbg_str += f" | {len(beat_segs_idxs):05d}"
             # END FOR
+            # print(f"{pt:05d} {dbg_str}")
             random.shuffle(pt_segs_beat_idxs)
 
             # Yield selected samples for patient
             for seg_idx, beat_idx, beat in pt_segs_beat_idxs:
                 frame_start = max(0, beat_idx - int(self.frame_size / 2))
                 frame_end = frame_start + self.frame_size
-                x = segments[seg_map[seg_idx]]["data"][frame_start:frame_end].astype(np.float32)
+                x = segments[seg_map[seg_idx]]["data"][frame_start:frame_end].astype(
+                    np.float32
+                )
                 y = beat
                 if x.shape[0] != self.frame_size:
                     continue
-                yield x, y
+                yield np.nan_to_num(x), y
             # END FOR
 
         # END FOR
@@ -392,20 +426,27 @@ class IcentiaDataset(EcgDataset):
             for _ in range(samples_per_patient):
                 segment = segments[np.random.choice(list(segments.keys()))]
                 segment_size: int = segment["data"].shape[0]
-                frame_center = np.random.randint(segment_size - max_frame_size) + max_frame_size // 2
+                frame_center = (
+                    np.random.randint(segment_size - max_frame_size)
+                    + max_frame_size // 2
+                )
                 signal_frame_start = frame_center - self.frame_size // 2
                 signal_frame_end = frame_center + self.frame_size // 2
                 x = segment["data"][signal_frame_start:signal_frame_end]
                 label_frame_start = frame_center - label_frame_size // 2
                 label_frame_end = frame_center + label_frame_size // 2
                 beat_indices = segment["blabels"][:, 0]
-                frame_beat_indices = self.get_complete_beats(beat_indices, start=label_frame_start, end=label_frame_end)
+                frame_beat_indices = self.get_complete_beats(
+                    beat_indices, start=label_frame_start, end=label_frame_end
+                )
                 y = self._get_heart_rate_label(frame_beat_indices, self.sampling_rate)
                 yield x, y
             # END FOR
         # END FOR
 
-    def signal_generator(self, patient_generator: PatientGenerator, samples_per_patient: int = 1):
+    def signal_generator(
+        self, patient_generator: PatientGenerator, samples_per_patient: int = 1
+    ):
         """
         Generate frames using patient generator.
         from the segments in patient data by placing a frame in a random location within one of the segments.
@@ -452,7 +493,9 @@ class IcentiaDataset(EcgDataset):
                 np.random.shuffle(patient_ids)
             for patient_id in patient_ids:
                 pt_key = self._pt_key(patient_id)
-                with h5py.File(os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r") as h5:
+                with h5py.File(
+                    os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r"
+                ) as h5:
                     patient_data = h5[pt_key]
                     yield patient_id, patient_data
             # END FOR
@@ -478,9 +521,13 @@ class IcentiaDataset(EcgDataset):
             Iterator[PatientGenerator]
         """
         while True:
-            for patient_id in np.random.choice(patient_ids, size=1024, p=patient_weights):
+            for patient_id in np.random.choice(
+                patient_ids, size=1024, p=patient_weights
+            ):
                 pt_key = self._pt_key(patient_id)
-                with h5py.File(os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r") as h5:
+                with h5py.File(
+                    os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r"
+                ) as h5:
                     patient_data = h5[pt_key]
                     yield patient_id, patient_data
             # END FOR
@@ -601,7 +648,12 @@ class IcentiaDataset(EcgDataset):
                 if not rlabels.shape[0]:
                     continue
                 rlabels = rlabels[:, 1]
-                if len(np.where((rlabels == IcentiaRhythm.afib) | (rlabels == IcentiaRhythm.aflut))[0]):
+                if len(
+                    np.where(
+                        (rlabels == IcentiaRhythm.afib)
+                        | (rlabels == IcentiaRhythm.aflut)
+                    )[0]
+                ):
                     return True
             return False
 
@@ -631,7 +683,9 @@ class IcentiaDataset(EcgDataset):
                 rlabels = segment["rlabels"][:]
                 if rlabels.shape[0] == 0:
                     continue  # Segment has no rhythm labels
-                rlabels = rlabels[np.where(rlabels[:, 1] != IcentiaRhythm.noise.value)[0]]
+                rlabels = rlabels[
+                    np.where(rlabels[:, 1] != IcentiaRhythm.noise.value)[0]
+                ]
                 for i, l in enumerate(rlabels[::2, 1]):
                     if l in (
                         IcentiaRhythm.normal,
@@ -698,9 +752,13 @@ class IcentiaDataset(EcgDataset):
         session = boto3.Session()
         client = session.client("s3", config=Config(signature_version=UNSIGNED))
 
-        func = functools.partial(download_s3_file, bucket=s3_bucket, client=client, force=force)
+        func = functools.partial(
+            download_s3_file, bucket=s3_bucket, client=client, force=force
+        )
 
-        with tqdm(desc="Downloading icentia11k dataset from S3", total=len(patient_ids)) as pbar:
+        with tqdm(
+            desc="Downloading icentia11k dataset from S3", total=len(patient_ids)
+        ) as pbar:
             pt_keys = [self._pt_key(patient_id) for patient_id in patient_ids]
             with ThreadPoolExecutor(max_workers=2 * num_workers) as executor:
                 futures = (
@@ -752,7 +810,9 @@ class IcentiaDataset(EcgDataset):
         )
         logger.info("Finished icentia11k patient data")
 
-    def _convert_dataset_pt_zip_to_hdf5(self, patient: int, zip_path: str, force: bool = False):
+    def _convert_dataset_pt_zip_to_hdf5(
+        self, patient: int, zip_path: str, force: bool = False
+    ):
         """Extract patient data from Icentia zipfile. Pulls out ECG data along with all labels.
 
         Args:
@@ -802,7 +862,11 @@ class IcentiaDataset(EcgDataset):
                 pt_seg_path = f"/{os.path.splitext(os.path.basename(zp_rec_name))[0].replace('_', '/')}"
                 data = rec.p_signal.astype(np.float16)
                 blabels = np.array(
-                    [[atr.sample[i], WfdbBeatMap.get(s)] for i, s in enumerate(atr.symbol) if s in WfdbBeatMap],
+                    [
+                        [atr.sample[i], WfdbBeatMap.get(s)]
+                        for i, s in enumerate(atr.symbol)
+                        if s in WfdbBeatMap
+                    ],
                     dtype=np.int32,
                 )
                 rlabels = np.array(
@@ -843,6 +907,8 @@ class IcentiaDataset(EcgDataset):
         """
         if not patient_ids:
             patient_ids = self.patient_ids
-        f = functools.partial(self._convert_dataset_pt_zip_to_hdf5, zip_path=zip_path, force=force)
+        f = functools.partial(
+            self._convert_dataset_pt_zip_to_hdf5, zip_path=zip_path, force=force
+        )
         with Pool(processes=num_workers) as pool:
             _ = list(tqdm(pool.imap(f, patient_ids), total=len(patient_ids)))

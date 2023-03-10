@@ -14,6 +14,7 @@ from neuralspot.tflite.metrics import get_flops
 from neuralspot.tflite.model import get_strategy, load_model
 
 from .datasets import IcentiaDataset
+from .datasets.augmentation import lead_noise
 from .defines import HeartExportParams, HeartTask, HeartTestParams, HeartTrainParams
 from .metrics import confusion_matrix_plot, roc_auc_plot
 from .models.optimizers import Adam
@@ -42,14 +43,16 @@ def train_model(params: HeartTrainParams):
 
     if env_flag("WANDB"):
         wandb.init(
-            project=f"ecg-{HeartTask.rhythm}", entity="ambiq", dir=str(params.job_dir)
+            project=f"heartkit-{HeartTask.arrhythmia}",
+            entity="ambiq",
+            dir=str(params.job_dir),
         )
         wandb.config.update(params.dict())
 
     # Create TF datasets
     ds = IcentiaDataset(
         ds_path=str(params.ds_path),
-        task=HeartTask.rhythm,
+        task=HeartTask.arrhythmia,
         frame_size=params.frame_size,
     )
     train_ds, val_ds = ds.load_train_datasets(
@@ -62,12 +65,17 @@ def train_model(params: HeartTrainParams):
         num_workers=params.data_parallelism,
     )
 
+    def augment(x, y):
+        x = lead_noise(x, scale=0.1)
+        return x, y
+
     # Shuffle and batch datasets for training
     train_ds = (
         train_ds.shuffle(
             buffer_size=params.buffer_size,
             reshuffle_each_iteration=True,
         )
+        .map(augment, num_parallel_calls=tf.data.AUTOTUNE)
         .batch(
             batch_size=params.batch_size,
             drop_remainder=True,
@@ -84,10 +92,10 @@ def train_model(params: HeartTrainParams):
     strategy = get_strategy()
     with strategy.scope():
         logger.info("Building model")
-        in_shape, _ = get_task_shape(HeartTask.rhythm, params.frame_size)
+        in_shape, _ = get_task_shape(HeartTask.arrhythmia, params.frame_size)
         inputs = tf.keras.Input(in_shape, batch_size=None, dtype=tf.float32)
         model = create_task_model(
-            inputs, HeartTask.rhythm, params.arch, stages=params.stages
+            inputs, HeartTask.arrhythmia, name=params.model, params=params.model_params
         )
         flops = get_flops(model, batch_size=1)
         optimizer = Adam(
@@ -164,7 +172,7 @@ def train_model(params: HeartTrainParams):
         y_pred = np.argmax(model.predict(val_ds), axis=1)
 
         # Summarize results
-        class_names = get_class_names(task=HeartTask.rhythm)
+        class_names = get_class_names(task=HeartTask.arrhythmia)
         test_acc = np.sum(y_pred == y_true) / len(y_true)
         test_f1 = f1_score(y_true, y_pred, average="macro")
         logger.info(f"[VAL SET] ACC={test_acc:.2%}, F1={test_f1:.2%}")
@@ -194,7 +202,7 @@ def evaluate_model(params: HeartTestParams):
     with console.status("[bold green] Loading test dataset..."):
         ds = IcentiaDataset(
             ds_path=str(params.ds_path),
-            task=HeartTask.rhythm,
+            task=HeartTask.arrhythmia,
             frame_size=params.frame_size,
         )
         test_ds = ds.load_test_dataset(
@@ -241,7 +249,7 @@ def evaluate_model(params: HeartTestParams):
             )
         # END IF
         cm_path = str(params.job_dir / "confusion_matrix_test.png")
-        class_names = get_class_names(HeartTask.rhythm)
+        class_names = get_class_names(HeartTask.arrhythmia)
         confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path)
         if len(class_names) == 2:
             roc_path = str(params.job_dir / "roc_auc_test.png")
@@ -262,7 +270,7 @@ def export_model(params: HeartExportParams):
     # Load model and set fixed batch size of 1
     logger.info("Loading trained model")
     model = load_model(str(params.model_file))
-    in_shape, _ = get_task_shape(HeartTask.rhythm, params.frame_size)
+    in_shape, _ = get_task_shape(HeartTask.arrhythmia, params.frame_size)
     inputs = tf.keras.layers.Input(in_shape, dtype=tf.float32, batch_size=1)
     model(inputs)
     flops = get_flops(model, batch_size=1)
@@ -274,7 +282,7 @@ def export_model(params: HeartExportParams):
     with console.status("[bold green] Loading test dataset..."):
         ds = IcentiaDataset(
             ds_path=str(params.ds_path),
-            task=HeartTask.rhythm,
+            task=HeartTask.arrhythmia,
             frame_size=params.frame_size,
         )
         test_ds = ds.load_test_dataset(

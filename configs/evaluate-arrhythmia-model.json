@@ -1,12 +1,11 @@
 {
-    "task": "arrhythmia",
-    "job_dir": "./results/arrhythmia-full-model",
+    "job_dir": "./results/arrhythmia",
     "ds_path": "./datasets",
+    "sampling_rate": 250,
     "frame_size": 1000,
-    "samples_per_patient": [500, 4000, 2000],
+    "samples_per_patient": [100, 800, 400],
     "test_patients": 1000,
-    "test_size": 50000,
-    "model_file_golden": "wandb://ambiq/model-registry/ecg-arrhythmia-afib:v1",
-    "model_file": "./results/arrhythmia-full-model/model.tf",
-    "threshold": 0.95
+    "test_size": 100000,
+    "model_file": "./results/arrhythmia/model.tf",
+    "threshold": 0.90
 }

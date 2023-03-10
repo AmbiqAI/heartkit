@@ -27,7 +27,7 @@ class EcgDataset:
     def __init__(
         self,
         ds_path: str,
-        task: HeartTask = HeartTask.rhythm,
+        task: HeartTask = HeartTask.arrhythmia,
         frame_size: int = 1250,
         target_rate: int = 250,
     ) -> None:

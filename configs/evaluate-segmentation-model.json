@@ -1,5 +1,4 @@
 {
-    "task": "segmentation",
     "job_dir": "./results/segmentation",
     "ds_path": "./datasets",
     "frame_size": 624,
