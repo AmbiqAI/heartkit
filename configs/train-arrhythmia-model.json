@@ -9,7 +9,6 @@
     "val_file": "./results/arrhythmia-10000pt-4s.pkl",
     "val_patients": 0.20,
     "val_size": 100000,
-    "arch": "efficientnet",
     "batch_size": 6144,
     "buffer_size": 100000,
     "epochs": 100,

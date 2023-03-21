@@ -263,7 +263,7 @@ def evaluate_model(params: HeartTestParams):
         logger.info("Testing Results")
         test_acc = np.sum(y_pred == y_true) / y_true.size
         test_iou = compute_iou(y_true, y_pred)
-        logger.info(f"[TEST SET] ACC={test_acc:.2%}, IoU={test_iou:.2%}")
+        logger.info(f"[TEST SET] ACC={test_acc:.2%}, IOU={test_iou:.2%}")
     # END WITH
 
 
@@ -286,9 +286,10 @@ def export_model(params: HeartExportParams):
     # Load dataset
     with console.status("[bold green] Loading test dataset..."):
         ds = LudbDataset(
-            ds_path=str(params.ds_path),
+            str(params.ds_path),
             task=HeartTask.segmentation,
             frame_size=params.frame_size,
+            target_rate=params.sampling_rate,
         )
         test_ds = ds.load_test_dataset(
             test_pt_samples=params.samples_per_patient,
@@ -323,20 +324,20 @@ def export_model(params: HeartExportParams):
 
     # Verify TFLite results match TF results on example data
     logger.info("Validating model results")
-    y_true = np.argmax(test_y, axis=1)
+    y_true = np.argmax(test_y, axis=2)
     y_prob_tf = tf.nn.softmax(model.predict(test_x)).numpy()
-    y_pred_tf = np.argmax(y_prob_tf, axis=1)
+    y_pred_tf = np.argmax(y_prob_tf, axis=2)
     y_prob_tfl = tf.nn.softmax(
         predict_tflite(model_content=tflite_model, test_x=test_x)
     ).numpy()
-    y_pred_tfl = np.argmax(y_prob_tfl, axis=1)
+    y_pred_tfl = np.argmax(y_prob_tfl, axis=2)
 
-    tf_acc = np.sum(y_pred_tf == y_true) / len(y_true)
-    tf_iou = -1
-    tfl_acc = np.sum(y_pred_tfl == y_true) / len(y_true)
-    tfl_iou = -1
-    logger.info(f"[TEST SET]  TF: ACC={tf_acc:.2%}, F1={tf_iou:.2%}")
-    logger.info(f"[TEST SET] TFL: ACC={tfl_acc:.2%}, F1={tfl_iou:.2%}")
+    tf_acc = np.sum(y_pred_tf == y_true) / y_true.size
+    tf_iou = compute_iou(y_true, y_pred_tf)
+    tfl_acc = np.sum(y_pred_tfl == y_true) / y_true.size
+    tfl_iou = compute_iou(y_true, y_pred_tfl)
+    logger.info(f"[TEST SET]  TF: ACC={tf_acc:.2%}, IOU={tf_iou:.2%}")
+    logger.info(f"[TEST SET] TFL: ACC={tfl_acc:.2%}, IOU={tfl_iou:.2%}")
 
     # Check accuracy hit
     acc_diff = tf_acc - tfl_acc

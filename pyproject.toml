@@ -95,18 +95,20 @@ disable = [
     "invalid-name",
     "logging-fstring-interpolation",
     "duplicate-code",
-    "use-dict-literal"
+    "use-dict-literal",
+    "unnecessary-lambda-assignment"
 ]
 
 [tool.pylint.format]
 max-line-length = 140
 
 [tool.pylint.design]
-max-args = 30
-max-locals = 30
+max-args = 50
+max-locals = 50
 max-statements = 80
 max-module-lines = 2000
 max-attributes = 10
+max-branches = 15
 
 [tool.pyright]
 

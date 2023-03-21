@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 class IcentiaRhythm(IntEnum):
-    """Icentia Rhythm labels"""
+    """Icentia rhythm labels"""
 
     noise = 0
     normal = 1
@@ -197,15 +197,15 @@ class IcentiaDataset(EcgDataset):
     def _split_train_test_patients(
         self, patient_ids: npt.ArrayLike, test_size: float
     ) -> list[list[int]]:
-        """Split dataset into training and validation. We customize based on task.
-            NOTE: We only perform inter-patient splits and not intra-patient.
+        """Perform train/test split on patients for given task.
+        NOTE: We only perform inter-patient splits and not intra-patient.
+
         Args:
-            patient_ids (npt.ArrayLike): Patient ids
-            test_size (float): # or proportion of patients to
-            task (HeartTask, optional): Task. Defaults to HeartTask.rhythm.
+            patient_ids (npt.ArrayLike): Patient Ids
+            test_size (float): Test size
 
         Returns:
-            list[npt.ArrayLike, npt.ArrayLike]: Training and validation patient IDs
+            list[list[int]]: Train and test sets of patient ids
         """
 
         if self.task == HeartTask.arrhythmia:
@@ -241,7 +241,6 @@ class IcentiaDataset(EcgDataset):
         """Generate frames and rhythm label using patient generator.
         Args:
             patient_generator (PatientGenerator): Patient Generator
-            frame_size (int, optional): Size of frame. Defaults to 2048.
             samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
 
         Returns:
@@ -251,7 +250,7 @@ class IcentiaDataset(EcgDataset):
             Iterator[SampleGenerator]
         """
 
-        tgt_rhythm_labels = (
+        tgt_labels = (
             IcentiaRhythm.normal,
             IcentiaRhythm.afib,
             IcentiaRhythm.aflut,
@@ -259,59 +258,61 @@ class IcentiaDataset(EcgDataset):
         if isinstance(samples_per_patient, Iterable):
             samples_per_tgt = samples_per_patient
         else:
-            samples_per_tgt = int(
-                max(1, samples_per_patient / len(tgt_rhythm_labels))
-            ) * [len(tgt_rhythm_labels)]
+            num_per_tgt = int(max(1, samples_per_patient / len(tgt_labels)))
+            samples_per_tgt = num_per_tgt * [len(tgt_labels)]
 
-        # Group patient rhythms by type (segment, start, stop)
+        # Group patient rhythms by type (segment, start, stop, delta)
         for _, segments in patient_generator:
-            seg_label_map: dict[str, list[tuple[str, int, int]]] = {
-                lbl: [] for lbl in tgt_rhythm_labels
-            }
-            for seg_key, segment in segments.items() or []:
-                rlabels = segment["rlabels"][:]
+            # This maps segment index to segment key
+            seg_map: list[str] = list(segments.keys())
+
+            pt_tgt_seg_map = [[] for _ in tgt_labels]
+            for seg_idx, seg_key in enumerate(seg_map):
+                rlabels = segments[seg_key]["rlabels"][:]
                 if not rlabels.shape[0]:
-                    continue  # Segment has no rhythm labels
+                    continue
                 rlabels = rlabels[
                     np.where(rlabels[:, 1] != IcentiaRhythm.noise.value)[0]
                 ]
-                for i, l in enumerate(rlabels[::2, 1]):
-                    xs, xe = rlabels[i * 2 + 0, 0], rlabels[i * 2 + 1, 0]
-                    xs += random.randint(0, self.sampling_rate)
-                    seg_frame_size = xe - xs + 1
-                    if l in tgt_rhythm_labels and (seg_frame_size > self.frame_size):
-                        seg_label_map[l].append((seg_key, xs, xe))
-                    # END IF
+
+                xs, xe, xl = rlabels[0::2, 0], rlabels[1::2, 0], rlabels[0::2, 1]
+                for tgt_idx, tgt_class in enumerate(tgt_labels):
+                    idxs = np.where((xe - xs >= self.frame_size) & (xl == tgt_class))
+                    seg_vals = np.vstack(
+                        (seg_idx * np.ones_like(idxs), xs[idxs], xe[idxs])
+                    ).T
+                    pt_tgt_seg_map[tgt_idx] += seg_vals.tolist()
                 # END FOR
             # END FOR
+            pt_tgt_seg_map = [np.array(b) for b in pt_tgt_seg_map]
 
             # Grab target segments
-            seg_samples: list[tuple[str, int, int, int]] = []
-            for i, label in enumerate(tgt_rhythm_labels):
-                tgt_segments = seg_label_map.get(label, [])
-                if not tgt_segments:
+            seg_samples: list[tuple[int, int, int, int]] = []
+            for tgt_idx, tgt_class in enumerate(tgt_labels):
+                tgt_segments = pt_tgt_seg_map[tgt_idx]
+                if not tgt_segments.shape[0]:
                     continue
                 tgt_seg_indices: list[int] = random.choices(
-                    list(range(len(tgt_segments))),
-                    weights=[s[2] - s[1] for s in tgt_segments],
-                    k=samples_per_tgt[i],
+                    np.arange(tgt_segments.shape[0]),
+                    weights=tgt_segments[:, 2] - tgt_segments[:, 1],
+                    k=samples_per_tgt[tgt_idx],
                 )
-                for tgt_seg_index in tgt_seg_indices:
-                    seg_key, rhy_start, rhy_end = tgt_segments[tgt_seg_index]
+                for tgt_seg_idx in tgt_seg_indices:
+                    seg_idx, rhy_start, rhy_end = tgt_segments[tgt_seg_idx]
                     frame_start = np.random.randint(
                         rhy_start, rhy_end - self.frame_size + 1
                     )
                     frame_end = frame_start + self.frame_size
                     seg_samples.append(
-                        (seg_key, frame_start, frame_end, HeartRhythmMap[label])
+                        (seg_idx, frame_start, frame_end, HeartRhythmMap[tgt_class])
                     )
                 # END FOR
             # END FOR
 
             # Shuffle segments
             random.shuffle(seg_samples)
-            for seg_key, frame_start, frame_end, label in seg_samples:
-                x: npt.NDArray = segments[seg_key]["data"][
+            for seg_idx, frame_start, frame_end, label in seg_samples:
+                x: npt.NDArray = segments[seg_map[seg_idx]]["data"][
                     frame_start:frame_end
                 ].astype(np.float32)
                 yield x, label
@@ -321,7 +322,7 @@ class IcentiaDataset(EcgDataset):
     def beat_data_generator(
         self,
         patient_generator: PatientGenerator,
-        samples_per_patient: int = 1,
+        samples_per_patient: int | list[int] = 1,
     ) -> SampleGenerator:
         """Generate frames and beat label using patient generator.
         There are over 2.5 billion normal and undefined while less than 40 million arrhythmia beats.
@@ -329,8 +330,7 @@ class IcentiaDataset(EcgDataset):
         We start with arrhythmia types followed by undefined and normal. For each beat we resplit remaining samples requested.
         Args:
             patient_generator (PatientGenerator): Patient generator
-            frame_size (int, optional): Frame size. Defaults to 2048.
-            samples_per_patient (int, optional): # samples per patient. Defaults to 1.
+            samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
 
         Returns:
             SampleGenerator: Sample generator
@@ -338,68 +338,130 @@ class IcentiaDataset(EcgDataset):
         Yields:
             Iterator[SampleGenerator]
         """
+        nlabel_threshold = 0.25
+        blabel_padding = 20
+        rr_win_len = int(15 * self.sampling_rate)
+        rr_min_len = int(0.6 * self.sampling_rate)
+        rr_max_len = int(2.0 * self.sampling_rate)
+
         tgt_beat_labels = [
-            IcentiaBeat.pvc,
-            IcentiaBeat.pac,
-            # IcentiaBeat.undefined,
             IcentiaBeat.normal,
+            IcentiaBeat.pac,
+            IcentiaBeat.pvc,
         ]
+        if isinstance(samples_per_patient, Iterable):
+            samples_per_tgt = samples_per_patient
+        else:
+            num_per_tgt = int(max(1, samples_per_patient / len(tgt_beat_labels)))
+            samples_per_tgt = num_per_tgt * [len(tgt_beat_labels)]
+
+        # For each patient
         for _, segments in patient_generator:
             # This maps segment index to segment key
             seg_map: list[str] = list(segments.keys())
 
-            num_rem_samples = samples_per_patient
-            num_rem_beats = len(tgt_beat_labels)
+            # Capture beat locations for each segment
+            pt_beat_map = [[] for _ in tgt_beat_labels]
+            for seg_idx, seg_key in enumerate(seg_map):
+                blabels = segments[seg_key]["blabels"][:]
+                num_blabels = blabels.shape[0]
+                if num_blabels <= 0:
+                    continue
+                # END IF
+                num_nlabels = np.sum(blabels[:, 1] == IcentiaBeat.normal)
+                if num_nlabels / num_blabels < nlabel_threshold:
+                    continue
 
-            # For each beat type, locate all beats in segments
-            pt_segs_beat_idxs: list[tuple[int, int, int]] = []
-            # dbg_str = ""
-            for beat in tgt_beat_labels:
-                beat_segs_idxs: list[tuple[int, int, int]] = []
-                for seg_idx, seg_key in enumerate(seg_map):
-                    blabels = segments[seg_key]["blabels"][:]
-                    if blabels.shape[0] == 0:
+                # Capture all beat locations
+                for tgt_beat_idx, beat in enumerate(tgt_beat_labels):
+                    beat_idxs = (
+                        np.where(
+                            blabels[blabel_padding:-blabel_padding, 1] == beat.value
+                        )[0]
+                        + blabel_padding
+                    )
+                    if beat_idxs.shape[0] == 0:
                         continue
-                    # NOTE: Could remove beats too close to start or end
-                    beat_idxs = np.where(blabels[:, 1] == beat.value)[0].tolist()
-                    if len(beat_idxs):
-                        beat_segs_idxs += [
-                            (seg_idx, beat_idx, HeartBeatMap[beat])
-                            for beat_idx in beat_idxs
+                    if beat == IcentiaBeat.normal:
+                        pt_beat_map[tgt_beat_idx] += [
+                            (seg_idx, blabels[i, 0])
+                            for i in beat_idxs
+                            if blabels[i - 1, 1]
+                            == blabels[i + 1, 1]
+                            == IcentiaBeat.normal
                         ]
-                    # END IF
+                    else:
+                        pt_beat_map[tgt_beat_idx] += [
+                            (seg_idx, blabels[i, 0])
+                            for i in beat_idxs
+                            if IcentiaBeat.undefined
+                            not in (blabels[i - 1, 1], blabels[i + 1, 1])
+                        ]
                 # END FOR
-
-                # Shuffle all beats for given beat type
-                random.shuffle(beat_segs_idxs)
-
-                # Grab N samples of given beat type
-                num_beat_samples = min(
-                    int(num_rem_samples / num_rem_beats), len(beat_segs_idxs)
-                )
-                num_rem_samples -= num_beat_samples
-                num_rem_beats -= 1
-                if num_beat_samples:
-                    beat_segs_idxs = beat_segs_idxs[:num_beat_samples]
-                    pt_segs_beat_idxs += beat_segs_idxs
-                # dbg_str += f" | {len(beat_segs_idxs):05d}"
             # END FOR
-            # print(f"{pt:05d} {dbg_str}")
+            pt_beat_map = [np.array(b) for b in pt_beat_map]
+
+            # Randomly select N samples of each target beat
+            pt_segs_beat_idxs: list[tuple[int, int, int]] = []
+            for tgt_beat_idx, beat in enumerate(tgt_beat_labels):
+                tgt_beats = pt_beat_map[tgt_beat_idx]
+                tgt_count = min(samples_per_tgt[tgt_beat_idx], len(tgt_beats))
+                tgt_idxs = np.random.choice(
+                    np.arange(len(tgt_beats)), size=tgt_count, replace=False
+                )
+                pt_segs_beat_idxs += [
+                    (tgt_beats[i][0], tgt_beats[i][1], HeartBeatMap[beat])
+                    for i in tgt_idxs
+                ]
+            # END FOR
+
+            # Shuffle all
             random.shuffle(pt_segs_beat_idxs)
 
             # Yield selected samples for patient
             for seg_idx, beat_idx, beat in pt_segs_beat_idxs:
-                frame_start = max(0, beat_idx - int(self.frame_size / 2))
-                frame_end = frame_start + self.frame_size
-                x = segments[seg_map[seg_idx]]["data"][frame_start:frame_end].astype(
-                    np.float32
+                frame_start = max(
+                    0, beat_idx - int(random.uniform(0.45, 0.55) * self.frame_size)
                 )
-                y = beat
-                if x.shape[0] != self.frame_size:
-                    continue
-                yield np.nan_to_num(x), y
-            # END FOR
+                frame_end = frame_start + self.frame_size
 
+                blabels = segments[seg_map[seg_idx]]["blabels"]
+                rr_xs = np.searchsorted(blabels[:, 0], max(0, frame_start - rr_win_len))
+                rr_xe = np.searchsorted(blabels[:, 0], frame_end + rr_win_len)
+                if rr_xe <= rr_xs:
+                    continue
+                blabels = blabels[rr_xs : rr_xe + 1]
+                blabel_diffs = np.diff(blabels, axis=0)
+
+                idxs = np.where(
+                    (blabel_diffs[:, 0] > rr_min_len)
+                    & (blabel_diffs[:, 0] < rr_max_len)
+                )[0]
+                if idxs.shape[0] <= 0:
+                    continue
+                avg_rr = int(np.mean(blabel_diffs[:, 0]))
+
+                if (
+                    frame_start - avg_rr < 0
+                    or frame_end + avg_rr >= segments[seg_map[seg_idx]]["data"].shape[0]
+                ):
+                    continue
+
+                x = np.hstack(
+                    (
+                        segments[seg_map[seg_idx]]["data"][
+                            frame_start - avg_rr : frame_end - avg_rr
+                        ],
+                        segments[seg_map[seg_idx]]["data"][frame_start:frame_end],
+                        segments[seg_map[seg_idx]]["data"][
+                            frame_start + avg_rr : frame_end + avg_rr
+                        ],
+                    )
+                )
+                x = np.nan_to_num(x).astype(np.float32)
+                y = beat
+                yield x, y
+            # END FOR
         # END FOR
 
     def heart_rate_data_generator(

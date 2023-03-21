@@ -7,7 +7,7 @@ import sklearn
 import tensorflow as tf
 
 from ..defines import HeartTask
-from ..tasks import get_num_classes, get_task_spec
+from ..tasks import get_num_classes, get_task_shape, get_task_spec
 from ..utils import load_pkl, save_pkl
 from .defines import PatientGenerator, SampleGenerator
 from .preprocess import preprocess_signal
@@ -279,6 +279,7 @@ class EcgDataset:
         self, patient_ids: npt.ArrayLike, test_size: float
     ) -> list[list[int]]:
         """Perform train/test split on patients for given task.
+        NOTE: We only perform inter-patient splits and not intra-patient.
 
         Args:
             patient_ids (npt.ArrayLike): Patient Ids
@@ -339,9 +340,9 @@ class EcgDataset:
         data_generator = map(
             lambda x_y: (
                 # Apply augmentations
-                # Pre-process signal and convert to 2D shape
+                # Pre-process signal and convert to 3D shape
                 preprocess_signal(data=x_y[0], sample_rate=self.target_rate).reshape(
-                    (1, -1, 1)
+                    get_task_shape(self.task, self.frame_size)[0]
                 ),
                 tf.one_hot(x_y[1], num_classes),  # x_y[1]
             ),

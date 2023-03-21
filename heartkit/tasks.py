@@ -64,7 +64,7 @@ def get_task_shape(task: HeartTask, frame_size: int) -> tuple[tuple[int], tuple[
         return (1, frame_size, 1), (num_classes,)
 
     if task == HeartTask.beat:
-        return (1, frame_size, 1), (num_classes,)
+        return (1, frame_size, 3), (num_classes,)
 
     if task == HeartTask.segmentation:
         return (1, frame_size, 1), (frame_size, num_classes)
@@ -137,6 +137,40 @@ def create_task_model(
 
 def get_beat_model(inputs: KerasTensor, num_classes: int) -> tf.keras.Model:
     """Reference beat model"""
+    blocks = [
+        MBConvParams(
+            filters=32,
+            depth=3,
+            ex_ratio=1,
+            kernel_size=(1, 5),
+            strides=(1, 2),
+            se_ratio=2,
+        ),
+        MBConvParams(
+            filters=48,
+            depth=3,
+            ex_ratio=1,
+            kernel_size=(1, 3),
+            strides=(1, 2),
+            se_ratio=2,
+        ),
+        MBConvParams(
+            filters=64,
+            depth=3,
+            ex_ratio=1,
+            kernel_size=(1, 3),
+            strides=(1, 2),
+            se_ratio=4,
+        ),
+        MBConvParams(
+            filters=96,
+            depth=3,
+            ex_ratio=1,
+            kernel_size=(1, 3),
+            strides=(1, 2),
+            se_ratio=4,
+        ),
+    ]
     return EfficientNetV2(
         inputs,
         params=EfficientNetParams(
@@ -144,43 +178,10 @@ def get_beat_model(inputs: KerasTensor, num_classes: int) -> tf.keras.Model:
             input_strides=(1, 2),
             input_kernel_size=(1, 7),
             output_filters=0,
-            blocks=[
-                MBConvParams(
-                    filters=32,
-                    depth=3,
-                    ex_ratio=1,
-                    kernel_size=(1, 5),
-                    strides=(1, 2),
-                    se_ratio=2,
-                ),
-                MBConvParams(
-                    filters=48,
-                    depth=3,
-                    ex_ratio=1,
-                    kernel_size=(1, 3),
-                    strides=(1, 2),
-                    se_ratio=4,
-                ),
-                MBConvParams(
-                    filters=96,
-                    depth=3,
-                    ex_ratio=1,
-                    kernel_size=(1, 3),
-                    strides=(1, 2),
-                    se_ratio=4,
-                ),
-                MBConvParams(
-                    filters=128,
-                    depth=3,
-                    ex_ratio=1,
-                    kernel_size=(1, 3),
-                    strides=(1, 2),
-                    se_ratio=4,
-                ),
-            ],
+            blocks=blocks,
             include_top=True,
             dropout=0.2,
-            drop_connect_rate=0.2,
+            drop_connect_rate=0.0,
         ),
         num_classes=num_classes,
     )
@@ -188,46 +189,47 @@ def get_beat_model(inputs: KerasTensor, num_classes: int) -> tf.keras.Model:
 
 def get_arrhythmia_model(inputs: KerasTensor, num_classes: int) -> tf.keras.Model:
     """Reference arrhythmia model"""
+    blocks = [
+        MBConvParams(
+            filters=32,
+            depth=3,
+            ex_ratio=1,
+            kernel_size=(1, 5),
+            strides=(1, 2),
+            se_ratio=2,
+        ),
+        MBConvParams(
+            filters=48,
+            depth=3,
+            ex_ratio=1,
+            kernel_size=(1, 3),
+            strides=(1, 2),
+            se_ratio=4,
+        ),
+        MBConvParams(
+            filters=64,
+            depth=3,
+            ex_ratio=1,
+            kernel_size=(1, 3),
+            strides=(1, 2),
+            se_ratio=4,
+        ),
+        MBConvParams(
+            filters=96,
+            depth=3,
+            ex_ratio=1,
+            kernel_size=(1, 3),
+            strides=(1, 2),
+            se_ratio=4,
+        ),
+    ]
     return EfficientNetV2(
         inputs,
         params=EfficientNetParams(
             input_filters=24,
             input_kernel_size=(1, 7),
             input_strides=(1, 2),
-            blocks=[
-                MBConvParams(
-                    filters=32,
-                    depth=3,
-                    ex_ratio=1,
-                    kernel_size=(1, 5),
-                    strides=(1, 2),
-                    se_ratio=2,
-                ),
-                MBConvParams(
-                    filters=48,
-                    depth=3,
-                    ex_ratio=1,
-                    kernel_size=(1, 3),
-                    strides=(1, 2),
-                    se_ratio=4,
-                ),
-                MBConvParams(
-                    filters=64,
-                    depth=3,
-                    ex_ratio=1,
-                    kernel_size=(1, 3),
-                    strides=(1, 2),
-                    se_ratio=4,
-                ),
-                MBConvParams(
-                    filters=96,
-                    depth=3,
-                    ex_ratio=1,
-                    kernel_size=(1, 3),
-                    strides=(1, 2),
-                    se_ratio=4,
-                ),
-            ],
+            blocks=blocks,
             output_filters=0,
             include_top=True,
             dropout=0.2,
@@ -235,22 +237,6 @@ def get_arrhythmia_model(inputs: KerasTensor, num_classes: int) -> tf.keras.Mode
         ),
         num_classes=num_classes,
     )
-    # return ResNet(
-    #     x=inputs,
-    #     params=ResNetParams(
-    #         input_filters=32,
-    #         input_kernel_size=(1, 7),
-    #         input_strides=(1, 2),
-    #         blocks=[
-    #             ResNetBlockParams(filters=32, depth=1, kernel_size=(1, 7), strides=(1, 2), bottleneck=False),
-    #             ResNetBlockParams(filters=64, depth=1, kernel_size=(1, 5), strides=(1, 2), bottleneck=False),
-    #             ResNetBlockParams(filters=128, depth=1, kernel_size=(1, 3), strides=(1, 2), bottleneck=False)
-    #         ],
-    #         include_top=True,
-    #         dropout=0.0
-    #     ),
-    #     num_classes=num_classes,
-    # )
 
 
 def get_segmentation_model(
@@ -258,23 +244,18 @@ def get_segmentation_model(
     num_classes: int,
 ) -> tf.keras.Model:
     """Reference segmentation model"""
+    blocks = [
+        UNetBlockParams(
+            filteres=16, depth=1, kernel=(1, 3), strides=(1, 2), skip=False
+        ),
+        UNetBlockParams(filteres=32, depth=1, kernel=(1, 3), strides=(1, 2), skip=True),
+        UNetBlockParams(filteres=48, depth=1, kernel=(1, 3), strides=(1, 2), skip=True),
+        UNetBlockParams(filteres=64, depth=1, kernel=(1, 3), strides=(1, 2), skip=True),
+    ]
     return UNet(
         inputs,
         params=UNetParams(
-            blocks=[
-                UNetBlockParams(
-                    filteres=16, depth=1, kernel=(1, 3), strides=(1, 2), skip=False
-                ),
-                UNetBlockParams(
-                    filteres=32, depth=1, kernel=(1, 3), strides=(1, 2), skip=True
-                ),
-                UNetBlockParams(
-                    filteres=48, depth=1, kernel=(1, 3), strides=(1, 2), skip=True
-                ),
-                UNetBlockParams(
-                    filteres=64, depth=1, kernel=(1, 3), strides=(1, 2), skip=True
-                ),
-            ],
+            blocks=blocks,
             output_kernel_size=(1, 3),
             include_top=True,
         ),

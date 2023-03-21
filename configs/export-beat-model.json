@@ -1,0 +1,11 @@
+{
+    "job_dir": "./results/beat",
+    "ds_path": "./datasets",
+    "sampling_rate": 250,
+    "frame_size": 200,
+    "samples_per_patient": [200, 500, 500],
+    "model_file": "./results/beat/model.tf",
+    "quantization": true,
+    "tflm_var_name": "g_beat_model",
+    "tflm_file": "./evb/src/beat_model_buffer.h"
+}
