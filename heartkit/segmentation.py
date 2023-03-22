@@ -12,7 +12,7 @@ from neuralspot.tflite.convert import convert_tflite, predict_tflite, xxd_c_dump
 from neuralspot.tflite.metrics import get_flops
 from neuralspot.tflite.model import get_strategy, load_model
 
-from .datasets import EcgDataset, LudbDataset, SyntheticDataset
+from .datasets import HeartKitDataset, LudbDataset, SyntheticDataset
 from .datasets.augmentation import lead_noise
 from .defines import (
     HeartExportParams,
@@ -59,7 +59,7 @@ def train_model(params: HeartTrainParams):
         )
         wandb.config.update(params.dict())
 
-    datasets: list[EcgDataset] = []
+    datasets: list[HeartKitDataset] = []
     if "synthetic" in dataset_names:
         datasets.append(
             SyntheticDataset(

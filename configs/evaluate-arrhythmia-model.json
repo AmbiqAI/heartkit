@@ -7,5 +7,5 @@
     "test_patients": 1000,
     "test_size": 100000,
     "model_file": "./results/arrhythmia/model.tf",
-    "threshold": 0.90
+    "threshold": 0.95
 }

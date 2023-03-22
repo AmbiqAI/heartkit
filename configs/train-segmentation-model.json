@@ -1,5 +1,5 @@
 {
-    "job_dir": "./results/segmentation",
+    "job_dir": "./results/segmentation2",
     "ds_path": "./datasets",
     "sampling_rate": 250,
     "frame_size": 624,
@@ -12,7 +12,7 @@
     "epochs": 120,
     "steps_per_epoch": 550,
     "val_metric": "loss",
-    "lr_rate": 1e-4,
     "datasets": ["ludb", "synthetic"],
+    "lr_rate": 1e-4,
     "num_pts": 720
 }

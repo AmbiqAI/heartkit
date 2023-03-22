@@ -176,10 +176,10 @@ The results of the arrhythmia model when testing on 1,000 patients (not used dur
 
 The confusion matrix for the 95% confidence model is depicted below.
 
-| Confusion | NSR      | AFIB/AFL |
-| --------- | -------- | -------- |
-| __NSR__       | 99.5%    |  0.5%    |
-| __AFIB/AFL__  |  0.7%    | 99.3%    |
+| Confusion    | NSR      | AFIB/AFL |
+| ------------ | -------- | -------- |
+| __NSR__      | 99.5%    |  0.5%    |
+| __AFIB/AFL__ |  0.7%    | 99.3%    |
 
 ### 🚧 Beat Classification Results
 

@@ -245,12 +245,10 @@ def get_segmentation_model(
 ) -> tf.keras.Model:
     """Reference segmentation model"""
     blocks = [
-        UNetBlockParams(
-            filteres=16, depth=1, kernel=(1, 3), strides=(1, 2), skip=False
-        ),
-        UNetBlockParams(filteres=32, depth=1, kernel=(1, 3), strides=(1, 2), skip=True),
-        UNetBlockParams(filteres=48, depth=1, kernel=(1, 3), strides=(1, 2), skip=True),
-        UNetBlockParams(filteres=64, depth=1, kernel=(1, 3), strides=(1, 2), skip=True),
+        UNetBlockParams(filters=16, depth=1, kernel=(1, 3), strides=(1, 2), skip=False),
+        UNetBlockParams(filters=32, depth=1, kernel=(1, 3), strides=(1, 2), skip=True),
+        UNetBlockParams(filters=48, depth=1, kernel=(1, 3), strides=(1, 2), skip=True),
+        UNetBlockParams(filters=64, depth=1, kernel=(1, 3), strides=(1, 2), skip=True),
     ]
     return UNet(
         inputs,

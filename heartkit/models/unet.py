@@ -93,7 +93,7 @@ def UNet(
         ym = batch_norm(name=f"{name}.BN1")(ym)
         ym = relu6(name=f"{name}.ACT1")(ym)
         skip_layer = skip_layers.pop()
-        if skip_layer:
+        if skip_layer is not None:
             ym = tf.keras.layers.concatenate(
                 [ym, skip_layer], name=f"{name}.CAT1"
             )  # Can add or concatenate

@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from ..defines import HeartTask
 from ..utils import download_file
-from .dataset import EcgDataset
+from .dataset import HeartKitDataset
 from .defines import PatientGenerator, SampleGenerator
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ QtdbLeadsMap = {
 }
 
 
-class QtdbDataset(EcgDataset):
+class QtdbDataset(HeartKitDataset):
     """QT dataset"""
 
     def __init__(

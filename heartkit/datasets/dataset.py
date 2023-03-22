@@ -16,8 +16,8 @@ from .utils import create_dataset_from_data
 logger = logging.getLogger(__name__)
 
 
-class EcgDataset:
-    """ECG dataset base class"""
+class HeartKitDataset:
+    """HeartKit dataset base class"""
 
     target_rate: int
     ds_path: str
@@ -31,7 +31,7 @@ class EcgDataset:
         frame_size: int = 1250,
         target_rate: int = 250,
     ) -> None:
-        """ECG dataset base class"""
+        """HeartKit dataset base class"""
         self.ds_path = ds_path
         self.task = task
         self.frame_size = frame_size

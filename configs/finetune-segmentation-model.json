@@ -1,10 +1,9 @@
 {
-    "task": "segmentation",
     "job_dir": "./results/segmentation-finetune",
     "ds_path": "./datasets",
     "weights_file": "./results/segmentation/model.weights",
-    "frame_size": 624,
     "sampling_rate": 250,
+    "frame_size": 624,
     "samples_per_patient": 100,
     "val_samples_per_patient": 100,
     "val_patients": 0.20,
@@ -14,7 +13,7 @@
     "epochs": 60,
     "steps_per_epoch": 337,
     "val_metric": "loss",
-    "lr_rate": 1e-5,
     "datasets": ["ludb", "synthetic"],
+    "lr_rate": 1e-5,
     "num_pts": 90
 }

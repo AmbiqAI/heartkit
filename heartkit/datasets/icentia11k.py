@@ -22,7 +22,7 @@ from tqdm import tqdm
 
 from ..defines import HeartBeat, HeartRate, HeartRhythm, HeartTask
 from ..utils import download_file
-from .dataset import EcgDataset
+from .dataset import HeartKitDataset
 from .defines import PatientGenerator, SampleGenerator
 
 logger = logging.getLogger(__name__)
@@ -97,7 +97,7 @@ HeartBeatMap = {
 }
 
 
-class IcentiaDataset(EcgDataset):
+class IcentiaDataset(HeartKitDataset):
     """Icentia dataset"""
 
     def __init__(
@@ -421,7 +421,7 @@ class IcentiaDataset(EcgDataset):
             # Yield selected samples for patient
             for seg_idx, beat_idx, beat in pt_segs_beat_idxs:
                 frame_start = max(
-                    0, beat_idx - int(random.uniform(0.45, 0.55) * self.frame_size)
+                    0, beat_idx - int(random.uniform(0.4, 0.6) * self.frame_size)
                 )
                 frame_end = frame_start + self.frame_size
 

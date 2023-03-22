@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 from ...defines import HeartSegment, HeartTask
-from ..dataset import EcgDataset
+from ..dataset import HeartKitDataset
 from ..defines import PatientGenerator, SampleGenerator
 from .defines import EcgPresets, SyntheticSegments
 from .rhythm_generator import generate_nsr
@@ -14,7 +14,7 @@ from .rhythm_generator import generate_nsr
 logger = logging.getLogger(__name__)
 
 
-class SyntheticDataset(EcgDataset):
+class SyntheticDataset(HeartKitDataset):
     """Synthetic dataset"""
 
     def __init__(
