@@ -42,9 +42,8 @@ def ecg_rate(
     rr_intervals = nk.signal_period(
         peaks=peaks, sampling_rate=sampling_rate, desired_length=desired_length
     )
-    rr_intervals[0] = rr_intervals[
-        1
-    ]  # NK used global average for first peak- Instead lets take neighboring peak
+    # NK used global average for first peak- Instead lets take neighboring peak
+    rr_intervals[0] = rr_intervals[1]
     return rr_intervals
 
 

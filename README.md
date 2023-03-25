@@ -158,7 +158,7 @@ This dataset consists of ECG records from 290 subjects: 148 diagnosed as MI, 52 
 | -------------- | -------- | ------- | ----------- |
 | Segmentation   | 105K     | 19.3M   | IOU=85.3%   |
 | Arrhythmia     | 76K      | 7.2M    | F1=99.4%    |
-| Beat           | 79K      | 1.6M    | F1=90.1%    |
+| Beat           | 79K      | 1.6M    | F1=91.6%    |
 | HRV            | 0K       | 0K      | TBD         |
 
 ### 🚧 Segmentation Results

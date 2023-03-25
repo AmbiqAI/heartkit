@@ -14,8 +14,11 @@
 #include "arm_math.h"
 
 int
-init_model(void);
+init_models(void);
 int
-model_inference(float32_t *x, float32_t *y);
-
+arrhythmia_inference(float32_t *x, float32_t threshold);
+int
+segmentation_inference(float32_t *data, int32_t *segMask, uint32_t padLen);
+int
+beat_inference(float32_t *pBeat, float32_t *beat, float32_t *nBeat);
 #endif // __MODEL_H
