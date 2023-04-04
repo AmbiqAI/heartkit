@@ -2,9 +2,9 @@
 
 We leverage the latest AI techniques paired with Ambiq's ultra low-power microcontrollers to enable running a variety of real-time, wearable heart monitoring tasks.
 
-## Tasks
+## Heart Tasks
 
-### __Segmentation__
+### __ECG Segmentation__
 
 Given stream of 1-lead ECG data, identify segments (e.g. P-wave, QRS, T-wave) and fiducials (e.g. R peak). This serves as the backbone network to enable further downstream tasks.
 
@@ -42,7 +42,7 @@ poetry install
 
 ### CLI Application
 
-The CLI provides a number of commands discussed below. In general, reference configurations are provided to download datasets, train/evaluate/export models, and lastly demo model(s) on Apollo 4 EVB. Pre-trained reference models are also included to enable running inference and the demo immediately.
+The CLI provides a number of commands discussed below. In general, reference configurations are provided to download datasets, train/evaluate/export models, and lastly demo model(s) on PC or Apollo 4 EVB. Pre-trained reference models are also included to enable running inference and the demo immediately.
 
 ```bash
 heartkit
@@ -67,13 +67,13 @@ heartkit --mode download --config ./configs/download-datasets.json
 
 #### 2. Train Model
 
-The `train` command is used to train a heart kit model. The following command will train the arrhythmia model using the reference configuration. Please refer to `configs/train-arrhythmia-model.json` and `heartkit/defines.py` to see supported options.
+The `train` command is used to train a Heart Kit model. The following command will train the arrhythmia model using the reference configuration. Please refer to `heartkit/defines.py` to see supported options.
 
 ```bash
 heartkit --task arrhythmia --mode train --config ./configs/train-arrhythmia-model.json
 ```
 
-> Due to the large dataset and class imbalance, the batch size and buffer size are large to ensure properly shuffling of patients as well as classes. The first epoch will take much longer as it fills up this buffer. To train on dedicated GPUs, it's recommended to have at least 10 GB of VRAM.
+> Due to the large dataset and class imbalance, the batch size and buffer size are large for arrhythmia training to ensure properly shuffling of patients as well as classes. The first epoch will take much longer as it fills up this buffer. To train on dedicated GPUs, it's recommended to have at least 10 GB of VRAM.
 
 #### 3. Evaluate Model
 
@@ -93,23 +93,23 @@ heartkit --task arrhythmia --mode export --config ./configs/export-arrhythmia-mo
 
 Once converted, the TFLM header file will be copied to location specified by `tflm_file`. If parameters were changed (e.g. window size, quantization), `./evb/src/constants.h` will need to be updated.
 
-#### 5. EVB Demo
+#### 5. Demo
 
-The `demo` command is used to run the model on an Apollo 4 evaluation board (EVB). This setup requires both a host PC along with an Apollo 4 EVB. The host PC acts as a server and provides test samples to the EVB. The host PC is also used to provide status updates and model results from the EVB. The EVB runs in client mode- its job is to fetch samples and perform real-time inference using the arrhythmia model. Please refer to [EVB Demo Setup](./docs/evb_demo.md) for additional details.
+The `demo` command is used to run the models on either the PC or an Apollo 4 evaluation board (EVB). The EVB backend requires both a host PC along with an Apollo 4 EVB. The host PC acts as a server and provides test samples to the EVB. The host PC is also used to provide status updates and model results from the EVB. The EVB runs in client mode- its job is to fetch samples and perform real-time inference using the arrhythmia model. Please refer to [EVB Demo Setup](./docs/arrhythmia-demo.md) for additional details.
 
 ```bash
-heartkit --task arrhythmia --mode demo --config ./configs/evb-arrhythmia-demo.json
+heartkit --task arrhythmia --mode demo --config ./configs/arrhythmia-demo.json
 ```
 
-## Model Architectures
+## Model Architecture
 
 The __backbone network__ performs ECG segmentation. This model utilizes a custom 1-D UNET architecture w/ additional skip connections between encoder and decoder blocks. The encoder blocks are convolutional based and include both expansion and inverted residuals layers. The only preprocessing performed is band-pass filtering and standardization on the window of ECG data.
 
-The __rhythm-level arrhythmia head__ runs auxillary to the backbone network. This arrhythmia model utilizes a 1-D CNN built using MBConv style blocks that incorporate expansion, inverted residuals, and squeeze and excitation layers. Furthermore, longer filter and stide lengths are utilized in the initial layers to capture more temporal dependencies.
+The __arrhythmia classifier head__ runs auxillary to the backbone network. This arrhythmia model utilizes a 1-D CNN built using MBConv style blocks that incorporate expansion, inverted residuals, and squeeze and excitation layers. Furthermore, longer filter and stide lengths are utilized in the initial layers to capture more temporal dependencies.
 
 The __beat-level classifier head__ also utilizes a 1-D CNN built using MBConv style blocks. Using the identified segments, individual beats are extracted and feed into this model.
 
-The __HRV head__ uses only DSP and statistics (i.e. no network is used). The segmentation results are stitched together and used to derive a number of usefule metrics including heart rate and RR interval.
+The __HRV head__ uses only DSP and statistics (i.e. no network is used). The segmentation results are stitched together and used to derive a number of useful metrics including heart rate and RR interval.
 
 
 ## Datasets
@@ -154,12 +154,14 @@ This dataset consists of ECG records from 290 subjects: 148 diagnosed as MI, 52 
 
 ## Results Summary
 
+The following table provides performance and accuracy results of all models when running on Apollo 4 EVB.
+
 | Task           | Params   | FLOPS   | Metric      |
 | -------------- | -------- | ------- | ----------- |
 | Segmentation   | 105K     | 19.3M   | IOU=85.3%   |
 | Arrhythmia     | 76K      | 7.2M    | F1=99.4%    |
 | Beat           | 79K      | 1.6M    | F1=91.6%    |
-| HRV            | 0K       | 0K      | TBD         |
+| HRV            | N/A      | N/A     | N/A         |
 
 ### 🚧 Segmentation Results
 
@@ -196,14 +198,15 @@ The confusion matrix for the 200x3 model is depicted below.
 
 | Confusion | Normal | PAC   | PVC   |
 | --------- | ------ | ----- | ----- |
-| NSR       | 94.6%  |  4.6% |  0.8% |
-| PAC       |  4.9%  | 86.5% |  8.6% |
-| PVC       |  0.7%  | 10.2% | 89.0% |
+| __NSR__   | 94.6%  |  4.6% |  0.8% |
+| __PAC__   |  4.9%  | 86.5% |  8.6% |
+| __PVC__   |  0.7%  | 10.2% | 89.0% |
 
 
 ### 🚧 HRV Results
 
-Work in progress...
+The HRV metrics are computed using off-the-shelf definitions based purely on the output of the segmentation and beat models. The current metrics include heart rate, rhythm, and RR variation. We intend to include additional metrics later on such as QTc along with frequency metrics.
+
 
 ## Reference Papers
 

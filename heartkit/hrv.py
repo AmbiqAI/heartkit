@@ -39,6 +39,8 @@ def ecg_rate(
     Returns:
         npt.NDArray: RR rates
     """
+    if np.size(peaks) <= 3:
+        return np.zeros_like(peaks)
     rr_intervals = nk.signal_period(
         peaks=peaks, sampling_rate=sampling_rate, desired_length=desired_length
     )
@@ -64,6 +66,8 @@ def ecg_bpm(
     Returns:
         float: Heart rate in BPM
     """
+    if np.size(peaks) <= 1:
+        return -1
     rr_intervals = ecg_rate(
         peaks=peaks, sampling_rate=sampling_rate, desired_length=None
     )
@@ -71,6 +75,8 @@ def ecg_bpm(
         rr_intervals = np.where(rr_intervals < min_rate, min_rate, rr_intervals)
     if max_rate is not None:
         rr_intervals = np.where(rr_intervals > max_rate, max_rate, rr_intervals)
+    if np.size(peaks) <= 1:
+        return -1
     return 60 / np.mean(rr_intervals)
 
 

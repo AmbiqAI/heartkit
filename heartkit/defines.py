@@ -28,6 +28,7 @@ class HeartKitMode(str, Enum):
 
 
 # resnet, efficientnet, unet
+BackendType = Literal["pc", "evb"]
 ArchitectureType = Literal["resnet", "efficientnet", "unet"]
 DatasetTypes = Literal["icentia11k", "ludb", "qtdb", "synthetic"]
 
@@ -57,6 +58,15 @@ class HeartRate(IntEnum):
     tachycardia = 1
     bradycardia = 2
     noise = 3  # Not used
+
+    @classmethod
+    def from_bpm(cls, bpm: float):
+        """Assign rate based on supplied BPM."""
+        if bpm < 60:
+            return cls.bradycardia
+        if bpm > 100:
+            return cls.tachycardia
+        return cls.normal
 
 
 class HeartSegment(IntEnum):
@@ -238,13 +248,28 @@ class HeartDemoParams(BaseModel, extra=Extra.allow):
     job_dir: Path = Field(
         default_factory=tempfile.gettempdir, description="Job output directory"
     )
+    rest_address: str = Field(
+        default_factory=lambda: f"{os.getenv('REST_ADDR', 'http://0.0.0.0')}:{os.getenv('REST_PORT', '80')}/api/v1"
+    )
+    backend: BackendType = Field(default="pc", description="Backend")
+    # Model paths/arguments
+    arrhythmia_model: str | None = Field(
+        default=None, description="Arrhythmia TF model path"
+    )
+    segmentation_model: str | None = Field(
+        default=None, description="Segmentation TF model path"
+    )
+    beat_model: str | None = Field(default=None, description="Beat TF model path")
+
+    # EVB folder?
+    # datasets: ["Icentia"],
     # Dataset arguments
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
     pad_size: int = Field(0, description="Pad size")
     samples_per_patient: int | list[int] = Field(
-        1000, description="# train samples per patient"
+        10, description="# train samples per patient"
     )
     # EVB arguments
     vid_pid: str | None = Field(
@@ -252,3 +277,7 @@ class HeartDemoParams(BaseModel, extra=Extra.allow):
         description="VID and PID of serial device formatted as `VID:PID` in base-10",
     )
     baudrate: int = Field(115200, description="Serial baudrate")
+    data_parallelism: int = Field(
+        default_factory=lambda: os.cpu_count() or 1,
+        description="# of data loaders running in parallel",
+    )

@@ -15,7 +15,7 @@ from .defines import (
     HeartTestParams,
     HeartTrainParams,
 )
-from .demo import evb_demo
+from .demo.demo import demo
 from .utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -89,7 +89,7 @@ def run(inputs: list[str] | None = None):
             task_handler.export_model(parse_content(HeartExportParams, args.config))
 
         case HeartKitMode.demo:
-            evb_demo(task=args.task, params=parse_content(HeartDemoParams, args.config))
+            demo(params=parse_content(HeartDemoParams, args.config))
 
         case HeartKitMode.predict:
             raise NotImplementedError()

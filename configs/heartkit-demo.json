@@ -1,0 +1,15 @@
+{
+    "job_dir": "./results/heartkit-demo",
+    "ds_path": "./datasets",
+    "rest_address": "http://0.0.0.0:8000/api/v1",
+    "backend": "evb",
+    "arrhythmia_model": "./results/arrhythmia/model.tf",
+    "segmentation_model": "./results/segmentation/model.tf",
+    "beat_model": "./results/beat/model.tf",
+    "samples_per_patient": 1,
+    "frame_size": 2500,
+    "vid_pid": "51966:16385",
+    "baudrate": "115200",
+    "data_parallelism": 1,
+    "datasets": ["icentia11k"]
+}

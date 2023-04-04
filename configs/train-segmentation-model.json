@@ -1,5 +1,5 @@
 {
-    "job_dir": "./results/segmentation2",
+    "job_dir": "./results/segmentation",
     "ds_path": "./datasets",
     "sampling_rate": 250,
     "frame_size": 624,

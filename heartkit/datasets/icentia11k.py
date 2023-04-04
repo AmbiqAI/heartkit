@@ -508,7 +508,7 @@ class IcentiaDataset(HeartKitDataset):
 
     def signal_generator(
         self, patient_generator: PatientGenerator, samples_per_patient: int = 1
-    ):
+    ) -> SampleGenerator:
         """
         Generate frames using patient generator.
         from the segments in patient data by placing a frame in a random location within one of the segments.

@@ -40,6 +40,27 @@ LudbLeadsMap = {
 }
 
 
+def _resample_ecg(
+    data: npt.NDArray,
+    sampling_rate: int,
+    target_rate: int,
+) -> npt.NDArray:
+    """Resample signal to target sampling rate
+
+    Args:
+        data (npt.NDArray): ECG data [data x leads]
+        sampling_rate (int): Original Fs
+        target_rate (int): Target Fs
+
+    Returns:
+        tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]: Resampled signals
+    """
+    ratio = target_rate / sampling_rate
+    numel = int(ratio * data.shape[0])
+    rdata = scipy.signal.resample(data, numel, axis=0)
+    return rdata
+
+
 def _resample_ecg_segs(
     data: npt.NDArray,
     segs: npt.NDArray,
@@ -55,7 +76,7 @@ def _resample_ecg_segs(
         target_rate (int): Target Fs
 
     Returns:
-        tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]: Resampled signals
+        tuple[npt.NDArray, npt.NDArray]: Resampled signals
     """
     ratio = target_rate / sampling_rate
     numel = int(ratio * data.shape[0])
@@ -186,6 +207,38 @@ class LudbDataset(HeartKitDataset):
                     np.int32
                 )  # .reshape((self.frame_size, 1))
                 yield x, y
+            # END FOR
+        # END FOR
+
+    def signal_generator(
+        self, patient_generator: PatientGenerator, samples_per_patient: int = 1
+    ) -> SampleGenerator:
+        """
+        Generate frames using patient generator.
+        from the segments in patient data by placing a frame in a random location within one of the segments.
+        Args:
+        patient_generator (PatientGenerator): Generator that yields a tuple of patient id and patient data.
+                Patient data may contain only signals, since labels are not used.
+        samples_per_patient (int): Samples per patient.
+        Return: Generator of: input data of shape (frame_size, 1)
+        """
+        for _, pt in patient_generator:
+            data = pt["data"][:]
+            if self.sampling_rate != self.target_rate:
+                data = _resample_ecg(data, self.sampling_rate, self.target_rate)
+            for _ in range(samples_per_patient):
+                lead_idx = np.random.randint(data.shape[1])
+                if data.shape[0] > self.frame_size:
+                    frame_start = np.random.randint(data.shape[0] - self.frame_size)
+                else:
+                    frame_start = 0
+                frame_end = frame_start + self.frame_size
+                x = (
+                    data[frame_start:frame_end, lead_idx]
+                    .astype(np.float32)
+                    .reshape((self.frame_size, 1))
+                )
+                yield x
             # END FOR
         # END FOR
 

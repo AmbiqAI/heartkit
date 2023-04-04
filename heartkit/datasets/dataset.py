@@ -1,5 +1,7 @@
+import functools
 import logging
 import os
+from typing import Callable
 
 import numpy as np
 import numpy.typing as npt
@@ -119,6 +121,7 @@ class HeartKitDataset:
         val_pt_samples: int | list[int] | None = None,
         val_size: int | None = None,
         val_file: str | None = None,
+        preprocess: bool = True,
         num_workers: int = 1,
     ) -> tuple[tf.data.Dataset, tf.data.Dataset]:
         """Load training and validation TF datasets
@@ -197,6 +200,7 @@ class HeartKitDataset:
             patient_ids=train_patient_ids,
             samples_per_patient=train_pt_samples,
             repeat=True,
+            preprocess=preprocess,
             num_workers=num_workers,
         )
         return train_ds, val_ds
@@ -206,6 +210,7 @@ class HeartKitDataset:
         test_patients: float | None = None,
         test_pt_samples: int | list[int] | None = None,
         repeat: bool = True,
+        preprocess: bool = True,
         num_workers: int = 1,
     ) -> tf.data.Dataset:
         """Load testing datasets
@@ -232,6 +237,7 @@ class HeartKitDataset:
             patient_ids=test_patient_ids,
             samples_per_patient=test_pt_samples,
             repeat=repeat,
+            preprocess=preprocess,
             num_workers=num_workers,
         )
         return test_ds
@@ -242,6 +248,7 @@ class HeartKitDataset:
         patient_ids: int = None,
         samples_per_patient: int | list[int] = 100,
         repeat: bool = False,
+        preprocess: Callable[[npt.NDArray], npt.NDArray] | None = None,
         num_workers: int = 1,
     ) -> tf.data.Dataset:
         """Generates datasets for given task in parallel using TF `interleave`
@@ -260,6 +267,7 @@ class HeartKitDataset:
                 patient_ids=patient_ids[i * split : (i + 1) * split],
                 samples_per_patient=samples_per_patient,
                 repeat=repeat,
+                preprocess=preprocess,
             )
 
         if num_workers > len(patient_ids):
@@ -297,6 +305,7 @@ class HeartKitDataset:
         patient_ids: npt.ArrayLike,
         samples_per_patient: int | list[int] = 1,
         repeat: bool = True,
+        preprocess: bool = True,
     ) -> tf.data.Dataset:
         """Creates TF dataset generator for task.
 
@@ -311,7 +320,7 @@ class HeartKitDataset:
         dataset = tf.data.Dataset.from_generator(
             generator=self._dataset_sample_generator,
             output_signature=get_task_spec(self.task, self.frame_size),
-            args=(patient_ids, samples_per_patient, repeat),
+            args=(patient_ids, samples_per_patient, repeat, preprocess),
         )
         return dataset
 
@@ -320,6 +329,7 @@ class HeartKitDataset:
         patient_ids: npt.ArrayLike,
         samples_per_patient: int | list[int] = 1,
         repeat: bool = True,
+        preprocess: bool = True,
     ) -> SampleGenerator:
         """Internal sample generator for task.
 
@@ -337,11 +347,17 @@ class HeartKitDataset:
             patient_generator,
             samples_per_patient=samples_per_patient,
         )
+        if preprocess:
+            preprocess_func = functools.partial(
+                preprocess_signal, sample_rate=self.target_rate
+            )
+        else:
+            preprocess_func = lambda x: x
+
         data_generator = map(
             lambda x_y: (
-                # Apply augmentations
                 # Pre-process signal and convert to 3D shape
-                preprocess_signal(data=x_y[0], sample_rate=self.target_rate).reshape(
+                preprocess_func(x_y[0]).reshape(
                     get_task_shape(self.task, self.frame_size)[0]
                 ),
                 tf.one_hot(x_y[1], num_classes),  # x_y[1]

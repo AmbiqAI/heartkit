@@ -9,7 +9,7 @@ flowchart LR
 
 In the first stage, 5 seconds of sensor data is collected- either directly from the MAX86150 sensor or test data from the PC. In stage 2, the data is preprocessed by bandpass filtering and standardizing. The data is then fed into the CNN network to perform inference. Finally, in stage 4, the ECG data will be classified as normal (NSR), arrhythmia (AFIB/AFL) or inconclusive. Inconclusive is assigned when the prediction confidence is less than a pre-defined threshold (e.g. 90%).
 
-> NOTE: A reference arrhythmia model (`./evb/src/model_buffer.h`) is included and can be used to quickly evaluate the hardware. The model is trained on Icentia11k dataset that has the associated [non-commercial license](https://physionet.org/content/icentia11k-continuous-ecg/1.0/LICENSE.txt). The model is intended for evaluation purposes only and cannot be used for commercial use without permission.
+> NOTE: A reference arrhythmia model (`./evb/src/arrhythmia_model_buffer.h`) is included and can be used to quickly evaluate the hardware. The model is trained on Icentia11k dataset that has the associated [non-commercial license](https://physionet.org/content/icentia11k-continuous-ecg/1.0/LICENSE.txt). The model is intended for evaluation purposes only and cannot be used for commercial use without permission.
 
 ## Software Setup
 
@@ -71,7 +71,7 @@ Now press the __reset button__ on the EVB. This will allow SWO output to be capt
 In terminal B, start the server on the PC.
 
 ```bash
-python -m heartkit demo --config-file ./configs/evb-demo.json
+heartkit --task arrhythmia demo --config ./configs/arrhythmia-demo.json
 ```
 
 Upon start, the server will scan and connect to the EVB serial port. If no port is detected after 30 seconds, the server will exit. If successful, the server should discover the USB port and say `Server running`.

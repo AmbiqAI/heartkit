@@ -93,6 +93,65 @@ class SyntheticDataset(HeartKitDataset):
             )
         raise NotImplementedError()
 
+    def signal_generator(
+        self, patient_generator: PatientGenerator, samples_per_patient: int = 1
+    ) -> SampleGenerator:
+        """
+        Generate frames using patient generator.
+        from the segments in patient data by placing a frame in a random location within one of the segments.
+        Args:
+        patient_generator (PatientGenerator): Generator that yields a tuple of patient id and patient data.
+                Patient data may contain only signals, since labels are not used.
+        samples_per_patient (int): Samples per patient.
+        Return: Generator of: input data of shape (frame_size, 1)
+        """
+
+        start_offset = self.sampling_rate
+        num_leads = 12  # Use all 12 leads
+        presets = (
+            EcgPresets.SR,
+            EcgPresets.LAHB,
+            EcgPresets.LPHB,
+            EcgPresets.LBBB,
+            EcgPresets.ant_STEMI,
+            EcgPresets.random_morphology,
+            EcgPresets.high_take_off,
+        )
+        preset_weights = (20, 1, 1, 1, 1, 1, 1)
+
+        for _ in patient_generator:
+            _, syn_ecg, _, _, _ = generate_nsr(
+                leads=num_leads,
+                signal_frequency=self.sampling_rate,
+                rate=np.random.uniform(40, 90),
+                preset=random.choices(presets, preset_weights, k=1)[0].value,
+                noise_multiplier=np.random.uniform(0.5, 0.9),
+                impedance=np.random.uniform(0.75, 1.1),
+                p_multiplier=np.random.uniform(0.75, 1.1),
+                t_multiplier=np.random.uniform(0.75, 1.1),
+                duration=max(
+                    5,
+                    (self.frame_size / self.sampling_rate)
+                    * (samples_per_patient / num_leads / 10),
+                ),
+                voltage_factor=np.random.uniform(275, 325),
+            )
+            for _ in range(samples_per_patient):
+                # Randomly pick an ECG lead and frame
+                lead_idx = np.random.randint(syn_ecg.shape[0])
+                frame_start = np.random.randint(
+                    start_offset, syn_ecg.shape[1] - self.frame_size
+                )
+                frame_end = frame_start + self.frame_size
+                x = (
+                    syn_ecg[lead_idx, frame_start:frame_end]
+                    .astype(np.float32)
+                    .reshape((self.frame_size, 1))
+                )
+                yield x
+            # END FOR
+        # END FOR
+
     def segmentation_generator(
         self,
         patient_generator: PatientGenerator,
@@ -218,6 +277,7 @@ class SyntheticDataset(HeartKitDataset):
         val_pt_samples: int | list[int] | None = None,
         val_size: int | None = None,
         val_file: str | None = None,
+        preprocess: bool = True,
         num_workers: int = 1,
     ):
         return super().load_train_datasets(
@@ -226,6 +286,7 @@ class SyntheticDataset(HeartKitDataset):
             train_pt_samples,
             val_pt_samples,
             val_size,
-            None,
-            num_workers,  # Dont cache
+            None,  # Dont cache
+            preprocess,
+            num_workers,
         )
