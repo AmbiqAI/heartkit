@@ -2,10 +2,10 @@
  * @file sensor.h
  * @author Adam Page (adam.page@ambiq.com)
  * @brief Initializes and collects sensor data from MAX86150
- * @version 0.1
- * @date 2022-11-02
+ * @version 1.0
+ * @date 2023-03-27
  *
- * @copyright Copyright (c) 2022
+ * @copyright Copyright (c) 2023
  *
  */
 #ifndef __SENSOR_H
@@ -14,7 +14,7 @@
 #include "arm_math.h"
 #include <stdint.h>
 
-int
+uint32_t
 init_sensor(void);
 void
 start_sensor(void);

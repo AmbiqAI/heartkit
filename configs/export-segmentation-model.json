@@ -1,0 +1,11 @@
+{
+    "job_dir": "./results/segmentation",
+    "ds_path": "./datasets",
+    "sampling_rate": 250,
+    "frame_size": 624,
+    "samples_per_patient": 200,
+    "model_file": "./results/segmentation/model.tf",
+    "quantization": true,
+    "tflm_var_name": "g_segmentation_model",
+    "tflm_file": "./evb/src/segmentation_model_buffer.h"
+}

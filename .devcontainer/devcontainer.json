@@ -1,0 +1,41 @@
+{
+    "name": "Python 3",
+    "image": "mcr.microsoft.com/devcontainers/python:0-3.10",
+
+    // Features: https://containers.dev/features.
+    "features": {
+        "ghcr.io/devcontainers/features/git:1": {
+            "ppa": true,
+            "version": "latest"
+        },
+        "ghcr.io/devcontainers/features/nvidia-cuda:1": {
+            "installCudnn": true,
+            "installNvtx": true,
+            "cudaVersion": "11.8",
+            "cudnnVersion": "8.6.0.163"
+        },
+        "ghcr.io/devcontainers-contrib/features/pipenv:2": {
+            "version": "latest"
+        },
+        "ghcr.io/devcontainers-contrib/features/pipx-package:1": {
+            "package": "black",
+            "version": "latest",
+            "injections": "pylint pytest"
+        }
+    },
+
+    "runArgs": [ "--gpus", "all"],
+
+    "mounts": [
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/tensorflow_datasets,target=/home/vscode/tensorflow_datasets,type=bind,consistency=cached"
+    ],
+
+    "forwardPorts": [6006],
+
+    "postCreateCommand": "./.devcontainer/postCreateCommand.sh",
+
+    "remoteEnv": {
+        "LD_LIBRARY_PATH": "${containerEnv:LD_LIBRARY_PATH}:/usr/local/cuda/lib64",
+        "TF_FORCE_GPU_ALLOW_GROWTH": "true"
+    }
+}

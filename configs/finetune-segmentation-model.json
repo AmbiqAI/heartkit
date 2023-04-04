@@ -1,0 +1,19 @@
+{
+    "job_dir": "./results/segmentation-finetune",
+    "ds_path": "./datasets",
+    "weights_file": "./results/segmentation/model.weights",
+    "sampling_rate": 250,
+    "frame_size": 624,
+    "samples_per_patient": 100,
+    "val_samples_per_patient": 100,
+    "val_patients": 0.20,
+    "arch": "unet",
+    "batch_size": 128,
+    "buffer_size": 8192,
+    "epochs": 60,
+    "steps_per_epoch": 337,
+    "val_metric": "loss",
+    "datasets": ["ludb", "synthetic"],
+    "lr_rate": 1e-5,
+    "num_pts": 90
+}

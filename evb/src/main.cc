@@ -2,10 +2,10 @@
  * @file main.cc
  * @author Adam Page (adam.page@ambiq.com)
  * @brief Main application
- * @version 0.1
- * @date 2022-11-02
+ * @version 1.0
+ * @date 2023-03-27
  *
- * @copyright Copyright (c) 2022
+ * @copyright Copyright (c) 2023
  *
  */
 #include "arm_math.h"
@@ -22,23 +22,21 @@
 #include "ns_usb.h"
 // Locals
 #include "constants.h"
+#include "heartkit.h"
 #include "main.h"
-#include "model.h"
-#include "preprocessing.h"
 #include "sensor.h"
-
-static const char *heart_rhythm_labels[] = {"NSR", "AFIB/AFL"};
-// const char *heart_beat_labels[] = { "normal", "pac", "aberrated", "pvc", "noise" };
-// const char *hear_rate_labels[] = { "normal", "tachycardia", "bradycardia", "noise" };
 
 // Application globals
 static uint32_t numSamples = 0;
-static float32_t sensorBuffer[SENSOR_BUFFER_LEN];
-static float32_t modelResults[NUM_CLASSES] = {0};
-static int modelResult = -1;
+
+static float32_t hkData[HK_DATA_LEN + SAMPLE_RATE];
+static uint8_t hkSegMask[HK_DATA_LEN];
+static hk_result_t hkResults;
+
 static bool usbAvailable = false;
 static int volatile sensorCollectBtnPressed = false;
 static int volatile clientCollectBtnPressed = false;
+
 static AppState state = IDLE_STATE;
 static DataCollectMode collectMode = SENSOR_DATA_COLLECT;
 
@@ -136,9 +134,9 @@ start_collecting(void) {
      */
     if (collectMode == SENSOR_DATA_COLLECT) {
         start_sensor();
-        // Discard first second- this will give sensor and user warm up time
+        // Discard first second for sensor warm up time
         for (size_t i = 0; i < 100; i++) {
-            capture_sensor_data(sensorBuffer);
+            capture_sensor_data(hkData);
             sleep_us(10000);
         }
     }
@@ -154,13 +152,15 @@ stop_collecting(void) {
     if (collectMode == SENSOR_DATA_COLLECT) {
         stop_sensor();
     }
+    numSamples = 0;
 }
 
 uint32_t
-fetch_samples_from_pc(float32_t *samples, uint32_t numSamples) {
+fetch_samples_from_pc(float32_t *samples, uint32_t offset, uint32_t numSamples) {
     /**
      * @brief Fetch samples from PC over RPC
      * @param samples Buffer to store samples
+     * @param offset Buffer offset
      * @param numSamples # requested samples
      * @return # samples actually fetched
      */
@@ -170,7 +170,7 @@ fetch_samples_from_pc(float32_t *samples, uint32_t numSamples) {
         return 0;
     }
     binary_t binaryBlock = {
-        .data = (uint8_t *)samples,
+        .data = (uint8_t *)(&samples[offset]),
         .dataLength = numSamples * sizeof(float32_t),
     };
     dataBlock resultBlock = {
@@ -179,22 +179,23 @@ fetch_samples_from_pc(float32_t *samples, uint32_t numSamples) {
     if (resultBlock.description != rpcFetchSamplesDesc) {
         ns_free(resultBlock.description);
     }
-    if (resultBlock.buffer.data != (uint8_t *)samples) {
+    if (resultBlock.buffer.data != (uint8_t *)&samples[offset]) {
         ns_free(resultBlock.buffer.data);
     }
     if (err) {
         ns_printf("Failed fetching from PC w/ error: %x\n", err);
         return 0;
     }
-    memcpy(samples, resultBlock.buffer.data, resultBlock.buffer.dataLength);
-    return resultBlock.length;
+    memcpy(&samples[offset], resultBlock.buffer.data, resultBlock.buffer.dataLength);
+    return resultBlock.buffer.dataLength / sizeof(float32_t);
 }
 
 void
-send_samples_to_pc(float32_t *samples, uint32_t numSamples) {
+send_samples_to_pc(float32_t *samples, uint32_t offset, uint32_t numSamples) {
     /**
      * @brief Send sensor samples to PC
      * @param samples Samples to send
+     * @param offset Buffer offset
      * @param numSamples # samples to send
      */
     static char rpcSendSamplesDesc[] = "SEND_SAMPLES";
@@ -202,31 +203,47 @@ send_samples_to_pc(float32_t *samples, uint32_t numSamples) {
         return;
     }
     binary_t binaryBlock = {
-        .data = (uint8_t *)samples,
+        .data = (uint8_t *)(&samples[offset]),
         .dataLength = numSamples * sizeof(float32_t),
     };
     dataBlock commandBlock = {
-        .length = numSamples, .dType = float32_e, .description = rpcSendSamplesDesc, .cmd = generic_cmd, .buffer = binaryBlock};
+        .length = offset, .dType = float32_e, .description = rpcSendSamplesDesc, .cmd = generic_cmd, .buffer = binaryBlock};
     ns_rpc_data_sendBlockToPC(&commandBlock);
 }
 
 void
-send_results_to_pc(float32_t *results, uint32_t numResults) {
+send_mask_to_pc(uint8_t *mask, uint32_t offset, uint32_t maskLen) {
     /**
-     * @brief Send classification results to PC
-     * @param results Buffer with model outputs (logits)
-     * @param numResults # model ouputs
+     * @brief Send mask to PC
      */
-    static char rpcSendResultsDesc[] = "SEND_RESULTS";
+    static char rpcSendMaskDesc[] = "SEND_MASK";
     if (!usbAvailable) {
         return;
     }
     binary_t binaryBlock = {
-        .data = (uint8_t *)results,
-        .dataLength = numResults * sizeof(float32_t),
+        .data = mask,
+        .dataLength = maskLen * sizeof(uint8_t),
     };
     dataBlock commandBlock = {
-        .length = numResults, .dType = float32_e, .description = rpcSendResultsDesc, .cmd = generic_cmd, .buffer = binaryBlock};
+        .length = offset, .dType = uint8_e, .description = rpcSendMaskDesc, .cmd = generic_cmd, .buffer = binaryBlock};
+    ns_rpc_data_sendBlockToPC(&commandBlock);
+}
+
+void
+send_results_to_pc(hk_result_t *result) {
+    /**
+     * @brief Send results to PC
+     */
+    static char rpcSendResultsDesc[] = "SEND_RESULTS";
+    hk_print_result(result);
+    if (!usbAvailable) {
+        return;
+    }
+    binary_t binaryBlock = {
+        .data = (uint8_t *)result,
+        .dataLength = sizeof(hk_result_t),
+    };
+    dataBlock commandBlock = {.length = 1, .dType = uint32_e, .description = rpcSendResultsDesc, .cmd = generic_cmd, .buffer = binaryBlock};
     ns_rpc_data_sendBlockToPC(&commandBlock);
 }
 
@@ -237,36 +254,28 @@ collect_samples() {
      * @return # new samples collected
      */
     uint32_t newSamples = 0;
-    if (collectMode == CLIENT_DATA_COLLECT) {
-        newSamples = fetch_samples_from_pc(&sensorBuffer[numSamples], 10);
-        numSamples += newSamples;
-        sleep_us(20000);
-    } else if (collectMode == SENSOR_DATA_COLLECT) {
-        newSamples = capture_sensor_data(&sensorBuffer[numSamples]);
-        if (newSamples) {
-            send_samples_to_pc(&sensorBuffer[numSamples], newSamples);
-        }
-        numSamples += newSamples;
-        sleep_us(10000);
+    uint32_t reqSamples = MIN(HK_DATA_LEN - numSamples, 50);
+    if (numSamples == HK_DATA_LEN) {
+        return newSamples;
     }
-    return newSamples;
-}
+    if (collectMode == CLIENT_DATA_COLLECT) {
+        newSamples = fetch_samples_from_pc(hkData, numSamples, reqSamples);
 
-void
-preprocess_samples() {
-    /**
-     * @brief Preprocess by bandpass filtering and standardizing
-     *
-     */
-    bandpass_filter(sensorBuffer, sensorBuffer, COLLECT_LEN);
-    standardize(&sensorBuffer[PAD_WINDOW_LEN], &sensorBuffer[PAD_WINDOW_LEN], INF_WINDOW_LEN);
+    } else if (collectMode == SENSOR_DATA_COLLECT) {
+        newSamples = capture_sensor_data(&hkData[numSamples]);
+        if (newSamples) {
+            send_samples_to_pc(hkData, numSamples, newSamples);
+        }
+    }
+    numSamples += newSamples;
+    sleep_us(10000);
+    return newSamples;
 }
 
 void
 wakeup() {
     am_bsp_itm_printf_enable();
     am_bsp_debug_printf_enable();
-    ns_delay_us(50);
 }
 
 void
@@ -283,6 +292,7 @@ setup() {
      *
      */
     // Power configuration (mem, cache, peripherals, clock)
+    uint32_t err = 0;
     ns_core_config_t ns_core_cfg = {.api = &ns_core_V1_0_0};
     ns_core_init(&ns_core_cfg);
     ns_power_config(&ns_pwr_config);
@@ -293,11 +303,10 @@ setup() {
     wakeup();
     // Initialize blocks
     init_rpc();
-    init_sensor();
-    init_preprocess();
-    init_model();
-    ns_peripheral_button_init(&button_config);
-    ns_printf("♥️ Heart Arrhythmia Classifier Demo\n\n");
+    err |= init_sensor();
+    err |= init_heartkit();
+    err |= ns_peripheral_button_init(&button_config);
+    ns_printf("♥️ Heart Kit Demo\n\n");
     ns_printf("Please select data collection options:\n\n\t1. BTN1=sensor\n\t2. BTN2=client\n");
 }
 
@@ -307,7 +316,7 @@ loop() {
      * @brief Application loop
      *
      */
-    static int err = 0;
+    static uint32_t app_err = 0;
     switch (state) {
     case IDLE_STATE:
         if (sensorCollectBtnPressed | clientCollectBtnPressed) {
@@ -315,55 +324,68 @@ loop() {
             wakeup();
             state = START_COLLECT_STATE;
         } else {
+            ns_printf("IDLE_STATE\n");
             deepsleep();
         }
         break;
 
     case START_COLLECT_STATE:
         print_to_pc("COLLECT_STATE\n");
+        sensorCollectBtnPressed = false; // DEBOUNCE
+        clientCollectBtnPressed = false; // DEBOUNCE
         start_collecting();
         state = COLLECT_STATE;
         break;
 
     case COLLECT_STATE:
         collect_samples();
-        if (numSamples >= COLLECT_LEN) {
+        if (numSamples >= HK_DATA_LEN) {
             state = STOP_COLLECT_STATE;
         }
         break;
 
     case STOP_COLLECT_STATE:
         stop_collecting();
-        sensorCollectBtnPressed = false; // DEBOUNCE
-        clientCollectBtnPressed = false; // DEBOUNCE
         am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_HIGH_PERFORMANCE);
         state = PREPROCESS_STATE;
         break;
 
     case PREPROCESS_STATE:
         print_to_pc("PREPROCESS_STATE\n");
-        preprocess_samples();
+        hk_preprocess(hkData);
         state = INFERENCE_STATE;
         break;
 
     case INFERENCE_STATE:
         print_to_pc("INFERENCE_STATE\n");
-        modelResult = model_inference(&sensorBuffer[PAD_WINDOW_LEN], modelResults);
+        app_err = hk_run(hkData, hkSegMask, &hkResults);
         am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_LOW_POWER);
-        state = modelResult == -1 ? FAIL_STATE : DISPLAY_STATE;
+        state = app_err == 1 ? FAIL_STATE : DISPLAY_STATE;
         break;
 
     case DISPLAY_STATE:
+        for (size_t i = 0; i < HK_DATA_LEN; i += SAMPLE_RATE) {
+            uint32_t maskLen = MIN(HK_DATA_LEN - i, SAMPLE_RATE);
+            send_mask_to_pc(&hkSegMask[i], i, maskLen);
+        }
+        send_results_to_pc(&hkResults);
+        ns_delay_us(10000);
         print_to_pc("DISPLAY_STATE\n");
-        state = IDLE_STATE;
-        ns_printf("\tLabel=%s [%d,%f]\n", heart_rhythm_labels[modelResult], modelResult, modelResults[modelResult]);
-        send_results_to_pc(modelResults, NUM_CLASSES);
+        ns_delay_us(DISPLAY_LEN_USEC);
+        am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_LOW_POWER);
+        if (sensorCollectBtnPressed | clientCollectBtnPressed) {
+            sensorCollectBtnPressed = false;
+            clientCollectBtnPressed = false;
+            state = IDLE_STATE;
+        } else {
+            state = START_COLLECT_STATE;
+        }
         break;
 
     case FAIL_STATE:
-        ns_printf("FAIL_STATE (err=%d)\n", err);
+        ns_printf("FAIL_STATE err=%d\n", app_err);
         state = IDLE_STATE;
-        err = 0;
+        app_err = 0;
         break;
 
     default:

@@ -1,0 +1,18 @@
+{
+    "job_dir": "./results/arrhythmia",
+    "ds_path": "./datasets",
+    "sampling_rate": 250,
+    "frame_size": 1000,
+    "samples_per_patient": [100, 800, 400],
+    "val_samples_per_patient": [100, 800, 400],
+    "train_patients": 10000,
+    "val_file": "./results/arrhythmia-10000pt-4s.pkl",
+    "val_patients": 0.20,
+    "val_size": 100000,
+    "batch_size": 6144,
+    "buffer_size": 100000,
+    "epochs": 100,
+    "steps_per_epoch": 10,
+    "val_metric": "loss",
+    "datasets": ["icentia11k"]
+}

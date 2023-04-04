@@ -2,10 +2,10 @@
  * @file main.h
  * @author Adam Page (adam.page@ambiq.com)
  * @brief Main application
- * @version 0.1
- * @date 2022-11-02
+ * @version 1.0
+ * @date 2023-03-27
  *
- * @copyright Copyright (c) 2022
+ * @copyright Copyright (c) 2023
  *
  */
 #ifndef __MAIN_H

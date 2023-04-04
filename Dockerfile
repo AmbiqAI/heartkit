@@ -12,12 +12,12 @@ RUN \
 
 COPY pyproject.toml poetry.toml poetry.lock /app/
 RUN \
-    mkdir -p /app/ecgarr && \
+    mkdir -p /app/heartkit && \
     poetry install && \
     echo "Finished installing project packages"
 
-COPY ecgarr /app/
+COPY heartkit /app/
 RUN \
     echo "Finished installing project sources"
 
-ENTRYPOINT ["poetry", "run", "python", "-m", "ecgarr"]
+ENTRYPOINT ["poetry", "run", "python", "-m", "heartkit"]

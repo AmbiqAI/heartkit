@@ -11,6 +11,7 @@ from . import common, interface
 # import callbacks declaration from other groups
 # from ..GenericDataOperations_PcToEvb import interface as interface_PcToEvb
 
+
 # Client for evb_to_pc
 class evb_to_pcClient(interface.Ievb_to_pc):
     def __init__(self, manager):
@@ -60,9 +61,7 @@ class evb_to_pcClient(interface.Ievb_to_pc):
         return _result
 
     def ns_rpc_data_computeOnPC(self, in_block, result_block):
-        assert (
-            type(result_block) is erpc.Reference
-        ), "out parameter must be a Reference object"
+        assert type(result_block) is erpc.Reference, "out parameter must be a Reference object"
 
         # Build remote function invocation message.
         request = self._clientManager.create_request()

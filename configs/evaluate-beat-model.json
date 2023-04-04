@@ -1,0 +1,10 @@
+{
+    "job_dir": "./results/beat",
+    "ds_path": "./datasets",
+    "sampling_rate": 250,
+    "frame_size": 200,
+    "samples_per_patient": [200, 1000, 1000],
+    "test_patients": 1000,
+    "test_size": 100000,
+    "model_file": "./results/beat/model.tf"
+}

@@ -1,0 +1,13 @@
+{
+    "job_dir": "./results/arrhythmia",
+    "ds_path": "./datasets",
+    "sampling_rate": 250,
+    "frame_size": 1000,
+    "samples_per_patient": [100, 500, 100],
+    "model_file_rmt": "wandb://ambiq/model-registry/ecg-arrhythmia-afib:v2",
+    "model_file": "./results/arrhythmia/model.tf",
+    "quantization": true,
+    "threshold": 0.95,
+    "tflm_var_name": "g_arrhythmia_model",
+    "tflm_file": "./evb/src/arrhythmia_model_buffer.h"
+}

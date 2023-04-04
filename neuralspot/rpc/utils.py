@@ -41,7 +41,7 @@ def _find_serial_device(
 
 
 def get_serial_transport(
-    vid_pid: Optional[str] = None, baudrate: Optional[int] = None, timeout: float = 30
+    vid_pid: Optional[str] = None, baudrate: Optional[int] = None, timeout: float = 10
 ) -> SerialTransport:
     """Create serial transport to EVB. Scans looking for port matching criteria.
 

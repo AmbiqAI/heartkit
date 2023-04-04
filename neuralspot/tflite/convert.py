@@ -1,5 +1,4 @@
 import os
-from typing import List, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -22,18 +21,14 @@ def xxd_c_dump(
         chunk_len (int, optional): # of elements per row. Defaults to 12.
     """
     var_len = 0
-    with open(src_path, "rb", encoding=None) as rfp, open(
-        dst_path, "w", encoding="UTF-8"
-    ) as wfp:
+    with open(src_path, "rb", encoding=None) as rfp, open(dst_path, "w", encoding="UTF-8") as wfp:
         if is_header:
             wfp.write(f"#ifndef __{var_name.upper()}_H{os.linesep}")
             wfp.write(f"#define __{var_name.upper()}_H{os.linesep}")
 
         wfp.write(f"const unsigned char {var_name}[] = {{{os.linesep}")
         for chunk in iter(lambda: rfp.read(chunk_len), b""):
-            wfp.write(
-                "  " + ", ".join((f"0x{c:02x}" for c in chunk)) + f", {os.linesep}"
-            )
+            wfp.write("  " + ", ".join((f"0x{c:02x}" for c in chunk)) + f", {os.linesep}")
             var_len += len(chunk)
         # END FOR
         wfp.write(f"}};{os.linesep}")
@@ -46,18 +41,18 @@ def xxd_c_dump(
 def convert_tflite(
     model: tf.keras.Model,
     quantize: bool = False,
-    test_x: Optional[npt.ArrayLike] = None,
-    input_type: Optional[tf.DType] = None,
-    output_type: Optional[tf.DType] = None,
+    test_x: npt.ArrayLike | None = None,
+    input_type: tf.DType | None = None,
+    output_type: tf.DType | None = None,
 ) -> bytes:
     """Convert TF model into TFLite model content
 
     Args:
         model (tf.keras.Model): TF model
         quantize (bool, optional): Enable PTQ. Defaults to False.
-        test_x (Optional[npt.ArrayLike], optional): Enables full integer PTQ. Defaults to None.
-        input_type (Optional[tf.DType]): Input type data format. Defaults to None.
-        output_type (Optional[tf.DType]): Output type data format. Defaults to None.
+        test_x (npt.ArrayLike | None, optional): Enables full integer PTQ. Defaults to None.
+        input_type (tf.DType | None): Input type data format. Defaults to None.
+        output_type (tf.DType | None): Output type data format. Defaults to None.
 
     Returns:
         bytes: TFLite content
@@ -87,16 +82,16 @@ def convert_tflite(
 def predict_tflite(
     model_content: bytes,
     test_x: npt.ArrayLike,
-    input_name: Optional[str] = None,
-    output_name: Optional[str] = None,
+    input_name: str | None = None,
+    output_name: str | None = None,
 ) -> npt.ArrayLike:
     """Perform prediction using tflite model content
 
     Args:
         model_content (bytes): TFLite model content
         test_x (npt.ArrayLike): Input dataset w/ no batch dimension
-        input_name (Optional[str], optional): Input layer name. Defaults to None.
-        output_name (Optional[str], optional): Output layer name. Defaults to None.
+        input_name (str | None, optional): Input layer name. Defaults to None.
+        output_name (str | None, optional): Output layer name. Defaults to None.
 
     Returns:
         npt.ArrayLike: Model outputs
@@ -115,24 +110,17 @@ def predict_tflite(
         output_name = list(outputs_details.keys())[0]
     input_details = inputs_details[input_name]
     output_details = outputs_details[output_name]
-    input_scale: List[float] = input_details["quantization_parameters"]["scales"]
-    input_zero_point: List[int] = input_details["quantization_parameters"][
-        "zero_points"
-    ]
-    output_scale: List[float] = output_details["quantization_parameters"]["scales"]
-    output_zero_point: List[int] = output_details["quantization_parameters"][
-        "zero_points"
-    ]
+    input_scale: list[float] = input_details["quantization_parameters"]["scales"]
+    input_zero_point: list[int] = input_details["quantization_parameters"]["zero_points"]
+    output_scale: list[float] = output_details["quantization_parameters"]["scales"]
+    output_zero_point: list[int] = output_details["quantization_parameters"]["zero_points"]
 
     if len(input_scale) and len(input_zero_point):
         inputs = inputs / input_scale[0] + input_zero_point[0]
         inputs = inputs.astype(input_details["dtype"])
 
     outputs = np.array(
-        [
-            model_sig(**{input_name: inputs[i : i + 1]})[output_name][0]
-            for i in range(inputs.shape[0])
-        ],
+        [model_sig(**{input_name: inputs[i : i + 1]})[output_name][0] for i in range(inputs.shape[0])],
         dtype=output_details["dtype"],
     )
 

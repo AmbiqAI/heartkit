@@ -2,10 +2,10 @@
  * @file sensor.cc
  * @author Adam Page (adam.page@ambiq.com)
  * @brief Initializes and collects sensor data from MAX86150
- * @version 0.1
- * @date 2022-11-02
+ * @version 1.0
+ * @date 2023-03-27
  *
- * @copyright Copyright (c) 2022
+ * @copyright Copyright (c) 2023
  *
  */
 #include "sensor.h"
@@ -62,13 +62,14 @@ generate_synthetic_data(float32_t *buffer, int len) {
 #endif
 }
 
-int
+uint32_t
 init_sensor(void) {
     /**
      * @brief Initialize and configure sensor block (MAX86150)
      *
      */
-    ns_i2c_interface_init(&i2cConfig, 400000);
+
+    ns_i2c_interface_init(&i2cConfig, AM_HAL_IOM_400KHZ);
     max86150_powerup(&maxCtx);
     ns_delay_us(10000);
     max86150_reset(&maxCtx);
