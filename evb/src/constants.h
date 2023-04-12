@@ -11,7 +11,6 @@
 #ifndef __HK_CONSTANTS_H
 #define __HK_CONSTANTS_H
 
-// #define EMULATION (1)
 #define SAMPLE_RATE (250)
 #define MAX86150_ADDR (0x5E)
 

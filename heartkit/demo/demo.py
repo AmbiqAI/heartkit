@@ -1,7 +1,10 @@
+from multiprocessing import Process
+
 from ..defines import HeartDemoParams
 from ..utils import setup_logger
 from .evb import EvbHandler
 from .pc import PcHandler
+from .ui import ConsoleUi
 
 logger = setup_logger(__name__)
 
@@ -12,20 +15,28 @@ def demo(params: HeartDemoParams):
     Args:
         params (HeartDemoParams): Demo parameters
     """
-    handler = None
+    backend = None
+    frontend = None
     try:
         if params.backend == "evb":
-            handler = EvbHandler(params=params)
-            handler.startup()
+            backend = EvbHandler(params=params)
+            backend.startup()
         elif params.backend == "pc":
-            handler = PcHandler(params=params)
-            handler.startup()
+            backend = PcHandler(params=params)
+            backend.startup()
         else:
             raise ValueError("Invalid handler provided")
-        handler.run_forever()
+
+        if params.frontend == "console":
+            console = ConsoleUi(params.rest_address)
+            frontend = Process(target=console.run_forever, daemon=True)
+            frontend.start()
+        backend.run_forever()
     except KeyboardInterrupt:
         logger.info("Server stopping")
-        if handler:
-            handler.shutdown()
+        if backend:
+            backend.shutdown()
+        if frontend:
+            frontend.terminate()
     except Exception as err:  # pylint: disable=broad-except
         logger.exception(f"Unhandled error {err}")

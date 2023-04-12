@@ -1,9 +1,13 @@
 import math
+import os
 import random
 from typing import Annotated
 
+import uvicorn
 from fastapi import BackgroundTasks, Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import ORJSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from ..utils import setup_logger
 from .defines import AppState, HeartKitState, HKResult
@@ -60,9 +64,7 @@ def emulate_data():
     set_global_state(state)
 
 
-app = FastAPI(
-    title="HeartKit",
-)
+app = FastAPI(title="HeartKit", default_response_class=ORJSONResponse)
 
 app.add_middleware(
     CORSMiddleware,
@@ -72,11 +74,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Optionally allow serving front-end web app
+static_app_path = os.getenv("WEB_APP_PATH", None)
+if static_app_path:
+    app.mount("/app", StaticFiles(directory=static_app_path, html=True), name="app")
+
 
 @app.get("/")
 def read_root():
-    """Serve web app."""
-    return {"Hello": "World"}
+    """Root"""
+    # Serve front-end web app if defined
+    if static_app_path:
+        return RedirectResponse(url="/app")
+    return {"ambiq": "ai"}
 
 
 @app.get("/api/v1/state")
@@ -163,3 +173,14 @@ def startup_event():
 def shutdown_event():
     """Server shhutdown"""
     logger.info("REST Server shutting down")
+
+
+def run_forever():
+    """Run server forever"""
+    uvicorn.run(
+        app, host=os.getenv("HOST", "0.0.0.0"), port=int(os.getenv("PORT", "8000"))
+    )
+
+
+if __name__ == "__main__":
+    run_forever()

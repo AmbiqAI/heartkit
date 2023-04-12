@@ -4,7 +4,8 @@ from typing import Generator
 import numpy as np
 import numpy.typing as npt
 import tensorflow as tf
-from requests.exceptions import HTTPError
+from requests.exceptions import ConnectionError as ReqConnectionError
+from requests.exceptions import ConnectTimeout, HTTPError
 from rich.console import Console
 
 from neuralspot.tflite.model import load_model
@@ -89,7 +90,7 @@ class PcHandler:
         arr_labels = np.zeros((data_len,))
         if not self.arr_model:
             return arr_labels
-        logger.info("Running arrhythmia model")
+        logger.debug("Running arrhythmia model")
         arr_len = self.arr_model.input_shape[-2]
         # Apply arrhythmia model
         for i in range(0, data_len - arr_len + 1, arr_len):
@@ -117,7 +118,7 @@ class PcHandler:
         qrs_mask = np.zeros((data_len,), dtype=np.uint8)
         if not self.seg_model:
             return seg_mask, qrs_mask
-        logger.info("Running segmentation model")
+        logger.debug("Running segmentation model")
         seg_len = self.seg_model.input_shape[-2]
         seg_olp = 50
         for i in range(0, data_len - seg_len + 1, seg_len - 2 * seg_olp):
@@ -156,7 +157,7 @@ class PcHandler:
         blabels = np.zeros_like(rpeaks, np.uint8)
         if not self.beat_model:
             return blabels
-        logger.info("Running beat model")
+        logger.debug("Running beat model")
         beat_len = self.beat_model.input_shape[-2]
         for i in range(1, len(rpeaks) - 1):
             frame_start = rpeaks[i] - int(0.5 * beat_len)
@@ -181,11 +182,11 @@ class PcHandler:
         """Update app state"""
         if self.hk_state.app_state == app_state:
             return
-        logger.info(f"APP_STATE={app_state}")
+        logger.debug(f"APP_STATE={app_state}")
         self.hk_state.app_state = app_state
         try:
             self.client.set_app_state(app_state)
-        except HTTPError as err:
+        except (HTTPError, ReqConnectionError, ConnectTimeout) as err:
             logger.error(f"Failed updating server {err}")
 
     def run(self):
@@ -229,10 +230,10 @@ class PcHandler:
             num_pvc_beats=int(np.sum(blabels == HeartBeat.pvc)),
             arrhythmia=np.any(arr_labels),
         )
-        logger.info(f"APP_STATE={self.hk_state.app_state}")
+        logger.debug(f"APP_STATE={self.hk_state.app_state}")
         try:
             self.client.set_state(self.hk_state)
-        except HTTPError as err:
+        except (HTTPError, ConnectionError, ConnectTimeout) as err:
             logger.error(f"Failed updating server {err}")
 
     def startup(self):

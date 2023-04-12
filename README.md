@@ -2,7 +2,7 @@
 
 We leverage the latest AI techniques paired with Ambiq's ultra low-power microcontrollers to enable running a variety of real-time, wearable heart monitoring tasks.
 
-## Heart Tasks
+## Heart Kit Tasks
 
 ### __ECG Segmentation__
 
@@ -34,7 +34,7 @@ The following are also required to compile/flash the binary for the EVB demo:
 
 ## Usage
 
-`HeartKit` is intended to be used as either a CLI-based app or as a python package to perform additional tasks and experiments. To get started, first install the local python package `heartkit` along with its dependencies via `Poetry`:
+__Heart Kit__ is intended to be used as either a CLI-based app or as a python package to perform additional tasks and experiments. To get started, first install the local python package `heartkit` along with its dependencies via `Poetry`:
 
 ```bash
 poetry install
@@ -53,7 +53,7 @@ heartkit
 
 > NOTE: Before running commands, be sure to activate python environment: `poetry shell`. On Windows using Powershell, use `.venv\Scripts\activate.ps1`.
 
-#### 1. Download Datasets (download)
+#### __1. Download Datasets__
 
 The `download` command is used to download all datasets specified in the configuration file. Please refer to [Datasets section](#datasets) for details on the available datasets.
 
@@ -65,7 +65,7 @@ heartkit --mode download --config ./configs/download-datasets.json
 
 > NOTE: The __Icentia11k dataset__ requires roughly 200 GB of disk space and can take around 2 hours to download.
 
-#### 2. Train Model
+#### __2. Train Model__
 
 The `train` command is used to train a Heart Kit model. The following command will train the arrhythmia model using the reference configuration. Please refer to `heartkit/defines.py` to see supported options.
 
@@ -73,9 +73,7 @@ The `train` command is used to train a Heart Kit model. The following command wi
 heartkit --task arrhythmia --mode train --config ./configs/train-arrhythmia-model.json
 ```
 
-> Due to the large dataset and class imbalance, the batch size and buffer size are large for arrhythmia training to ensure properly shuffling of patients as well as classes. The first epoch will take much longer as it fills up this buffer. To train on dedicated GPUs, it's recommended to have at least 10 GB of VRAM.
-
-#### 3. Evaluate Model
+#### __3. Evaluate Model__
 
 The `evaluate` command will evaluate the performance of the model on the reserved test set. A confidence threshold can also be set such that a label is only assigned when the model's probability is greater than the threshold; otherwise, a label of inconclusive will be assigned.
 
@@ -83,7 +81,7 @@ The `evaluate` command will evaluate the performance of the model on the reserve
 heartkit --task arrhythmia --mode evaluate --config ./configs/test-arrhythmia-model.json
 ```
 
-#### 4. Export Model
+#### __4. Export Model__
 
 The `export` command will convert the trained TensorFlow model into both TFLite (TFL) and TFLite for microcontroller (TFLM) variants. The command will also verify the models' outputs match. Post-training quantization can also be enabled by setting the `quantization` flag in the configuration.
 
@@ -93,13 +91,11 @@ heartkit --task arrhythmia --mode export --config ./configs/export-arrhythmia-mo
 
 Once converted, the TFLM header file will be copied to location specified by `tflm_file`. If parameters were changed (e.g. window size, quantization), `./evb/src/constants.h` will need to be updated.
 
-#### 5. Demo
+#### __5. Demo__
 
-The `demo` command is used to run the models on either the PC or an Apollo 4 evaluation board (EVB). The EVB backend requires both a host PC along with an Apollo 4 EVB. The host PC acts as a server and provides test samples to the EVB. The host PC is also used to provide status updates and model results from the EVB. The EVB runs in client mode- its job is to fetch samples and perform real-time inference using the arrhythmia model. Please refer to [EVB Demo Setup](./docs/arrhythmia-demo.md) for additional details.
+The `demo` command is used to run a full-fledged Heart Kit demonstration. The demo is decoupled into three tasks: (1) a REST server to provide a unified API, (2) a front-end UI, and (3) a backend to fetch samples and perform inference. The host PC performs tasks (1) and (2). For (3), the trained models can run on either the `PC` or an Apollo 4 evaluation board (`EVB`) by setting the `backend` field in the configuration. When the `PC` backend is selected, the host PC will perform task (3) entirely to fetch samples and perform inference. When the `EVB` backend is selected, the `EVB` will perform inference using either sensor data or prior data. The PC connects to the `EVB` via RPC over serial transport to provide sample data and capture inference results.
 
-```bash
-heartkit --task arrhythmia --mode demo --config ./configs/arrhythmia-demo.json
-```
+Please refer to [Arrhythmia demo tutorial](./docs/arrhythmia-demo.md) and [Heart Kit demo tutorial](./docs/heartkit-demo.md) for further instructions.
 
 ## Model Architecture
 
@@ -107,14 +103,14 @@ The __backbone network__ performs ECG segmentation. This model utilizes a custom
 
 The __arrhythmia classifier head__ runs auxillary to the backbone network. This arrhythmia model utilizes a 1-D CNN built using MBConv style blocks that incorporate expansion, inverted residuals, and squeeze and excitation layers. Furthermore, longer filter and stide lengths are utilized in the initial layers to capture more temporal dependencies.
 
-The __beat-level classifier head__ also utilizes a 1-D CNN built using MBConv style blocks. Using the identified segments, individual beats are extracted and feed into this model.
+The __beat-level classifier head__ also utilizes a 1-D CNN built using MBConv style blocks. Using the identified segments, individual beats are extracted and fed into this model.
 
-The __HRV head__ uses only DSP and statistics (i.e. no network is used). The segmentation results are stitched together and used to derive a number of useful metrics including heart rate and RR interval.
+The __HRV head__ uses only DSP and statistics (i.e. no network is used). The segmentation results are stitched together and used to derive a number of useful metrics including heart rate, rhythm and RR interval.
 
 
 ## Datasets
 
-A number of datasets are readily available online that are suitable for training various heart-related models. The following datasets are ones used or plan to use. For _arrhythmia_ and _beat classification_, [Icentia11k](#icentia11k-dataset) dataset is used as it contains the largest number of patients in a highly ambulatory setting- users wearing a 1-lead chest band for up to two weeks. For segmentation, synthetic and [LUDB](#ludb-dataset) datasets are being utilized. Please make sure to review each dataset's license for terms and limitations.
+A number of datasets are readily available online that are suitable for training various heart-related models. The following datasets are ones either used or plan to use. For _arrhythmia_ and _beat classification_, [Icentia11k](#icentia11k-dataset) dataset is used as it contains the largest number of patients in a highly ambulatory setting- users wearing a 1-lead chest band for up to two weeks. For segmentation, synthetic and [LUDB](#ludb-dataset) datasets are being utilized. Please make sure to review each dataset's license for terms and limitations.
 
 ### Icentia11k Dataset
 
@@ -202,11 +198,9 @@ The confusion matrix for the 200x3 model is depicted below.
 | __PAC__   |  4.9%  | 86.5% |  8.6% |
 | __PVC__   |  0.7%  | 10.2% | 89.0% |
 
-
 ### 🚧 HRV Results
 
 The HRV metrics are computed using off-the-shelf definitions based purely on the output of the segmentation and beat models. The current metrics include heart rate, rhythm, and RR variation. We intend to include additional metrics later on such as QTc along with frequency metrics.
-
 
 ## Reference Papers
 
