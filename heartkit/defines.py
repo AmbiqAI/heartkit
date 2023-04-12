@@ -29,6 +29,7 @@ class HeartKitMode(str, Enum):
 
 # resnet, efficientnet, unet
 BackendType = Literal["pc", "evb"]
+FrontendType = Literal["web", "console"]
 ArchitectureType = Literal["resnet", "efficientnet", "unet"]
 DatasetTypes = Literal["icentia11k", "ludb", "qtdb", "synthetic"]
 
@@ -252,6 +253,7 @@ class HeartDemoParams(BaseModel, extra=Extra.allow):
         default_factory=lambda: f"{os.getenv('REST_ADDR', 'http://0.0.0.0')}:{os.getenv('REST_PORT', '80')}/api/v1"
     )
     backend: BackendType = Field(default="pc", description="Backend")
+    frontend: FrontendType | None = Field(default=None, description="Frontend")
     # Model paths/arguments
     arrhythmia_model: str | None = Field(
         default=None, description="Arrhythmia TF model path"

@@ -158,7 +158,7 @@ class EvbHandler(gen_evb2pc.interface.Ievb_to_pc):
         if app_state == self.hk_state.app_state:
             return
         self.hk_state.app_state = app_state
-        logger.info(f"[EVB] State={self.hk_state.app_state}")
+        logger.debug(f"[EVB] State={self.hk_state.app_state}")
         if self.hk_state.app_state == AppState.IDLE_STATE:
             self.client.set_app_state(self.hk_state.app_state)
         elif self.hk_state.app_state == AppState.COLLECT_STATE:
@@ -185,7 +185,7 @@ class EvbHandler(gen_evb2pc.interface.Ievb_to_pc):
             self.update_app_state(app_state=state)
         # Otherwise treat as log message
         else:
-            logger.info(f"[EVB] {msg}")
+            logger.debug(f"[EVB] {msg}")
         return RpcResponse.SUCCESS
 
     def handle_thread_exception(self, args: threading.ExceptHookArgs):
