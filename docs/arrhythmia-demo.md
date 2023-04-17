@@ -1,4 +1,4 @@
-# ♥️ Heart Kit Arrhythmia Tutorial
+# ♥️ HeartKit Arrhythmia Tutorial
 
 This demo shows running an end-to-end heart arrhythmia classifier on the Apollo 4 EVB. The basic flow chart is depicted below.
 

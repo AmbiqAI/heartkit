@@ -154,7 +154,7 @@ hk_run(float32_t *data, uint8_t *segMask, hk_result_t *result) {
             beatLabel = beat_inference(&data[bStart - avgRR], &data[bStart], &data[bStart + avgRR]);
         }
         // Place beat label in upper nibble
-        segMask[bIdx] |= (beatLabel << 4);
+        segMask[bIdx] |= ((beatLabel + 1) << 4);
         if (beatLabel == HeartBeatPac) {
             result->numPacBeats += 1;
         } else if (beatLabel == HeartBeatPvc) {

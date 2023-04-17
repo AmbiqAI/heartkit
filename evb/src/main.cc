@@ -306,7 +306,7 @@ setup() {
     err |= init_sensor();
     err |= init_heartkit();
     err |= ns_peripheral_button_init(&button_config);
-    ns_printf("♥️ Heart Kit Demo\n\n");
+    ns_printf("♥️ HeartKit Demo\n\n");
     ns_printf("Please select data collection options:\n\n\t1. BTN1=sensor\n\t2. BTN2=client\n");
 }
 

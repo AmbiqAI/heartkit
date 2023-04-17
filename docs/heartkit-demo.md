@@ -1,13 +1,13 @@
-# ♥️ Heart Kit Tutorial
+# ♥️ HeartKit Tutorial
 
-This demo shows running Heart Kit demonstrator on the Apollo 4 EVB. The basic flow chart is depicted below.
+This demo shows running HeartKit demonstrator on the Apollo 4 EVB. The basic flow chart is depicted below.
 
 ```mermaid
 flowchart LR
     S[1. Collect] -->| | P[2. Preprocess] --> M[3. HK Models] --> L[4. Display]
 ```
 
-In the first stage, 10 seconds of sensor data is collected- either directly from the MAX86150 sensor or test data from the PC. In stage 2, the data is preprocessed by bandpass filtering and standardizing. The data is then fed into the Heart Kit models to perform inference. Finally, in stage 4, the ECG data and classification results will be displayed in frontend UI.
+In the first stage, 10 seconds of sensor data is collected- either directly from the MAX86150 sensor or test data from the PC. In stage 2, the data is preprocessed by bandpass filtering and standardizing. The data is then fed into the HeartKit models to perform inference. Finally, in stage 4, the ECG data and classification results will be displayed in frontend UI.
 
 ## Demo Setup
 

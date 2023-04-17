@@ -1,7 +1,7 @@
 {
     "job_dir": "./results/heartkit-demo",
     "ds_path": "./datasets",
-    "rest_address": "http://0.0.0.0:80/api/v1",
+    "rest_address": "http://0.0.0.0:8000/api/v1",
     "backend": "evb",
     "frontend": "console",
     "arrhythmia_model": "./results/arrhythmia/model.tf",

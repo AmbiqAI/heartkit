@@ -41,7 +41,7 @@ class PlotextMixin(JupyterMixin):
 
 
 class ConsoleUi:
-    """Simple console UI front-end for Heart Kit"""
+    """Simple console UI front-end for HeartKit"""
 
     def __init__(self, addr: str) -> None:
         super().__init__()
@@ -136,7 +136,7 @@ class ConsoleUi:
     def run_forever(self):
         """Start running UI"""
         self.layout = self.create_layout()
-        title = ":red_heart-emoji: Live Heart Kit Demo"
+        title = ":red_heart-emoji: Live HeartKit Demo"
         self.layout["header"].update(Styled(title, style=Style(color="magenta")))
         stateLayout = self.layout["stateLayout"]
         run = True

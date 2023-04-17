@@ -54,8 +54,8 @@ def run(inputs: list[str] | None = None):
     """
     parser = pydantic_argparse.ArgumentParser(
         model=CliArgs,
-        prog="Heart Kit CLI",
-        description="Heart Kit leverages AI for heart monitoring tasks.",
+        prog="HeartKit CLI",
+        description="HeartKit leverages AI for heart monitoring tasks.",
     )
     args = parser.parse_typed_args(inputs)
 

@@ -1,8 +1,8 @@
-# ♥️ Heart Kit
+# ♥️ HeartKit
 
 We leverage the latest AI techniques paired with Ambiq's ultra low-power microcontrollers to enable running a variety of real-time, wearable heart monitoring tasks.
 
-## Heart Kit Tasks
+## HeartKit Tasks
 
 ### __ECG Segmentation__
 
@@ -34,7 +34,7 @@ The following are also required to compile/flash the binary for the EVB demo:
 
 ## Usage
 
-__Heart Kit__ is intended to be used as either a CLI-based app or as a python package to perform additional tasks and experiments. To get started, first install the local python package `heartkit` along with its dependencies via `Poetry`:
+__HeartKit__ is intended to be used as either a CLI-based app or as a python package to perform additional tasks and experiments. To get started, first install the local python package `heartkit` along with its dependencies via `Poetry`:
 
 ```bash
 poetry install
@@ -67,7 +67,7 @@ heartkit --mode download --config ./configs/download-datasets.json
 
 #### __2. Train Model__
 
-The `train` command is used to train a Heart Kit model. The following command will train the arrhythmia model using the reference configuration. Please refer to `heartkit/defines.py` to see supported options.
+The `train` command is used to train a HeartKit model. The following command will train the arrhythmia model using the reference configuration. Please refer to `heartkit/defines.py` to see supported options.
 
 ```bash
 heartkit --task arrhythmia --mode train --config ./configs/train-arrhythmia-model.json
@@ -93,9 +93,9 @@ Once converted, the TFLM header file will be copied to location specified by `tf
 
 #### __5. Demo__
 
-The `demo` command is used to run a full-fledged Heart Kit demonstration. The demo is decoupled into three tasks: (1) a REST server to provide a unified API, (2) a front-end UI, and (3) a backend to fetch samples and perform inference. The host PC performs tasks (1) and (2). For (3), the trained models can run on either the `PC` or an Apollo 4 evaluation board (`EVB`) by setting the `backend` field in the configuration. When the `PC` backend is selected, the host PC will perform task (3) entirely to fetch samples and perform inference. When the `EVB` backend is selected, the `EVB` will perform inference using either sensor data or prior data. The PC connects to the `EVB` via RPC over serial transport to provide sample data and capture inference results.
+The `demo` command is used to run a full-fledged HeartKit demonstration. The demo is decoupled into three tasks: (1) a REST server to provide a unified API, (2) a front-end UI, and (3) a backend to fetch samples and perform inference. The host PC performs tasks (1) and (2). For (3), the trained models can run on either the `PC` or an Apollo 4 evaluation board (`EVB`) by setting the `backend` field in the configuration. When the `PC` backend is selected, the host PC will perform task (3) entirely to fetch samples and perform inference. When the `EVB` backend is selected, the `EVB` will perform inference using either sensor data or prior data. The PC connects to the `EVB` via RPC over serial transport to provide sample data and capture inference results.
 
-Please refer to [Arrhythmia demo tutorial](./docs/arrhythmia-demo.md) and [Heart Kit demo tutorial](./docs/heartkit-demo.md) for further instructions.
+Please refer to [Arrhythmia demo tutorial](./docs/arrhythmia-demo.md) and [HeartKit demo tutorial](./docs/heartkit-demo.md) for further instructions.
 
 ## Model Architecture
 
