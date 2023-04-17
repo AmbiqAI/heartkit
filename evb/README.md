@@ -1,1 +1,1 @@
-# Heart Kit EVB Demo
+# HeartKit EVB Demo
