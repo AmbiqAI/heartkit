@@ -107,6 +107,7 @@ The __beat-level classifier head__ also utilizes a 1-D CNN built using MBConv st
 
 The __HRV head__ uses only DSP and statistics (i.e. no network is used). The segmentation results are stitched together and used to derive a number of useful metrics including heart rate, rhythm and RR interval.
 
+![](docs/assets/heartkit-architecture.svg)
 
 ## Datasets
 
@@ -159,9 +160,9 @@ The following table provides performance and accuracy results of all models when
 | Beat           | 79K      | 1.6M    | F1=91.6%    |
 | HRV            | N/A      | N/A     | N/A         |
 
-### 🚧 Segmentation Results
+### Segmentation Results
 
-Work in progress...
+🚧 Work in progress...
 
 ### Heart Arrhythmia Results
 
@@ -179,7 +180,7 @@ The confusion matrix for the 95% confidence model is depicted below.
 | __NSR__      | 99.5%    |  0.5%    |
 | __AFIB/AFL__ |  0.7%    | 99.3%    |
 
-### 🚧 Beat Classification Results
+### Beat Classification Results
 
 The results of three beat models when testing on 1,000 patients (not used during training) are summarized below. The 200x1 model serves as the baseline and classifies individual beats (1 channel) with a fixed time window of 800 ms (200 samples). The 800x1 model increases the time window to 3,200 ms (800 samples) in order to include surrounding data as context. Increasing the time window increases the accuracy by over `10%` but also causes computation to increase by `3.5x`. The third and best model uses a time window of 800 ms to capture individual beats but includes two additional channels. Using the local average RR interval, the previus and subsequent `beats` are included as side channels. Unlike normal beats, premature and ectopic beats wont be aligned to neighboring beats and serves as useful context. This provides similar temporal resolution as 800x1 but reduces computation by `3.3x` while further improving accuracy by `1.7%`.
 
@@ -198,7 +199,7 @@ The confusion matrix for the 200x3 model is depicted below.
 | __PAC__   |  4.9%  | 86.5% |  8.6% |
 | __PVC__   |  0.7%  | 10.2% | 89.0% |
 
-### 🚧 HRV Results
+### HRV Results
 
 The HRV metrics are computed using off-the-shelf definitions based purely on the output of the segmentation and beat models. The current metrics include heart rate, rhythm, and RR variation. We intend to include additional metrics later on such as QTc along with frequency metrics.
 
