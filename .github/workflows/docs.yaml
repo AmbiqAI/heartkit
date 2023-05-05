@@ -14,15 +14,16 @@ jobs:
     concurrency: ci-${{ github.ref }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
       - name: Install poetry
         run: pipx install poetry==1.3.2
-      - uses: actions/setup-python@v4
       - name: Install heartkit
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
           cache: 'poetry'
-        run: poetry install --only docs
+      - run: poetry install --only docs
       - name: Deploy docs
         uses: mhausenblas/mkdocs-deploy-gh-pages@master
         env:
