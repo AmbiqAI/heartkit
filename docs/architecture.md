@@ -1,6 +1,6 @@
 # Architecture
 
-HeartKit leverages a multi-head network- a backbone segmentation model followed by 3 uptream heads:
+HeartKit leverages a multi-head network- a backbone segmentation model followed by 3 upstream heads:
 
 ![HeartKit Architecture](./assets/heartkit-architecture.svg)
 
@@ -10,7 +10,7 @@ The ECG segmentation model serves as the backbone and is used to annotate every 
 
 ## HRV Head
 
-The HRV head uses only DSP and statistics (i.e. no network is used). The segmentation results are stitched together and used to derive a number of useful metrics including heart rate, rhythm and RR interval.
+The HRV head uses only DSP and statistics (i.e. no network is used). The segmentation results are stitched together and used to derive several useful metrics including heart rate, rhythm and RR interval.
 
 
 ## Arrhythmia Head

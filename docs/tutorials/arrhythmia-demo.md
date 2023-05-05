@@ -32,13 +32,19 @@ heartkit \
 
 
 ```bash
-heartkit --task arrhythmia --mode evaluate --config ./configs/evaluate-arrhythmia-model.json
+heartkit \
+    --task arrhythmia \
+    --mode evaluate \
+    --config ./configs/evaluate-arrhythmia-model.json
 ```
 
 ### 3. Export the model into a TFLM header file
 
 ```bash
-heartkit --task arrhythmia --mode export --config ./configs/export-arrhythmia-model.json
+heartkit \
+    --task arrhythmia \
+    --mode export \
+    --config ./configs/export-arrhythmia-model.json
 ```
 
 The exported model will be placed into `./evb/src/arrhythmia_model_buffer.h`. Please review `./evb/src/constants.h` and ensure settings match configuration file.
@@ -72,7 +78,10 @@ python -m heartkit.demo.server
 In __PC Terminal__, start the PC client (console UI).
 
 ```bash
-heartkit --task arrhythmia --mode demo --config ./configs/arrhythmia-demo.json
+heartkit \
+    --task arrhythmia \
+    --mode demo \
+    --config ./configs/arrhythmia-demo.json
 ```
 
 Upon start, the client will scan and connect to the EVB serial port. If no port is detected after 30 seconds, the client will exit. If successful, the client should discover the USB port and start updating UI.
@@ -83,7 +92,7 @@ Now that the three tasks are running, press either __Button 1 (BTN1)__ or __Butt
 
 ![evb-demo-plot](../assets/heartkit-arrhythmia-demo.png)
 
-!!! note
+!!! tip
     Please use a monospaced font in the terminal for proper alignment of the plot.
 
 To shutdown the PC client, a keyboard interrupt can be used (e.g `[CTRL]+C`) in __PC Terminal__.

@@ -17,6 +17,7 @@ repos:
       - id: check-added-large-files
       - id: check-toml
       - id: check-yaml
+        args: [--unsafe]
       - id: debug-statements
       - id: end-of-file-fixer
       - id: name-tests-test

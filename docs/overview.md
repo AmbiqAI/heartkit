@@ -8,7 +8,7 @@ __HeartKit__ can be used as either a CLI-based app or as a python package to per
 * `download`: Download datasets
 * `train`: Train a model for specified task and dataset(s)
 * `evaluate`: Evaluate a model for specified task and dataset(s)
-* `export`: Export a trained model to TensorFlow Lite and TFLM.
+* `export`: Export a trained model to TensorFlow Lite and TFLM
 * `demo`: Run full demo on PC or EVB
 
 ## Tasks

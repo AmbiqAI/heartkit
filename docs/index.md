@@ -93,7 +93,7 @@ HeartKit leverages several open-source datasets for training each of the HeartKi
 
 ## Results
 
-The following table provides the latest performance and accuracy results of all models when running on Apollo4 Plus EVB. Additional result details can be found in [Results section](./results.md).
+The following table provides the latest performance and accuracy results of all models when running on Apollo4 Plus EVB. Additional result details can be found in [Results Section](./results.md).
 
 | Task           | Params   | FLOPS   | Metric      |
 | -------------- | -------- | ------- | ----------- |
