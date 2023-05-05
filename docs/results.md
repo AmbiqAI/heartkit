@@ -17,7 +17,7 @@ Work in progress...
 
 ## Heart Arrhythmia Results
 
-The results of the arrhythmia model when testing on 1,000 patients (not used during training) is summarized below. The baseline model is simply selecting the argmax of model ouputs (`normal`, `AFIB/AFL`). The 95% confidence version adds inconclusive label that is assigned when softmax output is less than 95% for any model output.
+The results of the arrhythmia model when testing on 1,000 patients (not used during training) is summarized below. The baseline model is simply selecting the argmax of model outputs (`normal`, `AFIB/AFL`). The 95% confidence version adds inconclusive label that is assigned when softmax output is less than 95% for any model output.
 
 | Metric   | Baseline | 95% Confidence |
 | -------- | -------- | -------------- |
@@ -33,7 +33,7 @@ The confusion matrix for the 95% confidence model is depicted below.
 
 ## Beat Classification Results
 
-The results of three beat models when testing on 1,000 patients (not used during training) are summarized below. The 200x1 model serves as the baseline and classifies individual beats (1 channel) with a fixed time window of 800 ms (200 samples). The 800x1 model increases the time window to 3,200 ms (800 samples) in order to include surrounding data as context. Increasing the time window increases the accuracy by over `10%` but also causes computation to increase by `3.5x`. The third and best model uses a time window of 800 ms to capture individual beats but includes two additional channels. Using the local average RR interval, the previus and subsequent `beats` are included as side channels. Unlike normal beats, premature and ectopic beats wont be aligned to neighboring beats and serves as useful context. This provides similar temporal resolution as 800x1 but reduces computation by `3.3x` while further improving accuracy by `1.7%`.
+The results of three beat models when testing on 1,000 patients (not used during training) are summarized below. The 200x1 model serves as the baseline and classifies individual beats (1 channel) with a fixed time window of 800 ms (200 samples). The 800x1 model increases the time window to 3,200 ms (800 samples) in order to include surrounding data as context. Increasing the time window increases the accuracy by over `10%` but also causes computation to increase by `3.5x`. The third and best model uses a time window of 800 ms to capture individual beats but includes two additional channels. Using the local average RR interval, the previous and subsequent `beats` are included as side channels. Unlike normal beats, premature and ectopic beats won't be aligned to neighboring beats and serves as useful context. This provides similar temporal resolution as 800x1 but reduces computation by `3.3x` while further improving accuracy by `1.7%`.
 
 | Model      | 200x1  | 800x1  | 200x3  |
 | ---------- | ------ | ------ | ------ |
@@ -52,4 +52,4 @@ The confusion matrix for the 200x3 model is depicted below.
 
 ## HRV Results
 
-The HRV metrics are computed using off-the-shelf definitions based purely on the output of the segmentation and beat models. The current metrics include heart rate, rhythm, and RR variation. We intend to include additional metrics later on such as QTc along with frequency metrics.
+The HRV metrics are computed using off-the-shelf definitions based purely on the output of the segmentation and beat models. The current metrics include heart rate, rhythm, and RR variation. We intend to include additional metrics later such as QTc along with frequency metrics.

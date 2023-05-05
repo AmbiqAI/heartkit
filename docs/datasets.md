@@ -1,6 +1,6 @@
 # Datasets
 
-A number of datasets are readily available online that are suitable for training various heart-related models. The following datasets are ones either used or plan to use. For _arrhythmia_ and _beat classification_, [Icentia11k](#icentia11k-dataset) dataset is used as it contains the largest number of patients in a highly ambulatory setting- users wearing a 1-lead chest band for up to two weeks. For segmentation, synthetic and [LUDB](#ludb-dataset) datasets are being utilized. Please make sure to review each dataset's license for terms and limitations.
+Several datasets are readily available online that are suitable for training various heart-related models. The following datasets are ones either used or plan to use. For _arrhythmia_ and _beat classification_, [Icentia11k](#icentia11k-dataset) dataset is used as it contains the largest number of patients in a highly ambulatory setting- users wearing a 1-lead chest band for up to two weeks. For segmentation, synthetic and [LUDB](#ludb-dataset) datasets are being utilized. Please make sure to review each dataset's license for terms and limitations.
 
 ---
 
@@ -49,4 +49,4 @@ __Heart Tasks__: HRV
 
 ## PTB Diagnostics Dataset
 
-This dataset consists of ECG records from 290 subjects: 148 diagnosed as MI, 52 healthy control, and the rest are diagnosed with 7 different disease. Each record contains ECG signals from 12 leads sampled at the frequency of 1000 Hz. Please visit [Physionet PTBDB](https://physionet.org/content/ptbdb/1.0.0/) for more details.
+This dataset consists of ECG records from 290 subjects: 148 diagnosed as MI, 52 healthy controls, and the rest are diagnosed with 7 different disease. Each record contains ECG signals from 12 leads sampled at the frequency of 1000 Hz. Please visit [Physionet PTBDB](https://physionet.org/content/ptbdb/1.0.0/) for more details.

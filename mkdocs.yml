@@ -77,6 +77,7 @@ extra_javascript:
 
 markdown_extensions:
   - admonition
+  - attr_list
   - pymdownx.arithmatex:
       generic: true
   - pymdownx.details
@@ -90,5 +91,8 @@ markdown_extensions:
           class: mermaid
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
   - tables
   - md_in_html

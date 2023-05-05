@@ -1,4 +1,4 @@
-# ♥️ HeartKit Tutorial
+# :octicons-heart-fill-24:{ .heart } HeartKit Tutorial
 
 This tutorial shows running the full HeartKit demonstrator on the Apollo 4 EVB. The basic flow chart is depicted below.
 
@@ -18,19 +18,28 @@ Please follow [EVB Setup Guide](./evb-setup.md) to prepare EVB and connect to PC
 1.1 Train the segmentation model:
 
 ```bash
-heartkit --task segmentation --mode train --config ./configs/train-segmentation-model.json
+heartkit \
+    --task segmentation \
+    --mode train \
+    --config ./configs/train-segmentation-model.json
 ```
 
 1.2 Train the arrhythmia model:
 
 ```bash
-heartkit --task arrhythmia --mode train --config ./configs/train-arrhythmia-model.json
+heartkit \
+    --task arrhythmia \
+    --mode train \
+    --config ./configs/train-arrhythmia-model.json
 ```
 
 1.3 Train the beat model:
 
 ```bash
-heartkit --task beat --mode train --config ./configs/train-beat-model.json
+heartkit \
+    --task beat \
+    --mode train \
+    --config ./configs/train-beat-model.json
 ```
 
 ### 2. Evaluate all the models
@@ -38,19 +47,28 @@ heartkit --task beat --mode train --config ./configs/train-beat-model.json
 2.1 Evaluate the segmentation model performance:
 
 ```bash
-heartkit --task segmentation --mode evaluate --config ./configs/evaluate-segmentation-model.json
+heartkit \
+    --task segmentation \
+    --mode evaluate \
+    --config ./configs/evaluate-segmentation-model.json
 ```
 
 2.2 Evaluate the arrhythmia model performance:
 
 ```bash
-heartkit --task arrhythmia --mode evaluate --config ./configs/evaluate-arrhythmia-model.json
+heartkit \
+    --task arrhythmia \
+    --mode evaluate \
+    --config ./configs/evaluate-arrhythmia-model.json
 ```
 
 2.3 Evaluate the beat model performance:
 
 ```bash
-heartkit --task beat --mode evaluate --config ./configs/evaluate-beat-model.json
+heartkit \
+    --task beat \
+    --mode evaluate \
+    --config ./configs/evaluate-beat-model.json
 ```
 
 ### 3. Export all the models
@@ -58,19 +76,28 @@ heartkit --task beat --mode evaluate --config ./configs/evaluate-beat-model.json
 3.1 Export the segmentation model to `./evb/src/segmentation_model_buffer.h`
 
 ```bash
-heartkit --task segmentation --mode export --config ./configs/export-segmentation-model.json
+heartkit \
+    --task segmentation \
+    --mode export \
+    --config ./configs/export-segmentation-model.json
 ```
 
 3.2 Export the arrhythmia model to `./evb/src/arrhythmia_model_buffer.h`
 
 ```bash
-heartkit --task arrhythmia --mode export --config ./configs/export-arrhythmia-model.json
+heartkit \
+    --task arrhythmia \
+    --mode export \
+    --config ./configs/export-arrhythmia-model.json
 ```
 
 3.3 Export the beat model to `./evb/src/beat_model_buffer.h`
 
 ```bash
-heartkit --task beat --mode export --config ./configs/export-beat-model.json
+heartkit \
+    --task beat \
+    --mode export \
+    --config ./configs/export-beat-model.json
 ```
 
 !!! note
