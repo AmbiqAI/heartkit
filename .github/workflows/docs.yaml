@@ -16,14 +16,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Install poetry
-        run: pipx install poetry==1.3.2
       - name: Install heartkit
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-          cache: 'poetry'
-      - run: poetry install --only docs
+          cache: 'pip'
+      - run: pip install .[doc]
       - name: Deploy docs
         uses: mhausenblas/mkdocs-deploy-gh-pages@master
         env:
