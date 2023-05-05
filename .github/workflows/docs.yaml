@@ -14,11 +14,11 @@ jobs:
     concurrency: ci-${{ github.ref }}
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Install poetry
-        uses: actions/checkout@v3
         run: pipx install poetry==1.3.2
+      - uses: actions/setup-python@v4
       - name: Install heartkit
-        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
           cache: 'poetry'
