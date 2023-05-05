@@ -1,81 +1,80 @@
 # ♥️ HeartKit Tutorial
 
-This demo shows running HeartKit demonstrator on the Apollo 4 EVB. The basic flow chart is depicted below.
+This tutorial shows running the full HeartKit demonstrator on the Apollo 4 EVB. The basic flow chart is depicted below.
 
 ```mermaid
 flowchart LR
     S[1. Collect] -->| | P[2. Preprocess] --> M[3. HK Models] --> L[4. Display]
 ```
 
-In the first stage, 10 seconds of sensor data is collected- either directly from the MAX86150 sensor or test data from the PC. In stage 2, the data is preprocessed by bandpass filtering and standardizing. The data is then fed into the HeartKit models to perform inference. Finally, in stage 4, the ECG data and classification results will be displayed in frontend UI.
+In the first stage, 10 seconds of sensor data is collected- either directly from the MAX86150 sensor or test data from the PC. In stage 2, the data is preprocessed by bandpass filtering and standardizing. The data is then fed into the HeartKit models to perform inference. Finally, in stage 4, the ECG data and classification results will be displayed in the front-end UI.
 
 ## Demo Setup
 
-Please follow [EVB Setup](./evb-setup.md) guide to prepare EVB and connect to PC.
+Please follow [EVB Setup Guide](./evb-setup.md) to prepare EVB and connect to PC. To use the pre-trained models, please skip to [Run Demo Section](#run-demo).
 
->NOTE: To use the pre-trained models, please skip to [Run Demo](#run-demo) section.
+### 1. Train all the models
 
-## Train Models
-
-Train the segmentation model:
+1.1 Train the segmentation model:
 
 ```bash
 heartkit --task segmentation --mode train --config ./configs/train-segmentation-model.json
 ```
 
-Train the arrhythmia model:
+1.2 Train the arrhythmia model:
 
 ```bash
 heartkit --task arrhythmia --mode train --config ./configs/train-arrhythmia-model.json
 ```
 
-Train the beat model:
+1.3 Train the beat model:
 
 ```bash
 heartkit --task beat --mode train --config ./configs/train-beat-model.json
 ```
 
-## Evaluate Models
+### 2. Evaluate all the models
 
-Evaluate the segmentation model performance:
+2.1 Evaluate the segmentation model performance:
 
 ```bash
 heartkit --task segmentation --mode evaluate --config ./configs/evaluate-segmentation-model.json
 ```
 
-Evaluate the arrhythmia model performance:
+2.2 Evaluate the arrhythmia model performance:
 
 ```bash
 heartkit --task arrhythmia --mode evaluate --config ./configs/evaluate-arrhythmia-model.json
 ```
 
-Evaluate the beat model performance:
+2.3 Evaluate the beat model performance:
 
 ```bash
 heartkit --task beat --mode evaluate --config ./configs/evaluate-beat-model.json
 ```
 
-## Export Models
+### 3. Export all the models
 
-Export the segmentation model to `./evb/src/segmentation_model_buffer.h`
+3.1 Export the segmentation model to `./evb/src/segmentation_model_buffer.h`
 
 ```bash
 heartkit --task segmentation --mode export --config ./configs/export-segmentation-model.json
 ```
 
-Export the arrhythmia model to `./evb/src/arrhythmia_model_buffer.h`
+3.2 Export the arrhythmia model to `./evb/src/arrhythmia_model_buffer.h`
 
 ```bash
 heartkit --task arrhythmia --mode export --config ./configs/export-arrhythmia-model.json
 ```
 
-Export the beat model to `./evb/src/beat_model_buffer.h`
+3.3 Export the beat model to `./evb/src/beat_model_buffer.h`
 
 ```bash
 heartkit --task beat --mode export --config ./configs/export-beat-model.json
 ```
 
->NOTE: Review `./evb/src/constants.h` and ensure settings match configuration file.
+!!! note
+    Review `./evb/src/constants.h` and ensure settings match configuration file.
 
 ## Run Demo
 
@@ -113,9 +112,9 @@ Upon start, the client will scan and connect to the EVB serial port. If no port 
 
 ### 4. Trigger start
 
-Now that the EVB client, PC client, and PC REST server are running, press either __Button 1 (BTN1)__ or __Button 2 (BTN2)__ on the EVB to start the demo. Pressing Button 1, will use live sensor data whereas Button 2 will use test dataset supplied by the PC. In __EVB Terminal__, the EVB should be printing the stage it's in (e.g `INFERENCE STAGE`) and any results. In __PC Terminal__, the PC should be plotting the data along with classification results. Once finished, Button 1 or Button 2 can be pressed to stop capturing.
+Now that the EVB client, PC client, and PC REST server are running, press either __Button 1 (BTN1)__ or __Button 2 (BTN2)__ on the EVB to start the demo. Pressing Button 1 will use live sensor data whereas Button 2 will use test dataset supplied by the PC. In __EVB Terminal__, the EVB should be printing the stage it's in (e.g `INFERENCE STAGE`) and any results. In __PC Terminal__, the PC should be plotting the data along with classification results. Once finished, Button 1 or Button 2 can be pressed to stop capturing.
 
-![evb-demo-plot](./assets/heartkit-demo.png)
+![evb-demo-plot](../assets/heartkit-demo.png)
 
 To shutdown the PC client, a keyboard interrupt can be used (e.g `[CTRL]+C`) in __PC Terminal__.
 Likewise, a keyboard interrupt can be used (e.g `[CTRL]+C`) to stop the PC REST server in __REST Terminal__.

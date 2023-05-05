@@ -1,0 +1,94 @@
+site_name: HeartKit
+site_dir: "site"
+site_description: HeartKit, perform AI-based heart monitoring tasks
+repo_name: AmbiqAI/hearkit
+repo_url: https://github.com/AmbiqAI/heartkit
+copyright: Copyright &copy; 2023 Ambiq
+
+nav:
+  - HeartKit: index.md
+  - Overview: overview.md
+  - Datasets: datasets.md
+  - Architecture: architecture.md
+  - Results: results.md
+  - Tutorials:
+    - EVB Setup: ./tutorials/evb-setup.md
+    - Arrhythmia Demo: ./tutorials/arrhythmia-demo.md
+    - HeartKit Demo: ./tutorials/heartkit-demo.md
+  - API:
+    - Datasets: ./api/datasets.md
+    - Models: ./api/models.md
+
+theme:
+  name: material
+  favicon: assets/favicon.png
+  logo: assets/logo-white.png
+  icon:
+      repo: fontawesome/brands/github-alt
+  font:
+    text: Roboto
+    code: Roboto Mono
+  palette:
+    - media: "(prefers-color-scheme)"
+      primary: blue
+      accent: indigo
+      toggle:
+        icon: material/brightness-auto
+        name: Use system theme
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to light theme
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to dark theme
+  features:
+    - content.tabs.link
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          import:
+          - https://docs.python.org/3/objects.inv
+          - https://numpy.org/doc/stable/objects.inv
+          options:
+            docstring_style: google
+            docstring_section_style: list
+            line_length: 92
+            show_root_heading: true
+
+extra_css:
+  - css/mkdocstrings.css
+  - css/termynal.css
+  - css/custom.css
+
+extra_javascript:
+  - js/termynal.js
+  - js/custom.js
+
+markdown_extensions:
+  - admonition
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - md_in_html

@@ -1,3 +1,4 @@
+from . import arrhythmia, beat, datasets, hrv, segmentation
 from .utils import setup_logger
 
 try:

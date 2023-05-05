@@ -313,7 +313,6 @@ class QtdbDataset(HeartKitDataset):
         """Download QT dataset
 
         Args:
-            ds_path (str): Path to store dataset
             num_workers (int | None, optional): # parallel workers. Defaults to None.
             force (bool, optional): Force redownload. Defaults to False.
         """

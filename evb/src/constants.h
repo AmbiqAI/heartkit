@@ -23,7 +23,7 @@
 #define HK_DATA_LEN (10 * SAMPLE_RATE)
 #define HK_PEAK_LEN (120)
 #define HK_ARR_LEN (1000)
-#define HK_BEAT_LEN (120)
+#define HK_BEAT_LEN (200)
 #define HK_SEG_LEN (624)
 #define HK_SEG_OLP (25)
 #define HK_SEG_STEP (HK_SEG_LEN - 2 * HK_SEG_OLP)

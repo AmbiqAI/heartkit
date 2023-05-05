@@ -217,10 +217,11 @@ class LudbDataset(HeartKitDataset):
         Generate frames using patient generator.
         from the segments in patient data by placing a frame in a random location within one of the segments.
         Args:
-        patient_generator (PatientGenerator): Generator that yields a tuple of patient id and patient data.
-                Patient data may contain only signals, since labels are not used.
-        samples_per_patient (int): Samples per patient.
-        Return: Generator of: input data of shape (frame_size, 1)
+            patient_generator (PatientGenerator): Generator that yields a tuple of patient id and patient data.
+                    Patient data may contain only signals, since labels are not used.
+            samples_per_patient (int): Samples per patient.
+        Returns:
+            SampleGenerator: Generator of input data of shape (frame_size, 1)
         """
         for _, pt in patient_generator:
             data = pt["data"][:]
@@ -396,7 +397,6 @@ class LudbDataset(HeartKitDataset):
         """Download LUDB dataset
 
         Args:
-            ds_path (str): Path to store dataset
             num_workers (int | None, optional): # parallel workers. Defaults to None.
             force (bool, optional): Force redownload. Defaults to False.
         """
