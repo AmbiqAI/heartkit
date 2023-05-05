@@ -4,7 +4,16 @@ This tutorial shows running the full HeartKit demonstrator on the Apollo 4 EVB. 
 
 ```mermaid
 flowchart LR
-    S[1. Collect] -->| | P[2. Preprocess] --> M[3. HK Models] --> L[4. Display]
+    COLL[1. Collect] --> PRE[2. Preprocess]
+    PRE[2. Preprocess] --> SEG[3. Segmentation]
+    subgraph Models
+    SEG[3. Segmentation] --> HRV[4. HRV]
+    SEG[3. Segmentation] --> BEAT[4. BEAT]
+    SEG[3. Segmentation] --> ARR[4. Arrhythmia]
+    end
+    HRV[4. HRV] --> DISP[5. Display]
+    BEAT[4. BEAT] --> DISP
+    ARR[4. Arrhythmia] --> DISP
 ```
 
 In the first stage, 10 seconds of sensor data is collected- either directly from the MAX86150 sensor or test data from the PC. In stage 2, the data is preprocessed by bandpass filtering and standardizing. The data is then fed into the HeartKit models to perform inference. Finally, in stage 4, the ECG data and classification results will be displayed in the front-end UI.
