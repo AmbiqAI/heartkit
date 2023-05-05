@@ -513,10 +513,11 @@ class IcentiaDataset(HeartKitDataset):
         Generate frames using patient generator.
         from the segments in patient data by placing a frame in a random location within one of the segments.
         Args:
-        patient_generator (PatientGenerator): Generator that yields a tuple of patient id and patient data.
-                Patient data may contain only signals, since labels are not used.
-        samples_per_patient (int): Samples per patient.
-        Return: Generator of: input data of shape (frame_size, 1)
+            patient_generator (PatientGenerator): Generator that yields a tuple of patient id and patient data.
+                    Patient data may contain only signals, since labels are not used.
+            samples_per_patient (int): Samples per patient.
+        Returns:
+            SampleGenerator: Generator of input data of shape (frame_size, 1)
         """
         for _, segments in patient_generator:
             for _ in range(samples_per_patient):
@@ -604,7 +605,7 @@ class IcentiaDataset(HeartKitDataset):
         labels: npt.ArrayLike = None,
         start: int = 0,
         end: int | None = None,
-    ):
+    ) -> tuple[npt.ArrayLike, npt.ArrayLike]:
         """
         Find all complete beats within a frame i.e. start and end of the beat lie within the frame.
         The indices are assumed to specify the end of a heartbeat.
@@ -614,7 +615,7 @@ class IcentiaDataset(HeartKitDataset):
             start (int): Index of the first sample in the frame.
             end (int | None): Index of the last sample in the frame.
         Returns:
-            tuple[npt.ArrayLike, npt.ArrayLine] (beat indices, beat labels)
+            tuple[npt.ArrayLike, npt.ArrayLike]: (beat indices, beat labels)
         """
         if end is None:
             end = indices[-1]
@@ -626,7 +627,7 @@ class IcentiaDataset(HeartKitDataset):
         if labels is None:
             return indices_slice
         label_slice = labels[start_index:end_index]
-        return indices_slice, label_slice
+        return (indices_slice, label_slice)
 
     def _get_rhythm_label(self, durations: npt.ArrayLike, labels: npt.ArrayLike):
         """Determine rhythm label based on the longest rhythm among arrhythmias.
@@ -844,8 +845,6 @@ class IcentiaDataset(HeartKitDataset):
         """Downloads full Icentia dataset zipfile and converts into individial patient HDF5 files.
         NOTE: This is a very long process (e.g. 24 hrs). Please use `icentia11k.download_dataset` instead.
         Args:
-            zip_path (str): Zipfile path
-            patient_ids (npt.ArrayLike | None, optional): List of patient IDs to extract. Defaults to all.
             force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
             num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
         """

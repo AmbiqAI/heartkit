@@ -44,7 +44,8 @@ def random_scaling(
 
     Args:
         y (npt.NDArray): Signal
-        noise_multiplier (float, optional): Noise multiplier. Defaults to 1.0.
+        lower (float, optional): Lower bound. Defaults to 0.5.
+        upper (float, optional): Upper bound. Defaults to 2.0.
 
     Returns:
         npt.NDArray: New signal

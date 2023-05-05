@@ -1,4 +1,4 @@
-name: heartkit
+name: HeartKit CI
 
 on: [push]
 
