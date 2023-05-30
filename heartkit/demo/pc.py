@@ -12,11 +12,11 @@ from neuralspot.tflite.model import load_model
 
 from ..datasets import IcentiaDataset
 from ..datasets.preprocess import preprocess_signal
-from ..defines import HeartBeat, HeartDemoParams, HeartRate
+from ..defines import HeartBeat, HeartRate
 from ..hrv import compute_hrv
-from ..utils import setup_logger
 from .client import HKRestClient
-from .defines import AppState, HeartKitState, HKResult
+from .defines import AppState, HeartDemoParams, HeartKitState, HKResult
+from .utils import setup_logger
 
 console = Console()
 logger = setup_logger(__name__)

@@ -24,12 +24,14 @@
 #include "constants.h"
 #include "heartkit.h"
 #include "main.h"
+#include "preprocessing.h"
 #include "sensor.h"
+#include "stimulus.h"
 
 // Application globals
 static uint32_t numSamples = 0;
 
-static float32_t hkData[HK_DATA_LEN + SAMPLE_RATE];
+static float32_t hkData[HK_SENSOR_LEN + SENSOR_RATE];
 static uint8_t hkSegMask[HK_DATA_LEN];
 static hk_result_t hkResults;
 
@@ -156,6 +158,21 @@ stop_collecting(void) {
 }
 
 uint32_t
+fetch_stimulus_samples(float32_t *samples, uint32_t offset, uint32_t numSamples) {
+    /**
+     * @brief Fetch stimulus samples
+     * @param samples Buffer to store samples
+     * @param offset Buffer offset
+     * @param numSamples # requested samples
+     * @return # samples actually fetched
+     */
+    static uint32_t stimulusOffset = 0;
+    memcpy(&samples[offset], &test_stimulus[stimulusOffset], numSamples * sizeof(float32_t));
+    stimulusOffset = (stimulusOffset + numSamples) % test_stimulus_len;
+    return numSamples;
+}
+
+uint32_t
 fetch_samples_from_pc(float32_t *samples, uint32_t offset, uint32_t numSamples) {
     /**
      * @brief Fetch samples from PC over RPC
@@ -221,7 +238,7 @@ send_mask_to_pc(uint8_t *mask, uint32_t offset, uint32_t maskLen) {
         return;
     }
     binary_t binaryBlock = {
-        .data = mask,
+        .data = (uint8_t *)(&mask[offset]),
         .dataLength = maskLen * sizeof(uint8_t),
     };
     dataBlock commandBlock = {
@@ -254,21 +271,30 @@ collect_samples() {
      * @return # new samples collected
      */
     uint32_t newSamples = 0;
-    uint32_t reqSamples = MIN(HK_DATA_LEN - numSamples, 50);
-    if (numSamples == HK_DATA_LEN) {
-        return newSamples;
-    }
+    uint32_t reqSamples = 0;
     if (collectMode == CLIENT_DATA_COLLECT) {
-        newSamples = fetch_samples_from_pc(hkData, numSamples, reqSamples);
+        reqSamples = MIN(HK_DATA_LEN - numSamples, 50);
+        if (numSamples >= HK_DATA_LEN) {
+            return newSamples;
+        }
+        newSamples = fetch_stimulus_samples(hkData, numSamples, reqSamples);
+        // if (newSamples) {
+        //     send_samples_to_pc(hkData, numSamples, newSamples);
+        // }
+        // newSamples = fetch_samples_from_pc(hkData, numSamples, reqSamples);
 
     } else if (collectMode == SENSOR_DATA_COLLECT) {
-        newSamples = capture_sensor_data(&hkData[numSamples]);
-        if (newSamples) {
-            send_samples_to_pc(hkData, numSamples, newSamples);
+        reqSamples = MIN(HK_SENSOR_LEN - numSamples, 50);
+        if (numSamples >= HK_SENSOR_LEN) {
+            return newSamples;
         }
+        newSamples = capture_sensor_data(&hkData[numSamples]);
+        // if (newSamples) {
+        //     send_samples_to_pc(hkData, numSamples, newSamples);
+        // }
     }
     numSamples += newSamples;
-    sleep_us(10000);
+    sleep_us(5000);
     return newSamples;
 }
 
@@ -307,7 +333,7 @@ setup() {
     err |= init_heartkit();
     err |= ns_peripheral_button_init(&button_config);
     ns_printf("♥️ HeartKit Demo\n\n");
-    ns_printf("Please select data collection options:\n\n\t1. BTN1=sensor\n\t2. BTN2=client\n");
+    ns_printf("Please select data collection options:\n\n\t1. BTN1=sensor\n\t2. BTN2=stimulus\n");
 }
 
 void
@@ -339,7 +365,10 @@ loop() {
 
     case COLLECT_STATE:
         collect_samples();
-        if (numSamples >= HK_DATA_LEN) {
+        if (collectMode == CLIENT_DATA_COLLECT && numSamples >= HK_DATA_LEN) {
+            state = STOP_COLLECT_STATE;
+        }
+        if (collectMode == SENSOR_DATA_COLLECT && numSamples >= HK_SENSOR_LEN) {
             state = STOP_COLLECT_STATE;
         }
         break;
@@ -352,7 +381,14 @@ loop() {
 
     case PREPROCESS_STATE:
         print_to_pc("PREPROCESS_STATE\n");
+        if (collectMode == SENSOR_DATA_COLLECT) {
+            linear_downsample(hkData, HK_SENSOR_LEN, SENSOR_RATE, hkData, HK_DATA_LEN, SAMPLE_RATE);
+        }
         hk_preprocess(hkData);
+        for (size_t i = 0; i < HK_DATA_LEN; i += SAMPLE_RATE) {
+            uint32_t numSamples = MIN(HK_DATA_LEN - i, SAMPLE_RATE);
+            send_samples_to_pc(hkData, i, numSamples);
+        }
         state = INFERENCE_STATE;
         break;
 
@@ -366,7 +402,7 @@ loop() {
     case DISPLAY_STATE:
         for (size_t i = 0; i < HK_DATA_LEN; i += SAMPLE_RATE) {
             uint32_t maskLen = MIN(HK_DATA_LEN - i, SAMPLE_RATE);
-            send_mask_to_pc(&hkSegMask[i], i, maskLen);
+            send_mask_to_pc(hkSegMask, i, maskLen);
         }
         send_results_to_pc(&hkResults);
         ns_delay_us(10000);

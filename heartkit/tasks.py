@@ -57,7 +57,7 @@ def get_task_shape(task: HeartTask, frame_size: int) -> tuple[tuple[int], tuple[
         frame_size (int): Frame size
 
     Returns:
-        tuple[tf.TensorSpec]: Input shape
+        tuple[tuple[int], tuple[int]]: Input shape
     """
     num_classes = get_num_classes(task)
     if task == HeartTask.arrhythmia:

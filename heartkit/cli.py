@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field
 from . import arrhythmia, beat, hrv, segmentation
 from .datasets import download_datasets
 from .defines import (
-    HeartDemoParams,
     HeartDownloadParams,
     HeartExportParams,
     HeartKitMode,
@@ -15,6 +14,7 @@ from .defines import (
     HeartTestParams,
     HeartTrainParams,
 )
+from .demo.defines import HeartDemoParams
 from .demo.demo import demo
 from .utils import setup_logger
 

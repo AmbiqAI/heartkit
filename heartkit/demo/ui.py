@@ -16,9 +16,9 @@ from rich.styled import Styled
 from rich.table import Table
 from rich.text import Text
 
-from ..utils import setup_logger
 from .client import HKRestClient
 from .defines import HeartKitState
+from .utils import setup_logger
 
 logger = setup_logger(__name__)
 

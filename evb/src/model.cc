@@ -214,7 +214,6 @@ segmentation_inference(float32_t *data, uint8_t *segMask, uint32_t padLen) {
         for (int j = 0; j < segModelOutput->dims->data[2]; j++) {
             yIdx = i * segModelOutput->dims->data[2] + j;
             yVal = ((float32_t)segModelOutput->data.int8[yIdx] - segModelOutput->params.zero_point) * segModelOutput->params.scale;
-            // yIdx += 1;
             if ((j == 0) || (yVal > yMax)) {
                 yMax = yVal;
                 yMaxIdx = j;

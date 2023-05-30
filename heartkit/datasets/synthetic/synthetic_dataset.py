@@ -131,6 +131,7 @@ class SyntheticDataset(HeartKitDataset):
                 t_multiplier=np.random.uniform(0.75, 1.1),
                 duration=max(
                     5,
+                    self.frame_size / self.sampling_rate,
                     (self.frame_size / self.sampling_rate)
                     * (samples_per_patient / num_leads / 10),
                 ),

@@ -88,7 +88,7 @@ init_sensor(void) {
     max86150_set_led_pulse_amplitude(&maxCtx, 1, 0x00); // RED LED 20 mA 0x32
     max86150_set_led_pulse_amplitude(&maxCtx, 2, 0x00); // AMB LED 20 mA 0x32
 
-    max86150_set_ecg_sample_rate(&maxCtx, 3); // Fs = 200 Hz
+    max86150_set_ecg_sample_rate(&maxCtx, 2); // Fs = 400 Hz
     max86150_set_ecg_ia_gain(&maxCtx, 2);     // 9.5 V/V
     max86150_set_ecg_pga_gain(&maxCtx, 3);    // 8 V/V
     max86150_powerup(&maxCtx);

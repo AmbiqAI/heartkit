@@ -133,7 +133,7 @@ HeartKit leverages a multi-head network- a backbone segmentation model followed 
 
 HeartKit leverages several open-source datasets for training each of the HeartKit models. Additionally, HeartKit contains a customizable synthetic 12-lead ECG generator. Check out the [Datasets Guide](./datasets.md) to learn more about the datasets used along with their corresponding licenses and limitations.
 
-## Results Summary
+## Results
 
 The following table provides the latest performance and accuracy results of all models when running on Apollo4 Plus EVB.
 
@@ -145,7 +145,7 @@ The following table provides the latest performance and accuracy results of all 
 | HRV            | N/A      | N/A     | N/A         |
 
 
-## Reference Papers
+## References
 
 * [ECG Heartbeat classification using deep transfer learning with Convolutional Neural Network and STFT technique](https://arxiv.org/abs/2206.14200)
 * [Classification of ECG based on Hybrid Features using CNNs for Wearable Applications](https://arxiv.org/pdf/2206.07648.pdf)

@@ -59,7 +59,7 @@ __HeartKit__ can be used as either a CLI-based app or as a python package to per
 * `download`: Download datasets
 * `train`: Train a model for specified task and dataset(s)
 * `evaluate`: Evaluate a model for specified task and dataset(s)
-* `export`: Export a trained model to TensorFlow Lite and TFLM.
+* `export`: Export a trained model to TensorFlow Lite and TFLM
 * `demo`: Run full demo on PC or EVB
 
 ## Tasks
@@ -102,7 +102,7 @@ The following table provides the latest performance and accuracy results of all 
 | Beat           | 79K      | 1.6M    | F1=91.6%    |
 | HRV            | N/A      | N/A     | N/A         |
 
-## Reference Papers
+## References
 
 * [ECG Heartbeat classification using deep transfer learning with Convolutional Neural Network and STFT technique](https://arxiv.org/abs/2206.14200)
 * [Classification of ECG based on Hybrid Features using CNNs for Wearable Applications](https://arxiv.org/pdf/2206.07648.pdf)

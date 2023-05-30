@@ -9,8 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from ..utils import setup_logger
 from .defines import AppState, HeartKitState, HKResult
+from .utils import setup_logger
 
 logger = setup_logger(__name__)
 

@@ -21,5 +21,6 @@ uint32_t
 bandpass_filter(float32_t *pSrc, float32_t *pResult, uint32_t blockSize);
 uint32_t
 resample_signal(float32_t *pSrc, float32_t *pResult, uint32_t blockSize, uint32_t upSample, uint32_t downSample);
-
+uint32_t
+linear_downsample(float32_t *pSrc, uint32_t srcSize, uint32_t srcFs, float32_t *pRst, uint32_t rstSize, uint32_t rstFs);
 #endif // __PREPROCESSING_H

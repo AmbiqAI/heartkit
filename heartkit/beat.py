@@ -255,7 +255,7 @@ def evaluate_model(params: HeartTestParams):
 def export_model(params: HeartExportParams):
     """Export beat-level model.
     Args:
-        params (HeartDemoParams): Deployment parameters
+        params (HeartExportParams): Deployment parameters
     """
     tfl_model_path = str(params.job_dir / "model.tflite")
     tflm_model_path = str(params.job_dir / "model_buffer.h")

@@ -75,3 +75,21 @@ resample_signal(float32_t *pSrc, float32_t *pResult, uint32_t blockSize, uint32_
      */
     return 1;
 }
+
+uint32_t
+linear_downsample(float32_t *pSrc, uint32_t srcSize, uint32_t srcFs, float32_t *pRst, uint32_t rstSize, uint32_t rstFs) {
+    /**
+     * @brief Basic downsampling using linear interpolation
+     *
+     */
+    float32_t ratio = ((float32_t)srcFs) / rstFs;
+    for (size_t i = 0; i < rstSize; i++) {
+        float32_t xi = i * ratio;
+        uint32_t xl = floorf(xi);
+        uint32_t xr = ceilf(xi);
+        float32_t yl = pSrc[xl];
+        float32_t yr = pSrc[xr];
+        pRst[i] = xl == xr ? yl : yl + (xi - xl) * ((yr - yl) / (xr - xl));
+    }
+    return 0;
+}

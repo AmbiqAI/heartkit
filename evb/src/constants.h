@@ -11,6 +11,7 @@
 #ifndef __HK_CONSTANTS_H
 #define __HK_CONSTANTS_H
 
+#define SENSOR_RATE (400)
 #define SAMPLE_RATE (250)
 #define MAX86150_ADDR (0x5E)
 
@@ -20,6 +21,7 @@
 
 #define DISPLAY_LEN_USEC (2000000)
 
+#define HK_SENSOR_LEN (10 * SENSOR_RATE)
 #define HK_DATA_LEN (10 * SAMPLE_RATE)
 #define HK_PEAK_LEN (120)
 #define HK_ARR_LEN (1000)

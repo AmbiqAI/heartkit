@@ -262,7 +262,7 @@ def export_model(params: HeartExportParams):
     """Export arrhythmia model.
 
     Args:
-        params (HeartDemoParams): Deployment parameters
+        params (HeartExportParams): Deployment parameters
     """
     tfl_model_path = str(params.job_dir / "model.tflite")
     tflm_model_path = str(params.job_dir / "model_buffer.h")

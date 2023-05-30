@@ -1,5 +1,5 @@
 import functools
-from typing import Generator
+from typing import Generator, TypeVar
 
 import numpy.typing as npt
 import tensorflow as tf
@@ -21,26 +21,35 @@ def numpy_dataset_generator(
         yield x[i], y[i]
 
 
-def create_dataset_from_data(x: npt.ArrayLike, y: npt.ArrayLike, spec: tuple[tf.TensorSpec]):
+def create_dataset_from_data(
+    x: npt.ArrayLike, y: npt.ArrayLike, spec: tuple[tf.TensorSpec]
+) -> tf.data.Dataset:
     """Helper function to create dataset from static data
     Args:
         x (npt.ArrayLike): Numpy data
         y (npt.ArrayLike): Numpy labels
+    Returns:
+        tf.data.Dataset: Dataset
     """
     gen = functools.partial(numpy_dataset_generator, x=x, y=y)
     dataset = tf.data.Dataset.from_generator(generator=gen, output_signature=spec)
     return dataset
 
 
-def buffered_generator(generator, buffer_size: int):
+T = TypeVar("T")
+
+
+def buffered_generator(
+    generator: Generator[T, None, None], buffer_size: int
+) -> Generator[list[T], None, None]:
     """Buffer the elements yielded by a generator. New elements replace the oldest elements in the buffer.
 
     Args:
-        generator (Generator): Generator object.
+        generator (Generator[T]): Generator object.
         buffer_size (int): Number of elements in the buffer.
 
     Returns:
-        Generator: Yields a buffer.
+        Generator[list[T], None, None]: Yields a buffer.
     """
     buffer = []
     for e in generator:

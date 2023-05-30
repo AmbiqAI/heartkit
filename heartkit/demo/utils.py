@@ -1,14 +1,20 @@
+import logging
+
 import numpy as np
 import numpy.typing as npt
 import plotly
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from rich.logging import RichHandler
 
-from ..defines import HeartBeat, HeartSegment, HeartTask
-from ..tasks import get_class_names
-from .defines import HKResult
+from .defines import HeartBeat, HeartSegment, HeartTask, HKResult, get_class_names
 
-plotly.io.json.config.default_engine = "orjson"
+try:
+    import orjson  # pylint: disable=import-outside-toplevel,unused-import
+
+    plotly.io.json.config.default_engine = "orjson"
+except ImportError:
+    pass
 
 
 def ecg_segmentation_plot(
@@ -90,3 +96,22 @@ def hkresult_to_str(result: HKResult) -> str:
         f"   PVC Beats: {result.num_pvc_beats}\n"
         f"  Arrhythmia: {'Detected' if result.arrhythmia else 'Not Detected'}\n"
     )
+
+
+def setup_logger(log_name: str) -> logging.Logger:
+    """Setup logger with Rich
+
+    Args:
+        log_name (str): _description_
+
+    Returns:
+        logging.Logger: _description_
+    """
+    logger = logging.getLogger(log_name)
+    if logger.handlers:
+        return logger
+    logging.basicConfig(level=logging.ERROR, force=True, handlers=[RichHandler()])
+    logger.propagate = False
+    logger.setLevel(logging.INFO)
+    logger.handlers = [RichHandler()]
+    return logger

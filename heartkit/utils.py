@@ -6,7 +6,6 @@ import random
 
 import numpy as np
 import requests
-import tensorflow as tf
 from rich.logging import RichHandler
 from tqdm import tqdm
 
@@ -23,7 +22,12 @@ def set_random_seed(seed: int | None = None) -> int:
     seed = seed or np.random.randint(2**16)
     random.seed(seed)
     np.random.seed(seed)
-    tf.random.set_seed(seed)
+    try:
+        import tensorflow as tf  # pylint: disable=import-outside-toplevel
+    except ImportError:
+        pass
+    else:
+        tf.random.set_seed(seed)
     return seed
 
 

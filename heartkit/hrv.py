@@ -128,5 +128,5 @@ def export_model(params: HeartExportParams):
     """Export segmentation model.
 
     Args:
-        params (HeartDemoParams): Deployment parameters
+        params (HeartExportParams): Deployment parameters
     """
