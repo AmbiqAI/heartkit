@@ -52,6 +52,9 @@ find_peaks_from_segments(float32_t *data, uint8_t *segMask, uint32_t dataLen, in
             qrsLen = qrsEndIdx - qrsStartIdx + 1;
             peaks[numPeaks++] = (qrsEndIdx + qrsStartIdx) >> 1;
             // QRS width must be within limits and # QRS points must be at least 70%
+
+            // Avoid compiler warning
+            (void)qrsLen;
         }
     }
     return numPeaks;
