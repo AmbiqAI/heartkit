@@ -13,6 +13,8 @@ from .models import (
     UNet,
     UNetBlockParams,
     UNetParams,
+    MultiresNet,
+    MultiresNetParams,
 )
 
 
@@ -117,6 +119,12 @@ def create_task_model(
         return EfficientNetV2(
             x=inputs,
             params=EfficientNetParams.parse_obj(params),
+            num_classes=num_classes,
+        )
+    if name == "multiresnet":
+        return MultiresNet(
+            x=inputs,
+            params=MultiresNetParams.parse_obj(params),
             num_classes=num_classes,
         )
     if name:
