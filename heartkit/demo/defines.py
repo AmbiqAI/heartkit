@@ -1,13 +1,13 @@
 import os
 import tempfile
-from enum import Enum, IntEnum
+from enum import IntEnum, StrEnum
 from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, Extra, Field
 
 
-class AppState(str, Enum):
+class AppState(StrEnum):
     """HeartKit backend app state"""
 
     IDLE_STATE = "IDLE_STATE"
@@ -97,7 +97,7 @@ class HeartDemoParams(BaseModel, extra=Extra.allow):
     )
 
 
-class HeartTask(str, Enum):
+class HeartTask(StrEnum):
     """Heart task"""
 
     arrhythmia = "arrhythmia"

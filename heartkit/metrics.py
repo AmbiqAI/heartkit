@@ -1,47 +1,50 @@
+import os
 import warnings
+from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import seaborn as sns
-import tensorflow as tf
-from sklearn.metrics import auc, f1_score, roc_curve
+from sklearn.metrics import auc, confusion_matrix, f1_score, jaccard_score, roc_curve
 
 
 def compute_iou(
-    y_true: npt.ArrayLike,
-    y_pred: npt.ArrayLike,
+    y_true: npt.NDArray,
+    y_pred: npt.NDArray,
+    average: Literal["micro", "macro", "weighted"] = "micro",
 ) -> float:
     """Compute IoU
 
     Args:
-        y_true (npt.ArrayLike): Y true
-        y_pred (npt.ArrayLike): Y predicted
+        y_true (npt.NDArray): Y true
+        y_pred (npt.NDArray): Y predicted
 
     Returns:
         float: IoU
     """
-    intersect = np.logical_and(y_true, y_pred)
-    union = np.logical_or(y_true, y_pred)
-    return np.sum(intersect) / np.sum(union)
+    # intersect = np.logical_and(y_true, y_pred)
+    # union = np.logical_or(y_true, y_pred)
+    # return np.sum(intersect) / np.sum(union)
+    return jaccard_score(y_true.flatten(), y_pred.flatten(), average=average)
 
 
 def f1(
-    y_true: npt.ArrayLike,
-    y_prob: npt.ArrayLike,
+    y_true: npt.NDArray,
+    y_prob: npt.NDArray,
     multiclass: bool = False,
     threshold: float = None,
-):
+) -> npt.NDArray | float:
     """Compute F1 scores
 
     Args:
-        y_true ( npt.ArrayLike): Y true
-        y_prob ( npt.ArrayLike): 2D matrix with class probs
+        y_true ( npt.NDArray): Y true
+        y_prob ( npt.NDArray): 2D matrix with class probs
         multiclass (bool, optional): If multiclass. Defaults to False.
         threshold (float, optional): Decision threshold for multiclass. Defaults to None.
 
     Returns:
-        npt.ArrayLike: F1 scores
+        npt.NDArray|float: F1 scores
     """
     if y_prob.ndim != 2:
         raise ValueError(
@@ -66,15 +69,15 @@ def f1(
 
 
 def f_max(
-    y_true: npt.ArrayLike,
-    y_prob: npt.ArrayLike,
+    y_true: npt.NDArray,
+    y_prob: npt.NDArray,
     thresholds: float | list[float] | None = None,
 ) -> tuple[float, float]:
     """Compute F max
     source: https://github.com/helme/ecg_ptbxl_benchmarking
     Args:
-        y_true (npt.ArrayLike): Y True
-        y_prob (npt.ArrayLike): Y probs
+        y_true (npt.NDArray): Y True
+        y_prob (npt.NDArray): Y probs
         thresholds (float|list[float]|None, optional): Thresholds. Defaults to None.
 
     Returns:
@@ -89,71 +92,81 @@ def f_max(
 
 
 def confusion_matrix_plot(
-    y_true: npt.ArrayLike,
-    y_pred: npt.ArrayLike,
+    y_true: npt.NDArray,
+    y_pred: npt.NDArray,
     labels: list[str],
     save_path: str | None = None,
+    normalize: Literal["true", "pred", "all"] | None = False,
     **kwargs,
-):
+) -> tuple[plt.Figure, plt.Axes] | None:
     """Generate confusion matrix plot via matplotlib/seaborn
 
     Args:
-        y_true (npt.ArrayLike): True y labels
-        y_pred (npt.ArrayLike): Predicted y labels
+        y_true (npt.NDArray): True y labels
+        y_pred (npt.NDArray): Predicted y labels
         labels (list[str]): Label names
         save_path (str | None): Path to save plot. Defaults to None.
     """
-    confusion_mtx = tf.math.confusion_matrix(y_true, y_pred)
-    plt.figure(figsize=kwargs.get("figsize", (10, 8)))
-    sns.heatmap(
-        confusion_mtx, xticklabels=labels, yticklabels=labels, annot=True, fmt="g"
-    )
-    plt.xlabel("Prediction")
-    plt.ylabel("Label")
+
+    cm = confusion_matrix(y_true, y_pred)
+    cmn = cm
+    ann = True
+    fmt = "g"
+    if normalize:
+        cmn = confusion_matrix(y_true, y_pred, normalize=normalize)
+        ann = np.asarray(
+            [f"{c:g}{os.linesep}{nc:.2%}" for c, nc in zip(cm.flatten(), cmn.flatten())]
+        ).reshape(cm.shape)
+        fmt = ""
+    # END IF
+    fig, ax = plt.subplots(figsize=kwargs.get("figsize", (10, 8)))
+    sns.heatmap(cmn, xticklabels=labels, yticklabels=labels, annot=ann, fmt=fmt, ax=ax)
+    ax.set_xlabel("Prediction")
+    ax.set_ylabel("Label")
     if save_path:
-        plt.savefig(save_path)
-    plt.close()
+        fig.savefig(save_path, bbox_inches="tight")
+        plt.close(fig)
+        return None
+    return fig, ax
 
 
 def roc_auc_plot(
-    y_true: npt.ArrayLike,
-    y_prob: npt.ArrayLike,
+    y_true: npt.NDArray,
+    y_prob: npt.NDArray,
     labels: list[str],
     save_path: str | None = None,
     **kwargs,
 ):
     """Generate ROC plot via matplotlib/seaborn
     Args:
-        y_true (npt.ArrayLike): True y labels
-        y_prob (npt.ArrayLike): Predicted y labels
+        y_true (npt.NDArray): True y labels
+        y_prob (npt.NDArray): Predicted y labels
         labels (list[str]): Label names
         save_path (str | None): Path to save plot. Defaults to None.
     """
 
     fpr, tpr, _ = roc_curve(y_true, y_prob)
     roc_auc = auc(fpr, tpr)
-    plt.figure(figsize=kwargs.get("figsize", (10, 8)))
-    lw = 2
-    plt.plot(
-        fpr,
-        tpr,
-        lw=lw,
-        color="darkorange",
-        label=f"ROC curve (area = {roc_auc:0.2f})",
-    )
-    plt.plot([0, 1], [0, 1], color="navy", lw=lw, linestyle="--")
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel("False Positive Rate")
-    plt.ylabel("True Positive Rate")
-    plt.title("ROC-AUC")
-    plt.legend(loc="lower right")
+    fig, ax = plt.subplots(figsize=kwargs.get("figsize", (10, 8)))
+    label = f"ROC curve (area = {roc_auc:0.2f})"
+    ax.plot(fpr, tpr, lw=2, color="darkorange", label=label)
+    ax.plot([0, 1], [0, 1], color="navy", lw=2, linestyle="--")
+    ax.set_xlim([0.0, 1.0])
+    ax.set_ylim([0.0, 1.05])
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+    ax.set_title("ROC-AUC")
+    fig.legend(loc="lower right")
     if save_path:
-        plt.savefig(save_path)
-    plt.close()
+        fig.savefig(save_path)
+        plt.close(fig)
+        return None
+    return fig, ax
 
 
-def macro_precision_recall(y_true, y_prob, thresholds):
+def macro_precision_recall(
+    y_true: npt.NDArray, y_prob: npt.NDArray, thresholds: npt.NDArray
+):
     """source: https://github.com/helme/ecg_ptbxl_benchmarking"""
     # expand analysis to the number of thresholds
     y_true = np.repeat(y_true[None, :, :], len(thresholds), axis=0)
@@ -214,27 +227,27 @@ def challenge2020_metrics(
     return {"F_beta": f_beta, "G_beta": g_beta}
 
 
-def _one_hot(x: npt.ArrayLike, depth: int) -> npt.ArrayLike:
+def _one_hot(x: npt.NDArray, depth: int) -> npt.NDArray:
     """Generate one hot encoding
 
     Args:
-        x (npt.ArrayLike): Categories
+        x (npt.NDArray): Categories
         depth (int): Depth
 
     Returns:
-        npt.ArrayLike: One hot encoded
+        npt.NDArray: One hot encoded
     """
     x_one_hot = np.zeros((x.size, depth))
     x_one_hot[np.arange(x.size), x] = 1
     return x_one_hot
 
 
-def multi_f1(y_true: npt.ArrayLike, y_prob: npt.ArrayLike):
+def multi_f1(y_true: npt.NDArray, y_prob: npt.NDArray):
     """Compute multi-class F1
 
     Args:
-        y_true (npt.ArrayLike): _description_
-        y_prob (npt.ArrayLike): _description_
+        y_true (npt.NDArray): _description_
+        y_prob (npt.NDArray): _description_
 
     Returns:
         _type_: _description_

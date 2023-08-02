@@ -1,11 +1,9 @@
 """ ResNet """
-from typing import Callable, cast
-
 import tensorflow as tf
-from keras.engine.keras_tensor import KerasTensor
 from pydantic import BaseModel, Field
 
 from .blocks import batch_norm, conv2d, relu6
+from .defines import KerasLayer
 
 
 class ResNetBlockParams(BaseModel):
@@ -39,21 +37,21 @@ def generate_bottleneck_block(
     kernel_size: int | tuple[int, int] = 3,
     strides: int | tuple[int, int] = 1,
     expansion: int = 4,
-) -> Callable[[KerasTensor], KerasTensor]:
+) -> KerasLayer:
     """Generate functional bottleneck block.
 
     Args:
-        x (KerasTensor): Input
+        x (tf.Tensor): Input
         filters (int): Filter size
         kernel_size (int | tuple[int, int], optional): Kernel size. Defaults to 3.
         strides (int | tuple[int, int], optional): Stride length. Defaults to 1.
         expansion (int, optional): Expansion factor. Defaults to 4.
 
     Returns:
-        KerasTensor: Outputs
+        KerasLayer: TF functional layer
     """
 
-    def layer(x: KerasTensor) -> KerasTensor:
+    def layer(x: tf.Tensor) -> tf.Tensor:
         num_chan = x.shape[-1]
         projection = num_chan != filters * expansion or (
             strides > 1 if isinstance(strides, int) else strides[0] > 1
@@ -73,7 +71,7 @@ def generate_bottleneck_block(
         if projection:
             x = conv2d(filters * expansion, 1, strides)(x)
             x = batch_norm()(x)
-        x = cast(KerasTensor, tf.keras.layers.add([bx, x]))
+        x = tf.keras.layers.Add()([bx, x])
         x = relu6()(x)
         return x
 
@@ -84,20 +82,20 @@ def generate_residual_block(
     filters: int,
     kernel_size: int | tuple[int, int] = 3,
     strides: int | tuple[int, int] = 1,
-) -> Callable[[KerasTensor], KerasTensor]:
+) -> KerasLayer:
     """Generate functional residual block
 
     Args:
-        x (KerasTensor): Input
+        x (tf.Tensor): Input
         filters (int): Filter size
         kernel_size (int | tuple[int, int], optional): Kernel size. Defaults to 3.
         strides (int | tuple[int, int], optional): Stride length. Defaults to 1.
 
     Returns:
-        KerasTensor: Outputs
+        KerasLayer: TF functional layer
     """
 
-    def layer(x: KerasTensor) -> KerasTensor:
+    def layer(x: tf.Tensor) -> tf.Tensor:
         num_chan = x.shape[-1]
         projection = num_chan != filters or (
             strides > 1 if isinstance(strides, int) else strides[0] > 1
@@ -111,7 +109,7 @@ def generate_residual_block(
         if projection:
             x = conv2d(filters, 1, strides)(x)
             x = batch_norm()(x)
-        x = cast(KerasTensor, tf.keras.layers.add([bx, x]))
+        x = tf.keras.layers.Add()([bx, x])
         x = relu6()(x)
         return x
 
@@ -119,13 +117,13 @@ def generate_residual_block(
 
 
 def ResNet(
-    x: KerasTensor,
+    x: tf.Tensor,
     params: ResNetParams,
     num_classes: int | None = None,
 ):
     """Generate functional ResNet model.
     Args:
-        x (KerasTensor): Inputs
+        x (tf.Tensor): Inputs
         params (ResNetParams): Model parameters.
         num_classes (int, optional): # class outputs. Defaults to None.
 
@@ -142,8 +140,6 @@ def ResNet(
         y = relu6()(y)
     else:
         y = x
-
-    # y = tf.keras.layers.MaxPooling2D(3, (1, 2), padding="same")(y)
 
     for stage, block in enumerate(params.blocks):
         for d in range(block.depth):

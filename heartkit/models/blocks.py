@@ -1,18 +1,15 @@
-import math
-from typing import Callable
-
 import tensorflow as tf
-import tensorflow_addons as tfa
-from keras.engine.keras_tensor import KerasTensor
+
+from .defines import KerasLayer
 
 
-def make_divisible(v, divisor: int = 4, min_value=None):
+def make_divisible(v: int, divisor: int = 4, min_value: int | None = None) -> int:
     """Ensure layer has # channels divisble by divisor
        https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet/mobilenet.py
     Args:
         v (int): # channels
         divisor (int, optional): Divisor. Defaults to 4.
-        min_value (int|None, optional): Min # channels. Defaults to None.
+        min_value (int | None, optional): Min # channels. Defaults to None.
 
     Returns:
         int: # channels
@@ -26,44 +23,48 @@ def make_divisible(v, divisor: int = 4, min_value=None):
     return new_v
 
 
-def batch_norm(name: str | None = None) -> tf.keras.layers.Layer:
+def batch_norm(name: str | None = None) -> KerasLayer:
     """Batch normalization layer"""
     name = name + ".bn" if name else None
     return tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=1e-5, name=name)
 
 
-def glu(dim: int = -1) -> tf.keras.layers.Layer:
-    def layer(x: KerasTensor) -> KerasTensor:
+def glu(dim: int = -1) -> KerasLayer:
+    """Gated linear unit layer"""
+
+    def layer(x: tf.Tensor) -> tf.Tensor:
         out, gate = tf.split(x, num_or_size_splits=2, axis=dim)
         gate = tf.sigmoid(gate)
         x = tf.multiply(out, gate)
         return x
+
     return layer
 
-def relu(name: str | None = None) -> tf.keras.layers.Layer:
+
+def relu(name: str | None = None) -> KerasLayer:
     """ReLU activation layer"""
     name = name + ".act" if name else None
     return tf.keras.layers.ReLU(name=name)
 
 
-def relu6(name: str | None = None) -> tf.keras.layers.Layer:
+def relu6(name: str | None = None) -> KerasLayer:
     """Hard ReLU activation layer"""
     name = name + ".act" if name else None
     return tf.keras.layers.Activation(tf.nn.relu6, name=name)
 
 
-def mish(name: str | None = None) -> tf.keras.layers.Layer:
+def mish(name: str | None = None) -> KerasLayer:
     """Mish activation layer"""
-    return tf.keras.layers.Activation(tfa.activations.mish)
+    return tf.keras.layers.Activation(tf.keras.activations.mish, name=name)
 
 
-def gelu(name: str | None = None) -> tf.keras.layers.Layer:
+def gelu(name: str | None = None) -> KerasLayer:
     """GeLU activation layer"""
     name = name + ".act" if name else None
     return tf.keras.layers.Activation("gelu", name=name)
 
 
-def hard_sigmoid(name: str | None = None) -> tf.keras.layers.Layer:
+def hard_sigmoid(name: str | None = None) -> KerasLayer:
     """Hard sigmoid activation layer"""
     name = name + ".act" if name else None
     return tf.keras.layers.Activation(tf.keras.activations.hard_sigmoid, name=name)
@@ -75,8 +76,10 @@ def conv2d(
     strides: int | tuple[int, int] = 1,
     padding: str = "same",
     use_bias: bool = False,
+    groups: int = 1,
+    dilation: int = 1,
     name: str | None = None,
-) -> tf.keras.layers.Layer:
+) -> KerasLayer:
     """2D convolutional layer
 
     Args:
@@ -85,10 +88,10 @@ def conv2d(
         strides (int | tuple[int, int], optional): Stride length. Defaults to 1.
         padding (str, optional): Padding. Defaults to "same".
         use_bias (bool, optional): Add bias. Defaults to False.
-        name (str|None, optional): Layer name. Defaults to None.
+        name (str | None, optional): Layer name. Defaults to None.
 
     Returns:
-        Callable[[KerasTensor], KerasTensor]: Functional layer
+        KerasLayer: Functional 2D conv layer
     """
     name = name + ".conv" if name else None
     return tf.keras.layers.Conv2D(
@@ -97,7 +100,9 @@ def conv2d(
         strides=strides,
         padding=padding,
         use_bias=use_bias,
-        kernel_initializer=tf.keras.initializers.VarianceScaling(),
+        groups=groups,
+        dilation_rate=dilation,
+        kernel_initializer="he_normal",
         name=name,
     )
 
@@ -109,7 +114,7 @@ def conv1d(
     padding: str = "same",
     use_bias: bool = False,
     name: str | None = None,
-) -> tf.keras.layers.Layer:
+) -> KerasLayer:
     """1D convolutional layer using 2D convolutional layer
 
     Args:
@@ -118,10 +123,10 @@ def conv1d(
         strides (int, optional): Stride length. Defaults to 1.
         padding (str, optional): Padding. Defaults to "same".
         use_bias (bool, optional): Add bias. Defaults to False.
-        name (str | None, optional): _description_. Defaults to None.
+        name (str | None, optional): Layer name. Defaults to None.
 
     Returns:
-        tf.keras.layers.Layer: _description_
+        KerasLayer: Functional 1D conv layer
     """
     name = name + ".conv" if name else None
     return tf.keras.layers.Conv2D(
@@ -130,12 +135,12 @@ def conv1d(
         strides=(1, strides),
         padding=padding,
         use_bias=use_bias,
-        kernel_initializer=tf.keras.initializers.VarianceScaling(),
+        kernel_initializer="he_normal",
         name=name,
     )
 
 
-def se_block(ratio: int = 8, name: str | None = None) -> Callable[[KerasTensor], KerasTensor]:
+def se_block(ratio: int = 8, name: str | None = None) -> KerasLayer:
     """Squeeze & excite block
 
     Args:
@@ -143,16 +148,18 @@ def se_block(ratio: int = 8, name: str | None = None) -> Callable[[KerasTensor],
         name (str|None, optional): Block name. Defaults to None.
 
     Returns:
-        Callable[[KerasTensor], KerasTensor]: Function layer
+        KerasLayer: Functional SE layer
     """
 
-    def layer(x: KerasTensor) -> KerasTensor:
+    def layer(x: tf.Tensor) -> tf.Tensor:
         num_chan = x.shape[-1]
         # Squeeze
         name_pool = f"{name}.pool" if name else None
         name_sq = f"{name}.sq" if name else None
         y = tf.keras.layers.GlobalAveragePooling2D(name=name_pool, keepdims=True)(x)
-        y = conv2d(num_chan // ratio, kernel_size=(1, 1), use_bias=True, name=name_sq)(y)
+        y = conv2d(num_chan // ratio, kernel_size=(1, 1), use_bias=True, name=name_sq)(
+            y
+        )
         y = relu6(name=name_sq)(y)
         # Excite
         name_ex = f"{name}.ex" if name else None
@@ -172,7 +179,7 @@ def mbconv_block(
     se_ratio: float = 8,
     droprate: float = 0,
     name: str | None = None,
-) -> Callable[[KerasTensor], KerasTensor]:
+) -> KerasLayer:
     """MBConv block w/ expansion and SE
 
     Args:
@@ -185,15 +192,18 @@ def mbconv_block(
         name (str|None, optional): Block name. Defaults to None.
 
     Returns:
-        Callable[[KerasTensor], KerasTensor]: Functional layer
+        KerasLayer: Functional layer
     """
 
-    def layer(x: KerasTensor) -> KerasTensor:
+    def layer(x: tf.Tensor) -> tf.Tensor:
         input_filters = x.shape[-1]
-        is_downsample = strides != 1 if isinstance(strides, int) else sum(strides) != 1
+        stride_len = (
+            strides if isinstance(strides, int) else sum(strides) / len(strides)
+        )
+        is_downsample = stride_len
         add_residual = input_filters == output_filters and not is_downsample
         # Expand: narrow -> wide
-        if expand_ratio > 1:
+        if expand_ratio != 1:
             name_ex = f"{name}.exp" if name else None
             filters = int(input_filters * expand_ratio)
             y = conv2d(filters, kernel_size=(1, 1), strides=(1, 1), name=name_ex)(x)
@@ -206,11 +216,22 @@ def mbconv_block(
         # NOTE: DepthwiseConv2D only supports equal size stride
         # Using Pooling operator for now
         name_dp = f"{name}.dp" if name else None
+        # y = tf.keras.layers.Conv2D(
+        #     input_filters,
+        #     kernel_size=kernel_size,
+        #     strides=strides,
+        #     groups=input_filters,
+        #     padding="same",
+        #     kernel_initializer="he_normal"
+        #     use_bias=False,
+        #     name=name_dp,
+        # )(y)
         y = tf.keras.layers.DepthwiseConv2D(
             kernel_size=kernel_size,
             strides=(1, 1),  # strides,
             padding="same",
             use_bias=False,
+            depthwise_initializer="he_normal",
             name=name_dp,
         )(y)
         y = batch_norm(name=name_dp)(y)
@@ -246,20 +267,21 @@ def mbconv_block(
 
 
 class SharedWeightsConv(tf.keras.layers.Layer):
+    """Allows sharing weights between conv layers."""
 
     def __init__(
-            self,
-            parent,
-            strides=None,
-            padding=None,
-            dilation_rate=None,
-            activation=None,
-            **kwargs
-        ):
+        self,
+        parent,
+        strides=None,
+        padding=None,
+        dilation_rate=None,
+        activation=None,
+        **kwargs,
+    ):
         conv_classes = (
             tf.keras.layers.Conv1D,
             tf.keras.layers.Conv2D,
-            tf.keras.layers.Conv3D
+            tf.keras.layers.Conv3D,
         )
         if not any(isinstance(parent, cls) for cls in conv_classes):
             raise TypeError("'parent' should be a keras convolution layer.")
@@ -267,14 +289,15 @@ class SharedWeightsConv(tf.keras.layers.Layer):
         self.parent = parent
         self.rank = parent.rank
         self.activation = (
-            parent.activation if activation is None
+            parent.activation
+            if activation is None
             else tf.keras.activations.get(activation)
         )
         cnn_kwargs = {
-            'strides': strides,
-            'padding': padding,
-            'data_format': None,
-            'dilation_rate': dilation_rate,
+            "strides": strides,
+            "padding": padding,
+            "data_format": None,
+            "dilation_rate": dilation_rate,
         }
         self.cnn_kwargs = {
             key: getattr(parent, key) if value is None else value
@@ -284,7 +307,7 @@ class SharedWeightsConv(tf.keras.layers.Layer):
         self.cnn_op = {
             1: tf.keras.backend.conv1d,
             2: tf.keras.backend.conv2d,
-            3: tf.keras.backend.conv3d
+            3: tf.keras.backend.conv3d,
         }.get(self.rank)
 
     def build(self, input_shape):
@@ -292,130 +315,30 @@ class SharedWeightsConv(tf.keras.layers.Layer):
             self.parent.build(input_shape)
         self.built = True
 
-    def call(self, inputs):  # adapted from Conv parent layer
-        if self.cnn_kwargs['padding'] == 'causal' and self.rank == 1:
+    def call(self, inputs, *args, **kwargs):  # adapted from Conv parent layer
+        if self.cnn_kwargs["padding"] == "causal" and self.rank == 1:
             inputs = tf.pad(inputs, self._compute_causal_padding())
         outputs = self.cnn_op(inputs, self.parent.kernel, **self.cnn_kwargs)
         if self.parent.use_bias:
-            if self.cnn_kwargs['data_format'] == 'channels_first':
+            if self.cnn_kwargs["data_format"] == "channels_first":
                 if self.rank == 1:
                     shape = (1, self.parent.filters, 1)
                     outputs += tf.reshape(self.parent.bias, shape)
                 else:
                     outputs = tf.nn.bias_add(
-                        outputs, self.parent.bias, data_format='NCHW'
+                        outputs, self.parent.bias, data_format="NCHW"
                     )
             else:
-                outputs = tf.nn.bias_add(
-                    outputs, self.parent.bias, data_format='NHWC'
-                )
+                outputs = tf.nn.bias_add(outputs, self.parent.bias, data_format="NHWC")
         if self.activation is not None:
             return self.activation(outputs)
         return outputs
 
     def _compute_causal_padding(self):  # adapted from Conv parent layer
-        left_pad = self.cnn_kwargs['dilation_rate'][0]
-        left_pad *= (self.parent.kernel_size[0] - 1)
-        if self.cnn_kwargs['data_format'] == 'channels_last':
-          causal_padding = [[0, 0], [left_pad, 0], [0, 0]]
+        left_pad = self.cnn_kwargs["dilation_rate"][0]
+        left_pad *= self.parent.kernel_size[0] - 1
+        if self.cnn_kwargs["data_format"] == "channels_last":
+            causal_padding = [[0, 0], [left_pad, 0], [0, 0]]
         else:
-          causal_padding = [[0, 0], [0, 0], [left_pad, 0]]
+            causal_padding = [[0, 0], [0, 0], [left_pad, 0]]
         return causal_padding
-
-
-
-def multiresnet_block(
-    d_model: int,
-    kernel_size: int | tuple[int, int] = 3,
-    depth: int|None = None,
-    wavelet_init = None,
-    tree_select: str = 'fading',
-    seq_len: int|None = None,
-    droprate: float = 0,
-    memory_size: int|None = None,
-    indep_res_init: bool = False,
-    name: str | None = None,
-) -> Callable[[KerasTensor], KerasTensor]:
-    """Multiresnet block
-
-    Args:
-        name (str|None, optional): Block name. Defaults to None.
-
-    Returns:
-        Callable[[KerasTensor], KerasTensor]: Functional layer
-
-    """
-
-    if depth is None and seq_len is None:
-        raise ValueError("Either depth or seq_len must be specified")
-
-    if depth is None:
-        depth = math.ceil(math.log2((seq_len - 1) / (kernel_size - 1) + 1))
-
-    if tree_select == 'fading':
-        m = depth + 1
-    elif memory_size is not None:
-        m = memory_size
-    else:
-        raise ValueError("Either tree_select is fading or memory_size must be specified")
-
-    if wavelet_init is not None:
-        import pywt
-        wavelet = pywt.Wavelet(wavelet_init)
-        h0 = tf.convert_to_tensor(wavelet.dec_lo[::-1])
-        h1 = tf.convert_to_tensor(wavelet.dec_hi[::-1])
-        h0 = tf.tile(tf.reshape(h0, (1, 1, -1)) , [d_model, 1, 1])
-        h1 = tf.tile(tf.reshape(h1, (1, 1, -1)) , [d_model, 1, 1])
-    elif kernel_size is not None:
-        h0 = 'glorot_uniform'
-        h1 = 'glorot_uniform'
-    else:
-        raise ValueError("Either wavelet_init or kernel_size must be specified")
-
-    def layer(x: KerasTensor) -> KerasTensor:
-        if tree_select == 'fading':
-            res_lo = x
-            y = tf.keras.layers.DepthwiseConv1D(
-                kernel_size=1,
-            )(x)
-            print('IDDQD', x.shape)
-            conv_hi = tf.keras.layers.Conv1D(
-                filters=d_model,
-                kernel_size=kernel_size,
-                kernel_initializer=h1,
-                dilation_rate=1,
-                padding="valid",
-                groups=x.shape[2],
-            )
-            conv_lo = tf.keras.layers.Conv1D(
-                filters=d_model,
-                kernel_size=kernel_size,
-                kernel_initializer=h0,
-                dilation_rate=1,
-                padding="valid",
-                groups=x.shape[2],
-            )
-            dilation = 1
-            for i in range(depth, 0, -1):
-                padding = dilation * (kernel_size - 1)
-                res_lo_pad = tf.keras.layers.ZeroPadding1D((padding, 0))(res_lo)
-                # torch.nn.functional.pad(res_lo, (padding, 0), "constant", 0)
-                res_hi = SharedWeightsConv(conv_hi, dilation_rate=dilation)(res_lo_pad)
-                res_lo = SharedWeightsConv(conv_lo, dilation_rate=dilation)(res_lo_pad)
-                res_hi = tf.keras.layers.DepthwiseConv1D(kernel_size=1)(res_hi)
-                y = tf.keras.layers.add([y, res_hi])
-                dilation *= 2
-            # END FOR
-            res_lo = tf.keras.layers.DepthwiseConv1D(
-                kernel_size=1,
-            )(res_lo)
-            y = tf.keras.layers.add([y, res_lo])
-
-        elif tree_select == 'uniform':
-            raise NotImplementedError("tree_select == 'uniform' is not implemented yet")
-
-        y = tf.keras.layers.Dropout(droprate)(y)
-        y = relu6()(y)
-        return y
-
-    return layer

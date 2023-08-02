@@ -2,53 +2,55 @@
 
 ## Overview
 
-The following table provides performance and accuracy results of all models when running on Apollo 4 EVB.
+The following table provides performance and accuracy results of all models when running on Apollo4 Plus EVB.
 
-| Task           | Params   | FLOPS   | Metric      |
-| -------------- | -------- | ------- | ----------- |
-| Segmentation   | 105K     | 19.3M   | IOU=85.3%   |
-| Arrhythmia     | 76K      | 7.2M    | F1=99.4%    |
-| Beat           | 79K      | 1.6M    | F1=91.6%    |
-| HRV            | N/A      | N/A     | N/A         |
+| Task           | Params   | FLOPS   | Metric     |
+| -------------- | -------- | ------- | ---------- |
+| Segmentation   | 50K      | 10.3M   | 91.9% IOU  |
+| Arrhythmia     | 76K      | 5.5M    | 99.3% F1   |
+| Beat           | 73K      | 2.2M    | 91.6% F1   |
+| HRV            | N/A      | N/A     | N/A        |
 
 ## Segmentation Results
 
-Work in progress...
+<figure markdown>
+  ![Segmentation Confusion Matrix](./assets/segmentation-cm-test.png){ width="540" }
+  <figcaption>Segmentation Confusion Matrix</figcaption>
+</figure>
 
 ## Heart Arrhythmia Results
 
-The results of the arrhythmia model when testing on 1,000 patients (not used during training) is summarized below. The baseline model is simply selecting the argmax of model outputs (`normal`, `AFIB/AFL`). The 95% confidence version adds inconclusive label that is assigned when softmax output is less than 95% for any model output.
+The results of the arrhythmia model when testing on 1,000 patients (not used during training) is summarized below. The baseline model is simply selecting the argmax of model outputs (`normal`, `AFIB/AFL`). The 75% confidence version adds inconclusive label that is assigned when softmax output is less than 75% for any model output.
 
-| Metric   | Baseline | 95% Confidence |
+| Metric   | Baseline | 75% Confidence |
 | -------- | -------- | -------------- |
-| Accuracy | 96.2%   | 99.4%           |
-| F1 Score | 96.2%   | 99.4%           |
+| Accuracy | 96.2%    | 99.3%          |
+| F1 Score | 96.1%    | 99.2%          |
 
-The confusion matrix for the 95% confidence model is depicted below.
+The confusion matrix for the 75% confidence model is depicted below.
 
-| Confusion    | NSR      | AFIB/AFL |
-| ------------ | -------- | -------- |
-| __NSR__      | 99.5%    |  0.5%    |
-| __AFIB/AFL__ |  0.7%    | 99.3%    |
+<figure markdown>
+  ![Arrhythmia Confusion Matrix](./assets/arrhythmia-cm-test.png){ width="540" }
+  <figcaption>Arrhythmia Confusion Matrix</figcaption>
+</figure>
 
 ## Beat Classification Results
 
-The results of three beat models when testing on 1,000 patients (not used during training) are summarized below. The 200x1 model serves as the baseline and classifies individual beats (1 channel) with a fixed time window of 800 ms (200 samples). The 800x1 model increases the time window to 3,200 ms (800 samples) in order to include surrounding data as context. Increasing the time window increases the accuracy by over `10%` but also causes computation to increase by `3.5x`. The third and best model uses a time window of 800 ms to capture individual beats but includes two additional channels. Using the local average RR interval, the previous and subsequent `beats` are included as side channels. Unlike normal beats, premature and ectopic beats won't be aligned to neighboring beats and serves as useful context. This provides similar temporal resolution as 800x1 but reduces computation by `3.3x` while further improving accuracy by `1.7%`.
+The results of three beat models when testing on 1,000 patients (not used during training) are summarized below. The 800x1 model serves as the baseline and classifies individual beats (1 channel) with a fixed time window of 800 ms (160 samples). The 2400x1 model increases the time window to 2,400 ms (480 samples) in order to include surrounding data as context. Increasing the time window increases the accuracy by over `10%` but also causes computation to increase by `3.5x`. The third and best model uses a time window of 800 ms to capture individual beats but includes two additional channels. Using the local average RR interval, the previous and subsequent `beats` are included as side channels. Unlike normal beats, premature and ectopic beats won't be aligned to neighboring beats and serves as useful context. This provides similar temporal resolution as 800x1 but reduces computation by `3.3x` while further improving accuracy by `1.7%`.
 
-| Model      | 200x1  | 800x1  | 200x3  |
+| Model      | 800x1  | 2400x1 | 800x3  |
 | ---------- | ------ | ------ | ------ |
-| Parameters | 79K    | 79K    | 79K    |
-| FLOPS      | 1.5M   | 5.3M   | 1.6M   |
+| Parameters | 73K    | 73K    | 73K    |
+| FLOPS      | 2.1M   | 7.6M   | 2.2M   |
 | Accuracy   | 78.2%  | 88.6%  | 90.3%  |
 | F1 Score   | 77.5%  | 87.2%  | 90.1%  |
 
-The confusion matrix for the 200x3 model is depicted below.
+The confusion matrix for the 800x3 model is depicted below.
 
-| Confusion | Normal | PAC   | PVC   |
-| --------- | ------ | ----- | ----- |
-| __NSR__   | 94.6%  |  4.6% |  0.8% |
-| __PAC__   |  4.9%  | 86.5% |  8.6% |
-| __PVC__   |  0.7%  | 10.2% | 89.0% |
+<figure markdown>
+  ![Beat Confusion Matrix](./assets/beat-cm-test.png){ width="540" }
+  <figcaption>Beat Confusion Matrix</figcaption>
+</figure>
 
 ## HRV Results
 

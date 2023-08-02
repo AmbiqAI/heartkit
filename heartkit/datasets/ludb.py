@@ -8,13 +8,13 @@ from multiprocessing import Pool
 import h5py
 import numpy as np
 import numpy.typing as npt
-import scipy.signal
 from tqdm import tqdm
 
 from ..defines import HeartTask
 from ..utils import download_file
 from .dataset import HeartKitDataset
 from .defines import PatientGenerator, SampleGenerator
+from .preprocess import resample_signal
 
 logger = logging.getLogger(__name__)
 
@@ -39,52 +39,13 @@ LudbLeadsMap = {
     "v6": 11,
 }
 
-
-def _resample_ecg(
-    data: npt.NDArray,
-    sampling_rate: int,
-    target_rate: int,
-) -> npt.NDArray:
-    """Resample signal to target sampling rate
-
-    Args:
-        data (npt.NDArray): ECG data [data x leads]
-        sampling_rate (int): Original Fs
-        target_rate (int): Target Fs
-
-    Returns:
-        tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]: Resampled signals
-    """
-    ratio = target_rate / sampling_rate
-    numel = int(ratio * data.shape[0])
-    rdata = scipy.signal.resample(data, numel, axis=0)
-    return rdata
-
-
-def _resample_ecg_segs(
-    data: npt.NDArray,
-    segs: npt.NDArray,
-    sampling_rate: int,
-    target_rate: int,
-) -> tuple[npt.NDArray, npt.NDArray]:
-    """Resample signal to target sampling rate
-
-    Args:
-        data (npt.NDArray): ECG data [data x leads]
-        segs (npt.NDArray): Segmentations
-        sampling_rate (int): Original Fs
-        target_rate (int): Target Fs
-
-    Returns:
-        tuple[npt.NDArray, npt.NDArray]: Resampled signals
-    """
-    ratio = target_rate / sampling_rate
-    numel = int(ratio * data.shape[0])
-    rdata = scipy.signal.resample(data, numel, axis=0)
-    rsegs = segs.copy()
-    rsegs[:, 2] = segs[:, 2] * ratio
-    rsegs[:, 3] = segs[:, 3] * ratio
-    return rdata, rsegs
+FID_LEAD_IDX = 0
+FID_LBL_IDX = 1
+FID_LOC_IDX = 2
+SEG_LEAD_IDX = 0
+SEG_LBL_IDX = 1
+SEG_BEG_IDX = 2
+SEG_END_IDX = 3
 
 
 class LudbDataset(HeartKitDataset):
@@ -115,27 +76,27 @@ class LudbDataset(HeartKitDataset):
         return 1
 
     @property
-    def patient_ids(self) -> npt.ArrayLike:
+    def patient_ids(self) -> npt.NDArray:
         """Get dataset patient IDs
 
         Returns:
-            npt.ArrayLike: patient IDs
+            npt.NDArray: patient IDs
         """
         return np.arange(1, 201)
 
-    def get_train_patient_ids(self) -> npt.ArrayLike:
+    def get_train_patient_ids(self) -> npt.NDArray:
         """Get dataset training patient IDs
 
         Returns:
-            npt.ArrayLike: patient IDs
+            npt.NDArray: patient IDs
         """
         return self.patient_ids[:180]
 
-    def get_test_patient_ids(self) -> npt.ArrayLike:
+    def get_test_patient_ids(self) -> npt.NDArray:
         """Get dataset patient IDs reserved for testing only
 
         Returns:
-            npt.ArrayLike: patient IDs
+            npt.NDArray: patient IDs
         """
         return self.patient_ids[180:]
 
@@ -179,21 +140,32 @@ class LudbDataset(HeartKitDataset):
             # NOTE: [:] will load all data into RAM- ideal for small dataset
             data = pt["data"][:]
             segs = pt["segmentations"][:]
+            fids = pt["fiducials"][:]
+
             if self.sampling_rate != self.target_rate:
-                data, segs = _resample_ecg_segs(
-                    data, segs, self.sampling_rate, self.target_rate
+                ratio = self.target_rate / self.sampling_rate
+                data = resample_signal(data, self.sampling_rate, self.target_rate)
+                segs[:, (SEG_BEG_IDX, SEG_END_IDX)] = (
+                    segs[:, (SEG_BEG_IDX, SEG_END_IDX)] * ratio
                 )
+                fids[:, FID_LOC_IDX] = fids[:, FID_LOC_IDX] * ratio
+            # END IF
+
+            # Create segmentation mask
             labels = np.zeros_like(data)
-            # NOTE: Labels are not provided on first N and last M samples so discard
-            start_offset = max(segs[0][2] - 100, 0)
-            stop_offset = max(0, data.shape[0] - segs[-1][3] + 100)
             for seg_idx in range(segs.shape[0]):
                 seg = segs[seg_idx]
-                labels[seg[2] : seg[3], seg[0]] = seg[1]
+                labels[seg[SEG_BEG_IDX] : seg[SEG_END_IDX], seg[SEG_LEAD_IDX]] = seg[
+                    SEG_LBL_IDX
+                ]
+            # END FOR
+
+            start_offset = max(0, segs[0][SEG_BEG_IDX] - 100)
+            stop_offset = max(0, data.shape[0] - segs[-1][SEG_END_IDX] + 100)
             for _ in range(samples_per_patient):
                 # Randomly pick an ECG lead
                 lead_idx = np.random.randint(data.shape[1])
-                # Randomly select frame center point
+                # Randomly select frame within the segment
                 frame_start = np.random.randint(
                     start_offset, data.shape[0] - self.frame_size - stop_offset
                 )
@@ -201,13 +173,34 @@ class LudbDataset(HeartKitDataset):
                 x = (
                     data[frame_start:frame_end, lead_idx]
                     .astype(np.float32)
-                    .reshape((self.frame_size, 1))
+                    .reshape((self.frame_size,))
                 )
-                y = labels[frame_start:frame_end, lead_idx].astype(
-                    np.int32
-                )  # .reshape((self.frame_size, 1))
+                y = labels[frame_start:frame_end, lead_idx].astype(np.int32)
                 yield x, y
             # END FOR
+
+            # start_offset = max(segs[0][SEG_BEG_IDX], int(0.55 * self.frame_size))
+            # stop_offset = int(data.shape[0] - 0.55 * self.frame_size)
+            # # Identify R peak locations and randomly shuffle
+            # rfids = fids[
+            #     (fids[:, FID_LBL_IDX] == 2)
+            #     & (start_offset < fids[:, FID_LOC_IDX])
+            #     & (fids[:, FID_LOC_IDX] < stop_offset)
+            # ]
+            # if rfids.shape[0] <= 2:
+            #     continue
+            # np.random.shuffle(rfids)
+            # for i in range(min(samples_per_patient, rfids.shape[0])):
+            #     lead_idx = rfids[i, FID_LEAD_IDX]
+            #     frame_start = max(rfids[i, FID_LOC_IDX] - int(random.uniform(0.45, 0.55) * self.frame_size), 0)
+            #     frame_end = frame_start + self.frame_size
+            #     if frame_end - frame_start < self.frame_size:
+            #         continue
+            #     x = data[frame_start:frame_end, lead_idx].astype(np.float32).reshape((self.frame_size,))
+            #     y = labels[frame_start:frame_end, lead_idx].astype(np.int32)
+            #     yield x, y
+            # # END FOR
+
         # END FOR
 
     def signal_generator(
@@ -226,7 +219,8 @@ class LudbDataset(HeartKitDataset):
         for _, pt in patient_generator:
             data = pt["data"][:]
             if self.sampling_rate != self.target_rate:
-                data = _resample_ecg(data, self.sampling_rate, self.target_rate)
+                data = resample_signal(data, self.sampling_rate, self.target_rate)
+            # END IF
             for _ in range(samples_per_patient):
                 lead_idx = np.random.randint(data.shape[1])
                 if data.shape[0] > self.frame_size:
@@ -237,7 +231,7 @@ class LudbDataset(HeartKitDataset):
                 x = (
                     data[frame_start:frame_end, lead_idx]
                     .astype(np.float32)
-                    .reshape((self.frame_size, 1))
+                    .reshape((self.frame_size,))
                 )
                 yield x
             # END FOR
@@ -245,13 +239,13 @@ class LudbDataset(HeartKitDataset):
 
     def get_patient_data_segments(
         self, patient: int
-    ) -> tuple[npt.ArrayLike, npt.ArrayLike]:
+    ) -> tuple[npt.NDArray, npt.NDArray]:
         """Get patient's entire data and segments
         Args:
             patient (int): Patient ID (1-based)
 
         Returns:
-            tuple[npt.ArrayLike, npt.ArrayLike]: (data, segment labels)
+            tuple[npt.NDArray, npt.NDArray]: (data, segment labels)
         """
         pt_key = f"p{patient:05d}"
         with h5py.File(os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r") as pt:
@@ -260,12 +254,15 @@ class LudbDataset(HeartKitDataset):
         labels = np.zeros_like(data)
         for seg_idx in range(segs.shape[0]):  # pylint: disable=no-member
             seg = segs[seg_idx]
-            labels[seg[2] : seg[3] + 0, seg[0]] = seg[1]
+            labels[seg[SEG_BEG_IDX] : seg[SEG_END_IDX] + 0, seg[SEG_LEAD_IDX]] = seg[
+                SEG_LBL_IDX
+            ]
+        # END FOR
         return data, labels
 
     def uniform_patient_generator(
         self,
-        patient_ids: npt.ArrayLike,
+        patient_ids: npt.NDArray,
         repeat: bool = True,
         shuffle: bool = True,
     ) -> PatientGenerator:
@@ -299,7 +296,7 @@ class LudbDataset(HeartKitDataset):
 
     def convert_pt_wfdb_to_hdf5(
         self, patient: int, src_path: str, dst_path: str, force: bool = False
-    ) -> tuple[npt.ArrayLike, npt.ArrayLike, npt.ArrayLike]:
+    ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """Convert LUDB patient data from WFDB to more consumable HDF5 format.
 
         Args:
@@ -308,7 +305,7 @@ class LudbDataset(HeartKitDataset):
             dst_path (str): Destination path to store HDF5 file
 
         Returns:
-            tuple[npt.ArrayLike, npt.ArrayLike, npt.ArrayLike]: data, segments, and fiducials
+            tuple[npt.NDArray, npt.NDArray, npt.NDArray]: data, segments, and fiducials
         """
         import wfdb  # pylint: disable=import-outside-toplevel
 
@@ -361,7 +358,7 @@ class LudbDataset(HeartKitDataset):
     def convert_dataset_zip_to_hdf5(
         self,
         zip_path: str,
-        patient_ids: npt.ArrayLike | None = None,
+        patient_ids: npt.NDArray | None = None,
         force: bool = False,
         num_workers: int | None = None,
     ):
@@ -369,7 +366,7 @@ class LudbDataset(HeartKitDataset):
 
         Args:
             zip_path (str): Zip path
-            patient_ids (npt.ArrayLike | None, optional): List of patient IDs to extract. Defaults to all.
+            patient_ids (npt.NDArray | None, optional): List of patient IDs to extract. Defaults to all.
             force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
             num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
         """

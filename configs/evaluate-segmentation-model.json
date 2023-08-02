@@ -1,9 +1,13 @@
 {
     "job_dir": "./results/segmentation",
     "ds_path": "./datasets",
-    "sampling_rate": 250,
-    "frame_size": 624,
-    "samples_per_patient": 200,
-    "test_size": 4000,
-    "model_file": "./results/segmentation/model.tf"
+    "sampling_rate": 200,
+    "frame_size": 512,
+    "samples_per_patient": 100,
+    "test_size": 10000,
+    "num_pts": 800,
+    "use_logits": false,
+    "datasets": ["synthetic", "ludb", "qtdb"],
+    "model_file": "./results/segmentation/model.tf",
+    "model_file_rmt": "wandb://ambiq/model-registry/heartkit-segmentation:v1"
 }

@@ -90,7 +90,7 @@ def env_flag(env_var: str, default: bool = False) -> bool:
       These are the truthy values:
           - 1
           - true, yes, on
-    - When the variable is set to the anything else, returns False.
+    - When the variable is set to anything else, returns False.
        Example falsy values:
           - 0
           - no

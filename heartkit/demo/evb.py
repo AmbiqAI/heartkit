@@ -1,7 +1,7 @@
 import ctypes
 import threading
 import time
-from enum import Enum, IntEnum
+from enum import IntEnum, StrEnum
 from typing import Generator
 
 import erpc
@@ -29,7 +29,7 @@ class RpcResponse(IntEnum):
     FAILURE = 1
 
 
-class RpcBlockCommands(str, Enum):
+class RpcBlockCommands(StrEnum):
     """RPC EVB block commands"""
 
     SEND_SAMPLES = "SEND_SAMPLES"

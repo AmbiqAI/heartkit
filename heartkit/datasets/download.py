@@ -3,6 +3,7 @@ import os
 from ..defines import HeartDownloadParams
 from .icentia11k import IcentiaDataset
 from .ludb import LudbDataset
+from .ptbxl import PtbxlDataset
 from .qtdb import QtdbDataset
 
 
@@ -28,6 +29,12 @@ def download_datasets(params: HeartDownloadParams):
 
     if "qtdb" in params.datasets:
         QtdbDataset(str(params.ds_path)).download(
+            num_workers=params.data_parallelism,
+            force=params.force,
+        )
+
+    if "ptbxl" in params.datasets:
+        PtbxlDataset(str(params.ds_path)).download(
             num_workers=params.data_parallelism,
             force=params.force,
         )

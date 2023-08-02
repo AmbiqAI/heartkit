@@ -20,4 +20,4 @@ The arrhythmia head is used to detect the presence of Atrial Fibrillation (AFIB)
 
 ## Beat Head
 
-The beat head is used to extract individual beats and classify them as either normal, premature/ectopic atrial contraction (PAC), or premature/ectopic ventricular contraction (PVC). In addition to the target beat, the surrounding beats are also fed into the network as context. The “neighboring” beats are determined based on the average RR interval and not the actual R peak. The beat head also utilizes a 1-D CNN built using MBConv style blocks.
+The beat head is used to extract individual beats and classify them as either normal, premature/ectopic atrial contraction (PAC), premature/ectopic ventricular contraction (PVC), or noise. In addition to the target beat, the surrounding beats are also fed into the network as context. The “neighboring” beats are determined based on the average RR interval and not the actual R peak. The beat head also utilizes a 1-D CNN built using MBConv style blocks.

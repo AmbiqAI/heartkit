@@ -11,24 +11,39 @@
 #ifndef __HK_CONSTANTS_H
 #define __HK_CONSTANTS_H
 
-#define SENSOR_RATE (400)
-#define SAMPLE_RATE (250)
+// Sensor block
+#define I2C_IOM (1)
+#define CAPTURE_SECS (10)
+#define SENSOR_RATE (200)
+#define SAMPLE_RATE (200)
 #define MAX86150_ADDR (0x5E)
+#define SENSOR_LEN (CAPTURE_SECS * SENSOR_RATE)
 
-#define ARRHTYHMIA_ENABLE
-#define SEGMENTATION_ENABLE
-#define BEAT_ENABLE
+// Preprocess block
+#define ECG_SOS_LEN (3)
+#define QRS_SOS_LEN (3)
+
+// Model block
+#define ARRHTYHMIA_ENABLE 1
+#define ARR_MODEL_SIZE_KB (65)
+#define ARR_FRAME_LEN (800)
+#define ARR_THRESHOLD (0.75)
+
+#define SEGMENTATION_ENABLE 1
+#define SEG_MODEL_SIZE_KB (65)
+#define SEG_FRAME_LEN (512)
+#define SEG_OVERLAP_LEN (20)
+#define SEG_STEP_SIZE (SEG_FRAME_LEN - 2 * SEG_OVERLAP_LEN)
+
+#define BEAT_ENABLE 1
+#define BEAT_MODEL_SIZE_KB (60)
+#define BEAT_FRAME_LEN (160)
+#define BEAT_THRESHOLD (0.50)
 
 #define DISPLAY_LEN_USEC (2000000)
 
-#define HK_SENSOR_LEN (10 * SENSOR_RATE)
-#define HK_DATA_LEN (10 * SAMPLE_RATE)
-#define HK_PEAK_LEN (120)
-#define HK_ARR_LEN (1000)
-#define HK_BEAT_LEN (200)
-#define HK_SEG_LEN (624)
-#define HK_SEG_OLP (25)
-#define HK_SEG_STEP (HK_SEG_LEN - 2 * HK_SEG_OLP)
+#define HK_DATA_LEN (CAPTURE_SECS * SAMPLE_RATE)
+#define HK_PEAK_LEN (10 * CAPTURE_SECS)
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))

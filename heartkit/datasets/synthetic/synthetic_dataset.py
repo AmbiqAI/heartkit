@@ -31,6 +31,11 @@ class SyntheticDataset(HeartKitDataset):
         self._num_pts = num_pts
 
     @property
+    def cachable(self) -> bool:
+        """If dataset supports file caching."""
+        return False
+
+    @property
     def sampling_rate(self) -> int:
         """Sampling rate in Hz"""
         return self.target_rate
@@ -46,28 +51,28 @@ class SyntheticDataset(HeartKitDataset):
         return 1
 
     @property
-    def patient_ids(self) -> npt.ArrayLike:
+    def patient_ids(self) -> npt.NDArray:
         """Get dataset patient IDs
 
         Returns:
-            npt.ArrayLike: patient IDs
+            npt.NDArray: patient IDs
         """
         return np.arange(0, self._num_pts)
 
-    def get_train_patient_ids(self) -> npt.ArrayLike:
+    def get_train_patient_ids(self) -> npt.NDArray:
         """Get dataset training patient IDs
 
         Returns:
-            npt.ArrayLike: patient IDs
+            npt.NDArray: patient IDs
         """
         numel = int(0.80 * self._num_pts)
         return self.patient_ids[:numel]
 
-    def get_test_patient_ids(self) -> npt.ArrayLike:
+    def get_test_patient_ids(self) -> npt.NDArray:
         """Get dataset patient IDs reserved for testing only
 
         Returns:
-            npt.ArrayLike: patient IDs
+            npt.NDArray: patient IDs
         """
         numel = int(0.80 * self._num_pts)
         return self.patient_ids[numel:]
@@ -117,7 +122,7 @@ class SyntheticDataset(HeartKitDataset):
             EcgPresets.random_morphology,
             EcgPresets.high_take_off,
         )
-        preset_weights = (20, 1, 1, 1, 1, 1, 1)
+        preset_weights = (94, 1, 1, 1, 1, 1, 1)
 
         for _ in patient_generator:
             _, syn_ecg, _, _, _ = generate_nsr(
@@ -125,7 +130,7 @@ class SyntheticDataset(HeartKitDataset):
                 signal_frequency=self.sampling_rate,
                 rate=np.random.uniform(40, 90),
                 preset=random.choices(presets, preset_weights, k=1)[0].value,
-                noise_multiplier=np.random.uniform(0.5, 0.9),
+                noise_multiplier=np.random.uniform(0.2, 0.4),
                 impedance=np.random.uniform(0.75, 1.1),
                 p_multiplier=np.random.uniform(0.75, 1.1),
                 t_multiplier=np.random.uniform(0.75, 1.1),
@@ -147,7 +152,7 @@ class SyntheticDataset(HeartKitDataset):
                 x = (
                     syn_ecg[lead_idx, frame_start:frame_end]
                     .astype(np.float32)
-                    .reshape((self.frame_size, 1))
+                    .reshape((self.frame_size,))
                 )
                 yield x
             # END FOR
@@ -179,7 +184,7 @@ class SyntheticDataset(HeartKitDataset):
             EcgPresets.random_morphology,
             EcgPresets.high_take_off,
         )
-        preset_weights = (20, 1, 1, 1, 1, 1, 1)
+        preset_weights = (94, 1, 1, 1, 1, 1, 1)
 
         for _ in patient_generator:
             _, syn_ecg, syn_segs_t, _, _ = generate_nsr(
@@ -187,14 +192,14 @@ class SyntheticDataset(HeartKitDataset):
                 signal_frequency=self.sampling_rate,
                 rate=np.random.uniform(40, 90),
                 preset=random.choices(presets, preset_weights, k=1)[0].value,
-                noise_multiplier=np.random.uniform(0.5, 0.9),
+                noise_multiplier=np.random.uniform(0.2, 0.4),
                 impedance=np.random.uniform(0.75, 1.1),
                 p_multiplier=np.random.uniform(0.75, 1.1),
                 t_multiplier=np.random.uniform(0.75, 1.1),
                 duration=max(
-                    5,
+                    10,
                     (self.frame_size / self.sampling_rate)
-                    * (samples_per_patient / num_leads / 10),
+                    * (samples_per_patient / num_leads),
                 ),
                 voltage_factor=np.random.uniform(275, 325),
             )
@@ -212,8 +217,32 @@ class SyntheticDataset(HeartKitDataset):
                 syn_segs[
                     i, np.where((syn_segs_t[i] == SyntheticSegments.t_wave))[0]
                 ] = HeartSegment.twave
+            # END FOR
 
-            for _ in range(samples_per_patient):
+            # # BELOW NEW
+            # start_offset = int(0.55 * self.frame_size)
+            # stop_offset = int(syn_ecg.shape[1] - 0.55 * self.frame_size)
+            # rfids = np.vstack(
+            #     np.where((syn_fids_t == SyntheticFiducials.r_peak) | (syn_fids_t == SyntheticFiducials.rpr_peak))
+            # ).T
+            # rfids = rfids[(rfids[:, 1] > start_offset) & (rfids[:, 1] < stop_offset)]
+            # if rfids.shape[0] <= 2:
+            #     continue
+            # np.random.shuffle(rfids)
+            # for i in range(min(samples_per_patient, rfids.shape[0])):
+            #     lead_idx = rfids[i, 0]
+            #     frame_start = rfids[i, 1] - int(random.uniform(0.45, 0.55) * self.frame_size)
+            #     frame_end = frame_start + self.frame_size
+            #     if frame_end - frame_start < self.frame_size:
+            #         print("x")
+            #         continue
+            #     x = syn_ecg[lead_idx, frame_start:frame_end].astype(np.float32).reshape((self.frame_size,))
+            #     y = syn_segs[lead_idx, frame_start:frame_end].astype(np.int32)
+            #     yield x, y
+            # # END FOR
+            # # ABOVE NEW
+
+            for i in range(samples_per_patient):
                 # Randomly pick an ECG lead and frame
                 lead_idx = np.random.randint(syn_ecg.shape[0])
                 frame_start = np.random.randint(
@@ -223,7 +252,7 @@ class SyntheticDataset(HeartKitDataset):
                 x = (
                     syn_ecg[lead_idx, frame_start:frame_end]
                     .astype(np.float32)
-                    .reshape((self.frame_size, 1))
+                    .reshape((self.frame_size,))
                 )
                 y = syn_segs[lead_idx, frame_start:frame_end].astype(np.int32)
                 yield x, y
@@ -232,7 +261,7 @@ class SyntheticDataset(HeartKitDataset):
 
     def uniform_patient_generator(
         self,
-        patient_ids: npt.ArrayLike,
+        patient_ids: npt.NDArray,
         repeat: bool = True,
         shuffle: bool = True,
     ) -> PatientGenerator:
@@ -268,25 +297,3 @@ class SyntheticDataset(HeartKitDataset):
             force (bool, optional): Force redownload. Defaults to False.
         """
         # Nothing to do
-
-    def load_train_datasets(
-        self,
-        train_patients: float | None = None,
-        val_patients: float | None = None,
-        train_pt_samples: int | list[int] | None = None,
-        val_pt_samples: int | list[int] | None = None,
-        val_size: int | None = None,
-        val_file: str | None = None,
-        preprocess: bool = True,
-        num_workers: int = 1,
-    ):
-        return super().load_train_datasets(
-            train_patients,
-            val_patients,
-            train_pt_samples,
-            val_pt_samples,
-            val_size,
-            None,  # Dont cache
-            preprocess,
-            num_workers,
-        )

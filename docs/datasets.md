@@ -1,6 +1,6 @@
 # Datasets
 
-Several datasets are readily available online that are suitable for training various heart-related models. The following datasets are ones either used or plan to use. For _arrhythmia_ and _beat classification_, [Icentia11k](#icentia11k-dataset) dataset is used as it contains the largest number of patients in a highly ambulatory setting- users wearing a 1-lead chest band for up to two weeks. For segmentation, synthetic and [LUDB](#ludb-dataset) datasets are being utilized. Please make sure to review each dataset's license for terms and limitations.
+Several datasets are readily available online that are suitable for training various heart-related models. The following datasets are ones either used or plan to use. For _arrhythmia_ and _beat classification_, [Icentia11k](#icentia11k-dataset) dataset is used as it contains the largest number of patients in a highly ambulatory setting- users wearing a 1-lead chest band for up to two weeks. For segmentation, syntheticl, [LUDB](#ludb-dataset), and [QTDB](#qt-dataset) datasets are being utilized. Please make sure to review each dataset's license for terms and limitations.
 
 ---
 

@@ -1,9 +1,9 @@
-from enum import Enum, IntEnum
+from enum import IntEnum, StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class EcgPresets(str, Enum):
+class EcgPresets(StrEnum):
     """ECG synthetic presets"""
 
     SR = "SR"

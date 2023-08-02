@@ -1,13 +1,20 @@
 import os
 import tempfile
-from enum import Enum, IntEnum
+from enum import IntEnum, StrEnum
 from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, Extra, Field
 
 
-class HeartTask(str, Enum):
+class AugmentationParams(BaseModel, extra=Extra.allow):
+    """Augmentation parameters"""
+
+    name: str
+    args: dict[str, tuple[float | int, float | int]]
+
+
+class HeartTask(StrEnum):
     """Heart task"""
 
     arrhythmia = "arrhythmia"
@@ -16,7 +23,7 @@ class HeartTask(str, Enum):
     segmentation = "segmentation"
 
 
-class HeartKitMode(str, Enum):
+class HeartKitMode(StrEnum):
     """HeartKit Mode"""
 
     download = "download"
@@ -27,8 +34,8 @@ class HeartKitMode(str, Enum):
     demo = "demo"
 
 
-ArchitectureType = Literal["resnet", "efficientnet", "unet"]
-DatasetTypes = Literal["icentia11k", "ludb", "qtdb", "synthetic"]
+ArchitectureType = Literal["resnet", "efficientnet", "unet", "multiresnet"]
+DatasetTypes = Literal["icentia11k", "ludb", "qtdb", "synthetic", "ptbxl"]
 
 
 class HeartRhythm(IntEnum):
@@ -77,7 +84,7 @@ class HeartSegment(IntEnum):
     # uwave = 4  # Not used
 
 
-class HeartBeatName(str, Enum):
+class HeartBeatName(StrEnum):
     """Heart beat label names"""
 
     normal = "normal"
@@ -86,7 +93,7 @@ class HeartBeatName(str, Enum):
     noise = "noise"
 
 
-class HeartRhythmName(str, Enum):
+class HeartRhythmName(StrEnum):
     """Heart rhythm label names"""
 
     normal = "normal"
@@ -95,7 +102,7 @@ class HeartRhythmName(str, Enum):
     noise = "noise"
 
 
-class HeartRateName(str, Enum):
+class HeartRateName(StrEnum):
     """Heart rate label names"""
 
     normal = "normal"
@@ -104,7 +111,7 @@ class HeartRateName(str, Enum):
     noise = "noise"
 
 
-class HeartSegmentName(str, Enum):
+class HeartSegmentName(StrEnum):
     """Heart segment names"""
 
     normal = "normal"
@@ -179,6 +186,9 @@ class HeartTrainParams(BaseModel, extra=Extra.allow):
     val_metric: Literal["loss", "acc", "f1"] = Field(
         "loss", description="Performance metric"
     )
+    augmentations: list[AugmentationParams] = Field(
+        default_factory=list, description="Augmentations"
+    )
     # Extra arguments
     seed: int | None = Field(None, description="Random state seed")
 
@@ -224,9 +234,13 @@ class HeartExportParams(BaseModel, extra=Extra.allow):
     samples_per_patient: int | list[int] = Field(
         100, description="# test samples per patient"
     )
+    test_patients: float | None = Field(
+        None, description="# or proportion of patients for testing"
+    )
     test_size: int = Field(100_000, description="# samples for testing")
     model_file: str | None = Field(None, description="Path to model file")
     threshold: float | None = Field(None, description="Model output threshold")
+    use_logits: bool = Field(True, description="Use logits output or softmax")
     quantization: bool | None = Field(
         None, description="Enable post training quantization (PQT)"
     )

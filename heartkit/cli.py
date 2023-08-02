@@ -59,7 +59,7 @@ def run(inputs: list[str] | None = None):
     )
     args = parser.parse_typed_args(inputs)
 
-    logger.info(f"#STARTED {args.mode.value} model")
+    logger.info(f"#STARTED {args.mode} model")
 
     if args.mode == HeartKitMode.download:
         download_datasets(parse_content(HeartDownloadParams, args.config))
@@ -99,7 +99,7 @@ def run(inputs: list[str] | None = None):
 
     # END MATCH
 
-    logger.info(f"#FINISHED {args.mode.value} model")
+    logger.info(f"#FINISHED {args.mode} model")
 
 
 if __name__ == "__main__":

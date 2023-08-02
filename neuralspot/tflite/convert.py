@@ -98,7 +98,7 @@ def xxd_c_dump(
 def convert_tflite(
     model: tf.keras.Model,
     quantize: bool = False,
-    test_x: npt.ArrayLike | None = None,
+    test_x: npt.NDArray | None = None,
     input_type: tf.DType | None = None,
     output_type: tf.DType | None = None,
 ) -> bytes:
@@ -107,7 +107,7 @@ def convert_tflite(
     Args:
         model (tf.keras.Model): TF model
         quantize (bool, optional): Enable PTQ. Defaults to False.
-        test_x (npt.ArrayLike | None, optional): Enables full integer PTQ. Defaults to None.
+        test_x (npt.NDArray | None, optional): Enables full integer PTQ. Defaults to None.
         input_type (tf.DType | None): Input type data format. Defaults to None.
         output_type (tf.DType | None): Output type data format. Defaults to None.
 
@@ -138,20 +138,20 @@ def convert_tflite(
 
 def predict_tflite(
     model_content: bytes,
-    test_x: npt.ArrayLike,
+    test_x: npt.NDArray,
     input_name: str | None = None,
     output_name: str | None = None,
-) -> npt.ArrayLike:
+) -> npt.NDArray:
     """Perform prediction using tflite model content
 
     Args:
         model_content (bytes): TFLite model content
-        test_x (npt.ArrayLike): Input dataset w/ no batch dimension
+        test_x (npt.NDArray): Input dataset w/ no batch dimension
         input_name (str | None, optional): Input layer name. Defaults to None.
         output_name (str | None, optional): Output layer name. Defaults to None.
 
     Returns:
-        npt.ArrayLike: Model outputs
+        npt.NDArray: Model outputs
     """
     # Prepare the test data
     inputs = test_x.copy()
@@ -199,19 +199,19 @@ def predict_tflite(
 def evaluate_tflite(
     model: tf.keras.Model,
     model_content: bytes,
-    test_x: npt.ArrayLike,
-    y_true: npt.ArrayLike,
-) -> npt.ArrayLike:
+    test_x: npt.NDArray,
+    y_true: npt.NDArray,
+) -> npt.NDArray:
     """Get loss values of TFLite model for given dataset
 
     Args:
         model (tf.keras.Model): TF model
         model_content (bytes): TFLite model
-        test_x (npt.ArrayLike): Input samples
-        y_true (npt.ArrayLike): Input labels
+        test_x (npt.NDArray): Input samples
+        y_true (npt.NDArray): Input labels
 
     Returns:
-        npt.ArrayLike: Loss values
+        npt.NDArray: Loss values
     """
     y_pred = predict_tflite(model_content, test_x=test_x)
     loss_function = tf.keras.losses.get(model.loss)

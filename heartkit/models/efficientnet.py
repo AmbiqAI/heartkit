@@ -1,23 +1,9 @@
 """ EfficientNet https://arxiv.org/abs/2104.00298"""
-from typing import Callable
-
 import tensorflow as tf
-from keras.engine.keras_tensor import KerasTensor
 from pydantic import BaseModel, Field
 
 from .blocks import batch_norm, conv2d, make_divisible, mbconv_block, relu6
-
-
-class MBConvParams(BaseModel):
-    """MBConv parameters"""
-
-    filters: int = Field(..., description="# filters")
-    depth: int = Field(default=1, description="Layer depth")
-    ex_ratio: float = Field(default=1, description="Expansion ratio")
-    kernel_size: int | tuple[int, int] = Field(default=3, description="Kernel size")
-    strides: int | tuple[int, int] = Field(default=1, description="Stride size")
-    se_ratio: float = Field(default=8, description="Squeeze Excite ratio")
-    droprate: float = Field(default=0, description="Drop rate")
+from .defines import KerasLayer, MBConvParams
 
 
 class EfficientNetParams(BaseModel):
@@ -40,7 +26,7 @@ class EfficientNetParams(BaseModel):
 
 def efficientnet_core(
     blocks: list[MBConvParams], drop_connect_rate: float = 0
-) -> Callable[[KerasTensor], KerasTensor]:
+) -> KerasLayer:
     """EfficientNet core
 
     Args:
@@ -48,10 +34,10 @@ def efficientnet_core(
         drop_connect_rate (float, optional): Drop connect rate. Defaults to 0.
 
     Returns:
-        Callable[[KerasTensor], KerasTensor]: Core
+        KerasLayer: Core
     """
 
-    def layer(x: KerasTensor) -> KerasTensor:
+    def layer(x: tf.Tensor) -> tf.Tensor:
         global_block_id = 0
         total_blocks = sum((b.depth for b in blocks))
         for i, block in enumerate(blocks):
@@ -77,14 +63,14 @@ def efficientnet_core(
 
 
 def EfficientNetV2(
-    x: KerasTensor,
+    x: tf.Tensor,
     params: EfficientNetParams,
     num_classes: int | None = None,
 ):
     """Create EfficientNet V2 TF functional model
 
     Args:
-        x (KerasTensor): Input tensor
+        x (tf.Tensor): Input tensor
         params (EfficientNetParams): Model parameters.
         num_classes (int, optional): # classes.
 

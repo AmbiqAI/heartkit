@@ -2,8 +2,8 @@ import os
 import shutil
 
 import numpy as np
+import numpy.typing as npt
 import tensorflow as tf
-import tensorflow_addons as tfa
 import wandb
 from rich.console import Console
 from wandb.keras import WandbCallback
@@ -12,8 +12,14 @@ from neuralspot.tflite.convert import convert_tflite, predict_tflite, xxd_c_dump
 from neuralspot.tflite.metrics import get_flops
 from neuralspot.tflite.model import get_strategy, load_model
 
-from .datasets import HeartKitDataset, LudbDataset, SyntheticDataset
-from .datasets.augmentation import lead_noise
+from . import signal
+from .datasets import (
+    HeartKitDataset,
+    LudbDataset,
+    QtdbDataset,
+    SyntheticDataset,
+    augment_pipeline,
+)
 from .defines import (
     HeartExportParams,
     HeartSegment,
@@ -21,44 +27,40 @@ from .defines import (
     HeartTestParams,
     HeartTrainParams,
 )
-from .metrics import compute_iou
-from .models.optimizers import Adam
-from .tasks import create_task_model, get_num_classes, get_task_shape
+from .metrics import compute_iou, confusion_matrix_plot
+from .tasks import create_task_model, get_class_names, get_num_classes, get_task_shape
 from .utils import env_flag, set_random_seed, setup_logger
 
 console = Console()
 logger = setup_logger(__name__)
 
 
-def train_model(params: HeartTrainParams):
-    """Train segmentation model.
+def prepare(x: npt.NDArray, sample_rate: float) -> npt.NDArray:
+    """Prepare dataset."""
+    x = signal.filter_signal(
+        x,
+        lowcut=0.5,
+        highcut=30,
+        order=3,
+        sample_rate=sample_rate,
+        axis=0,
+        forward_backward=False,
+    )
+    x = signal.normalize_signal(x, eps=0.1, axis=None)
+    return x
 
+
+def load_train_datasets(
+    params: HeartTrainParams,
+) -> tuple[tf.data.Dataset, tf.data.Dataset]:
+    """Load segmentation train datasets.
     Args:
-        params (HeartTrainParams): Training parameters
+        params (HeartTrainParams): Train params
+    Returns:
+        tuple[tf.data.Dataset, tf.data.Dataset]: Train and validation datasets
     """
     dataset_names: list[str] = getattr(params, "datasets", ["ludb"])
-    lr_rate: float = getattr(params, "lr_rate", 1e-4)
-    lr_cycles: int = getattr(params, "lr_cycles", 3)
-    lr_t_mul = 1.65 / (0.1 * lr_cycles * (lr_cycles - 1))
-    lr_m_mul = 0.4
     num_pts = getattr(params, "num_pts", 1000)
-
-    params.seed = set_random_seed(params.seed)
-    logger.info(f"Random seed {params.seed}")
-
-    os.makedirs(str(params.job_dir), exist_ok=True)
-    logger.info(f"Creating working directory in {params.job_dir}")
-    with open(str(params.job_dir / "train_config.json"), "w", encoding="utf-8") as fp:
-        fp.write(params.json(indent=2))
-
-    if env_flag("WANDB"):
-        wandb.init(
-            project=f"heartkit-{HeartTask.segmentation}",
-            entity="ambiq",
-            dir=str(params.job_dir),
-        )
-        wandb.config.update(params.dict())
-
     datasets: list[HeartKitDataset] = []
     if "synthetic" in dataset_names:
         datasets.append(
@@ -79,6 +81,24 @@ def train_model(params: HeartTrainParams):
                 target_rate=params.sampling_rate,
             )
         )
+    if "qtdb" in dataset_names:
+        datasets.append(
+            QtdbDataset(
+                str(params.ds_path),
+                task=HeartTask.segmentation,
+                frame_size=params.frame_size,
+                target_rate=params.sampling_rate,
+            )
+        )
+
+    def preprocess(x: npt.NDArray) -> npt.NDArray:
+        xx = x.copy().squeeze()
+        if params.augmentations:
+            xx = augment_pipeline(
+                xx, augmentations=params.augmentations, sample_rate=params.sampling_rate
+            )
+        xx = prepare(xx, sample_rate=params.sampling_rate)
+        return xx
 
     train_datasets = []
     val_datasets = []
@@ -91,9 +111,9 @@ def train_model(params: HeartTrainParams):
             val_pt_samples=params.val_samples_per_patient,
             val_file=params.val_file,
             val_size=params.val_size,
+            preprocess=preprocess,
             num_workers=params.data_parallelism,
         )
-
         train_datasets.append(train_ds)
         val_datasets.append(val_ds)
     # END FOR
@@ -103,20 +123,15 @@ def train_model(params: HeartTrainParams):
     train_ds = tf.data.Dataset.sample_from_datasets(train_datasets, weights=ds_weights)
     val_ds = tf.data.Dataset.sample_from_datasets(val_datasets, weights=ds_weights)
 
-    def augment(x, y):
-        x = lead_noise(x, scale=0.1)
-        return x, y
-
     # Shuffle and batch datasets for training
     train_ds = (
         train_ds.shuffle(
             buffer_size=params.buffer_size,
             reshuffle_each_iteration=True,
         )
-        .map(augment, num_parallel_calls=tf.data.AUTOTUNE)
         .batch(
             batch_size=params.batch_size,
-            drop_remainder=True,
+            drop_remainder=False,
             num_parallel_calls=tf.data.AUTOTUNE,
         )
         .prefetch(buffer_size=tf.data.AUTOTUNE)
@@ -126,15 +141,98 @@ def train_model(params: HeartTrainParams):
         drop_remainder=True,
         num_parallel_calls=tf.data.AUTOTUNE,
     )
-    steps_per_epoch = params.steps_per_epoch or 1000
+    return train_ds, val_ds
 
-    decay_steps = int(0.1 * steps_per_epoch * params.epochs)
-    lr_scheduler = tf.keras.optimizers.schedules.CosineDecayRestarts(
-        initial_learning_rate=lr_rate,
-        first_decay_steps=decay_steps,
-        t_mul=lr_t_mul,
-        m_mul=lr_m_mul,
-    )
+
+def load_test_datasets(
+    params: HeartTestParams | HeartExportParams,
+) -> tuple[npt.NDArray, npt.NDArray]:
+    """Load segmentation test dataset.
+    Args:
+        params (HeartTestParams|HeartExportParams): Test params
+    Returns:
+        tuple[npt.NDArray, npt.NDArray]: Test data and labels
+    """
+    dataset_names: list[str] = getattr(params, "datasets", ["ludb"])
+
+    def preprocess(x: npt.NDArray) -> npt.NDArray:
+        xx = x.copy().squeeze()
+        xx = prepare(xx, sample_rate=params.sampling_rate)
+        return xx
+
+    with console.status("[bold green] Loading test dataset..."):
+        datasets: list[HeartKitDataset] = []
+        if "synthetic" in dataset_names:
+            datasets.append(
+                SyntheticDataset(
+                    str(params.ds_path),
+                    task=HeartTask.segmentation,
+                    frame_size=params.frame_size,
+                    target_rate=params.sampling_rate,
+                    num_pts=getattr(params, "num_pts", 200),
+                )
+            )
+        if "ludb" in dataset_names:
+            datasets.append(
+                LudbDataset(
+                    str(params.ds_path),
+                    task=HeartTask.segmentation,
+                    frame_size=params.frame_size,
+                    target_rate=params.sampling_rate,
+                )
+            )
+        if "qtdb" in dataset_names:
+            datasets.append(
+                QtdbDataset(
+                    str(params.ds_path),
+                    task=HeartTask.segmentation,
+                    frame_size=params.frame_size,
+                    target_rate=params.sampling_rate,
+                )
+            )
+
+        test_datasets = [
+            ds.load_test_dataset(
+                test_pt_samples=params.samples_per_patient,
+                preprocess=preprocess,
+                num_workers=params.data_parallelism,
+            )
+            for ds in datasets
+        ]
+        ds_weights = np.array([len(ds.get_test_patient_ids()) for ds in datasets])
+        ds_weights = ds_weights / ds_weights.sum()
+
+        test_ds = tf.data.Dataset.sample_from_datasets(
+            test_datasets, weights=ds_weights
+        )
+        test_x, test_y = next(test_ds.batch(params.test_size).as_numpy_iterator())
+    # END WITH
+    return test_x, test_y
+
+
+def train_model(params: HeartTrainParams):
+    """Train segmentation model.
+
+    Args:
+        params (HeartTrainParams): Training parameters
+    """
+    params.seed = set_random_seed(params.seed)
+    logger.info(f"Random seed {params.seed}")
+
+    os.makedirs(str(params.job_dir), exist_ok=True)
+    logger.info(f"Creating working directory in {params.job_dir}")
+    with open(str(params.job_dir / "train_config.json"), "w", encoding="utf-8") as fp:
+        fp.write(params.json(indent=2))
+
+    if env_flag("WANDB"):
+        wandb.init(
+            project=f"heartkit-{HeartTask.segmentation}",
+            entity="ambiq",
+            dir=params.job_dir,
+        )
+        wandb.config.update(params.dict())
+
+    train_ds, val_ds = load_train_datasets(params)
 
     strategy = get_strategy()
     with strategy.scope():
@@ -147,15 +245,30 @@ def train_model(params: HeartTrainParams):
             name=params.model,
             params=params.model_params,
         )
-        # If fine-tune, freeze subset of model weights
+        # If fine-tune, freeze model encoder weights
         if bool(getattr(params, "finetune", False)):
             for layer in model.layers:
                 if layer.name.startswith("ENC"):
                     logger.info(f"Freezing {layer.name}")
                     layer.trainable = False
-        flops = get_flops(model, batch_size=1)
-        optimizer = Adam(lr_scheduler, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
-        loss_fn = tfa.losses.SigmoidFocalCrossEntropy(from_logits=True)
+        flops = get_flops(
+            model, batch_size=1, fpath=str(params.job_dir / "model_flops.log")
+        )
+
+        # Grab optional LR parameters
+        lr_rate: float = getattr(params, "lr_rate", 1e-4)
+        lr_cycles: int = getattr(params, "lr_cycles", 3)
+        steps_per_epoch = params.steps_per_epoch or 1000
+        scheduler = tf.keras.optimizers.schedules.CosineDecayRestarts(
+            initial_learning_rate=lr_rate,
+            first_decay_steps=int(0.1 * steps_per_epoch * params.epochs),
+            t_mul=1.65 / (0.1 * lr_cycles * (lr_cycles - 1)),
+            m_mul=0.4,
+        )
+        optimizer = tf.keras.optimizers.Adam(
+            scheduler, beta_1=0.9, beta_2=0.98, epsilon=1e-9
+        )
+        loss = tf.keras.losses.CategoricalFocalCrossentropy(from_logits=True)
         metrics = [
             tf.keras.metrics.CategoricalAccuracy(name="acc"),
             tf.keras.metrics.OneHotIoU(
@@ -164,10 +277,10 @@ def train_model(params: HeartTrainParams):
                 name="iou",
             ),
         ]
-        model.compile(optimizer=optimizer, loss=loss_fn, metrics=metrics)
+        model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
         model(inputs)
 
-        model.summary()
+        model.summary(print_fn=logger.info)
         logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
         if params.weights_file:
@@ -226,45 +339,42 @@ def evaluate_model(params: HeartTestParams):
     Args:
         params (HeartTestParams): Testing/evaluation parameters
     """
+
     params.seed = set_random_seed(params.seed)
     logger.info(f"Random seed {params.seed}")
-
-    with console.status("[bold green] Loading test dataset..."):
-        ds = SyntheticDataset(
-            str(params.ds_path),
-            task=HeartTask.segmentation,
-            frame_size=params.frame_size,
-            target_rate=params.sampling_rate,
-            num_pts=200,
-        )
-        test_ds = ds.load_test_dataset(
-            test_patients=params.test_patients,
-            test_pt_samples=params.samples_per_patient,
-            num_workers=params.data_parallelism,
-        )
-        test_x, test_y = next(test_ds.batch(params.test_size).as_numpy_iterator())
-    # END WITH
+    test_x, test_y = load_test_datasets(params)
 
     strategy = get_strategy()
     with strategy.scope():
         logger.info("Loading model")
         model = load_model(str(params.model_file))
-        flops = get_flops(model, batch_size=1)
+        flops = get_flops(
+            model, batch_size=1, fpath=str(params.job_dir / "model_flops.log")
+        )
 
-        model.summary()
+        model.summary(print_fn=logger.info)
         logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
         logger.info("Performing inference")
         y_true = np.argmax(test_y, axis=2)
         y_prob = tf.nn.softmax(model.predict(test_x)).numpy()
         y_pred = np.argmax(y_prob, axis=2)
-
-        # Summarize results
-        logger.info("Testing Results")
-        test_acc = np.sum(y_pred == y_true) / y_true.size
-        test_iou = compute_iou(y_true, y_pred)
-        logger.info(f"[TEST SET] ACC={test_acc:.2%}, IOU={test_iou:.2%}")
     # END WITH
+
+    # Summarize results
+    logger.info("Testing Results")
+    test_acc = np.sum(y_pred == y_true) / y_true.size
+    test_iou = compute_iou(y_true, y_pred, average="weighted")
+    logger.info(f"[TEST SET] ACC={test_acc:.2%}, IOU={test_iou:.2%}")
+    cm_path = str(params.job_dir / "confusion_matrix_test.png")
+    class_names = get_class_names(HeartTask.segmentation)
+    confusion_matrix_plot(
+        y_true.flatten(),
+        y_pred.flatten(),
+        labels=class_names,
+        save_path=cm_path,
+        normalize="true",
+    )
 
 
 def export_model(params: HeartExportParams):
@@ -281,28 +391,28 @@ def export_model(params: HeartExportParams):
     model = load_model(str(params.model_file))
     in_shape, _ = get_task_shape(HeartTask.segmentation, params.frame_size)
     inputs = tf.keras.layers.Input(in_shape, dtype=tf.float32, batch_size=1)
-    model(inputs)
+    outputs = model(inputs)
+    if not params.use_logits and not isinstance(
+        model.layers[-1], tf.keras.layers.Softmax
+    ):
+        outputs = tf.keras.layers.Softmax()(outputs)
+        model = tf.keras.Model(inputs, outputs, name=model.name)
+        outputs = model(inputs)
+    # END IF
+    flops = get_flops(
+        model, batch_size=1, fpath=str(params.job_dir / "model_flops.log")
+    )
+    model.summary(print_fn=logger.info)
 
-    # Load dataset
-    with console.status("[bold green] Loading test dataset..."):
-        ds = LudbDataset(
-            str(params.ds_path),
-            task=HeartTask.segmentation,
-            frame_size=params.frame_size,
-            target_rate=params.sampling_rate,
-        )
-        test_ds = ds.load_test_dataset(
-            test_pt_samples=params.samples_per_patient,
-            num_workers=params.data_parallelism,
-        )
-        test_x, test_y = next(test_ds.batch(params.test_size).as_numpy_iterator())
-    # END WITH
+    logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
+
+    test_x, _ = load_test_datasets(params)
 
     logger.info("Converting model to TFLite")
     tflite_model = convert_tflite(
         model,
         quantize=params.quantization,
-        test_x=test_x[:1000],
+        test_x=test_x,
         input_type=tf.int8 if params.quantization else None,
         output_type=tf.int8 if params.quantization else None,
     )
@@ -324,25 +434,15 @@ def export_model(params: HeartExportParams):
 
     # Verify TFLite results match TF results on example data
     logger.info("Validating model results")
-    y_true = np.argmax(test_y, axis=2)
-    y_prob_tf = tf.nn.softmax(model.predict(test_x)).numpy()
-    y_pred_tf = np.argmax(y_prob_tf, axis=2)
-    y_prob_tfl = tf.nn.softmax(
-        predict_tflite(model_content=tflite_model, test_x=test_x)
-    ).numpy()
-    y_pred_tfl = np.argmax(y_prob_tfl, axis=2)
-
-    tf_acc = np.sum(y_pred_tf == y_true) / y_true.size
-    tf_iou = compute_iou(y_true, y_pred_tf)
-    tfl_acc = np.sum(y_pred_tfl == y_true) / y_true.size
-    tfl_iou = compute_iou(y_true, y_pred_tfl)
-    logger.info(f"[TEST SET]  TF: ACC={tf_acc:.2%}, IOU={tf_iou:.2%}")
-    logger.info(f"[TEST SET] TFL: ACC={tfl_acc:.2%}, IOU={tfl_iou:.2%}")
+    y_pred_tf = np.argmax(model.predict(test_x), axis=2)
+    y_pred_tfl = np.argmax(
+        predict_tflite(model_content=tflite_model, test_x=test_x), axis=2
+    )
+    tfl_acc = np.sum(y_pred_tfl == y_pred_tf) / len(y_pred_tf)
 
     # Check accuracy hit
-    acc_diff = tf_acc - tfl_acc
-    if acc_diff > 0.5:
-        logger.warning(f"TFLite accuracy dropped by {100*acc_diff:0.2f}%")
+    if tfl_acc < 0.95:
+        logger.warning(f"TFLite accuracy dropped by {1-tfl_acc:0.2%}")
     else:
         logger.info("Validation passed")
 

@@ -8,17 +8,17 @@ import scipy.signal
 
 
 def preprocess_signal(
-    data: npt.ArrayLike, sample_rate: float, target_rate: float | None = None
+    data: npt.NDArray, sample_rate: float, target_rate: float | None = None
 ) -> npt.NDArray:
     """Pre-process signal
 
     Args:
-        data (npt.ArrayLike): Signal
+        data (npt.NDArray): Signal
         sample_rate (float): Sampling rate (Hz)
         target_rate (float): Target sampling rate (Hz)
 
     Returns:
-        npt.ArrayLike: Pre-processed signal
+        npt.NDArray: Pre-processed signal
     """
     axis = 0
     norm_en = True
@@ -49,7 +49,7 @@ def get_butter_bp_sos(
     highcut: float,
     sample_rate: float,
     order: int = 3,
-) -> npt.ArrayLike:
+) -> npt.NDArray:
     """Compute band-pass filter coefficients as SOS. This function caches.
 
     Args:
@@ -58,7 +58,7 @@ def get_butter_bp_sos(
         sample_rate (float): Sampling rate in Hz
         order (int, optional): Filter order. Defaults to 3.
     Returns:
-        npt.ArrayLike: SOS
+        npt.NDArray: SOS
     """
     nyq = 0.5 * sample_rate
     low = lowcut / nyq
@@ -95,24 +95,24 @@ def generate_arm_biquad_sos(
 
 
 def filter_signal(
-    data: npt.ArrayLike,
+    data: npt.NDArray,
     lowcut: float,
     highcut: float,
     sample_rate: float,
     order: int = 3,
     axis: int = 0,
-) -> npt.ArrayLike:
+) -> npt.NDArray:
     """Apply band-pass filter to signal using butterworth design and forward-backward cascaded filter
 
     Args:
-        data (npt.ArrayLike): Signal
+        data (npt.NDArray): Signal
         lowcut (float): Lower cutoff in Hz
         highcut (float): Upper cutoff in Hz
         sample_rate (float): Sampling rate in Hz
         order (int, optional): Filter order. Defaults to 3.
 
     Returns:
-        npt.ArrayLike: Filtered signal
+        npt.NDArray: Filtered signal
     """
     sos = get_butter_bp_sos(
         lowcut=lowcut, highcut=highcut, sample_rate=sample_rate, order=order
@@ -121,50 +121,51 @@ def filter_signal(
 
 
 def resample_signal(
-    data: npt.ArrayLike, sample_rate: float, target_rate: float, axis: int = 0
-) -> npt.ArrayLike:
+    data: npt.NDArray, sample_rate: float, target_rate: float, axis: int = 0
+) -> npt.NDArray:
     """Resample signal using scipy FFT-based resample routine.
 
     Args:
-        data (npt.ArrayLike): Signal
+        data (npt.NDArray): Signal
         sample_rate (float): Signal sampling rate
         target_rate (float): Target sampling rate
         axis (int, optional): Axis to resample along. Defaults to 0.
 
     Returns:
-        npt.ArrayLike: Resampled signal
+        npt.NDArray: Resampled signal
     """
-    desired_length = int(np.round(data.shape[axis] * target_rate / sample_rate))
+    ratio = target_rate / sample_rate
+    desired_length = int(np.round(data.shape[axis] * ratio))
     return scipy.signal.resample(data, desired_length, axis=axis)
 
 
 def normalize_signal(
-    data: npt.ArrayLike, eps: float = 1e-3, axis: int = 0
-) -> npt.ArrayLike:
+    data: npt.NDArray, eps: float = 1e-3, axis: int = 0
+) -> npt.NDArray:
     """Normalize signal about its mean and std.
 
     Args:
-        data (npt.ArrayLike): Signal
+        data (npt.NDArray): Signal
         eps (float, optional): Epsilon added to st. dev. Defaults to 1e-3.
         axis (int, optional): Axis to normalize along. Defaults to 0.
 
     Returns:
-        npt.ArrayLike: Normalized signal
+        npt.NDArray: Normalized signal
     """
     mu = np.nanmean(data, axis=axis)
     std = np.nanstd(data, axis=axis) + eps
     return (data - mu) / std
 
 
-def rolling_standardize(x: npt.ArrayLike, win_len: int) -> npt.ArrayLike:
+def rolling_standardize(x: npt.NDArray, win_len: int) -> npt.NDArray:
     """Performs rolling standardization
 
     Args:
-        x (npt.ArrayLike): Data
+        x (npt.NDArray): Data
         win_len (int): Window length
 
     Returns:
-        npt.ArrayLike: Standardized data
+        npt.NDArray: Standardized data
     """
     x_roll = np.lib.stride_tricks.sliding_window_view(x, win_len)
     x_roll_std = np.std(x_roll, axis=-1)
@@ -201,17 +202,17 @@ def running_mean_std(
 
 
 def pad_signal(
-    x: npt.ArrayLike,
+    x: npt.NDArray,
     max_len: int | None = None,
     padding: Literal["pre", "post"] = "pre",
-) -> npt.ArrayLike:
+) -> npt.NDArray:
     """Pads signal shorter than `max_len` and trims those longer than `max_len`.
     Args:
-        x (npt.ArrayLike): Array of sequences.
+        x (npt.NDArray): Array of sequences.
         max_len (int | None, optional): Maximum length of sequence. Defaults to longest.
         padding (Literal["pre", "post"]): Before or after sequence. Defaults to pre.
     Returns:
-        npt.ArrayLike Array of padded sequences.
+        npt.NDArray Array of padded sequences.
     """
     if max_len is None:
         max_len = max(map(len, x))

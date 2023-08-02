@@ -1,7 +1,6 @@
 """ UNet """
 
 import tensorflow as tf
-from keras.engine.keras_tensor import KerasTensor
 from pydantic import BaseModel, Field
 
 from .blocks import batch_norm, conv2d, relu6
@@ -32,14 +31,14 @@ class UNetParams(BaseModel):
 
 
 def UNet(
-    x: KerasTensor,
+    x: tf.Tensor,
     params: UNetParams,
     num_classes: int,
 ) -> tf.keras.Model:
     """Create UNet TF functional model
 
     Args:
-        x (KerasTensor): Input tensor
+        x (tf.Tensor): Input tensor
         params (ResNetParams): Model parameters.
         num_classes (int, optional): # classes.
 
@@ -50,65 +49,85 @@ def UNet(
     skip_layers: list[tf.keras.layers.Layer | None] = []
     for i, block in enumerate(params.blocks):
         name = f"ENC{i+1}"
-        if i == 0:
-            y = conv2d(
-                block.filters, block.kernel, block.strides, name=f"{name}.CONV1"
-            )(x)
-            y = batch_norm(name=f"{name}.BN1")(y)
-            y = relu6(name=f"{name}.ACT1")(y)
-        else:
-            ym = tf.keras.layers.SeparableConv2D(
-                block.filters, block.kernel, padding="same", name=f"{name}.CONV1"
-            )(y)
-            ym = batch_norm(name=f"{name}.BN1")(ym)
-            ym = relu6(name=f"{name}.ACT1")(ym)
 
+        ym = y
+        for d in range(block.depth):
             ym = tf.keras.layers.SeparableConv2D(
-                block.filters, block.kernel, padding="same", name=f"{name}.CONV2"
-            )(ym)
-            ym = batch_norm(name=f"{name}.BN2")(ym)
-            ym = relu6(name=f"{name}.ACT2")(ym)
-            ym = tf.keras.layers.MaxPooling2D(
-                block.pool, strides=block.strides, padding="same", name=f"{name}.POOL1"
-            )(ym)
-
-            # Project residual
-            yr = conv2d(
                 block.filters,
-                (1, 1),
-                block.strides,
+                kernel_size=block.kernel,
+                strides=(1, 1),
                 padding="same",
-                name=f"{name}.CONV3",
-            )(y)
-            y = tf.keras.layers.add([ym, yr], name=f"{name}.ADD1")
-        # END IF
+                depthwise_initializer="he_normal",
+                pointwise_initializer="he_normal",
+                name=f"{name}.CONV{d+1}",
+            )(ym)
+            ym = batch_norm(name=f"{name}.BN{d+1}")(ym)
+            ym = relu6(name=f"{name}.ACT{d+1}")(ym)
+        # END FOR
+
+        # Project residual
+        yr = conv2d(
+            block.filters,
+            kernel_size=(1, 1),
+            strides=(1, 1),
+            padding="same",
+            name=f"{name}.CONV_RES",
+        )(y)
+        y = tf.keras.layers.add([ym, yr], name=f"{name}.ADD1")
+
         skip_layers.append(y if block.skip else None)
+
+        y = tf.keras.layers.MaxPooling2D(
+            block.pool, strides=block.strides, padding="same", name=f"{name}.POOL1"
+        )(y)
     # END FOR
 
     for i, block in enumerate(reversed(params.blocks)):
         name = f"DEC{i+1}"
-        ym = tf.keras.layers.Conv2DTranspose(
-            block.filters, block.kernel, padding="same", name=f"{name}.CONV1"
+
+        # Expand inputs via transpose w/ stride
+        y = tf.keras.layers.Conv2DTranspose(
+            block.filters,
+            kernel_size=block.kernel,
+            strides=block.strides,
+            padding="same",
+            kernel_initializer="he_normal",
+            name=f"{name}.CONV1",
         )(y)
-        ym = batch_norm(name=f"{name}.BN1")(ym)
-        ym = relu6(name=f"{name}.ACT1")(ym)
+        y = batch_norm(name=f"{name}.BN1")(y)
+        y = relu6(name=f"{name}.ACT1")(y)
+
+        # Add skip connection
         skip_layer = skip_layers.pop()
         if skip_layer is not None:
-            ym = tf.keras.layers.concatenate(
-                [ym, skip_layer], name=f"{name}.CAT1"
+            y = tf.keras.layers.concatenate(
+                [y, skip_layer], name=f"{name}.CAT1"
             )  # Can add or concatenate
 
-        ym = tf.keras.layers.Conv2DTranspose(
-            block.filters, block.kernel, padding="same", name=f"{name}.CONV2"
-        )(ym)
-        ym = batch_norm(name=f"{name}.BN2")(ym)
-        ym = relu6(name=f"{name}.ACT2")(ym)
+            # Use 1x1 conv to reduce filters
+            y = conv2d(
+                block.filters,
+                kernel_size=(1, 1),
+                padding="same",
+                name=f"{name}.CONV2",
+            )(y)
+            y = batch_norm(name=f"{name}.BN2")(y)
+            y = relu6(name=f"{name}.ACT2")(y)
 
-        ym = tf.keras.layers.UpSampling2D(block.strides, name=f"{name}.UP1")(ym)
+        ym = tf.keras.layers.SeparableConv2D(
+            block.filters,
+            kernel_size=block.kernel,
+            strides=(1, 1),
+            padding="same",
+            depthwise_initializer="he_normal",
+            pointwise_initializer="he_normal",
+            name=f"{name}.CONV3",
+        )(y)
+        ym = batch_norm(name=f"{name}.BN3")(ym)
+        ym = relu6(name=f"{name}.ACT3")(ym)
 
         # Project residual
-        yr = tf.keras.layers.UpSampling2D(block.strides, name=f"{name}.UP2")(y)
-        yr = conv2d(block.filters, (1, 1), name=f"{name}.CONV3")(yr)
+        yr = conv2d(block.filters, (1, 1), name=f"{name}.CONV_RES")(y)
         y = tf.keras.layers.add([ym, yr], name=f"{name}.ADD1")  # Add back residual
     # END FOR
 

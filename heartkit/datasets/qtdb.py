@@ -14,6 +14,7 @@ from ..defines import HeartTask
 from ..utils import download_file
 from .dataset import HeartKitDataset
 from .defines import PatientGenerator, SampleGenerator
+from .preprocess import resample_signal
 
 logger = logging.getLogger(__name__)
 
@@ -24,20 +25,13 @@ QtdbSymbolMap = {
     "t": 3,  # T Wave
 }
 
-QtdbLeadsMap = {
-    "i": 0,
-    "ii": 1,
-    "iii": 2,
-    "avr": 3,
-    "avl": 4,
-    "avf": 5,
-    "v1": 6,
-    "v2": 7,  # *
-    "v3": 8,
-    "v4": 9,
-    "v5": 10,  # *
-    "v6": 11,
-}
+FID_LEAD_IDX = 0
+FID_LBL_IDX = 1
+FID_LOC_IDX = 2
+SEG_LEAD_IDX = 0
+SEG_LBL_IDX = 1
+SEG_BEG_IDX = 2
+SEG_END_IDX = 3
 
 
 class QtdbDataset(HeartKitDataset):
@@ -68,29 +62,134 @@ class QtdbDataset(HeartKitDataset):
         return 1
 
     @property
-    def patient_ids(self) -> npt.ArrayLike:
+    def patient_ids(self) -> npt.NDArray:
         """Get dataset patient IDs
 
         Returns:
-            npt.ArrayLike: patient IDs
+            npt.NDArray: patient IDs
         """
-        return np.arange(1, 201)
+        return np.array(
+            [
+                30,
+                31,
+                32,
+                33,
+                34,
+                35,
+                36,
+                37,
+                38,
+                39,
+                40,
+                41,
+                42,
+                43,
+                44,
+                45,
+                46,
+                47,
+                48,
+                49,
+                50,
+                51,
+                52,
+                100,
+                102,
+                103,
+                104,
+                106,
+                107,
+                110,
+                111,
+                112,
+                114,
+                116,
+                117,
+                121,
+                122,
+                123,
+                124,
+                126,
+                129,
+                133,
+                136,
+                166,
+                170,
+                203,
+                210,
+                211,
+                213,
+                221,
+                223,
+                230,
+                231,
+                232,
+                233,
+                301,
+                302,
+                303,
+                306,
+                307,
+                308,
+                310,
+                405,
+                406,
+                409,
+                411,
+                509,
+                603,
+                604,
+                606,
+                607,
+                609,
+                612,
+                704,
+                803,
+                808,
+                811,
+                820,
+                821,
+                840,
+                847,
+                853,
+                871,
+                872,
+                873,
+                883,
+                891,
+                14046,
+                14157,
+                14172,
+                15814,
+                16265,
+                16272,
+                16273,
+                16420,
+                16483,
+                16539,
+                16773,
+                16786,
+                16795,
+                17152,
+                17453,
+            ]
+        )  # 104, 114, 116 have multiple recordings
 
-    def get_train_patient_ids(self) -> npt.ArrayLike:
+    def get_train_patient_ids(self) -> npt.NDArray:
         """Get dataset training patient IDs
 
         Returns:
-            npt.ArrayLike: patient IDs
+            npt.NDArray: patient IDs
         """
-        return self.patient_ids[:180]
+        return self.patient_ids[:82]
 
-    def get_test_patient_ids(self) -> npt.ArrayLike:
+    def get_test_patient_ids(self) -> npt.NDArray:
         """Get dataset patient IDs reserved for testing only
 
         Returns:
-            npt.ArrayLike: patient IDs
+            npt.NDArray: patient IDs
         """
-        return self.patient_ids[180:]
+        return self.patient_ids[82:]
 
     def task_data_generator(
         self,
@@ -128,21 +227,37 @@ class QtdbDataset(HeartKitDataset):
         Yields:
             Iterator[SampleGenerator]
         """
-        # NOTE: Labels are not provided on first N and last M samples so we'll discard
-        start_offset = 600
-        stop_offset = 950
+
         for _, pt in patient_generator:
             # NOTE: [:] will load all data into RAM- ideal for small dataset
             data = pt["data"][:]
             segs = pt["segmentations"][:]
+            fids = pt["fiducials"][:]
+
+            if self.sampling_rate != self.target_rate:
+                ratio = self.target_rate / self.sampling_rate
+                data = resample_signal(data, self.sampling_rate, self.target_rate)
+                segs[:, (SEG_BEG_IDX, SEG_END_IDX)] = (
+                    segs[:, (SEG_BEG_IDX, SEG_END_IDX)] * ratio
+                )
+                fids[:, FID_LOC_IDX] = fids[:, FID_LOC_IDX] * ratio
+            # END IF
+
+            # Create segmentation mask
             labels = np.zeros_like(data)
             for seg_idx in range(segs.shape[0]):
                 seg = segs[seg_idx]
-                labels[seg[2] : seg[3] + 0, seg[0]] = seg[1]
+                labels[seg[SEG_BEG_IDX] : seg[SEG_END_IDX], seg[SEG_LEAD_IDX]] = seg[
+                    SEG_LBL_IDX
+                ]
+            # END FOR
+
+            start_offset = max(0, segs[0][SEG_BEG_IDX] - 100)
+            stop_offset = max(0, data.shape[0] - segs[-1][SEG_END_IDX] + 100)
             for _ in range(samples_per_patient):
                 # Randomly pick an ECG lead
                 lead_idx = np.random.randint(data.shape[1])
-                # Randomly select frame center point
+                # Randomly select frame within the segment
                 frame_start = np.random.randint(
                     start_offset, data.shape[0] - self.frame_size - stop_offset
                 )
@@ -150,24 +265,53 @@ class QtdbDataset(HeartKitDataset):
                 x = (
                     data[frame_start:frame_end, lead_idx]
                     .astype(np.float32)
-                    .reshape((self.frame_size, 1))
+                    .reshape((self.frame_size,))
                 )
-                y = labels[frame_start:frame_end, lead_idx].reshape(
-                    (self.frame_size, 1)
-                )
+                y = labels[frame_start:frame_end, lead_idx].astype(np.int32)
                 yield x, y
             # END FOR
+
+            # start_offset = max(segs[0][SEG_BEG_IDX], int(0.55 * self.frame_size))
+            # stop_offset = int(data.shape[0] - 0.55 * self.frame_size)
+            # # Identify R peak locations and randomly shuffle
+            # rfids = fids[
+            #     (fids[:, FID_LBL_IDX] == 2)
+            #     & (start_offset < fids[:, FID_LOC_IDX])
+            #     & (fids[:, FID_LOC_IDX] < stop_offset)
+            # ]
+            # if rfids.shape[0] <= 2:
+            #     continue
+
+            # np.random.shuffle(rfids)
+            # num_samples = 0
+            # for i in range(rfids.shape[0]):
+            #     lead_idx = rfids[i, FID_LEAD_IDX]
+            #     frame_start = max(rfids[i, FID_LOC_IDX] - int(random.uniform(0.45, 0.55) * self.frame_size), 0)
+            #     frame_end = frame_start + self.frame_size
+            #     if frame_end - frame_start < self.frame_size:
+            #         continue
+            #     x = data[frame_start:frame_end, lead_idx].astype(np.float32).reshape((self.frame_size,))
+            #     y = labels[frame_start:frame_end, lead_idx].astype(np.int32)
+            #     # Should contain all fiducials
+            #     if np.intersect1d(y, [1, 2, 3]).size < 3:
+            #         continue
+            #     yield x, y
+            #     num_samples += 1
+            #     if num_samples > samples_per_patient:
+            #         break
+            # # END FOR
+
         # END FOR
 
     def get_patient_data_segments(
         self, patient: int
-    ) -> tuple[npt.ArrayLike, npt.ArrayLike]:
+    ) -> tuple[npt.NDArray, npt.NDArray]:
         """Get patient's entire data and segments
         Args:
             patient (int): Patient ID (1-based)
 
         Returns:
-            tuple[npt.ArrayLike, npt.ArrayLike]: (data, segment labels)
+            tuple[npt.NDArray, npt.NDArray]: (data, segment labels)
         """
         pt_key = f"p{patient:05d}"
         with h5py.File(os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r") as pt:
@@ -181,7 +325,7 @@ class QtdbDataset(HeartKitDataset):
 
     def uniform_patient_generator(
         self,
-        patient_ids: npt.ArrayLike,
+        patient_ids: npt.NDArray,
         repeat: bool = True,
         shuffle: bool = True,
     ) -> PatientGenerator:
@@ -203,7 +347,7 @@ class QtdbDataset(HeartKitDataset):
             if shuffle:
                 np.random.shuffle(patient_ids)
             for patient_id in patient_ids:
-                pt_key = f"p{patient_id:05d}"
+                pt_key = f"{patient_id}"
                 with h5py.File(
                     os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r"
                 ) as h5:
@@ -215,7 +359,7 @@ class QtdbDataset(HeartKitDataset):
 
     def convert_pt_wfdb_to_hdf5(
         self, patient: int, src_path: str, dst_path: str, force: bool = False
-    ) -> tuple[npt.ArrayLike, npt.ArrayLike, npt.ArrayLike]:
+    ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """Convert QTDB patient data from WFDB to more consumable HDF5 format.
 
         Args:
@@ -224,19 +368,25 @@ class QtdbDataset(HeartKitDataset):
             dst_path (str): Destination path to store HDF5 file
 
         Returns:
-            tuple[npt.ArrayLike, npt.ArrayLike, npt.ArrayLike]: data, segments, and fiducials
+            tuple[npt.NDArray, npt.NDArray, npt.NDArray]: data, segments, and fiducials
         """
         import wfdb  # pylint: disable=import-outside-toplevel
 
-        pt_id = f"p{patient:05d}"
-        pt_src_path = os.path.join(src_path, f"{patient}")
+        pt_id = (
+            f"sel{patient}"
+            if os.path.isfile(os.path.join(src_path, f"sel{patient}.dat"))
+            else f"sele{patient:04d}"
+        )
+        pt_src_path = os.path.join(src_path, pt_id)
         rec = wfdb.rdrecord(pt_src_path)
         data = np.zeros_like(rec.p_signal)
         segs = []
         fids = []
-        for i, lead in enumerate(rec.sig_name):
-            lead_id = QtdbLeadsMap.get(lead)
-            ann = wfdb.rdann(pt_src_path, extension=lead)
+        for i, _ in enumerate(rec.sig_name):
+            lead_id = i
+
+            ann = wfdb.rdann(pt_src_path, extension=f"pu{lead_id}")
+
             seg_start = seg_stop = sym_id = None
             data[:, lead_id] = rec.p_signal[:, i]
             for j, symbol in enumerate(ann.symbol):
@@ -250,7 +400,6 @@ class QtdbDataset(HeartKitDataset):
                     if seg_start is None:
                         seg_start = ann.sample[j]
                     fids.append([lead_id, sym_id, ann.sample[j]])
-                # End of segment (start and symbol are never 0 but can be None)
                 elif symbol == ")" and seg_start and sym_id:
                     seg_stop = ann.sample[j]
                     segs.append([lead_id, sym_id, seg_start, seg_stop])
@@ -259,12 +408,12 @@ class QtdbDataset(HeartKitDataset):
                     sym_id = None
             # END FOR
         # END FOR
-        segs = np.array(segs)
         fids = np.array(fids)
+        segs = np.array(segs)
 
         if dst_path:
             os.makedirs(dst_path, exist_ok=True)
-            pt_dst_path = os.path.join(dst_path, f"{pt_id}.h5")
+            pt_dst_path = os.path.join(dst_path, f"{patient}.h5")
             with h5py.File(pt_dst_path, "w") as h5:
                 h5.create_dataset("data", data=data, compression="gzip")
                 h5.create_dataset("segmentations", data=segs, compression="gzip")
@@ -277,7 +426,7 @@ class QtdbDataset(HeartKitDataset):
     def convert_dataset_zip_to_hdf5(
         self,
         zip_path: str,
-        patient_ids: npt.ArrayLike | None = None,
+        patient_ids: npt.NDArray | None = None,
         force: bool = False,
         num_workers: int | None = None,
     ):
@@ -285,7 +434,7 @@ class QtdbDataset(HeartKitDataset):
 
         Args:
             zip_path (str): Zip path
-            patient_ids (npt.ArrayLike | None, optional): List of patient IDs to extract. Defaults to all.
+            patient_ids (npt.NDArray | None, optional): List of patient IDs to extract. Defaults to all.
             force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
             num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
         """
@@ -300,6 +449,7 @@ class QtdbDataset(HeartKitDataset):
         ) as zp:
             qtdb_dir = os.path.join(tmpdir, "qtdb")
             zp.extractall(qtdb_dir)
+
             f = functools.partial(
                 self.convert_pt_wfdb_to_hdf5,
                 src_path=os.path.join(qtdb_dir, subdir),

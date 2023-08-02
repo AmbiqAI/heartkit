@@ -4,41 +4,66 @@ import pandas as pd
 
 
 def get_predicted_threshold_indices(
-    y_prob: npt.ArrayLike,
-    y_pred: npt.ArrayLike | None = None,
+    y_prob: npt.NDArray,
+    y_pred: npt.NDArray,
     threshold: float = 0.5,
-) -> npt.ArrayLike:
+) -> npt.NDArray:
     """Get prediction indices that are above threshold (confidence level).
     This is useful to remove weak predictions that can happen due to noisy data or poor model performance.
 
     Args:
-        y_prob (npt.ArrayLike): Model output as probabilities
-        y_pred (npt.ArrayLike, optional): Model predictions. Defaults to None.
+        y_prob (npt.NDArray): Model output as probabilities
+        y_pred (npt.NDArray, optional): Model predictions. Defaults to None.
         threshold (float): Confidence level
 
     Returns:
-        npt.ArrayLike: Indices of y_prob that satisfy threshold
+        npt.NDArray: Indices of y_prob that satisfy threshold
     """
-    if y_pred is None:
-        y_pred = np.argmax(y_prob, axis=1)
 
-    y_pred_prob = np.take_along_axis(y_prob, np.expand_dims(y_pred, axis=-1), axis=-1).squeeze(axis=-1)
+    y_pred_prob = np.take_along_axis(
+        y_prob, np.expand_dims(y_pred, axis=-1), axis=-1
+    ).squeeze(axis=-1)
     y_thresh_idx = np.where(y_pred_prob > threshold)[0]
     return y_thresh_idx
 
 
+def threshold_predictions(
+    y_prob: npt.NDArray,
+    y_pred: npt.NDArray,
+    y_true: npt.NDArray,
+    threshold: float = 0.5,
+) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+    """Get prediction indices that are above threshold (confidence level).
+    This is useful to remove weak predictions that can happen due to noisy data or poor model performance.
+
+    Args:
+        y_prob (npt.NDArray): Model output as probabilities
+        y_pred (npt.NDArray, optional): Model predictions. Defaults to None.
+        y_true (npt.NDArray): True labels
+        threshold (float): Confidence level. Defaults to 0.5.
+
+    Returns:
+        tuple[npt.NDArray, npt.NDArray, npt.NDArray]: Thresholded predictions
+    """
+    y_thresh_idx = get_predicted_threshold_indices(y_prob, y_pred, threshold)
+    y_prob = y_prob[y_thresh_idx]
+    y_pred = y_pred[y_thresh_idx]
+    y_true = y_true[y_thresh_idx]
+    return y_prob, y_pred, y_true
+
+
 def create_predictions_frame(
-    y_prob: npt.ArrayLike,
-    y_true: npt.ArrayLike | None = None,
-    y_pred: npt.ArrayLike | None = None,
+    y_prob: npt.NDArray,
+    y_true: npt.NDArray | None = None,
+    y_pred: npt.NDArray | None = None,
     class_names: list[str] | None = None,
     record_ids: list[str] | None = None,
 ):
     """Create predictions matrix.
     Args:
-        y_prob (npt.ArrayLike): Array of class probabilities of shape (num_samples,) or (num_samples, num_classes).
-        y_true (npt.ArrayLike | None): Integer array with true labels of shape (num_samples,) or (num_samples, num_classes).
-        y_pred (npt.ArrayLike | None): Integer array with class predictions of shape (num_samples,) or (num_samples, num_classes).
+        y_prob (npt.NDArray): Array of class probabilities of shape (num_samples,) or (num_samples, num_classes).
+        y_true (npt.NDArray | None): Integer array with true labels of shape (num_samples,) or (num_samples, num_classes).
+        y_pred (npt.NDArray | None): Integer array with class predictions of shape (num_samples,) or (num_samples, num_classes).
         class_names (list[str] | None): Array of class names of shape (num_classes,).
         record_ids (list[str] | None): Array of record names of shape (num_samples,).
     Returns:
@@ -52,7 +77,9 @@ def create_predictions_frame(
         # use index of the label as a class name
         class_names = np.arange(num_classes)
     elif len(class_names) != num_classes:
-        raise ValueError("length of class_names does not match with the number of classes")
+        raise ValueError(
+            "length of class_names does not match with the number of classes"
+        )
     columns = [f"prob_{label}" for label in class_names]
     data = {column: y_prob[:, i] for i, column in enumerate(columns)}
     if y_pred is not None:
@@ -104,11 +131,11 @@ def read_predictions(file: str):
     return predictions
 
 
-def is_multiclass(labels: npt.ArrayLike) -> bool:
+def is_multiclass(labels: npt.NDArray) -> bool:
     """Return true if this is a multiclass task otherwise false.
 
     Args:
-        labels (npt.ArrayLike): List of labels
+        labels (npt.NDArray): List of labels
 
     Returns:
         bool: If multiclass
@@ -127,9 +154,13 @@ def matches_spec(o, spec, ignore_batch_dim: bool = False):
     """
     if isinstance(spec, (list, tuple)):
         if not isinstance(o, (list, tuple)):
-            raise ValueError(f"data object is not a list or tuple which is required by the spec: {spec}")
+            raise ValueError(
+                f"data object is not a list or tuple which is required by the spec: {spec}"
+            )
         if len(spec) != len(o):
-            raise ValueError(f"data object has a different number of elements than the spec: {spec}")
+            raise ValueError(
+                f"data object has a different number of elements than the spec: {spec}"
+            )
         for i, ispec in enumerate(spec):
             if not matches_spec(o[i], ispec, ignore_batch_dim=ignore_batch_dim):
                 return False
@@ -137,9 +168,13 @@ def matches_spec(o, spec, ignore_batch_dim: bool = False):
 
     if isinstance(spec, dict):
         if not isinstance(o, dict):
-            raise ValueError(f"data object is not a dict which is required by the spec: {spec}")
+            raise ValueError(
+                f"data object is not a dict which is required by the spec: {spec}"
+            )
         if spec.keys() != o.keys():
-            raise ValueError(f"data object has different keys than those specified in the spec: {spec}")
+            raise ValueError(
+                f"data object has different keys than those specified in the spec: {spec}"
+            )
         for k in spec:
             if not matches_spec(o[k], spec[k], ignore_batch_dim=ignore_batch_dim):
                 return False

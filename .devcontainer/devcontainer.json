@@ -1,6 +1,6 @@
 {
     "name": "Python 3",
-    "image": "mcr.microsoft.com/devcontainers/python:0-3.10",
+    "image": "mcr.microsoft.com/devcontainers/python:1-3.11",
 
     // Features: https://containers.dev/features.
     "features": {
@@ -24,7 +24,9 @@
         }
     },
 
-    "runArgs": [ "--gpus", "all"],
+    "hostRequirements": {
+        "gpu": "optional"
+    },
 
     "mounts": [
         "source=${localEnv:HOME}${localEnv:USERPROFILE}/tensorflow_datasets,target=/home/vscode/tensorflow_datasets,type=bind,consistency=cached"
