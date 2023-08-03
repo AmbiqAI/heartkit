@@ -109,6 +109,7 @@ extern uint8_t hkQrsMask[HK_PEAK_LEN];
 extern float32_t hkRawData[SENSOR_LEN + SENSOR_RATE];
 extern float32_t hkEcgData[HK_DATA_LEN];
 extern float32_t hkQrsData[HK_DATA_LEN];
+extern float32_t hkBufData[HK_DATA_LEN];
 
 extern uint8_t hkSegMask[HK_DATA_LEN];
 

@@ -58,9 +58,8 @@ class HeartDemoParams(BaseModel, extra=Extra.allow):
     segmentation_model: str | None = Field(default=None, description="Segmentation TF model path")
     beat_model: str | None = Field(default=None, description="Beat TF model path")
 
-    # EVB folder?
-    # datasets: ["Icentia"],
     # Dataset arguments
+    datasets: list[str] = Field(default_factory=list, description="Dataset names")
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
     sampling_rate: int = Field(200, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")

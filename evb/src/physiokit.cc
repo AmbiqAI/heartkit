@@ -121,7 +121,9 @@ pk_apply_biquad_filtfilt(arm_biquad_casd_df1_inst_f32 *ctx, float32_t *pSrc, flo
      * @brief Apply biquad filter forward-backward to signal
      */
     // Forward pass
+    float32_t a;
     arm_fill_f32(0, ctx->pState, 4 * ctx->numStages);
+    // Reverse signal
     arm_biquad_cascade_df1_f32(ctx, pSrc, pResult, blockSize);
     for (size_t i = 0; i < blockSize; i++) {
         state[i] = pResult[blockSize - 1 - i];
@@ -129,11 +131,11 @@ pk_apply_biquad_filtfilt(arm_biquad_casd_df1_inst_f32 *ctx, float32_t *pSrc, flo
     // Backward pass
     arm_fill_f32(0, ctx->pState, 4 * ctx->numStages);
     arm_biquad_cascade_df1_f32(ctx, state, pResult, blockSize);
+    // Reverse signal
     for (size_t i = 0; i < blockSize; i++) {
+        a = state[i];
         state[i] = pResult[blockSize - 1 - i];
-    }
-    for (size_t i = 0; i < blockSize; i++) {
-        pResult[i] = state[i];
+        pResult[blockSize - 1 - i] = a;
     }
     return 0;
 }
@@ -309,7 +311,7 @@ pk_ecg_find_peaks(ecg_peak_f32_t *ctx, float32_t *ecg, uint32_t ecgLen, uint32_t
         // If detected
         if (m != -1 && n != -1) {
             peakLen = n - m + 1;
-            arm_max_f32(&ecg[m], peakLen, &peakVal, &peak);
+            arm_max_f32(&qrsGrad[m], peakLen, &peakVal, &peak);
             peak += m;
             peakDelay = numPeaks > 0 ? peak - peaks[numPeaks - 1] : minQrsDelay;
 

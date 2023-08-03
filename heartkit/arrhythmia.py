@@ -34,7 +34,7 @@ def prepare(x: npt.NDArray, sample_rate: float) -> npt.NDArray:
         order=3,
         sample_rate=sample_rate,
         axis=0,
-        forward_backward=False,
+        forward_backward=True,
     )
     x = signal.normalize_signal(x, eps=0.1, axis=None)
     return x

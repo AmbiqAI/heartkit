@@ -13,7 +13,7 @@
     "val_metric": "loss",
     "datasets": ["ludb", "qtdb", "synthetic"],
     "lr_rate": 5e-3,
-    "num_pts": 1000,
+    "num_pts": 800,
     "augmentations": [
         {
             "name": "baseline_wander",

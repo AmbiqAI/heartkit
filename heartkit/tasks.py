@@ -30,7 +30,7 @@ def get_class_names(task: HeartTask) -> list[str]:
         # NOTE: Bucket AFIB and AFL together
         return ["NSR", "AFIB/AFL"]
     if task == HeartTask.beat:
-        return ["NORMAL", "PAC", "PVC", "NOISE"]
+        return ["NORMAL", "PAC", "PVC"]  # , "NOISE"]
     if task == HeartTask.hrv:
         return ["NORMAL", "TACHYCARDIA", "BRADYCARDIA"]
     if task == HeartTask.segmentation:

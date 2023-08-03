@@ -32,7 +32,7 @@ init_models(void);
 uint32_t
 arrhythmia_inference(float32_t *x, float32_t *yVal, uint32_t *yIdx);
 uint32_t
-segmentation_inference(float32_t *data, uint8_t *segMask, uint32_t padLen);
+segmentation_inference(float32_t *data, uint8_t *segMask, uint32_t padLen, float32_t threshold);
 uint32_t
 beat_inference(float32_t *pBeat, float32_t *beat, float32_t *nBeat, float32_t *yVal, uint32_t *yIdx);
 

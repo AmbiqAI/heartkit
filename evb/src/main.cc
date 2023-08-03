@@ -32,19 +32,19 @@
 
 uint32_t
 print_hk_result(hk_result_t *result) {
-    uint32_t numBeats = result->numNormBeats + result->numPacBeats + result->numPvcBeats + result->numNoiseBeats;
+    uint32_t numBeats = result->numNormBeats + result->numPacBeats + result->numPvcBeats;
     const char *rhythm = HK_HEART_RATE_LABELS[result->heartRhythm];
     ns_printf("----------------------\n");
     ns_printf("** HeartKit Results **\n");
     ns_printf("----------------------\n");
     ns_printf("  Heart Rate: %lu\n", result->heartRate);
-    ns_printf("Heart Rhythm: %s\n", rhythm);
-    ns_printf(" Total Beats: %lu\n", numBeats);
-    ns_printf("  Norm Beats: %lu\n", result->numNormBeats);
-    ns_printf("   PAC Beats: %lu\n", result->numPacBeats);
-    ns_printf("   PVC Beats: %lu\n", result->numPvcBeats);
-    ns_printf(" Noise Beats: %lu\n", result->numNoiseBeats);
-    ns_printf("  Arrhythmia: %lu\n", result->arrhythmia);
+    ns_printf(" Heart Rhythm: %s\n", rhythm);
+    ns_printf("  Total Beats: %lu\n", numBeats);
+    ns_printf("   Norm Beats: %lu\n", result->numNormBeats);
+    ns_printf("    PAC Beats: %lu\n", result->numPacBeats);
+    ns_printf("    PVC Beats: %lu\n", result->numPvcBeats);
+    ns_printf("Unknown Beats: %lu\n", result->numNoiseBeats);
+    ns_printf("   Arrhythmia: %lu\n", result->arrhythmia);
     ns_printf("----------------------\n");
     return 0;
 }
@@ -57,8 +57,9 @@ apply_arrhythmia_model() {
     hkResults.arrhythmia = HeartRhythmNormal;
     for (size_t i = 0; i < HK_DATA_LEN - ARR_FRAME_LEN + 1; i += ARR_FRAME_LEN) {
         err = arrhythmia_inference(&hkEcgData[i], &yVal, &yIdx);
+        ns_printf("Arrhythmia Detection: class=%lu confidence=%0.2f \n", yIdx, yVal);
         if (err) {
-        } else if (yIdx == HeartRhythmAfib || yIdx == HeartRhythmAfut) {
+        } else if (yVal >= ARR_THRESHOLD && (yIdx == HeartRhythmAfib || yIdx == HeartRhythmAfut)) {
             hkResults.arrhythmia = HeartRhythmAfib;
         }
     }
@@ -71,9 +72,10 @@ apply_segmentation_model() {
     // We dont predict on first and last overlap size so set to normal
     memset(hkSegMask, HeartSegmentNormal, HK_DATA_LEN);
     for (size_t i = 0; i < HK_DATA_LEN - SEG_FRAME_LEN + 1; i += SEG_FRAME_LEN) {
-        err = segmentation_inference(&hkEcgData[i], &hkSegMask[i], SEG_OVERLAP_LEN);
+        err = segmentation_inference(&hkEcgData[i], &hkSegMask[i], SEG_OVERLAP_LEN, SEG_THRESHOLD);
     }
-    err |= segmentation_inference(&hkEcgData[HK_DATA_LEN - SEG_FRAME_LEN], &hkSegMask[HK_DATA_LEN - SEG_FRAME_LEN], SEG_OVERLAP_LEN);
+    err |= segmentation_inference(&hkEcgData[HK_DATA_LEN - SEG_FRAME_LEN], &hkSegMask[HK_DATA_LEN - SEG_FRAME_LEN], SEG_OVERLAP_LEN,
+                                  SEG_THRESHOLD);
     return err;
 }
 
@@ -81,7 +83,7 @@ uint32_t
 apply_hrv_model() {
     uint32_t err = 0;
     // Find QRS peaks
-    numQrsPeaks = pk_ecg_find_peaks(&qrsFindPeakCtx, hkEcgData, HK_DATA_LEN, hkQrsPeaks);
+    numQrsPeaks = pk_ecg_find_peaks(&qrsFindPeakCtx, hkQrsData, HK_DATA_LEN, hkQrsPeaks);
     pk_compute_rr_intervals(hkQrsPeaks, numQrsPeaks, hkRRIntervals);
     pk_filter_rr_intervals(hkRRIntervals, numQrsPeaks, hkQrsMask, SAMPLE_RATE);
     pk_compute_hrv_from_rr_intervals(hkRRIntervals, numQrsPeaks, hkQrsMask, &hkHrvMetrics);
@@ -105,23 +107,24 @@ apply_beat_model() {
     hkResults.numNoiseBeats = 0;
 
     uint32_t avgRR = (uint32_t)(hkHrvMetrics.meanNN);
-    ns_printf("avgRR: %lu\n", avgRR);
     uint32_t bOffset = (BEAT_FRAME_LEN >> 1);
     uint32_t bStart = 0;
     for (int i = 1; i < numQrsPeaks - 1; i++) {
         bIdx = hkQrsPeaks[i];
         bStart = bIdx - bOffset;
-        if (hkQrsMask[i]) {
-            beatLabel = HeartBeatNoise;
-        } else if (bIdx < bOffset || bStart < avgRR || bStart + avgRR + BEAT_FRAME_LEN > HK_DATA_LEN) {
+        if (bIdx < bOffset || bStart < avgRR || bStart + avgRR + BEAT_FRAME_LEN > HK_DATA_LEN) {
             beatLabel = HeartBeatNormal;
+            beatValue = 1;
         } else {
-            ns_printf("beats (%lu, %lu, %lu)\n", bStart - avgRR, bStart, bStart + avgRR);
             err |= beat_inference(&hkEcgData[bStart - avgRR], &hkEcgData[bStart], &hkEcgData[bStart + avgRR], &beatValue, &beatLabel);
+        }
+        ns_printf("Beat Detection: loc=%lu class=%lu confidence=%0.2f \n", bIdx, beatLabel, beatValue);
+        // If confidence is too low, skip
+        if (beatValue < BEAT_THRESHOLD) {
+            beatLabel = HeartBeatNoise;
         }
         // Place beat label in upper nibble
         hkSegMask[bIdx] |= ((beatLabel + 1) << 4);
-        ns_printf("beat: %lu, %lu\n", bIdx, beatLabel);
         switch (beatLabel) {
         case HeartBeatPac:
             hkResults.numPacBeats += 1;
@@ -184,11 +187,10 @@ fetch_samples_from_stimulus(float32_t *samples, uint32_t numSamples) {
 }
 
 uint32_t
-fetch_samples_from_pc(float32_t *samples, uint32_t offset, uint32_t numSamples) {
+fetch_samples_from_pc(float32_t *samples, uint32_t numSamples) {
     /**
      * @brief Fetch samples from PC over RPC
      * @param samples Buffer to store samples
-     * @param offset Buffer offset
      * @param numSamples # requested samples
      * @return # samples actually fetched
      */
@@ -197,24 +199,30 @@ fetch_samples_from_pc(float32_t *samples, uint32_t offset, uint32_t numSamples) 
     if (!usbCfg.available) {
         return 0;
     }
-    binary_t binaryBlock = {
-        .data = (uint8_t *)(&samples[offset]),
-        .dataLength = numSamples * sizeof(float32_t),
-    };
-    dataBlock resultBlock = {
-        .length = numSamples, .dType = float32_e, .description = rpcFetchSamplesDesc, .cmd = generic_cmd, .buffer = binaryBlock};
+
+    uint32_t reqSamples = MIN(numSamples, RPC_BUF_LEN);
+
+    dataBlock resultBlock = {.length = reqSamples,
+                             .dType = float32_e,
+                             .description = rpcFetchSamplesDesc,
+                             .cmd = generic_cmd,
+                             .buffer = {
+                                 .data = (uint8_t *)(samples),
+                                 .dataLength = reqSamples * sizeof(float32_t),
+                             }};
+
     err = ns_rpc_data_computeOnPC(&resultBlock, &resultBlock);
     if (resultBlock.description != rpcFetchSamplesDesc) {
         ns_free(resultBlock.description);
     }
-    if (resultBlock.buffer.data != (uint8_t *)&samples[offset]) {
+    if (resultBlock.buffer.data != (uint8_t *)samples) {
         ns_free(resultBlock.buffer.data);
     }
     if (err) {
         ns_printf("Failed fetching from PC w/ error: %x\n", err);
         return 0;
     }
-    memcpy(&samples[offset], resultBlock.buffer.data, resultBlock.buffer.dataLength);
+    memcpy(samples, resultBlock.buffer.data, resultBlock.buffer.dataLength);
     return resultBlock.buffer.dataLength / sizeof(float32_t);
 }
 
@@ -235,12 +243,13 @@ send_samples_to_pc() {
                                   .data = NULL,
                                   .dataLength = 0,
                               }};
-    for (size_t i = 0; i < HK_DATA_LEN; i += 200) {
-        uint32_t numSamples = MIN(HK_DATA_LEN - i, 200);
+    for (size_t i = 0; i < HK_DATA_LEN; i += RPC_BUF_LEN) {
+        uint32_t numSamples = MIN(HK_DATA_LEN - i, RPC_BUF_LEN);
         commandBlock.length = i;
         commandBlock.buffer.data = (uint8_t *)(&hkEcgData[i]);
         commandBlock.buffer.dataLength = numSamples * sizeof(float32_t);
         ns_rpc_data_sendBlockToPC(&commandBlock);
+        ns_delay_us(200);
     }
 }
 
@@ -261,8 +270,8 @@ send_mask_to_pc() {
                                   .data = NULL,
                                   .dataLength = 0,
                               }};
-    for (size_t i = 0; i < HK_DATA_LEN; i += 200) {
-        uint32_t numSamples = MIN(HK_DATA_LEN - i, 200);
+    for (size_t i = 0; i < HK_DATA_LEN; i += RPC_BUF_LEN) {
+        uint32_t numSamples = MIN(HK_DATA_LEN - i, RPC_BUF_LEN);
         commandBlock.length = i;
         commandBlock.buffer.data = (uint8_t *)(&hkSegMask[i]);
         commandBlock.buffer.dataLength = numSamples * sizeof(uint8_t);
@@ -321,7 +330,9 @@ collect_samples() {
         return newSamples;
     }
     if (appStore.collectMode == STIMULUS_DATA_COLLECT) {
-        newSamples = fetch_samples_from_stimulus(data, reqSamples);
+        // newSamples = fetch_samples_from_stimulus(data, reqSamples);
+        newSamples = fetch_samples_from_pc(data, reqSamples);
+        ns_delay_us(200);
     } else if (appStore.collectMode == SENSOR_DATA_COLLECT) {
         newSamples = capture_sensor_data(&sensorCtx, data, NULL, NULL, NULL, reqSamples);
     }
@@ -346,8 +357,9 @@ preprocess() {
      * @brief Run preprocess on data
      */
     uint32_t err = 0;
-    err |= pk_apply_biquad_filter(&ecgFilterCtx, hkRawData, hkEcgData, HK_DATA_LEN);
-    err |= pk_standardize(hkEcgData, hkEcgData, HK_DATA_LEN, 0.1);
+    err |= pk_standardize(hkRawData, hkRawData, HK_DATA_LEN, NORM_STD_EPS);
+    err |= pk_apply_biquad_filtfilt(&ecgFilterCtx, hkRawData, hkEcgData, HK_DATA_LEN, hkBufData);
+    err |= pk_apply_biquad_filtfilt(&qrsFilterCtx, hkRawData, hkQrsData, HK_DATA_LEN, hkBufData);
     send_samples_to_pc();
     return err;
 }
@@ -416,7 +428,7 @@ loop() {
             appStore.state = START_COLLECT_STATE;
             wakeup();
         } else {
-            ns_printf("IDLE_STATE\n");
+            ns_printf("\n\nIDLE_STATE\n");
             appStore.state = IDLE_STATE;
             deepsleep();
         }

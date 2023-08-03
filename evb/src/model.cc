@@ -202,7 +202,7 @@ arrhythmia_inference(float32_t *x, float32_t *yVal, uint32_t *yIdx) {
 }
 
 uint32_t
-segmentation_inference(float32_t *data, uint8_t *segMask, uint32_t padLen) {
+segmentation_inference(float32_t *data, uint8_t *segMask, uint32_t padLen, float32_t threshold) {
     /**
      * @brief Run segmentation inference
      * @param data Model input
@@ -234,7 +234,7 @@ segmentation_inference(float32_t *data, uint8_t *segMask, uint32_t padLen) {
                 yMaxIdx = j;
             }
         }
-        segMask[i] = yMaxIdx;
+        segMask[i] = yMax >= threshold ? yMaxIdx : 0;
     }
 #endif
     return 0;

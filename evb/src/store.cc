@@ -142,7 +142,7 @@ arm_biquad_casd_df1_inst_f32 qrsFilterCtx = {.numStages = QRS_SOS_LEN, .pState =
 ///////////////////////////////////////////////////////////////////////////////
 
 const char *HK_RHYTHM_LABELS[] = {"NSR", "AFIB/AFL", "AFIB/AFL"};
-const char *HK_BEAT_LABELS[] = {"NORMAL", "PAC", "PVC", "NOISE"};
+const char *HK_BEAT_LABELS[] = {"NORMAL", "PAC", "PVC"};
 const char *HK_HEART_RATE_LABELS[] = {"NORMAL", "TACHYCARDIA", "BRADYCARDIA"};
 const char *HK_SEGMENT_LABELS[] = {"NONE", "P-WAVE", "QRS", "T-WAVE"};
 
@@ -162,6 +162,7 @@ uint8_t hkQrsMask[HK_PEAK_LEN];
 float32_t hkRawData[SENSOR_LEN + SENSOR_RATE];
 float32_t hkEcgData[HK_DATA_LEN];
 float32_t hkQrsData[HK_DATA_LEN];
+float32_t hkBufData[HK_DATA_LEN];
 
 uint8_t hkSegMask[HK_DATA_LEN];
 
