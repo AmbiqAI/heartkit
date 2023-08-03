@@ -56,9 +56,7 @@ class PcHandler:
             target_rate=self.params.sampling_rate,
         )
         pt_gen = ds.uniform_patient_generator(ds.get_train_patient_ids())
-        data_gen = ds.signal_generator(
-            pt_gen, samples_per_patient=self.params.samples_per_patient
-        )
+        data_gen = ds.signal_generator(pt_gen, samples_per_patient=self.params.samples_per_patient)
         return data_gen
 
     def load_models(self):
@@ -74,9 +72,7 @@ class PcHandler:
         """Perform pre-processing to data"""
         return preprocess_signal(data=data, sample_rate=self.params.sampling_rate)
 
-    def arrhythmia_inference(
-        self, data: npt.NDArray[np.float32], threshold: float = 0.9
-    ) -> npt.NDArray[np.uint8]:
+    def arrhythmia_inference(self, data: npt.NDArray[np.float32], threshold: float = 0.9) -> npt.NDArray[np.uint8]:
         """Apply arrhythmia model to data.
 
         Args:
@@ -126,18 +122,14 @@ class PcHandler:
             y_prob = tf.nn.softmax(self.seg_model.predict(test_x, verbose=0)).numpy()
             y_pred = np.argmax(y_prob, axis=2)
             seg_mask[i + seg_olp : i + seg_len - seg_olp] = y_pred[0, seg_olp:-seg_olp]
-            qrs_mask[i + seg_olp : i + seg_len - seg_olp] = np.where(
-                y_prob[0, seg_olp:-seg_olp, 2] > threshold, 1, 0
-            )
+            qrs_mask[i + seg_olp : i + seg_len - seg_olp] = np.where(y_prob[0, seg_olp:-seg_olp, 2] > threshold, 1, 0)
         # END FOR
         if (data_len - seg_olp) - i:
             test_x = np.expand_dims(data[-seg_len:], axis=(0, 1))
             y_prob = tf.nn.softmax(self.seg_model.predict(test_x, verbose=0)).numpy()
             y_pred = np.argmax(y_prob, axis=2)
             seg_mask[-seg_len:-seg_olp] = y_pred[0, -seg_len:-seg_olp]
-            qrs_mask[-seg_len:-seg_olp] = np.where(
-                y_prob[0, -seg_len:-seg_olp, 2] > threshold, 1, 0
-            )
+            qrs_mask[-seg_len:-seg_olp] = np.where(y_prob[0, -seg_len:-seg_olp, 2] > threshold, 1, 0)
         # END FOR
         return seg_mask, qrs_mask
 

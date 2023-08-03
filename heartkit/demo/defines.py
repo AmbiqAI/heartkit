@@ -21,21 +21,12 @@ class AppState(StrEnum):
 class HKResult(BaseModel, extra=Extra.allow):
     """HeartKit result"""
 
-    heart_rate: float = Field(
-        default=0, description="Heart rate (BPM)", alias="heartRate"
-    )
-    heart_rhythm: int = Field(
-        default=0, description="Heart rhythm", alias="heartRhythm"
-    )
-    num_norm_beats: int = Field(
-        default=0, description="# normal beats", alias="numNormBeats"
-    )
-    num_pac_beats: int = Field(
-        default=0, description="# PAC beats", alias="numPacBeats"
-    )
-    num_pvc_beats: int = Field(
-        default=0, description="# PVC beats", alias="numPvcBeats"
-    )
+    heart_rate: float = Field(default=0, description="Heart rate (BPM)", alias="heartRate")
+    heart_rhythm: int = Field(default=0, description="Heart rhythm", alias="heartRhythm")
+    num_norm_beats: int = Field(default=0, description="# normal beats", alias="numNormBeats")
+    num_pac_beats: int = Field(default=0, description="# PAC beats", alias="numPacBeats")
+    num_pvc_beats: int = Field(default=0, description="# PVC beats", alias="numPvcBeats")
+    num_noise_beats: int = Field(default=0, description="# noise beats", alias="numNoiseBeats")
     arrhythmia: bool = Field(default=False, description="Arrhythmia present")
 
 
@@ -45,9 +36,7 @@ class HeartKitState(BaseModel):
     data_id: int = Field(default=0, description="Data identifier", alias="dataId")
     app_state: AppState = Field(default=AppState.IDLE_STATE, alias="appState")
     data: list[float] = Field(default_factory=list, description="ECG data")
-    seg_mask: list[int] = Field(
-        default_factory=list, description="Segmentation mask", alias="segMask"
-    )
+    seg_mask: list[int] = Field(default_factory=list, description="Segmentation mask", alias="segMask")
     results: HKResult = Field(default_factory=HKResult, description="Result")
 
 
@@ -58,33 +47,25 @@ FrontendType = Literal["web", "console"]
 class HeartDemoParams(BaseModel, extra=Extra.allow):
     """Demo command params"""
 
-    job_dir: Path = Field(
-        default_factory=tempfile.gettempdir, description="Job output directory"
-    )
+    job_dir: Path = Field(default_factory=tempfile.gettempdir, description="Job output directory")
     rest_address: str = Field(
         default_factory=lambda: f"{os.getenv('REST_ADDR', 'http://0.0.0.0')}:{os.getenv('REST_PORT', '80')}/api/v1"
     )
     backend: BackendType = Field(default="pc", description="Backend")
     frontend: FrontendType | None = Field(default=None, description="Frontend")
     # Model paths/arguments
-    arrhythmia_model: str | None = Field(
-        default=None, description="Arrhythmia TF model path"
-    )
-    segmentation_model: str | None = Field(
-        default=None, description="Segmentation TF model path"
-    )
+    arrhythmia_model: str | None = Field(default=None, description="Arrhythmia TF model path")
+    segmentation_model: str | None = Field(default=None, description="Segmentation TF model path")
     beat_model: str | None = Field(default=None, description="Beat TF model path")
 
     # EVB folder?
     # datasets: ["Icentia"],
     # Dataset arguments
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
-    sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
+    sampling_rate: int = Field(200, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
     pad_size: int = Field(0, description="Pad size")
-    samples_per_patient: int | list[int] = Field(
-        10, description="# train samples per patient"
-    )
+    samples_per_patient: int | list[int] = Field(10, description="# train samples per patient")
     # EVB arguments
     vid_pid: str | None = Field(
         "51966:16385",
@@ -131,7 +112,7 @@ class HeartBeat(IntEnum):
     normal = 0
     pac = 1
     pvc = 2
-    noise = 3  # Not used
+    noise = 3
 
 
 def get_class_names(task: HeartTask) -> list[str]:
@@ -147,7 +128,7 @@ def get_class_names(task: HeartTask) -> list[str]:
         # NOTE: Bucket AFIB and AFL together
         return ["NSR", "AFIB/AFL"]
     if task == HeartTask.beat:
-        return ["NORMAL", "PAC", "PVC"]
+        return ["NORMAL", "PAC", "PVC", "NOISE"]
     if task == HeartTask.hrv:
         return ["NORMAL", "TACHYCARDIA", "BRADYCARDIA"]
     if task == HeartTask.segmentation:

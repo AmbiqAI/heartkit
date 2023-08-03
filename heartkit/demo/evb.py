@@ -48,6 +48,7 @@ class HKResultStruct(ctypes.Structure):
         ("num_norm_beats", ctypes.c_uint32),
         ("num_pac_beats", ctypes.c_uint32),
         ("num_pvc_beats", ctypes.c_uint32),
+        ("num_noise_beats", ctypes.c_uint32),
         ("arrhythmia", ctypes.c_uint32),
     ]
 
@@ -59,6 +60,7 @@ class HKResultStruct(ctypes.Structure):
             num_norm_beats=self.num_norm_beats,
             num_pac_beats=self.num_pac_beats,
             num_pvc_beats=self.num_pvc_beats,
+            num_noise_beats=self.num_noise_beats,
             arrhythmia=bool(self.arrhythmia),
         )
 
@@ -114,9 +116,7 @@ class EvbHandler(gen_evb2pc.interface.Ievb_to_pc):
                 target_rate=self.params.sampling_rate,
             )
             pt_gen = ds.uniform_patient_generator(ds.get_train_patient_ids())
-            data_gen = ds.signal_generator(
-                pt_gen, samples_per_patient=self.params.samples_per_patient
-            )
+            data_gen = ds.signal_generator(pt_gen, samples_per_patient=self.params.samples_per_patient)
         else:
             raise ValueError(f"Unsupported dataset: {dataset}")
 
@@ -132,9 +132,7 @@ class EvbHandler(gen_evb2pc.interface.Ievb_to_pc):
             self._frame_idx = xs
 
         if RpcBlockCommands.SEND_RESULTS in block.description:
-            self.hk_state.results = HKResultStruct.from_buffer_copy(
-                block.buffer
-            ).to_pydantic()
+            self.hk_state.results = HKResultStruct.from_buffer_copy(block.buffer).to_pydantic()
 
         if RpcBlockCommands.SEND_MASK in block.description:
             x: list[int] = np.frombuffer(block.buffer, dtype=np.uint8).tolist()
@@ -147,16 +145,12 @@ class EvbHandler(gen_evb2pc.interface.Ievb_to_pc):
         """RPC callback handler"""
         return RpcResponse.SUCCESS
 
-    def ns_rpc_data_computeOnPC(
-        self, in_block: gen_evb2pc.common.dataBlock, result_block
-    ):
+    def ns_rpc_data_computeOnPC(self, in_block: gen_evb2pc.common.dataBlock, result_block):
         """RPC callback handler"""
         if RpcBlockCommands.FETCH_SAMPLES in in_block.description:
             xs = self._frame_idx
             xe = xs + min(in_block.length, len(self.hk_state.data) - xs)
-            x = np.ascontiguousarray(
-                self.hk_state.data[xs:xe], dtype=np.float32
-            ).tobytes("C")
+            x = np.ascontiguousarray(self.hk_state.data[xs:xe], dtype=np.float32).tobytes("C")
             self._frame_idx = xe
             result_block.value = gen_evb2pc.common.dataBlock(
                 length=xs,  # Use block.length as block offset
@@ -219,9 +213,7 @@ class EvbHandler(gen_evb2pc.interface.Ievb_to_pc):
             try:
                 if not self._run:
                     return
-                self._transport = get_serial_transport(
-                    vid_pid=self.params.vid_pid, baudrate=self.params.baudrate
-                )
+                self._transport = get_serial_transport(vid_pid=self.params.vid_pid, baudrate=self.params.baudrate)
             except TimeoutError:
                 logger.warning("Unable to locate EVB device. Retrying in 5 secs...")
                 self._transport = None

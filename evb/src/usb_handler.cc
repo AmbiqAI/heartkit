@@ -24,4 +24,5 @@ tud_suspend_cb(bool remote_wakeup_en) {
 uint32_t
 init_usb_handler(usb_config_t *ctx) {
     g_usb_available = &ctx->available;
+    return 0;
 }

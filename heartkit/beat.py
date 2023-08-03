@@ -165,12 +165,8 @@ def train_model(params: HeartTrainParams):
         logger.info("Building model")
         in_shape, _ = get_task_shape(HeartTask.beat, params.frame_size)
         inputs = tf.keras.Input(in_shape, batch_size=None, dtype=tf.float32)
-        model = create_task_model(
-            inputs, HeartTask.beat, name=params.model, params=params.model_params
-        )
-        flops = get_flops(
-            model, batch_size=1, fpath=str(params.job_dir / "model_flops.log")
-        )
+        model = create_task_model(inputs, HeartTask.beat, name=params.model, params=params.model_params)
+        flops = get_flops(model, batch_size=1, fpath=str(params.job_dir / "model_flops.log"))
 
         # Grab optional LR parameters
         lr_rate: float = getattr(params, "lr_rate", 1e-3)
@@ -212,9 +208,7 @@ def train_model(params: HeartTrainParams):
                 verbose=1,
             ),
             tf.keras.callbacks.CSVLogger(str(params.job_dir / "history.csv")),
-            tf.keras.callbacks.TensorBoard(
-                log_dir=str(params.job_dir), write_steps_per_second=True
-            ),
+            tf.keras.callbacks.TensorBoard(log_dir=str(params.job_dir), write_steps_per_second=True),
         ]
         if env_flag("WANDB"):
             model_callbacks.append(WandbCallback())
@@ -251,13 +245,9 @@ def train_model(params: HeartTrainParams):
         test_f1 = f1_score(y_true, y_pred, average="macro")
         logger.info(f"[VAL SET] ACC={test_acc:.2%}, F1={test_f1:.2%}")
         cm_path = str(params.job_dir / "confusion_matrix.png")
-        confusion_matrix_plot(
-            y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true"
-        )
+        confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
         if env_flag("WANDB"):
-            conf_mat = wandb.plot.confusion_matrix(
-                preds=y_pred, y_true=y_true, class_names=class_names
-            )
+            conf_mat = wandb.plot.confusion_matrix(preds=y_pred, y_true=y_true, class_names=class_names)
             wandb.log({"conf_mat": conf_mat})
         # END IF
     # END WITH
@@ -278,9 +268,7 @@ def evaluate_model(params: HeartTestParams):
     with strategy.scope():
         logger.info("Loading model")
         model = load_model(str(params.model_file))
-        flops = get_flops(
-            model, batch_size=1, fpath=str(params.job_dir / "model_flops.log")
-        )
+        flops = get_flops(model, batch_size=1, fpath=str(params.job_dir / "model_flops.log"))
         model.summary(print_fn=logger.info)
         logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
@@ -298,23 +286,17 @@ def evaluate_model(params: HeartTestParams):
         # If threshold given, only count predictions above threshold
         if params.threshold:
             numel = len(y_true)
-            y_prob, y_pred, y_true = threshold_predictions(
-                y_prob, y_pred, y_true, params.threshold
-            )
+            y_prob, y_pred, y_true = threshold_predictions(y_prob, y_pred, y_true, params.threshold)
             drop_perc = 1 - len(y_true) / numel
             test_acc = np.sum(y_pred == y_true) / len(y_true)
             test_f1 = f1_score(y_true, y_pred, average="macro")
-            logger.info(
-                f"[TEST SET] THRESH={params.threshold:0.2%}, DROP={drop_perc:.2%}"
-            )
+            logger.info(f"[TEST SET] THRESH={params.threshold:0.2%}, DROP={drop_perc:.2%}")
             logger.info(f"[TEST SET] ACC={test_acc:.2%}, F1={test_f1:.2%}")
         # END IF
 
         class_names = get_class_names(HeartTask.beat)
         cm_path = str(params.job_dir / "confusion_matrix_test.png")
-        confusion_matrix_plot(
-            y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true"
-        )
+        confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
         if len(class_names) == 2:
             roc_path = str(params.job_dir / "roc_auc_test.png")
             roc_auc_plot(y_true, y_prob[:, 1], labels=class_names, save_path=roc_path)
@@ -336,9 +318,7 @@ def export_model(params: HeartExportParams):
     in_shape, _ = get_task_shape(HeartTask.beat, params.frame_size)
     inputs = tf.keras.layers.Input(in_shape, dtype=tf.float32, batch_size=1)
     outputs = model(inputs)
-    if not params.use_logits and not isinstance(
-        model.layers[-1], tf.keras.layers.Softmax
-    ):
+    if not params.use_logits and not isinstance(model.layers[-1], tf.keras.layers.Softmax):
         outputs = tf.keras.layers.Softmax()(outputs)
         model = tf.keras.Model(inputs, outputs, name=model.name)
         outputs = model(inputs)
@@ -373,9 +353,7 @@ def export_model(params: HeartExportParams):
     # Verify TFLite results match TF results on example data
     logger.info("Validating model results")
     y_pred_tf = np.argmax(model.predict(test_x), axis=1)
-    y_pred_tfl = np.argmax(
-        predict_tflite(model_content=tflite_model, test_x=test_x), axis=1
-    )
+    y_pred_tfl = np.argmax(predict_tflite(model_content=tflite_model, test_x=test_x), axis=1)
     tfl_acc = np.sum(y_pred_tfl == y_pred_tf) / len(y_pred_tf)
 
     # Check accuracy hit

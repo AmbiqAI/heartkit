@@ -73,9 +73,7 @@ class HKRestClient(HKClient):
         return HeartKitState.parse_obj(r.json())
 
     def set_state(self, state: HeartKitState):
-        r = requests.post(
-            f"{self.addr}/state", data=state.json(by_alias=True), timeout=10
-        )
+        r = requests.post(f"{self.addr}/state", data=state.json(by_alias=True), timeout=10)
         r.raise_for_status()
 
     def get_app_state(self) -> AppState:
@@ -84,9 +82,7 @@ class HKRestClient(HKClient):
         return AppState(r.json())
 
     def set_app_state(self, app_state: AppState):
-        r = requests.post(
-            f"{self.addr}/app/state", params=dict(app_state=app_state.value), timeout=10
-        )
+        r = requests.post(f"{self.addr}/app/state", params=dict(app_state=app_state.value), timeout=10)
         r.raise_for_status()
 
     def get_data_id(self):
@@ -95,9 +91,7 @@ class HKRestClient(HKClient):
         return r.json()
 
     def set_data_id(self, data_id: int):
-        r = requests.post(
-            f"{self.addr}/data_id", params=dict(data_id=data_id), timeout=10
-        )
+        r = requests.post(f"{self.addr}/data_id", params=dict(data_id=data_id), timeout=10)
         r.raise_for_status()
 
     def get_data(self) -> list[float]:
@@ -124,7 +118,5 @@ class HKRestClient(HKClient):
         return HKResult.parse_obj(r.json())
 
     def set_results(self, result: HKResult):
-        r = requests.post(
-            f"{self.addr}/results", data=result.json(by_alias=True), timeout=10
-        )
+        r = requests.post(f"{self.addr}/results", data=result.json(by_alias=True), timeout=10)
         r.raise_for_status()

@@ -94,9 +94,7 @@ def load_train_datasets(
     def preprocess(x: npt.NDArray) -> npt.NDArray:
         xx = x.copy().squeeze()
         if params.augmentations:
-            xx = augment_pipeline(
-                xx, augmentations=params.augmentations, sample_rate=params.sampling_rate
-            )
+            xx = augment_pipeline(xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
         xx = prepare(xx, sample_rate=params.sampling_rate)
         return xx
 
@@ -202,9 +200,7 @@ def load_test_datasets(
         ds_weights = np.array([len(ds.get_test_patient_ids()) for ds in datasets])
         ds_weights = ds_weights / ds_weights.sum()
 
-        test_ds = tf.data.Dataset.sample_from_datasets(
-            test_datasets, weights=ds_weights
-        )
+        test_ds = tf.data.Dataset.sample_from_datasets(test_datasets, weights=ds_weights)
         test_x, test_y = next(test_ds.batch(params.test_size).as_numpy_iterator())
     # END WITH
     return test_x, test_y
@@ -251,9 +247,7 @@ def train_model(params: HeartTrainParams):
                 if layer.name.startswith("ENC"):
                     logger.info(f"Freezing {layer.name}")
                     layer.trainable = False
-        flops = get_flops(
-            model, batch_size=1, fpath=str(params.job_dir / "model_flops.log")
-        )
+        flops = get_flops(model, batch_size=1, fpath=str(params.job_dir / "model_flops.log"))
 
         # Grab optional LR parameters
         lr_rate: float = getattr(params, "lr_rate", 1e-4)
@@ -265,9 +259,7 @@ def train_model(params: HeartTrainParams):
             t_mul=1.65 / (0.1 * lr_cycles * (lr_cycles - 1)),
             m_mul=0.4,
         )
-        optimizer = tf.keras.optimizers.Adam(
-            scheduler, beta_1=0.9, beta_2=0.98, epsilon=1e-9
-        )
+        optimizer = tf.keras.optimizers.Adam(scheduler, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
         loss = tf.keras.losses.CategoricalFocalCrossentropy(from_logits=True)
         metrics = [
             tf.keras.metrics.CategoricalAccuracy(name="acc"),
@@ -304,9 +296,7 @@ def train_model(params: HeartTrainParams):
                 verbose=1,
             ),
             tf.keras.callbacks.CSVLogger(str(params.job_dir / "history.csv")),
-            tf.keras.callbacks.TensorBoard(
-                log_dir=str(params.job_dir), write_steps_per_second=True
-            ),
+            tf.keras.callbacks.TensorBoard(log_dir=str(params.job_dir), write_steps_per_second=True),
         ]
         if env_flag("WANDB"):
             model_callbacks.append(WandbCallback())
@@ -348,9 +338,7 @@ def evaluate_model(params: HeartTestParams):
     with strategy.scope():
         logger.info("Loading model")
         model = load_model(str(params.model_file))
-        flops = get_flops(
-            model, batch_size=1, fpath=str(params.job_dir / "model_flops.log")
-        )
+        flops = get_flops(model, batch_size=1, fpath=str(params.job_dir / "model_flops.log"))
 
         model.summary(print_fn=logger.info)
         logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
@@ -392,16 +380,12 @@ def export_model(params: HeartExportParams):
     in_shape, _ = get_task_shape(HeartTask.segmentation, params.frame_size)
     inputs = tf.keras.layers.Input(in_shape, dtype=tf.float32, batch_size=1)
     outputs = model(inputs)
-    if not params.use_logits and not isinstance(
-        model.layers[-1], tf.keras.layers.Softmax
-    ):
+    if not params.use_logits and not isinstance(model.layers[-1], tf.keras.layers.Softmax):
         outputs = tf.keras.layers.Softmax()(outputs)
         model = tf.keras.Model(inputs, outputs, name=model.name)
         outputs = model(inputs)
     # END IF
-    flops = get_flops(
-        model, batch_size=1, fpath=str(params.job_dir / "model_flops.log")
-    )
+    flops = get_flops(model, batch_size=1, fpath=str(params.job_dir / "model_flops.log"))
     model.summary(print_fn=logger.info)
 
     logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
@@ -435,9 +419,7 @@ def export_model(params: HeartExportParams):
     # Verify TFLite results match TF results on example data
     logger.info("Validating model results")
     y_pred_tf = np.argmax(model.predict(test_x), axis=2)
-    y_pred_tfl = np.argmax(
-        predict_tflite(model_content=tflite_model, test_x=test_x), axis=2
-    )
+    y_pred_tfl = np.argmax(predict_tflite(model_content=tflite_model, test_x=test_x), axis=2)
     tfl_acc = np.sum(y_pred_tfl == y_pred_tf) / len(y_pred_tf)
 
     # Check accuracy hit

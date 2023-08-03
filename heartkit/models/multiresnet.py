@@ -138,9 +138,7 @@ def MultiresNet(
             droprate=params.dropout,
         )(y)
         # Mix channels
-        y = tf.keras.layers.Conv1D(int(params.activation_scaling * params.d_model), 1)(
-            y
-        )
+        y = tf.keras.layers.Conv1D(int(params.activation_scaling * params.d_model), 1)(y)
         y = glu()(y)
         y = tf.keras.layers.Dropout(params.dropout)(y)
         y = tf.keras.layers.Add()([y, y_res])

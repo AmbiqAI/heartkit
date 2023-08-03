@@ -93,7 +93,7 @@ extern usb_config_t usbCfg;
 extern hk_sensor_t sensorCtx;
 
 extern const char *HK_RHYTHM_LABELS[3];
-extern const char *HK_BEAT_LABELS[3];
+extern const char *HK_BEAT_LABELS[4];
 extern const char *HK_HEART_RATE_LABELS[3];
 extern const char *HK_SEGMENT_LABELS[4];
 
@@ -101,7 +101,7 @@ extern arm_biquad_casd_df1_inst_f32 ecgFilterCtx;
 extern arm_biquad_casd_df1_inst_f32 qrsFilterCtx;
 
 extern ecg_peak_f32_t qrsFindPeakCtx;
-extern uint32_t numQrsPeaks;
+extern int32_t numQrsPeaks;
 extern uint32_t hkQrsPeaks[HK_PEAK_LEN];
 extern uint32_t hkRRIntervals[HK_PEAK_LEN];
 extern uint8_t hkQrsMask[HK_PEAK_LEN];

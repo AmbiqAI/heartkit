@@ -42,9 +42,7 @@ def parse_content(cls: Type[B], content: str) -> B:
     Returns:
         B: Pydantic model subclass instance
     """
-    return (
-        cls.parse_file(content) if os.path.isfile(content) else cls.parse_raw(content)
-    )
+    return cls.parse_file(content) if os.path.isfile(content) else cls.parse_raw(content)
 
 
 def run(inputs: list[str] | None = None):

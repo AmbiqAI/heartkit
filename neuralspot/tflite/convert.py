@@ -44,11 +44,7 @@ def array_dump(
 
         wfp.write(f"const {var_dtype} {var_name}[] = {{{os.linesep}")
         for row in range(0, len(data), row_len):
-            wfp.write(
-                "  "
-                + ", ".join((str(val) for val in data[row : row + row_len]))
-                + f", {os.linesep}"
-            )
+            wfp.write("  " + ", ".join((str(val) for val in data[row : row + row_len])) + f", {os.linesep}")
         # END FOR
         wfp.write(f"}};{os.linesep}")
         wfp.write(f"const unsigned int {var_name}_len = {len(data)};{os.linesep}")
@@ -74,18 +70,14 @@ def xxd_c_dump(
         is_header (bool): Write as header or source C file. Defaults to source.
     """
     var_len = 0
-    with open(src_path, "rb", encoding=None) as rfp, open(
-        dst_path, "w", encoding="UTF-8"
-    ) as wfp:
+    with open(src_path, "rb", encoding=None) as rfp, open(dst_path, "w", encoding="UTF-8") as wfp:
         if is_header:
             wfp.write(f"#ifndef __{var_name.upper()}_H{os.linesep}")
             wfp.write(f"#define __{var_name.upper()}_H{os.linesep}")
 
         wfp.write(f"const unsigned char {var_name}[] = {{{os.linesep}")
         for chunk in iter(lambda: rfp.read(chunk_len), b""):
-            wfp.write(
-                "  " + ", ".join((f"0x{c:02x}" for c in chunk)) + f", {os.linesep}"
-            )
+            wfp.write("  " + ", ".join((f"0x{c:02x}" for c in chunk)) + f", {os.linesep}")
             var_len += len(chunk)
         # END FOR
         wfp.write(f"}};{os.linesep}")
@@ -168,23 +160,16 @@ def predict_tflite(
     input_details = inputs_details[input_name]
     output_details = outputs_details[output_name]
     input_scale: list[float] = input_details["quantization_parameters"]["scales"]
-    input_zero_point: list[int] = input_details["quantization_parameters"][
-        "zero_points"
-    ]
+    input_zero_point: list[int] = input_details["quantization_parameters"]["zero_points"]
     output_scale: list[float] = output_details["quantization_parameters"]["scales"]
-    output_zero_point: list[int] = output_details["quantization_parameters"][
-        "zero_points"
-    ]
+    output_zero_point: list[int] = output_details["quantization_parameters"]["zero_points"]
 
     if len(input_scale) and len(input_zero_point):
         inputs = inputs / input_scale[0] + input_zero_point[0]
         inputs = inputs.astype(input_details["dtype"])
 
     outputs = np.array(
-        [
-            model_sig(**{input_name: inputs[i : i + 1]})[output_name][0]
-            for i in range(inputs.shape[0])
-        ],
+        [model_sig(**{input_name: inputs[i : i + 1]})[output_name][0] for i in range(inputs.shape[0])],
         dtype=output_details["dtype"],
     )
 

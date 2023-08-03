@@ -32,7 +32,7 @@
 
 uint32_t
 print_hk_result(hk_result_t *result) {
-    uint32_t numBeats = result->numNormBeats + result->numPacBeats + result->numPvcBeats;
+    uint32_t numBeats = result->numNormBeats + result->numPacBeats + result->numPvcBeats + result->numNoiseBeats;
     const char *rhythm = HK_HEART_RATE_LABELS[result->heartRhythm];
     ns_printf("----------------------\n");
     ns_printf("** HeartKit Results **\n");
@@ -80,23 +80,20 @@ apply_segmentation_model() {
 uint32_t
 apply_hrv_model() {
     uint32_t err = 0;
-    uint32_t numQrsPeaks;
     // Find QRS peaks
     numQrsPeaks = pk_ecg_find_peaks(&qrsFindPeakCtx, hkEcgData, HK_DATA_LEN, hkQrsPeaks);
     pk_compute_rr_intervals(hkQrsPeaks, numQrsPeaks, hkRRIntervals);
     pk_filter_rr_intervals(hkRRIntervals, numQrsPeaks, hkQrsMask, SAMPLE_RATE);
     pk_compute_hrv_from_rr_intervals(hkRRIntervals, numQrsPeaks, hkQrsMask, &hkHrvMetrics);
-
     // Apply HRV head
     float32_t bpm = 60 / (hkHrvMetrics.meanNN / SAMPLE_RATE);
-    uint32_t avgRR = (uint32_t)hkHrvMetrics.meanNN;
     hkResults.heartRhythm = bpm < 60 ? HeartRateBradycardia : bpm <= 100 ? HeartRateNormal : HeartRateTachycardia;
     hkResults.heartRate = (uint32_t)bpm;
+    return err;
 }
 
 uint32_t
 apply_beat_model() {
-    // Apply beat head
     uint32_t err = 0;
     uint32_t bIdx;
     uint32_t beatLabel;
@@ -108,6 +105,7 @@ apply_beat_model() {
     hkResults.numNoiseBeats = 0;
 
     uint32_t avgRR = (uint32_t)(hkHrvMetrics.meanNN);
+    ns_printf("avgRR: %lu\n", avgRR);
     uint32_t bOffset = (BEAT_FRAME_LEN >> 1);
     uint32_t bStart = 0;
     for (int i = 1; i < numQrsPeaks - 1; i++) {
@@ -123,6 +121,7 @@ apply_beat_model() {
         }
         // Place beat label in upper nibble
         hkSegMask[bIdx] |= ((beatLabel + 1) << 4);
+        ns_printf("beat: %lu, %lu\n", bIdx, beatLabel);
         switch (beatLabel) {
         case HeartBeatPac:
             hkResults.numPacBeats += 1;
@@ -138,6 +137,7 @@ apply_beat_model() {
             break;
         }
     }
+    return err;
 }
 
 DataCollectMode
@@ -456,9 +456,9 @@ loop() {
         break;
 
     case DISPLAY_STATE:
-        print_to_pc("DISPLAY_STATE\n");
         send_mask_to_pc();
         send_results_to_pc();
+        print_to_pc("DISPLAY_STATE\n");
         ns_delay_us(DISPLAY_LEN_USEC);
         appStore.state = IDLE_STATE;
         break;

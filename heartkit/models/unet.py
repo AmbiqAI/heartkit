@@ -20,14 +20,10 @@ class UNetBlockParams(BaseModel):
 class UNetParams(BaseModel):
     """UNet parameters"""
 
-    blocks: list[UNetBlockParams] = Field(
-        default_factory=list, description="UNet blocks"
-    )
+    blocks: list[UNetBlockParams] = Field(default_factory=list, description="UNet blocks")
     include_top: bool = Field(default=True, description="Include top")
     model_name: str = Field(default="UNet", description="Model name")
-    output_kernel_size: int | tuple[int, int] = Field(
-        default=3, description="Output kernel size"
-    )
+    output_kernel_size: int | tuple[int, int] = Field(default=3, description="Output kernel size")
 
 
 def UNet(
@@ -77,9 +73,7 @@ def UNet(
 
         skip_layers.append(y if block.skip else None)
 
-        y = tf.keras.layers.MaxPooling2D(
-            block.pool, strides=block.strides, padding="same", name=f"{name}.POOL1"
-        )(y)
+        y = tf.keras.layers.MaxPooling2D(block.pool, strides=block.strides, padding="same", name=f"{name}.POOL1")(y)
     # END FOR
 
     for i, block in enumerate(reversed(params.blocks)):
@@ -100,9 +94,7 @@ def UNet(
         # Add skip connection
         skip_layer = skip_layers.pop()
         if skip_layer is not None:
-            y = tf.keras.layers.concatenate(
-                [y, skip_layer], name=f"{name}.CAT1"
-            )  # Can add or concatenate
+            y = tf.keras.layers.concatenate([y, skip_layer], name=f"{name}.CAT1")  # Can add or concatenate
 
             # Use 1x1 conv to reduce filters
             y = conv2d(

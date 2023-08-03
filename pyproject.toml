@@ -38,7 +38,7 @@ filterwarnings = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.12"
+python = ">=3.11,<3.12"
 tensorflow-macos = {version = "^2.13.0", platform = "darwin"}
 tensorflow = {version = "^2.13.0", markers = "sys_platform != 'darwin'"}
 numpy = "^1.24.3"
@@ -57,8 +57,7 @@ typer = {version = "^0.9.0", extras = ["all"]}
 erpc = {git = "https://github.com/AmbiqAI/erpc.git", rev = "develop", subdirectory = "erpc_python"}
 pyserial = "^3.5"
 rich = "^13.4.2"
-wandb = "^0.15.5"
-tensorflow-addons = "^0.20.0"
+wandb = "^0.15.8"
 scipy = "^1.11.1"
 plotext = "^5.2.8"
 boto3 = "^1.27.1"
@@ -96,6 +95,9 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.isort]
 profile = 'black'
+
+[tool.black]
+line-length = 120
 
 [tool.pylint.master]
 ignore-paths = [

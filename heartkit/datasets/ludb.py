@@ -145,9 +145,7 @@ class LudbDataset(HeartKitDataset):
             if self.sampling_rate != self.target_rate:
                 ratio = self.target_rate / self.sampling_rate
                 data = resample_signal(data, self.sampling_rate, self.target_rate)
-                segs[:, (SEG_BEG_IDX, SEG_END_IDX)] = (
-                    segs[:, (SEG_BEG_IDX, SEG_END_IDX)] * ratio
-                )
+                segs[:, (SEG_BEG_IDX, SEG_END_IDX)] = segs[:, (SEG_BEG_IDX, SEG_END_IDX)] * ratio
                 fids[:, FID_LOC_IDX] = fids[:, FID_LOC_IDX] * ratio
             # END IF
 
@@ -155,9 +153,7 @@ class LudbDataset(HeartKitDataset):
             labels = np.zeros_like(data)
             for seg_idx in range(segs.shape[0]):
                 seg = segs[seg_idx]
-                labels[seg[SEG_BEG_IDX] : seg[SEG_END_IDX], seg[SEG_LEAD_IDX]] = seg[
-                    SEG_LBL_IDX
-                ]
+                labels[seg[SEG_BEG_IDX] : seg[SEG_END_IDX], seg[SEG_LEAD_IDX]] = seg[SEG_LBL_IDX]
             # END FOR
 
             start_offset = max(0, segs[0][SEG_BEG_IDX] - 100)
@@ -166,15 +162,9 @@ class LudbDataset(HeartKitDataset):
                 # Randomly pick an ECG lead
                 lead_idx = np.random.randint(data.shape[1])
                 # Randomly select frame within the segment
-                frame_start = np.random.randint(
-                    start_offset, data.shape[0] - self.frame_size - stop_offset
-                )
+                frame_start = np.random.randint(start_offset, data.shape[0] - self.frame_size - stop_offset)
                 frame_end = frame_start + self.frame_size
-                x = (
-                    data[frame_start:frame_end, lead_idx]
-                    .astype(np.float32)
-                    .reshape((self.frame_size,))
-                )
+                x = data[frame_start:frame_end, lead_idx].astype(np.float32).reshape((self.frame_size,))
                 y = labels[frame_start:frame_end, lead_idx].astype(np.int32)
                 yield x, y
             # END FOR
@@ -203,9 +193,7 @@ class LudbDataset(HeartKitDataset):
 
         # END FOR
 
-    def signal_generator(
-        self, patient_generator: PatientGenerator, samples_per_patient: int = 1
-    ) -> SampleGenerator:
+    def signal_generator(self, patient_generator: PatientGenerator, samples_per_patient: int = 1) -> SampleGenerator:
         """
         Generate frames using patient generator.
         from the segments in patient data by placing a frame in a random location within one of the segments.
@@ -228,18 +216,12 @@ class LudbDataset(HeartKitDataset):
                 else:
                     frame_start = 0
                 frame_end = frame_start + self.frame_size
-                x = (
-                    data[frame_start:frame_end, lead_idx]
-                    .astype(np.float32)
-                    .reshape((self.frame_size,))
-                )
+                x = data[frame_start:frame_end, lead_idx].astype(np.float32).reshape((self.frame_size,))
                 yield x
             # END FOR
         # END FOR
 
-    def get_patient_data_segments(
-        self, patient: int
-    ) -> tuple[npt.NDArray, npt.NDArray]:
+    def get_patient_data_segments(self, patient: int) -> tuple[npt.NDArray, npt.NDArray]:
         """Get patient's entire data and segments
         Args:
             patient (int): Patient ID (1-based)
@@ -254,9 +236,7 @@ class LudbDataset(HeartKitDataset):
         labels = np.zeros_like(data)
         for seg_idx in range(segs.shape[0]):  # pylint: disable=no-member
             seg = segs[seg_idx]
-            labels[seg[SEG_BEG_IDX] : seg[SEG_END_IDX] + 0, seg[SEG_LEAD_IDX]] = seg[
-                SEG_LBL_IDX
-            ]
+            labels[seg[SEG_BEG_IDX] : seg[SEG_END_IDX] + 0, seg[SEG_LEAD_IDX]] = seg[SEG_LBL_IDX]
         # END FOR
         return data, labels
 
@@ -285,9 +265,7 @@ class LudbDataset(HeartKitDataset):
                 np.random.shuffle(patient_ids)
             for patient_id in patient_ids:
                 pt_key = f"p{patient_id:05d}"
-                with h5py.File(
-                    os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r"
-                ) as h5:
+                with h5py.File(os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r") as h5:
                     yield patient_id, h5
             # END FOR
             if not repeat:
@@ -374,9 +352,7 @@ class LudbDataset(HeartKitDataset):
             patient_ids = self.patient_ids
 
         subdir = "lobachevsky-university-electrocardiography-database-1.0.1"
-        with Pool(
-            processes=num_workers
-        ) as pool, tempfile.TemporaryDirectory() as tmpdir, zipfile.ZipFile(
+        with Pool(processes=num_workers) as pool, tempfile.TemporaryDirectory() as tmpdir, zipfile.ZipFile(
             zip_path, mode="r"
         ) as zp:
             ludb_dir = os.path.join(tmpdir, "ludb")
@@ -414,7 +390,5 @@ class LudbDataset(HeartKitDataset):
 
         # 2. Extract and convert patient ECG data to H5 files
         logger.info("Generating LUDB patient data")
-        self.convert_dataset_zip_to_hdf5(
-            zip_path=ds_zip_path, force=force, num_workers=num_workers
-        )
+        self.convert_dataset_zip_to_hdf5(zip_path=ds_zip_path, force=force, num_workers=num_workers)
         logger.info("Finished LUDB patient data")

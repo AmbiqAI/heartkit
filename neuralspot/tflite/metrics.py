@@ -66,9 +66,7 @@ from tensorflow.python.profiler.option_builder import ProfileOptionBuilder
 #     return float(flops.total_float_ops)  # pylint: disable=no-member
 
 
-def get_flops(
-    model: tf.keras.Model, batch_size: int | None = None, fpath: str | None = None
-) -> float:
+def get_flops(model: tf.keras.Model, batch_size: int | None = None, fpath: str | None = None) -> float:
     """
     Calculate FLOPS for tf.keras.Model or tf.keras.Sequential .
     Ignore operations used in only training mode such as Initialization.

@@ -187,7 +187,6 @@ smooth_signal(float32_t *pSrc, float32_t *pResult, uint32_t blockSize, float32_t
 
     // Utilize dot product to compute moving average
     uint32_t halfWindowSize = windowSize / 2;
-    float32_t value = 0;
     arm_fill_f32(1.0f / windowSize, wBuffer, windowSize);
     for (size_t i = 0; i < blockSize - windowSize; i++) {
         arm_dot_prod_f32(pSrc + i, wBuffer, windowSize, pResult + i + halfWindowSize);

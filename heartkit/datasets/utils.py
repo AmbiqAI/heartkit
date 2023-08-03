@@ -5,9 +5,7 @@ import numpy.typing as npt
 import tensorflow as tf
 
 
-def numpy_dataset_generator(
-    x: npt.NDArray, y: npt.NDArray
-) -> Generator[tuple[npt.NDArray, npt.NDArray], None, None]:
+def numpy_dataset_generator(x: npt.NDArray, y: npt.NDArray) -> Generator[tuple[npt.NDArray, npt.NDArray], None, None]:
     """Create generator from numpy dataset where first axis is samples
 
     Args:
@@ -21,9 +19,7 @@ def numpy_dataset_generator(
         yield x[i], y[i]
 
 
-def create_dataset_from_data(
-    x: npt.NDArray, y: npt.NDArray, spec: tuple[tf.TensorSpec]
-) -> tf.data.Dataset:
+def create_dataset_from_data(x: npt.NDArray, y: npt.NDArray, spec: tuple[tf.TensorSpec]) -> tf.data.Dataset:
     """Helper function to create dataset from static data
     Args:
         x (npt.NDArray): Numpy data
@@ -39,9 +35,7 @@ def create_dataset_from_data(
 T = TypeVar("T")
 
 
-def buffered_generator(
-    generator: Generator[T, None, None], buffer_size: int
-) -> Generator[list[T], None, None]:
+def buffered_generator(generator: Generator[T, None, None], buffer_size: int) -> Generator[list[T], None, None]:
     """Buffer the elements yielded by a generator. New elements replace the oldest elements in the buffer.
 
     Args:

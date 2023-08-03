@@ -45,13 +45,9 @@ def ecg_segmentation_plot(
         twave = np.where(mask == HeartSegment.twave, data, np.NAN)
 
         fig.add_trace(go.Scatter(x=t, y=data, line_width=4, name="ECG"), row=1, col=1)
-        fig.add_trace(
-            go.Scatter(x=t, y=pwave, line_width=4, name="P wave"), row=1, col=1
-        )
+        fig.add_trace(go.Scatter(x=t, y=pwave, line_width=4, name="P wave"), row=1, col=1)
         fig.add_trace(go.Scatter(x=t, y=qrs, line_width=4, name="QRS"), row=1, col=1)
-        fig.add_trace(
-            go.Scatter(x=t, y=twave, line_width=4, name="T Wave"), row=1, col=1
-        )
+        fig.add_trace(go.Scatter(x=t, y=twave, line_width=4, name="T Wave"), row=1, col=1)
 
         # Extreact beats (PAC, PVC)
         beats = seg_mask >> 4
@@ -82,7 +78,7 @@ def ecg_segmentation_plot(
 def hkresult_to_str(result: HKResult) -> str:
     """Format HKResult into string for printing"""
     rhythym_names = get_class_names(HeartTask.hrv)
-    num_beats = result.num_norm_beats + result.num_pac_beats + result.num_pvc_beats
+    num_beats = result.num_norm_beats + result.num_pac_beats + result.num_pvc_beats + result.num_noise_beats
     rhythm = "ARRHYTHMIA" if result.arrhythmia else rhythym_names[result.heart_rhythm]
     return (
         "--------------------------\n"
@@ -91,9 +87,10 @@ def hkresult_to_str(result: HKResult) -> str:
         f"  Heart Rate: {result.heart_rate}\n"
         f"Heart Rhythm: {rhythm}\n"
         f" Total Beats: {num_beats}\n"
-        f"  Norm Beats: {result.num_norm_beats}\n"
+        f"Normal Beats: {result.num_norm_beats}\n"
         f"   PAC Beats: {result.num_pac_beats}\n"
         f"   PVC Beats: {result.num_pvc_beats}\n"
+        f" Noise Beats: {result.num_noise_beats}\n"
         f"  Arrhythmia: {'Detected' if result.arrhythmia else 'Not Detected'}\n"
     )
 

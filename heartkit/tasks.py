@@ -73,9 +73,7 @@ def get_task_shape(task: HeartTask, frame_size: int) -> tuple[tuple[int], tuple[
     raise ValueError(f"unknown task: {task}")
 
 
-def get_task_spec(
-    task: HeartTask, frame_size: int
-) -> tuple[tf.TensorSpec, tf.TensorSpec]:
+def get_task_spec(task: HeartTask, frame_size: int) -> tuple[tf.TensorSpec, tf.TensorSpec]:
     """Get task model spec
 
     Args:
@@ -111,9 +109,7 @@ def create_task_model(
     """
     num_classes = get_num_classes(task=task)
     if name == "resnet":
-        return ResNet(
-            x=inputs, params=ResNetParams.parse_obj(params), num_classes=num_classes
-        )
+        return ResNet(x=inputs, params=ResNetParams.parse_obj(params), num_classes=num_classes)
     if name == "efficientnet":
         return EfficientNetV2(
             x=inputs,

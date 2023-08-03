@@ -47,16 +47,10 @@ def f1(
         npt.NDArray|float: F1 scores
     """
     if y_prob.ndim != 2:
-        raise ValueError(
-            "y_prob must be a 2d matrix with class probabilities for each sample"
-        )
-    if (
-        y_true.ndim == 1
-    ):  # we assume that y_true is sparse (consequently, multiclass=False)
+        raise ValueError("y_prob must be a 2d matrix with class probabilities for each sample")
+    if y_true.ndim == 1:  # we assume that y_true is sparse (consequently, multiclass=False)
         if multiclass:
-            raise ValueError(
-                "if y_true cannot be sparse and multiclass at the same time"
-            )
+            raise ValueError("if y_true cannot be sparse and multiclass at the same time")
         depth = y_prob.shape[1]
         y_true = _one_hot(y_true, depth)
     if multiclass:
@@ -114,9 +108,7 @@ def confusion_matrix_plot(
     fmt = "g"
     if normalize:
         cmn = confusion_matrix(y_true, y_pred, normalize=normalize)
-        ann = np.asarray(
-            [f"{c:g}{os.linesep}{nc:.2%}" for c, nc in zip(cm.flatten(), cmn.flatten())]
-        ).reshape(cm.shape)
+        ann = np.asarray([f"{c:g}{os.linesep}{nc:.2%}" for c, nc in zip(cm.flatten(), cmn.flatten())]).reshape(cm.shape)
         fmt = ""
     # END IF
     fig, ax = plt.subplots(figsize=kwargs.get("figsize", (10, 8)))
@@ -164,9 +156,7 @@ def roc_auc_plot(
     return fig, ax
 
 
-def macro_precision_recall(
-    y_true: npt.NDArray, y_prob: npt.NDArray, thresholds: npt.NDArray
-):
+def macro_precision_recall(y_true: npt.NDArray, y_prob: npt.NDArray, thresholds: npt.NDArray):
     """source: https://github.com/helme/ecg_ptbxl_benchmarking"""
     # expand analysis to the number of thresholds
     y_true = np.repeat(y_true[None, :, :], len(thresholds), axis=0)
@@ -192,9 +182,7 @@ def macro_precision_recall(
     return av_precision, av_recall
 
 
-def challenge2020_metrics(
-    y_true, y_pred, beta_f=2, beta_g=2, class_weights=None, single=False
-):
+def challenge2020_metrics(y_true, y_pred, beta_f=2, beta_g=2, class_weights=None, single=False):
     """source: https://github.com/helme/ecg_ptbxl_benchmarking"""
     num_samples, num_classes = y_true.shape
     if single:  # if evaluating single class in case of threshold-optimization
@@ -216,11 +204,7 @@ def challenge2020_metrics(
                 tn += 1.0 / sample_weights[i]
             if y_pred[i, k] == 0 and y_true[i, k] != y_pred[i, k]:
                 fn += 1.0 / sample_weights[i]
-        f_beta += (
-            w_k
-            * ((1 + beta_f**2) * tp)
-            / ((1 + beta_f**2) * tp + fp + beta_f**2 * fn)
-        )
+        f_beta += w_k * ((1 + beta_f**2) * tp) / ((1 + beta_f**2) * tp + fp + beta_f**2 * fn)
         g_beta += w_k * tp / (tp + fp + beta_g * fn)
     f_beta /= class_weights.sum()
     g_beta /= class_weights.sum()

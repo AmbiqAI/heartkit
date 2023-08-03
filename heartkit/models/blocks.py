@@ -157,9 +157,7 @@ def se_block(ratio: int = 8, name: str | None = None) -> KerasLayer:
         name_pool = f"{name}.pool" if name else None
         name_sq = f"{name}.sq" if name else None
         y = tf.keras.layers.GlobalAveragePooling2D(name=name_pool, keepdims=True)(x)
-        y = conv2d(num_chan // ratio, kernel_size=(1, 1), use_bias=True, name=name_sq)(
-            y
-        )
+        y = conv2d(num_chan // ratio, kernel_size=(1, 1), use_bias=True, name=name_sq)(y)
         y = relu6(name=name_sq)(y)
         # Excite
         name_ex = f"{name}.ex" if name else None
@@ -197,9 +195,7 @@ def mbconv_block(
 
     def layer(x: tf.Tensor) -> tf.Tensor:
         input_filters = x.shape[-1]
-        stride_len = (
-            strides if isinstance(strides, int) else sum(strides) / len(strides)
-        )
+        stride_len = strides if isinstance(strides, int) else sum(strides) / len(strides)
         is_downsample = stride_len
         add_residual = input_filters == output_filters and not is_downsample
         # Expand: narrow -> wide
@@ -288,21 +284,14 @@ class SharedWeightsConv(tf.keras.layers.Layer):
         super().__init__(**kwargs)
         self.parent = parent
         self.rank = parent.rank
-        self.activation = (
-            parent.activation
-            if activation is None
-            else tf.keras.activations.get(activation)
-        )
+        self.activation = parent.activation if activation is None else tf.keras.activations.get(activation)
         cnn_kwargs = {
             "strides": strides,
             "padding": padding,
             "data_format": None,
             "dilation_rate": dilation_rate,
         }
-        self.cnn_kwargs = {
-            key: getattr(parent, key) if value is None else value
-            for key, value in cnn_kwargs.items()
-        }
+        self.cnn_kwargs = {key: getattr(parent, key) if value is None else value for key, value in cnn_kwargs.items()}
         self.built = self.parent.built
         self.cnn_op = {
             1: tf.keras.backend.conv1d,
@@ -325,9 +314,7 @@ class SharedWeightsConv(tf.keras.layers.Layer):
                     shape = (1, self.parent.filters, 1)
                     outputs += tf.reshape(self.parent.bias, shape)
                 else:
-                    outputs = tf.nn.bias_add(
-                        outputs, self.parent.bias, data_format="NCHW"
-                    )
+                    outputs = tf.nn.bias_add(outputs, self.parent.bias, data_format="NCHW")
             else:
                 outputs = tf.nn.bias_add(outputs, self.parent.bias, data_format="NHWC")
         if self.activation is not None:

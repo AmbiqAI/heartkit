@@ -22,14 +22,10 @@ class MobileOneBlockParams(BaseModel):
 class MobileOneParams(BaseModel):
     """MobileOne parameters"""
 
-    blocks: list[MobileOneBlockParams] = Field(
-        default_factory=list, description="MobileOne blocks"
-    )
+    blocks: list[MobileOneBlockParams] = Field(default_factory=list, description="MobileOne blocks")
 
     input_filters: int = Field(default=3, description="Input filters")
-    input_kernel_size: int | tuple[int, int] = Field(
-        default=3, description="Input kernel size"
-    )
+    input_kernel_size: int | tuple[int, int] = Field(default=3, description="Input kernel size")
     input_strides: int | tuple[int, int] = Field(default=2, description="Input stride")
     input_padding: int | tuple[int, int] = Field(default=1, description="Input padding")
 
@@ -69,14 +65,8 @@ def mobileone_block(
 
     def layer(x: tf.Tensor) -> tf.Tensor:
         input_filters = x.shape[-1]
-        stride_len = (
-            strides if isinstance(strides, int) else sum(strides) / len(strides)
-        )
-        kernel_len = (
-            kernel_size
-            if isinstance(kernel_size, int)
-            else sum(kernel_size) / len(kernel_size)
-        )
+        stride_len = strides if isinstance(strides, int) else sum(strides) / len(strides)
+        kernel_len = kernel_size if isinstance(kernel_size, int) else sum(kernel_size) / len(kernel_size)
         is_downsample = stride_len > 1
         is_depthwise = groups > 1 and groups == input_filters
         has_skip_branch = output_filters == input_filters and stride_len == 1
@@ -126,9 +116,7 @@ def mobileone_block(
                 )(x)
                 y_scale = batch_norm(name=name_scale)(y_scale)
                 if is_downsample:
-                    y_scale = tf.keras.layers.MaxPool2D(
-                        pool_size=strides, padding="same"
-                    )(y_scale)
+                    y_scale = tf.keras.layers.MaxPool2D(pool_size=strides, padding="same")(y_scale)
             else:
                 y_scale = tf.keras.layers.Conv2D(
                     output_filters,
@@ -159,9 +147,7 @@ def mobileone_block(
                 )(yp)
                 y_branch = batch_norm(name=name_branch)(y_branch)
                 if is_downsample:
-                    y_branch = tf.keras.layers.MaxPool2D(
-                        pool_size=strides, padding="same"
-                    )(y_branch)
+                    y_branch = tf.keras.layers.MaxPool2D(pool_size=strides, padding="same")(y_branch)
             else:
                 y_branch = tf.keras.layers.Conv2D(
                     output_filters,

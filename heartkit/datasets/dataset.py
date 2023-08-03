@@ -158,11 +158,7 @@ class HeartKitDataset:
 
         # Use subset of training patients
         if train_patients is not None:
-            num_pts = (
-                int(train_patients)
-                if train_patients > 1
-                else int(train_patients * len(train_patient_ids))
-            )
+            num_pts = int(train_patients) if train_patients > 1 else int(train_patients * len(train_patient_ids))
             train_patient_ids = train_patient_ids[:num_pts]
         # END IF
 
@@ -170,9 +166,7 @@ class HeartKitDataset:
         if self.cachable and val_file and os.path.isfile(val_file):
             logger.info(f"Loading validation data from file {val_file}")
             val = load_pkl(val_file)
-            val_ds = create_dataset_from_data(
-                val["x"], val["y"], get_task_spec(self.task, self.frame_size)
-            )
+            val_ds = create_dataset_from_data(val["x"], val["y"], get_task_spec(self.task, self.frame_size))
             val_patient_ids = val["patient_ids"]
             train_patient_ids = np.setdiff1d(train_patient_ids, val_patient_ids)
         else:
@@ -192,9 +186,7 @@ class HeartKitDataset:
                 num_workers=num_workers,
             )
             val_x, val_y = next(val_ds.batch(val_size).as_numpy_iterator())
-            val_ds = create_dataset_from_data(
-                val_x, val_y, get_task_spec(self.task, self.frame_size)
-            )
+            val_ds = create_dataset_from_data(val_x, val_y, get_task_spec(self.task, self.frame_size))
 
             # Cache validation set
             if self.cachable and val_file:
@@ -235,11 +227,7 @@ class HeartKitDataset:
         test_patient_ids = self.get_test_patient_ids()
 
         if test_patients is not None:
-            num_pts = (
-                int(test_patients)
-                if test_patients > 1
-                else int(test_patients * len(test_patient_ids))
-            )
+            num_pts = int(test_patients) if test_patients > 1 else int(test_patients * len(test_patient_ids))
             test_patient_ids = test_patient_ids[:num_pts]
 
         test_ds = self._parallelize_dataset(
@@ -292,9 +280,7 @@ class HeartKitDataset:
             num_parallel_calls=tf.data.AUTOTUNE,
         )
 
-    def _split_train_test_patients(
-        self, patient_ids: npt.NDArray, test_size: float
-    ) -> list[list[int]]:
+    def _split_train_test_patients(self, patient_ids: npt.NDArray, test_size: float) -> list[list[int]]:
         """Perform train/test split on patients for given task.
         NOTE: We only perform inter-patient splits and not intra-patient.
 
@@ -305,9 +291,7 @@ class HeartKitDataset:
         Returns:
             list[list[int]]: Train and test sets of patient ids
         """
-        return sklearn.model_selection.train_test_split(
-            patient_ids, test_size=test_size
-        )
+        return sklearn.model_selection.train_test_split(patient_ids, test_size=test_size)
 
     def _create_dataset_from_generator(
         self,
@@ -326,18 +310,14 @@ class HeartKitDataset:
         Returns:
             tf.data.Dataset: Dataset generator
         """
-        ds_gen = functools.partial(
-            self._dataset_sample_generator, preprocess=preprocess
-        )
+        ds_gen = functools.partial(self._dataset_sample_generator, preprocess=preprocess)
         dataset = tf.data.Dataset.from_generator(
             generator=ds_gen,
             output_signature=get_task_spec(self.task, self.frame_size),
             args=(patient_ids, samples_per_patient, repeat),
         )
         options = tf.data.Options()
-        options.experimental_distribute.auto_shard_policy = (
-            tf.data.experimental.AutoShardPolicy.FILE
-        )
+        options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.FILE
         dataset = dataset.with_options(options)
         return dataset
 

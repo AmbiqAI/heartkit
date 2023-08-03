@@ -11,6 +11,8 @@
 #ifndef __MAX86150_ADDONS_H
 #define __MAX86150_ADDONS_H
 
+#include "ns_max86150_driver.h"
+
 typedef struct {
     uint8_t numSlots;
     max86150_slot_type *fifoSlotConfigs;

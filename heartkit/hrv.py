@@ -5,9 +5,7 @@ import numpy.typing as npt
 from .defines import HeartExportParams, HeartTestParams, HeartTrainParams
 
 
-def find_peaks_from_segments(
-    data: npt.NDArray, qrs_mask: npt.NDArray, sampling_rate: float = 250
-) -> npt.NDArray:
+def find_peaks_from_segments(data: npt.NDArray, qrs_mask: npt.NDArray, sampling_rate: float = 250) -> npt.NDArray:
     """Find R peaks using QRS segment mask.
     Args:
         data (npt.NDArray): 1-ch ECG data
@@ -26,9 +24,7 @@ def find_peaks_from_segments(
     return peaks
 
 
-def ecg_rate(
-    peaks: npt.NDArray, sampling_rate: float = 1000, desired_length: int | None = None
-) -> npt.NDArray:
+def ecg_rate(peaks: npt.NDArray, sampling_rate: float = 1000, desired_length: int | None = None) -> npt.NDArray:
     """Compute ECG rate from R peak indices
 
     Args:
@@ -41,9 +37,7 @@ def ecg_rate(
     """
     if np.size(peaks) <= 3:
         return np.zeros_like(peaks)
-    rr_intervals = nk.signal_period(
-        peaks=peaks, sampling_rate=sampling_rate, desired_length=desired_length
-    )
+    rr_intervals = nk.signal_period(peaks=peaks, sampling_rate=sampling_rate, desired_length=desired_length)
     # NK used global average for first peak- Instead lets take neighboring peak
     rr_intervals[0] = rr_intervals[1]
     return rr_intervals
@@ -68,9 +62,7 @@ def ecg_bpm(
     """
     if np.size(peaks) <= 1:
         return -1
-    rr_intervals = ecg_rate(
-        peaks=peaks, sampling_rate=sampling_rate, desired_length=None
-    )
+    rr_intervals = ecg_rate(peaks=peaks, sampling_rate=sampling_rate, desired_length=None)
     if min_rate is not None:
         rr_intervals = np.where(rr_intervals < min_rate, min_rate, rr_intervals)
     if max_rate is not None:
@@ -93,9 +85,7 @@ def compute_hrv(
     Returns:
         tuple[float, npt.NDArray, npt.NDArray]: HR in bpm, RR lengths, R peak indices
     """
-    rpeaks = find_peaks_from_segments(
-        data=data, qrs_mask=qrs_mask, sampling_rate=sampling_rate
-    )
+    rpeaks = find_peaks_from_segments(data=data, qrs_mask=qrs_mask, sampling_rate=sampling_rate)
     rr_lens = ecg_rate(peaks=rpeaks, sampling_rate=sampling_rate)
     hr_bpm = ecg_bpm(peaks=rpeaks, sampling_rate=sampling_rate)
     return hr_bpm, rr_lens, rpeaks

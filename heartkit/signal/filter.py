@@ -62,9 +62,7 @@ def resample_signal(
     return sps.resample(data, desired_length, axis=axis)
 
 
-def normalize_signal(
-    data: npt.NDArray, eps: float = 1e-3, axis: int | None = None
-) -> npt.NDArray:
+def normalize_signal(data: npt.NDArray, eps: float = 1e-3, axis: int | None = None) -> npt.NDArray:
     """Normalize signal about its mean and std.
 
     Args:
@@ -102,9 +100,7 @@ def filter_signal(
     Returns:
         npt.NDArray: Filtered signal
     """
-    sos = get_butter_sos(
-        lowcut=lowcut, highcut=highcut, sample_rate=sample_rate, order=order
-    )
+    sos = get_butter_sos(lowcut=lowcut, highcut=highcut, sample_rate=sample_rate, order=order)
     if forward_backward:
         return sps.sosfiltfilt(sos, data, axis=axis)
     return sps.sosfilt(sos, data, axis=axis)
@@ -163,9 +159,7 @@ def smooth_signal(
     if window_length % 2 == 0 or window_length == 0:
         window_length += 1
 
-    return sps.savgol_filter(
-        data, window_length=window_length, polyorder=polyorder, axis=axis
-    )
+    return sps.savgol_filter(data, window_length=window_length, polyorder=polyorder, axis=axis)
 
 
 def quotient_filter_mask(

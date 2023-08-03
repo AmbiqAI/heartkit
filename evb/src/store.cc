@@ -43,7 +43,7 @@ ns_i2c_config_t nsI2cCfg = {.api = &ns_i2c_V1_0_0, .iom = I2C_IOM};
 
 ns_core_config_t nsCoreCfg = {.api = &ns_core_V1_0_0};
 
-usb_config_t usbCfg = {.available = false};
+usb_config_t usbCfg = {.available = true};
 
 ///////////////////////////////////////////////////////////////////////////////
 // Sensor Configuration
@@ -154,7 +154,7 @@ ecg_peak_f32_t qrsFindPeakCtx = {.qrsWin = 0.1,
                                  .qrsDelayWin = 0.3,
                                  .sampleRate = SAMPLE_RATE,
                                  .state = pkArena};
-uint32_t numQrsPeaks;
+int32_t numQrsPeaks;
 uint32_t hkQrsPeaks[HK_PEAK_LEN];
 uint32_t hkRRIntervals[HK_PEAK_LEN];
 uint8_t hkQrsMask[HK_PEAK_LEN];

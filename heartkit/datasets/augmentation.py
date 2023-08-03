@@ -7,9 +7,7 @@ from .. import signal
 from ..defines import AugmentationParams
 
 
-def emg_noise(
-    y: npt.NDArray, scale: float = 1e-5, sampling_frequency: int = 1000
-) -> npt.NDArray:
+def emg_noise(y: npt.NDArray, scale: float = 1e-5, sampling_frequency: int = 1000) -> npt.NDArray:
     """Add EMG noise to signal
 
     Args:
@@ -40,9 +38,7 @@ def lead_noise(y: npt.NDArray, scale: float = 1) -> npt.NDArray:
     return y + np.random.normal(-scale, scale, size=y.shape)
 
 
-def random_scaling(
-    y: npt.NDArray, lower: float = 0.5, upper: float = 2.0
-) -> npt.NDArray:
+def random_scaling(y: npt.NDArray, lower: float = 0.5, upper: float = 2.0) -> npt.NDArray:
     """Randomly scale signal.
 
     Args:
@@ -71,9 +67,7 @@ def baseline_wander(y: npt.NDArray, scale: float = 1e-3) -> npt.NDArray:
     y = y + skew
 
 
-def augment_pipeline(
-    x: npt.NDArray, augmentations: list[AugmentationParams], sample_rate: float
-) -> npt.NDArray:
+def augment_pipeline(x: npt.NDArray, augmentations: list[AugmentationParams], sample_rate: float) -> npt.NDArray:
     """Apply augmentation pipeline
     Args:
         x (npt.NDArray): Signal
@@ -129,14 +123,8 @@ def augment_pipeline(
             num_sources: int = np.random.randint(num_sources[0], num_sources[1])
             x = signal.add_noise_sources(
                 x,
-                amplitudes=[
-                    np.random.uniform(amplitude[0], amplitude[1])
-                    for _ in range(num_sources)
-                ],
-                frequencies=[
-                    np.random.uniform(frequency[0], frequency[1])
-                    for _ in range(num_sources)
-                ],
+                amplitudes=[np.random.uniform(amplitude[0], amplitude[1]) for _ in range(num_sources)],
+                frequencies=[np.random.uniform(frequency[0], frequency[1]) for _ in range(num_sources)],
                 sample_rate=sample_rate,
             )
     return x

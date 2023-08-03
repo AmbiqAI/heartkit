@@ -18,7 +18,7 @@
 #include "tensorflow/lite/schema/schema_generated.h"
 
 typedef struct {
-    int arenaSize;
+    size_t arenaSize;
     uint8_t *arena;
     const unsigned char *buffer;
     const tflite::Model *model;
