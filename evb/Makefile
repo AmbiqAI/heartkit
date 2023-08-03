@@ -38,10 +38,6 @@ else
 	$(Q) $(RM) -rf $(BINDIR) $(JLINK_CF)
 endif
 
-ifneq "$(MAKECMDGOALS)" "clean"
-  include $(dependencies)
-endif
-
 $(BINDIR):
 	$(Q) $(MKD) -p $@
 
