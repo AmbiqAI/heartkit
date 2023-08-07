@@ -353,9 +353,9 @@ def export_model(params: HeartExportParams):
     tfl_acc = np.sum(y_pred_tfl == y_pred_tf) / len(y_pred_tf)
 
     # Check accuracy hit
-    if tfl_acc < 0.95:
+    if params.val_acc_threshold is not None and tfl_acc < params.val_acc_threshold:
         logger.warning(f"TFLite accuracy dropped by {1-tfl_acc:0.2%}")
-    else:
+    elif params.val_acc_threshold:
         logger.info("Validation passed")
 
     if params.tflm_file and tflm_model_path != params.tflm_file:

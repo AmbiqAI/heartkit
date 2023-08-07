@@ -390,7 +390,7 @@ def export_model(params: HeartExportParams):
 
     logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
-    test_x, _ = load_test_datasets(params)
+    test_x, test_y = load_test_datasets(params)
 
     logger.info("Converting model to TFLite")
     tflite_model = convert_tflite(
@@ -418,14 +418,15 @@ def export_model(params: HeartExportParams):
 
     # Verify TFLite results match TF results on example data
     logger.info("Validating model results")
+    y_true = np.argmax(test_y, axis=2)
     y_pred_tf = np.argmax(model.predict(test_x), axis=2)
     y_pred_tfl = np.argmax(predict_tflite(model_content=tflite_model, test_x=test_x), axis=2)
-    tfl_acc = np.sum(y_pred_tfl == y_pred_tf) / len(y_pred_tf)
+    tfl_acc = np.sum(y_pred_tfl == y_pred_tf) / y_true.size
 
     # Check accuracy hit
-    if tfl_acc < 0.95:
+    if params.val_acc_threshold is not None and tfl_acc < params.val_acc_threshold:
         logger.warning(f"TFLite accuracy dropped by {1-tfl_acc:0.2%}")
-    else:
+    elif params.val_acc_threshold:
         logger.info("Validation passed")
 
     if params.tflm_file and tflm_model_path != params.tflm_file:

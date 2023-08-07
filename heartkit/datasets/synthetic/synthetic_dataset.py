@@ -107,7 +107,7 @@ class SyntheticDataset(HeartKitDataset):
             SampleGenerator: Generator of input data of shape (frame_size, 1)
         """
 
-        start_offset = self.sampling_rate
+        start_offset = 0
         num_leads = 12  # Use all 12 leads
         presets = (
             EcgPresets.SR,
@@ -118,22 +118,21 @@ class SyntheticDataset(HeartKitDataset):
             EcgPresets.random_morphology,
             EcgPresets.high_take_off,
         )
-        preset_weights = (94, 1, 1, 1, 1, 1, 1)
+        preset_weights = (14, 1, 1, 1, 1, 1, 1)
 
         for _ in patient_generator:
             _, syn_ecg, _, _, _ = generate_nsr(
                 leads=num_leads,
                 signal_frequency=self.sampling_rate,
-                rate=np.random.uniform(40, 90),
+                rate=np.random.uniform(40, 120),
                 preset=random.choices(presets, preset_weights, k=1)[0].value,
-                noise_multiplier=np.random.uniform(0.2, 0.4),
-                impedance=np.random.uniform(0.75, 1.1),
-                p_multiplier=np.random.uniform(0.75, 1.1),
-                t_multiplier=np.random.uniform(0.75, 1.1),
+                noise_multiplier=np.random.uniform(0.2, 0.8),
+                impedance=np.random.uniform(0.60, 1.1),
+                p_multiplier=np.random.uniform(0.60, 1.1),
+                t_multiplier=np.random.uniform(0.60, 1.1),
                 duration=max(
-                    5,
-                    self.frame_size / self.sampling_rate,
-                    (self.frame_size / self.sampling_rate) * (samples_per_patient / num_leads / 10),
+                    10,
+                    (self.frame_size / self.sampling_rate) * (samples_per_patient),
                 ),
                 voltage_factor=np.random.uniform(275, 325),
             )
@@ -162,7 +161,7 @@ class SyntheticDataset(HeartKitDataset):
         Yields:
             Iterator[SampleGenerator]
         """
-        start_offset = self.sampling_rate
+        start_offset = 0
         num_leads = 12  # Use all 12 leads
         presets = (
             EcgPresets.SR,
@@ -173,18 +172,18 @@ class SyntheticDataset(HeartKitDataset):
             EcgPresets.random_morphology,
             EcgPresets.high_take_off,
         )
-        preset_weights = (94, 1, 1, 1, 1, 1, 1)
+        preset_weights = (14, 1, 1, 1, 1, 1, 1)
 
         for _ in patient_generator:
             _, syn_ecg, syn_segs_t, _, _ = generate_nsr(
                 leads=num_leads,
                 signal_frequency=self.sampling_rate,
-                rate=np.random.uniform(40, 90),
+                rate=np.random.uniform(40, 120),
                 preset=random.choices(presets, preset_weights, k=1)[0].value,
-                noise_multiplier=np.random.uniform(0.2, 0.4),
-                impedance=np.random.uniform(0.75, 1.1),
-                p_multiplier=np.random.uniform(0.75, 1.1),
-                t_multiplier=np.random.uniform(0.75, 1.1),
+                noise_multiplier=np.random.uniform(0.2, 0.8),
+                impedance=np.random.uniform(0.60, 1.1),
+                p_multiplier=np.random.uniform(0.60, 1.1),
+                t_multiplier=np.random.uniform(0.60, 1.1),
                 duration=max(
                     10,
                     (self.frame_size / self.sampling_rate) * (samples_per_patient / num_leads),

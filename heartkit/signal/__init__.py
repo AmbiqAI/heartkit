@@ -14,3 +14,4 @@ from .noise import (
     add_noise_sources,
     add_powerline_noise,
 )
+from .peaks import compute_rr_intervals, filter_rr_intervals, find_peaks

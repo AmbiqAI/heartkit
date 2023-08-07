@@ -6,8 +6,8 @@ The following table provides performance and accuracy results of all models when
 
 | Task           | Params   | FLOPS   | Metric     |
 | -------------- | -------- | ------- | ---------- |
-| Segmentation   | 50K      | 10.3M   | 91.9% IOU  |
-| Arrhythmia     | 76K      | 5.5M    | 99.3% F1   |
+| Segmentation   | 50K      | 4.5M    | 91.9% IOU  |
+| Arrhythmia     | 50K      | 3.5M    | 99.3% F1   |
 | Beat           | 73K      | 2.2M    | 91.6% F1   |
 | HRV            | N/A      | N/A     | N/A        |
 
@@ -24,8 +24,9 @@ The results of the arrhythmia model when testing on 1,000 patients (not used dur
 
 | Metric   | Baseline | 75% Confidence |
 | -------- | -------- | -------------- |
-| Accuracy | 96.2%    | 99.3%          |
-| F1 Score | 96.1%    | 99.2%          |
+| Accuracy | 96.5%    | 99.4%          |
+| F1 Score | 96.4%    | 99.3%          |
+| Drop     |  0.0%    | 14.0%          |
 
 The confusion matrix for the 75% confidence model is depicted below.
 

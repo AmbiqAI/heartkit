@@ -15,7 +15,7 @@ from neuralspot.rpc import GenericDataOperations_EvbToPc as gen_evb2pc
 from neuralspot.rpc import GenericDataOperations_PcToEvb as gen_pc2evb
 from neuralspot.rpc.utils import get_serial_transport
 
-from ..datasets import IcentiaDataset
+from ..datasets import SyntheticDataset
 from .client import HKRestClient
 from .defines import AppState, HeartDemoParams, HeartKitState, HKResult
 from .utils import setup_logger
@@ -107,7 +107,7 @@ class EvbHandler(gen_evb2pc.interface.Ievb_to_pc):
         if len(datasets) == 0:
             data_gen = default_gen()
         elif "icentia11k" in datasets:
-            ds = IcentiaDataset(
+            ds = SyntheticDataset(
                 ds_path=str(self.params.ds_path),
                 frame_size=self.params.frame_size,
                 target_rate=self.params.sampling_rate,

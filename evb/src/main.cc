@@ -51,16 +51,16 @@ print_hk_result(hk_result_t *result) {
 
 uint32_t
 apply_arrhythmia_model() {
-    uint32_t err = 0;
+    uint32_t err;
     uint32_t yIdx;
     float32_t yVal;
-    hkResults.arrhythmia = HeartRhythmNormal;
     for (size_t i = 0; i < HK_DATA_LEN - ARR_FRAME_LEN + 1; i += ARR_FRAME_LEN) {
         err = arrhythmia_inference(&hkEcgData[i], &yVal, &yIdx);
         ns_printf("Arrhythmia Detection: class=%lu confidence=%0.2f \n", yIdx, yVal);
         if (err) {
         } else if (yVal >= ARR_THRESHOLD && (yIdx == HeartRhythmAfib || yIdx == HeartRhythmAfut)) {
             hkResults.arrhythmia = HeartRhythmAfib;
+            hkResults.heartRhythm = HeartRateTachycardia;
         }
     }
     return err;
@@ -69,8 +69,6 @@ apply_arrhythmia_model() {
 uint32_t
 apply_segmentation_model() {
     uint32_t err = 0;
-    // We dont predict on first and last overlap size so set to normal
-    memset(hkSegMask, HeartSegmentNormal, HK_DATA_LEN);
     for (size_t i = 0; i < HK_DATA_LEN - SEG_FRAME_LEN + 1; i += SEG_FRAME_LEN) {
         err = segmentation_inference(&hkEcgData[i], &hkSegMask[i], SEG_OVERLAP_LEN, SEG_THRESHOLD);
     }
@@ -82,6 +80,9 @@ apply_segmentation_model() {
 uint32_t
 apply_hrv_model() {
     uint32_t err = 0;
+    for (size_t i = 0; i < HK_DATA_LEN; i++) {
+        hkQrsData[i] = hkSegMask[i] == HeartSegmentQrs ? 10 * hkQrsData[i] : hkQrsData[i];
+    }
     // Find QRS peaks
     numQrsPeaks = pk_ecg_find_peaks(&qrsFindPeakCtx, hkQrsData, HK_DATA_LEN, hkQrsPeaks);
     pk_compute_rr_intervals(hkQrsPeaks, numQrsPeaks, hkRRIntervals);
@@ -357,10 +358,12 @@ preprocess() {
      * @brief Run preprocess on data
      */
     uint32_t err = 0;
-    err |= pk_standardize(hkRawData, hkRawData, HK_DATA_LEN, NORM_STD_EPS);
+    err |= pk_standardize(hkRawData, hkRawData, SENSOR_LEN, NORM_STD_EPS);
     err |= pk_apply_biquad_filtfilt(&ecgFilterCtx, hkRawData, hkEcgData, HK_DATA_LEN, hkBufData);
     err |= pk_apply_biquad_filtfilt(&qrsFilterCtx, hkRawData, hkQrsData, HK_DATA_LEN, hkBufData);
-    send_samples_to_pc();
+    err |= pk_standardize(hkEcgData, hkEcgData, HK_DATA_LEN, NORM_STD_EPS);
+    err |= pk_standardize(hkQrsData, hkQrsData, HK_DATA_LEN, NORM_STD_EPS);
+    // send_samples_to_pc();
     return err;
 }
 
@@ -370,10 +373,24 @@ inference() {
      * @brief Run inference on data
      */
     uint32_t err = 0;
-    err |= apply_arrhythmia_model();
-    err |= apply_segmentation_model();
-    err |= apply_hrv_model();
-    err |= apply_beat_model();
+    // Clear results
+    hkResults.heartRate = 0;
+    hkResults.heartRhythm = HeartRateNormal;
+    hkResults.arrhythmia = HeartRhythmNormal;
+    hkResults.numPacBeats = 0;
+    hkResults.numPvcBeats = 0;
+    hkResults.numNormBeats = 0;
+    hkResults.numNoiseBeats = 0;
+    numQrsPeaks = 0;
+    memset(hkSegMask, HeartSegmentNormal, HK_DATA_LEN);
+
+    err = apply_arrhythmia_model();
+    // If arrhythmia detected, skip other models
+    if (hkResults.arrhythmia == HeartRhythmNormal) {
+        err |= apply_segmentation_model();
+        err |= apply_hrv_model();
+        err |= apply_beat_model();
+    }
     return err;
 }
 
@@ -468,6 +485,7 @@ loop() {
         break;
 
     case DISPLAY_STATE:
+        send_samples_to_pc();
         send_mask_to_pc();
         send_results_to_pc();
         print_to_pc("DISPLAY_STATE\n");

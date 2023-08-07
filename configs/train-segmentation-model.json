@@ -6,14 +6,14 @@
     "samples_per_patient": 100,
     "val_samples_per_patient": 100,
     "val_patients": 0.10,
-    "batch_size": 64,
-    "buffer_size": 16384,
+    "batch_size": 128,
+    "buffer_size": 25000,
     "epochs": 150,
     "steps_per_epoch": 500,
     "val_metric": "loss",
-    "datasets": ["ludb", "qtdb", "synthetic"],
+    "datasets": ["ludb", "synthetic"],
     "lr_rate": 5e-3,
-    "num_pts": 800,
+    "num_pts": 400,
     "augmentations": [
         {
             "name": "baseline_wander",
@@ -25,16 +25,16 @@
         {
             "name": "motion_noise",
             "args": {
-                "amplitude": [0.2, 1.0],
-                "frequency": [0.4, 0.6]
+                "amplitude": [0.5, 1.5],
+                "frequency": [0.4, 0.7]
             }
         },
         {
             "name": "burst_noise",
             "args": {
-                "burst_number": [0, 5],
-                "amplitude": [0.05, 0.75],
-                "frequency": [80, 100]
+                "burst_number": [2, 10],
+                "amplitude": [0.5, 1.5],
+                "frequency": [40, 100]
             }
         },
         {
@@ -47,8 +47,8 @@
         {
             "name": "noise_sources",
             "args": {
-                "num_sources": [1, 4],
-                "amplitude": [0.04, 0.2],
+                "num_sources": [1, 8],
+                "amplitude": [0.05, 0.25],
                 "frequency": [10, 40]
             }
         }

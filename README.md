@@ -139,9 +139,9 @@ The following table provides the latest performance and accuracy results of all 
 
 | Task           | Params   | FLOPS   | Metric      |
 | -------------- | -------- | ------- | ----------- |
-| Segmentation   | 105K     | 19.3M   | IOU=85.3%   |
-| Arrhythmia     | 76K      | 7.2M    | F1=99.4%    |
-| Beat           | 79K      | 1.6M    | F1=91.6%    |
+| Segmentation   | 50K      | 10.3M   | 91.9% IOU   |
+| Arrhythmia     | 76K      | 5.5M    | 99.3% F1    |
+| Beat           | 73K      | 2.2M    | 91.6% F1    |
 | HRV            | N/A      | N/A     | N/A         |
 
 

@@ -1,7 +1,9 @@
+import io
 import os
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import tensorflow as tf
 
 
@@ -126,6 +128,52 @@ def convert_tflite(
         # END IF
     # Convert model
     return converter.convert()
+
+
+def debug_quant_tflite(
+    model: tf.keras.Model,
+    test_x: npt.NDArray | None = None,
+    input_type: tf.DType | None = None,
+    output_type: tf.DType | None = None,
+) -> tuple[tf.lite.experimental.QuantizationDebugger, pd.DataFrame]:
+    """Debug quantized TFLite model content
+
+    Args:
+        model (tf.keras.Model): TF model
+        quantize (bool, optional): Enable PTQ. Defaults to False.
+        test_x (npt.NDArray | None, optional): Enables full integer PTQ. Defaults to None.
+        input_type (tf.DType | None): Input type data format. Defaults to None.
+        output_type (tf.DType | None): Output type data format. Defaults to None.
+
+    Returns:
+        tuple[tf.lite.experimental.QuantizationDebugger, pd.DataFrame]: TFlite debugger, Layer statistics
+
+    """
+    converter = tf.lite.TFLiteConverter.from_keras_model(model=model)
+
+    def rep_dataset():
+        for i in range(test_x.shape[0]):
+            yield [test_x[i : i + 1]]
+
+    # Quantize model
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+    converter.inference_input_type = input_type
+    converter.inference_output_type = output_type
+    converter.representative_dataset = rep_dataset
+
+    # Debug model
+    debugger = tf.lite.experimental.QuantizationDebugger(converter=converter, debug_dataset=rep_dataset)
+
+    with io.StringIO() as f:
+        debugger.layer_statistics_dump(f)
+        f.seek(0)
+        layer_stats = pd.read_csv(f)
+
+    # Add custom metrics
+    layer_stats["range"] = 255.0 * layer_stats["scale"]
+    layer_stats["rmse/scale"] = layer_stats.apply(lambda row: np.sqrt(row["mean_squared_error"]) / row["scale"], axis=1)
+    return debugger, layer_stats
 
 
 def predict_tflite(

@@ -62,7 +62,7 @@ class HeartDemoParams(BaseModel, extra=Extra.allow):
     datasets: list[str] = Field(default_factory=list, description="Dataset names")
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
     sampling_rate: int = Field(200, description="Target sampling rate (Hz)")
-    frame_size: int = Field(1250, description="Frame size")
+    frame_size: int = Field(2000, description="Frame size")
     pad_size: int = Field(0, description="Pad size")
     samples_per_patient: int | list[int] = Field(10, description="# train samples per patient")
     # EVB arguments

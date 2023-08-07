@@ -3,10 +3,10 @@
     "ds_path": "./datasets",
     "sampling_rate": 200,
     "frame_size": 160,
-    "samples_per_patient": [50, 100, 100, 25],
+    "samples_per_patient": [50, 100, 100],
     "test_patients": 1000,
     "test_size": 50000,
     "model_file": "./results/beat/model.tf",
     "model_file_rmt": "wandb://ambiq/model-registry/heartkit-beat:v1",
-    "threshold": 0.50
+    "threshold": 0.5
 }

@@ -204,6 +204,7 @@ class HeartExportParams(BaseModel, extra=Extra.allow):
     test_size: int = Field(100_000, description="# samples for testing")
     model_file: str | None = Field(None, description="Path to model file")
     threshold: float | None = Field(None, description="Model output threshold")
+    val_acc_threshold: float | None = Field(0.98, description="Validation accuracy threshold")
     use_logits: bool = Field(True, description="Use logits output or softmax")
     quantization: bool | None = Field(None, description="Enable post training quantization (PQT)")
     tflm_var_name: str = Field("g_model", description="TFLite Micro C variable name")

@@ -335,7 +335,7 @@ class IcentiaDataset(HeartKitDataset):
             IcentiaBeat.normal,
             IcentiaBeat.pac,
             IcentiaBeat.pvc,
-            IcentiaBeat.undefined,
+            # IcentiaBeat.undefined,
         ]
         if isinstance(samples_per_patient, Iterable):
             samples_per_tgt = samples_per_patient

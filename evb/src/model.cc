@@ -214,7 +214,9 @@ segmentation_inference(float32_t *data, uint8_t *segMask, uint32_t padLen, float
     uint8_t yMaxIdx = 0;
     float32_t yVal = 0;
     float32_t yMax = 0;
-#if SEGMENTATION_ENABLE
+#if (SEGMENTATION_ENABLE == 0)
+    return 0;
+#endif
     // Quantize input
     for (int i = 0; i < segModel.input->dims->data[2]; i++) {
         segModel.input->data.int8[i] = data[i] / segModel.input->params.scale + segModel.input->params.zero_point;
@@ -234,9 +236,9 @@ segmentation_inference(float32_t *data, uint8_t *segMask, uint32_t padLen, float
                 yMaxIdx = j;
             }
         }
-        segMask[i] = yMax >= threshold ? yMaxIdx : 0;
+        segMask[i] = yMaxIdx;
+        // segMask[i] = yMax >= threshold ? yMaxIdx : 0;
     }
-#endif
     return 0;
 }
 

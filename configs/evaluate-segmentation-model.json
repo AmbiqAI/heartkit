@@ -5,9 +5,10 @@
     "frame_size": 512,
     "samples_per_patient": 100,
     "test_size": 10000,
-    "num_pts": 800,
+    "num_pts": 400,
     "use_logits": false,
-    "datasets": ["synthetic", "ludb", "qtdb"],
+    "datasets": ["synthetic", "ludb"],
     "model_file": "./results/segmentation/model.tf",
-    "model_file_rmt": "wandb://ambiq/model-registry/heartkit-segmentation:v1"
+    "model_file_rmt": "wandb://ambiq/model-registry/heartkit-segmentation:v1",
+    "threshold": 0.50
 }
