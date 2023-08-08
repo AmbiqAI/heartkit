@@ -8,7 +8,7 @@
     "val_patients": 0.10,
     "batch_size": 512,
     "buffer_size": 25000,
-    "epochs": 100,
+    "epochs": 50,
     "steps_per_epoch": 100,
     "val_metric": "loss",
     "datasets": ["ludb", "synthetic"],

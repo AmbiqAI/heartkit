@@ -321,7 +321,7 @@ def export_model(params: HeartExportParams):
 
     logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
-    test_x, _ = load_test_dataset(params)
+    test_x, test_y = load_test_dataset(params)
 
     logger.info("Converting model to TFLite")
     tflite_model = convert_tflite(
@@ -349,15 +349,24 @@ def export_model(params: HeartExportParams):
 
     # Verify TFLite results match TF results on example data
     logger.info("Validating model results")
+    y_true = np.argmax(test_y, axis=1)
     y_pred_tf = np.argmax(model.predict(test_x), axis=1)
     y_pred_tfl = np.argmax(predict_tflite(model_content=tflite_model, test_x=test_x), axis=1)
-    tfl_acc = np.sum(y_pred_tfl == y_pred_tf) / y_pred_tf.size
+
+    tf_acc = np.sum(y_true == y_pred_tf) / y_true.size
+    tf_f1 = f1_score(y_true, y_pred_tf, average="weighted")
+    logger.info(f"[TF SET] ACC={tf_acc:.2%}, F1={tf_f1:.2%}")
+
+    tfl_acc = np.sum(y_true == y_pred_tfl) / y_true.size
+    tfl_f1 = f1_score(y_true, y_pred_tfl, average="weighted")
+    logger.info(f"[TFL SET] ACC={tfl_acc:.2%}, F1={tfl_f1:.2%}")
 
     # Check accuracy hit
-    if params.val_acc_threshold is not None and tfl_acc < params.val_acc_threshold:
-        logger.warning(f"TFLite accuracy dropped by {1-tfl_acc:0.2%}")
+    tfl_acc_drop = max(0, tf_acc - tfl_acc)
+    if params.val_acc_threshold is not None and (1 - tfl_acc_drop) < params.val_acc_threshold:
+        logger.warning(f"TFLite accuracy dropped by {tfl_acc_drop:0.2%}")
     elif params.val_acc_threshold:
-        logger.info(f"Validation passed ({1-tfl_acc:0.2%})")
+        logger.info(f"Validation passed ({tfl_acc_drop:0.2%})")
 
     if params.tflm_file and tflm_model_path != params.tflm_file:
         logger.info(f"Copying TFLM header to {params.tflm_file}")

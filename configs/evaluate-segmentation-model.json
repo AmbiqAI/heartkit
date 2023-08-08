@@ -7,7 +7,7 @@
     "test_size": 10000,
     "num_pts": 400,
     "use_logits": false,
-    "datasets": ["ludb"],
+    "datasets": ["synthetic", "ludb"],
     "model_file": "./results/segmentation/model.tf",
     "model_file_rmt": "wandb://ambiq/model-registry/heartkit-segmentation:v1",
     "threshold": 0.50

@@ -322,7 +322,7 @@ def train_model(params: HeartTrainParams):
             qmodel = tfmot.quantization.keras.quantize_model(model)
             num_epochs = int(0.25 * params.epochs)
             scheduler = tf.keras.optimizers.schedules.CosineDecay(
-                initial_learning_rate=lr_rate / 20, decay_steps=steps_per_epoch * num_epochs
+                initial_learning_rate=lr_rate / 5, decay_steps=steps_per_epoch * num_epochs
             )
             optimizer = tf.keras.optimizers.Adam(scheduler, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
             loss = tf.keras.losses.CategoricalFocalCrossentropy(from_logits=True)
@@ -484,14 +484,21 @@ def export_model(params: HeartExportParams):
     y_true = np.argmax(test_y, axis=2)
     y_pred_tf = np.argmax(model.predict(test_x), axis=2)
     y_pred_tfl = np.argmax(predict_tflite(model_content=tflite_model, test_x=test_x), axis=2)
-    tfl_acc = np.sum(y_pred_tfl == y_pred_tf) / y_true.size
-    print(f"{np.sum(y_pred_tfl == y_true) / y_true.size}")
+
+    tf_acc = np.sum(y_true == y_pred_tf) / y_true.size
+    tf_iou = compute_iou(y_true, y_pred_tf, average="weighted")
+    logger.info(f"[TF SET] ACC={tf_acc:.2%}, IoU={tf_iou:.2%}")
+
+    tfl_acc = np.sum(y_true == y_pred_tfl) / y_true.size
+    tfl_iou = compute_iou(y_true, y_pred_tfl, average="weighted")
+    logger.info(f"[TFL SET] ACC={tfl_acc:.2%}, IoU={tfl_iou:.2%}")
 
     # Check accuracy hit
-    if params.val_acc_threshold is not None and tfl_acc < params.val_acc_threshold:
-        logger.warning(f"TFLite accuracy dropped by {1-tfl_acc:0.2%}")
+    tfl_acc_drop = max(0, tf_acc - tfl_acc)
+    if params.val_acc_threshold is not None and (1 - tfl_acc_drop) < params.val_acc_threshold:
+        logger.warning(f"TFLite accuracy dropped by {tfl_acc_drop:0.2%}")
     elif params.val_acc_threshold:
-        logger.info(f"Validation passed ({1-tfl_acc:0.2%})")
+        logger.info(f"Validation passed ({tfl_acc_drop:0.2%})")
 
     if params.tflm_file and tflm_model_path != params.tflm_file:
         logger.info(f"Copying TFLM header to {params.tflm_file}")
