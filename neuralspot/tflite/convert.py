@@ -198,6 +198,7 @@ def predict_tflite(
     inputs = inputs.astype(np.float32)
 
     interpreter = tf.lite.Interpreter(model_content=model_content)
+    interpreter.allocate_tensors()
     model_sig = interpreter.get_signature_runner()
     inputs_details = model_sig.get_input_details()
     outputs_details = model_sig.get_output_details()

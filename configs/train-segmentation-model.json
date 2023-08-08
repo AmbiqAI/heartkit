@@ -6,14 +6,15 @@
     "samples_per_patient": 100,
     "val_samples_per_patient": 100,
     "val_patients": 0.10,
-    "batch_size": 128,
+    "batch_size": 512,
     "buffer_size": 25000,
-    "epochs": 150,
-    "steps_per_epoch": 500,
+    "epochs": 100,
+    "steps_per_epoch": 100,
     "val_metric": "loss",
     "datasets": ["ludb", "synthetic"],
     "lr_rate": 5e-3,
     "num_pts": 400,
+    "quantization": true,
     "augmentations": [
         {
             "name": "baseline_wander",

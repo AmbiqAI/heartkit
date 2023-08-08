@@ -164,7 +164,7 @@ class LudbDataset(HeartKitDataset):
                 # Randomly select frame within the segment
                 frame_start = np.random.randint(start_offset, data.shape[0] - self.frame_size - stop_offset)
                 frame_end = frame_start + self.frame_size
-                x = data[frame_start:frame_end, lead_idx].astype(np.float32).reshape((self.frame_size,))
+                x = data[frame_start:frame_end, lead_idx].astype(np.float32)
                 y = labels[frame_start:frame_end, lead_idx].astype(np.int32)
                 yield x, y
             # END FOR
@@ -186,7 +186,7 @@ class LudbDataset(HeartKitDataset):
             #     frame_end = frame_start + self.frame_size
             #     if frame_end - frame_start < self.frame_size:
             #         continue
-            #     x = data[frame_start:frame_end, lead_idx].astype(np.float32).reshape((self.frame_size,))
+            #     x = data[frame_start:frame_end, lead_idx].astype(np.float32)
             #     y = labels[frame_start:frame_end, lead_idx].astype(np.int32)
             #     yield x, y
             # # END FOR

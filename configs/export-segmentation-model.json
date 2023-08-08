@@ -11,8 +11,9 @@
     "model_file_rmt": "wandb://ambiq/model-registry/heartkit-segmentation:v1",
     "quantization": true,
     "use_logits": false,
-    "tflm_var_name": "g_segmentation_model",
-    "tflm_file": "./evb/src/segmentation_model_buffer.h",
     "threshold": 0.50,
-    "val_acc_threshold": 0.98
+    "val_acc_threshold": 0.98,
+    "tflm_var_name": "g_segmentation_model",
+    "tflm_filedd": "./evb/src/segmentation_model_buffer.h"
+
 }

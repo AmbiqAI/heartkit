@@ -328,7 +328,7 @@ def export_model(params: HeartExportParams):
 
     logger.info("Converting model to TFLite")
     tflite_model = convert_tflite(
-        model,
+        model=model,
         quantize=params.quantization,
         test_x=test_x,
         input_type=tf.int8 if params.quantization else None,
@@ -360,7 +360,7 @@ def export_model(params: HeartExportParams):
     if params.val_acc_threshold is not None and tfl_acc < params.val_acc_threshold:
         logger.warning(f"TFLite accuracy dropped by {1-tfl_acc:0.2%}")
     elif params.val_acc_threshold:
-        logger.info("Validation passed")
+        logger.info(f"Validation passed ({1-tfl_acc:0.2%})")
 
     if params.tflm_file and tflm_model_path != params.tflm_file:
         logger.info(f"Copying TFLM header to {params.tflm_file}")

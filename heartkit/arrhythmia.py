@@ -280,6 +280,7 @@ def evaluate_model(params: HeartTestParams):
             roc_path = str(params.job_dir / "roc_auc_test.png")
             roc_auc_plot(y_true, y_prob[:, 1], labels=class_names, save_path=roc_path)
         # END IF
+
         # If threshold given, only count predictions above threshold
         if params.threshold:
             numel = len(y_true)
@@ -324,7 +325,7 @@ def export_model(params: HeartExportParams):
 
     logger.info("Converting model to TFLite")
     tflite_model = convert_tflite(
-        model,
+        model=model,
         quantize=params.quantization,
         test_x=test_x,
         input_type=tf.int8 if params.quantization else None,
@@ -350,13 +351,13 @@ def export_model(params: HeartExportParams):
     logger.info("Validating model results")
     y_pred_tf = np.argmax(model.predict(test_x), axis=1)
     y_pred_tfl = np.argmax(predict_tflite(model_content=tflite_model, test_x=test_x), axis=1)
-    tfl_acc = np.sum(y_pred_tfl == y_pred_tf) / len(y_pred_tf)
+    tfl_acc = np.sum(y_pred_tfl == y_pred_tf) / y_pred_tf.size
 
     # Check accuracy hit
     if params.val_acc_threshold is not None and tfl_acc < params.val_acc_threshold:
         logger.warning(f"TFLite accuracy dropped by {1-tfl_acc:0.2%}")
     elif params.val_acc_threshold:
-        logger.info("Validation passed")
+        logger.info(f"Validation passed ({1-tfl_acc:0.2%})")
 
     if params.tflm_file and tflm_model_path != params.tflm_file:
         logger.info(f"Copying TFLM header to {params.tflm_file}")

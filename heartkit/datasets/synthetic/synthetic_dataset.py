@@ -186,7 +186,7 @@ class SyntheticDataset(HeartKitDataset):
                 t_multiplier=np.random.uniform(0.60, 1.1),
                 duration=max(
                     10,
-                    (self.frame_size / self.sampling_rate) * (samples_per_patient / num_leads),
+                    (self.frame_size / self.sampling_rate) * (samples_per_patient / num_leads / 2),
                 ),
                 voltage_factor=np.random.uniform(275, 325),
             )
@@ -226,7 +226,7 @@ class SyntheticDataset(HeartKitDataset):
                 lead_idx = np.random.randint(syn_ecg.shape[0])
                 frame_start = np.random.randint(start_offset, syn_ecg.shape[1] - self.frame_size)
                 frame_end = frame_start + self.frame_size
-                x = syn_ecg[lead_idx, frame_start:frame_end].astype(np.float32).reshape((self.frame_size,))
+                x = syn_ecg[lead_idx, frame_start:frame_end].astype(np.float32)
                 y = syn_segs[lead_idx, frame_start:frame_end].astype(np.int32)
                 yield x, y
             # END FOR

@@ -6,9 +6,9 @@ The following table provides performance and accuracy results of all models when
 
 | Task           | Params   | FLOPS   | Metric     |
 | -------------- | -------- | ------- | ---------- |
-| Segmentation   | 50K      | 4.5M    | 91.9% IOU  |
-| Arrhythmia     | 50K      | 3.5M    | 99.3% F1   |
-| Beat           | 73K      | 2.2M    | 91.6% F1   |
+| Segmentation   | 50K      | 5.7M    | 88.3% IOU  |
+| Arrhythmia     | 50K      | 3.6M    | 99.0% F1   |
+| Beat           | 73K      | 2.2M    | 91.1% F1   |
 | HRV            | N/A      | N/A     | N/A        |
 
 ## Segmentation Results
@@ -24,9 +24,9 @@ The results of the arrhythmia model when testing on 1,000 patients (not used dur
 
 | Metric   | Baseline | 75% Confidence |
 | -------- | -------- | -------------- |
-| Accuracy | 96.5%    | 99.4%          |
-| F1 Score | 96.4%    | 99.3%          |
-| Drop     |  0.0%    | 14.0%          |
+| Accuracy | 96.5%    | 99.1%          |
+| F1 Score | 96.4%    | 99.0%          |
+| Drop     |  0.0%    | 12.0%          |
 
 The confusion matrix for the 75% confidence model is depicted below.
 
@@ -46,7 +46,7 @@ The results of three beat models when testing on 1,000 patients (not used during
 | Accuracy   | 78.2%  | 88.6%  | 90.3%  |
 | F1 Score   | 77.5%  | 87.2%  | 90.1%  |
 
-The confusion matrix for the 800x3 model is depicted below.
+The confusion matrix for the 800x3 model is depicted below using a confidence threshold of 50%.
 
 <figure markdown>
   ![Beat Confusion Matrix](./assets/beat-cm-test.png){ width="540" }

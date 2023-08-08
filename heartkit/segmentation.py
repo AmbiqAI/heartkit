@@ -4,6 +4,7 @@ import shutil
 import numpy as np
 import numpy.typing as npt
 import tensorflow as tf
+import tensorflow_model_optimization as tfmot
 import wandb
 from rich.console import Console
 from wandb.keras import WandbCallback
@@ -316,6 +317,66 @@ def train_model(params: HeartTrainParams):
         # Restore best weights from checkpoint
         model.load_weights(params.weights_file)
 
+        if params.quantization:
+            logger.info("Performing QAT fine-tuning")
+            qmodel = tfmot.quantization.keras.quantize_model(model)
+            num_epochs = int(0.25 * params.epochs)
+            scheduler = tf.keras.optimizers.schedules.CosineDecay(
+                initial_learning_rate=lr_rate / 20, decay_steps=steps_per_epoch * num_epochs
+            )
+            optimizer = tf.keras.optimizers.Adam(scheduler, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
+            loss = tf.keras.losses.CategoricalFocalCrossentropy(from_logits=True)
+            metrics = [
+                tf.keras.metrics.CategoricalAccuracy(name="acc"),
+                tf.keras.metrics.OneHotIoU(
+                    num_classes=get_num_classes(HeartTask.segmentation),
+                    target_class_ids=tuple(s.value for s in HeartSegment),
+                    name="iou",
+                ),
+            ]
+            qmodel.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+            qmodel(inputs)
+            qmodel.summary(print_fn=logger.info)
+
+            model_callbacks = [
+                tf.keras.callbacks.EarlyStopping(
+                    monitor=f"val_{params.val_metric}",
+                    patience=max(int(0.50 * num_epochs), 1),
+                    mode="max" if params.val_metric == "f1" else "auto",
+                    restore_best_weights=True,
+                ),
+                tf.keras.callbacks.ModelCheckpoint(
+                    filepath=params.weights_file,
+                    monitor=f"val_{params.val_metric}",
+                    save_best_only=True,
+                    save_weights_only=True,
+                    mode="max" if params.val_metric == "f1" else "auto",
+                    verbose=1,
+                ),
+                tf.keras.callbacks.CSVLogger(str(params.job_dir / "history.csv"), append=True),
+                tf.keras.callbacks.TensorBoard(log_dir=str(params.job_dir), write_steps_per_second=True),
+            ]
+            if env_flag("WANDB"):
+                model_callbacks.append(WandbCallback())
+
+            try:
+                qmodel.fit(
+                    train_ds,
+                    steps_per_epoch=steps_per_epoch,
+                    verbose=2,
+                    initial_epoch=params.epochs,
+                    epochs=params.epochs + num_epochs,
+                    validation_data=val_ds,
+                    callbacks=model_callbacks,
+                )
+            except KeyboardInterrupt:
+                logger.warning("Stopping training due to keyboard interrupt")
+
+            # Restore best weights from checkpoint
+            qmodel.load_weights(params.weights_file)
+            model = qmodel  # Replace model w/ quantized version
+        # END IF
+
         # Save full model
         tf_model_path = str(params.job_dir / "model.tf")
         logger.info(f"Model saved to {tf_model_path}")
@@ -334,8 +395,7 @@ def evaluate_model(params: HeartTestParams):
     logger.info(f"Random seed {params.seed}")
     test_x, test_y = load_test_datasets(params)
 
-    strategy = get_strategy()
-    with strategy.scope():
+    with tfmot.quantization.keras.quantize_scope():
         logger.info("Loading model")
         model = load_model(str(params.model_file))
         flops = get_flops(model, batch_size=1, fpath=str(params.job_dir / "model_flops.log"))
@@ -353,7 +413,8 @@ def evaluate_model(params: HeartTestParams):
     logger.info("Testing Results")
     test_acc = np.sum(y_pred == y_true) / y_true.size
     test_iou = compute_iou(y_true, y_pred, average="weighted")
-    logger.info(f"[TEST SET] ACC={test_acc:.2%}, IOU={test_iou:.2%}")
+    logger.info(f"[TEST SET] ACC={test_acc:.2%}, IoU={test_iou:.2%}")
+
     cm_path = str(params.job_dir / "confusion_matrix_test.png")
     class_names = get_class_names(HeartTask.segmentation)
     confusion_matrix_plot(
@@ -376,7 +437,9 @@ def export_model(params: HeartExportParams):
 
     # Load model and set fixed batch size of 1
     logger.info("Loading trained model")
-    model = load_model(str(params.model_file))
+    with tfmot.quantization.keras.quantize_scope():
+        model = load_model(str(params.model_file))
+
     in_shape, _ = get_task_shape(HeartTask.segmentation, params.frame_size)
     inputs = tf.keras.layers.Input(in_shape, dtype=tf.float32, batch_size=1)
     outputs = model(inputs)
@@ -394,7 +457,7 @@ def export_model(params: HeartExportParams):
 
     logger.info("Converting model to TFLite")
     tflite_model = convert_tflite(
-        model,
+        model=model,
         quantize=params.quantization,
         test_x=test_x,
         input_type=tf.int8 if params.quantization else None,
@@ -422,12 +485,13 @@ def export_model(params: HeartExportParams):
     y_pred_tf = np.argmax(model.predict(test_x), axis=2)
     y_pred_tfl = np.argmax(predict_tflite(model_content=tflite_model, test_x=test_x), axis=2)
     tfl_acc = np.sum(y_pred_tfl == y_pred_tf) / y_true.size
+    print(f"{np.sum(y_pred_tfl == y_true) / y_true.size}")
 
     # Check accuracy hit
     if params.val_acc_threshold is not None and tfl_acc < params.val_acc_threshold:
         logger.warning(f"TFLite accuracy dropped by {1-tfl_acc:0.2%}")
     elif params.val_acc_threshold:
-        logger.info("Validation passed")
+        logger.info(f"Validation passed ({1-tfl_acc:0.2%})")
 
     if params.tflm_file and tflm_model_path != params.tflm_file:
         logger.info(f"Copying TFLM header to {params.tflm_file}")

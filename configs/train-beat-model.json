@@ -11,7 +11,7 @@
     "val_size": 200000,
     "batch_size": 512,
     "buffer_size": 100000,
-    "epochs": 225,
+    "epochs": 150,
     "steps_per_epoch": 20,
     "val_metric": "loss",
     "datasets": ["icentia11k"],

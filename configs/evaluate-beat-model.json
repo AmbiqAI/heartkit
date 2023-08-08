@@ -8,5 +8,5 @@
     "test_size": 50000,
     "model_file": "./results/beat/model.tf",
     "model_file_rmt": "wandb://ambiq/model-registry/heartkit-beat:v1",
-    "threshold": 0.5
+    "threshold": 0.50
 }
