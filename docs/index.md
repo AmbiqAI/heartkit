@@ -27,7 +27,7 @@ The architecture consists of an **ECG segmentation** model followed by three ups
 
 ## Requirements
 
-* [Python 3.10+](https://www.python.org)
+* [Python 3.11+](https://www.python.org)
 * [Poetry 1.2.1+](https://python-poetry.org/docs/#installation)
 
 The following are also required to compile/flash the binary for the EVB demo:
