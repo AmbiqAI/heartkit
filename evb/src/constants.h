@@ -25,13 +25,14 @@
 #define ECG_SOS_LEN (3)
 #define QRS_SOS_LEN (3)
 
-// Model block
+// Arrhythmia block
 #define ARRHTYHMIA_ENABLE 1
 #define ARR_QUANTIZE (1)
 #define ARR_MODEL_SIZE_KB (65)
 #define ARR_FRAME_LEN (800)
 #define ARR_THRESHOLD (0.75)
 
+// Segmentation block
 #define SEGMENTATION_ENABLE (1)
 #define SEGMENTATION_QUANTIZE (1)
 #define SEG_MODEL_SIZE_KB (85)
@@ -40,14 +41,15 @@
 #define SEG_STEP_SIZE (SEG_FRAME_LEN - 2 * SEG_OVERLAP_LEN)
 #define SEG_THRESHOLD (0.75)
 
+// Beat block
 #define BEAT_ENABLE 1
 #define BEAT_QUANTIZE (1)
 #define BEAT_MODEL_SIZE_KB (60)
 #define BEAT_FRAME_LEN (160)
 #define BEAT_THRESHOLD (0.75)
 
+// App block
 #define DISPLAY_LEN_USEC (2000000)
-
 #define HK_DATA_LEN (CAPTURE_SECS * SAMPLE_RATE)
 #define HK_PEAK_LEN (10 * CAPTURE_SECS)
 

@@ -43,7 +43,7 @@ ns_i2c_config_t nsI2cCfg = {.api = &ns_i2c_V1_0_0, .iom = I2C_IOM};
 
 ns_core_config_t nsCoreCfg = {.api = &ns_core_V1_0_0};
 
-usb_config_t usbCfg = {.available = true};
+usb_config_t usbCfg = {.available = false};
 
 ///////////////////////////////////////////////////////////////////////////////
 // Sensor Configuration
