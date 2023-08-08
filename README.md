@@ -137,12 +137,12 @@ HeartKit leverages several open-source datasets for training each of the HeartKi
 
 The following table provides the latest performance and accuracy results of all models when running on Apollo4 Plus EVB.
 
-| Task           | Params   | FLOPS   | Metric      |
-| -------------- | -------- | ------- | ----------- |
-| Segmentation   | 28K      | 5.7M    | 91.9% IOU   |
-| Arrhythmia     | 49K      | 3.5M    | 99.3% F1    |
-| Beat           | 72K      | 2.1M    | 91.6% F1    |
-| HRV            | N/A      | N/A     | N/A         |
+| Task           | Params   | FLOPS   | Metric     |
+| -------------- | -------- | ------- | ---------- |
+| Segmentation   | 33K      | 6.5M    | 87.0% IOU  |
+| Arrhythmia     | 50K      | 3.6M    | 99.0% F1   |
+| Beat           | 73K      | 2.2M    | 91.5% F1   |
+| HRV            | N/A      | N/A     | N/A        |
 
 
 ## References

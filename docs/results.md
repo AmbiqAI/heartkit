@@ -6,9 +6,9 @@ The following table provides performance and accuracy results of all models when
 
 | Task           | Params   | FLOPS   | Metric     |
 | -------------- | -------- | ------- | ---------- |
-| Segmentation   | 50K      | 5.7M    | 88.3% IOU  |
+| Segmentation   | 33K      | 6.5M    | 87.0% IOU  |
 | Arrhythmia     | 50K      | 3.6M    | 99.0% F1   |
-| Beat           | 73K      | 2.2M    | 91.1% F1   |
+| Beat           | 73K      | 2.2M    | 91.5% F1   |
 | HRV            | N/A      | N/A     | N/A        |
 
 ## Segmentation Results
