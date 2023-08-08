@@ -154,30 +154,39 @@ ecg_peak_f32_t qrsFindPeakCtx = {.qrsWin = 0.1,
                                  .qrsDelayWin = 0.3,
                                  .sampleRate = SAMPLE_RATE,
                                  .state = pkArena};
-int32_t numQrsPeaks;
-uint32_t hkQrsPeaks[HK_PEAK_LEN];
-uint32_t hkRRIntervals[HK_PEAK_LEN];
-uint8_t hkQrsMask[HK_PEAK_LEN];
+static uint32_t hkQrsPeaks[HK_PEAK_LEN];
+static uint32_t hkRRIntervals[HK_PEAK_LEN];
+static uint8_t hkRRMask[HK_PEAK_LEN];
 
-float32_t hkRawData[SENSOR_LEN + SENSOR_RATE];
-float32_t hkEcgData[HK_DATA_LEN];
-float32_t hkQrsData[HK_DATA_LEN];
-float32_t hkBufData[HK_DATA_LEN];
+static float32_t hkRawData[SENSOR_LEN + SENSOR_RATE];
+static float32_t hkEcgData[HK_DATA_LEN];
+static float32_t hkQrsData[HK_DATA_LEN];
+static float32_t hkBufData[HK_DATA_LEN];
 
-uint8_t hkSegMask[HK_DATA_LEN];
-
-hrv_td_metrics_t hkHrvMetrics;
-
-hk_result_t hkResults;
+static uint8_t hkSegMask[HK_DATA_LEN];
+static hrv_td_metrics_t hkHrvMetrics;
+static hk_result_t hkResults;
 
 ///////////////////////////////////////////////////////////////////////////////
 // App Configuration
 ///////////////////////////////////////////////////////////////////////////////
 
-hk_app_store_t appStore = {.numSamples = 0,
-                           .state = IDLE_STATE,
-                           .collectMode = NO_DATA_COLLECT,
-                           // .hkData = hkData,
-                           // .hkSegMask = hkSegMask,
-                           // .hkResults = &hkResults,
-                           .errorCode = 0};
+qrs_context_t qrsCtx = {
+    .qrsFindPeakCtx = &qrsFindPeakCtx,
+    .numQrsPeaks = 0,
+    .qrsPeaks = hkQrsPeaks,
+    .rrIntervals = hkRRIntervals,
+    .rrMask = hkRRMask,
+};
+
+hk_app_store_t hkStore = {.numSamples = 0,
+                          .state = IDLE_STATE,
+                          .collectMode = NO_DATA_COLLECT,
+                          .rawData = hkRawData,
+                          .ecgData = hkEcgData,
+                          .qrsData = hkQrsData,
+                          .bufData = hkBufData,
+                          .segMask = hkSegMask,
+                          .hrvMetrics = &hkHrvMetrics,
+                          .results = &hkResults,
+                          .errorCode = 0};

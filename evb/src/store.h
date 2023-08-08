@@ -12,6 +12,8 @@
 #ifndef __HK_STORE_H
 #define __HK_STORE_H
 
+#include "arm_math.h"
+
 // neuralSPOT
 #include "ns_ambiqsuite_harness.h"
 #include "ns_i2c.h"
@@ -20,8 +22,6 @@
 #include "ns_peripherals_power.h"
 #include "ns_rpc_generic_data.h"
 #include "ns_usb.h"
-
-#include "arm_math.h"
 
 #include "constants.h"
 #include "physiokit.h"
@@ -66,56 +66,46 @@ enum DataCollectMode { NO_DATA_COLLECT, SENSOR_DATA_COLLECT, STIMULUS_DATA_COLLE
 typedef enum DataCollectMode DataCollectMode;
 
 typedef struct {
+    ecg_peak_f32_t *qrsFindPeakCtx;
+    int32_t numQrsPeaks;
+    uint32_t *qrsPeaks;
+    uint32_t *rrIntervals;
+    uint8_t *rrMask;
+} qrs_context_t;
+
+typedef struct {
     uint32_t numSamples;
     AppState state;
     DataCollectMode collectMode;
-    // float32_t *hkData;
-    // uint8_t *hkSegMask;
-    // hk_result_t *hkResults;
+    float32_t *rawData;
+    float32_t *ecgData;
+    float32_t *qrsData;
+    float32_t *bufData;
+    uint8_t *segMask;
+    hrv_td_metrics_t *hrvMetrics;
+    hk_result_t *results;
     uint32_t errorCode;
 } hk_app_store_t;
 
-extern const ns_power_config_t nsPwrCfg;
-
 extern int volatile sensorCollectBtnPressed;
 extern int volatile clientCollectBtnPressed;
-
+extern const ns_power_config_t nsPwrCfg;
 extern ns_button_config_t nsBtnCfg;
-
 extern ns_rpc_config_t nsRpcCfg;
-
 extern ns_i2c_config_t nsI2cCfg;
-
 extern ns_core_config_t nsCoreCfg;
-
 extern usb_config_t usbCfg;
-
-extern hk_sensor_t sensorCtx;
 
 extern const char *HK_RHYTHM_LABELS[3];
 extern const char *HK_BEAT_LABELS[4];
 extern const char *HK_HEART_RATE_LABELS[3];
 extern const char *HK_SEGMENT_LABELS[4];
 
+extern hk_sensor_t sensorCtx;
 extern arm_biquad_casd_df1_inst_f32 ecgFilterCtx;
 extern arm_biquad_casd_df1_inst_f32 qrsFilterCtx;
+extern qrs_context_t qrsCtx;
 
-extern ecg_peak_f32_t qrsFindPeakCtx;
-extern int32_t numQrsPeaks;
-extern uint32_t hkQrsPeaks[HK_PEAK_LEN];
-extern uint32_t hkRRIntervals[HK_PEAK_LEN];
-extern uint8_t hkQrsMask[HK_PEAK_LEN];
-
-extern float32_t hkRawData[SENSOR_LEN + SENSOR_RATE];
-extern float32_t hkEcgData[HK_DATA_LEN];
-extern float32_t hkQrsData[HK_DATA_LEN];
-extern float32_t hkBufData[HK_DATA_LEN];
-
-extern uint8_t hkSegMask[HK_DATA_LEN];
-
-extern hrv_td_metrics_t hkHrvMetrics;
-extern hk_result_t hkResults;
-
-extern hk_app_store_t appStore;
+extern hk_app_store_t hkStore;
 
 #endif // __HK_STORE_H

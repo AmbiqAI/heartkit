@@ -177,10 +177,16 @@ arrhythmia_inference(float32_t *x, float32_t *yVal, uint32_t *yIdx) {
     *yIdx = 0;
     *yVal = 0;
     float32_t yCur = 0;
-#if ARRHTYHMIA_ENABLE
+#if (ARRHTYHMIA_ENABLE == 0)
+    return 0;
+#endif
     // Quantize input
     for (int i = 0; i < arrModel.input->dims->data[2]; i++) {
+#if (ARR_QUANTIZE == 1)
         arrModel.input->data.int8[i] = x[i] / arrModel.input->params.scale + arrModel.input->params.zero_point;
+#else
+        arrModel.input->data.f[i] = x[i];
+#endif
     }
 
     // Invoke model
@@ -191,13 +197,16 @@ arrhythmia_inference(float32_t *x, float32_t *yVal, uint32_t *yIdx) {
 
     // Dequantize output
     for (int i = 0; i < arrModel.output->dims->data[1]; i++) {
+#if (ARR_QUANTIZE == 1)
         yCur = ((float32_t)arrModel.output->data.int8[i] - arrModel.output->params.zero_point) * arrModel.output->params.scale;
+#else
+        yCur = arrModel.output->data.f[i];
+#endif
         if ((i == 0) || (yCur > *yVal)) {
             *yVal = yCur;
             *yIdx = i;
         }
     }
-#endif
     return 0;
 }
 
@@ -219,7 +228,11 @@ segmentation_inference(float32_t *data, uint8_t *segMask, uint32_t padLen, float
 #endif
     // Quantize input
     for (int i = 0; i < segModel.input->dims->data[2]; i++) {
+#if (SEGMENTATION_QUANTIZE == 1)
         segModel.input->data.int8[i] = data[i] / segModel.input->params.scale + segModel.input->params.zero_point;
+#else
+        segModel.input->data.f[i] = data[i];
+#endif
     }
     // Invoke model
     TfLiteStatus invokeStatus = segModel.interpreter->Invoke();
@@ -230,7 +243,11 @@ segmentation_inference(float32_t *data, uint8_t *segMask, uint32_t padLen, float
     for (int i = padLen; i < segModel.output->dims->data[1] - (int)padLen; i++) {
         for (int j = 0; j < segModel.output->dims->data[2]; j++) {
             yIdx = i * segModel.output->dims->data[2] + j;
+#if (SEGMENTATION_QUANTIZE == 1)
             yVal = ((float32_t)segModel.output->data.int8[yIdx] - segModel.output->params.zero_point) * segModel.output->params.scale;
+#else
+            yVal = segModel.output->data.f[yIdx];
+#endif
             if ((j == 0) || (yVal > yMax)) {
                 yMax = yVal;
                 yMaxIdx = j;
@@ -257,12 +274,20 @@ beat_inference(float32_t *pBeat, float32_t *beat, float32_t *nBeat, float32_t *y
     *yIdx = 0;
     *yVal = 0;
     float32_t yCur = 0;
-#if BEAT_ENABLE
+#if (BEAT_ENABLE == 0)
+    return 0;
+#endif
     // Quantize input
     for (int i = 0; i < beatModel.input->dims->data[2]; i++) {
+#if (BEAT_QUANTIZE == 1)
         beatModel.input->data.int8[xIdx++] = pBeat[i] / beatModel.input->params.scale + beatModel.input->params.zero_point;
         beatModel.input->data.int8[xIdx++] = beat[i] / beatModel.input->params.scale + beatModel.input->params.zero_point;
         beatModel.input->data.int8[xIdx++] = nBeat[i] / beatModel.input->params.scale + beatModel.input->params.zero_point;
+#else
+        beatModel.input->data.f[xIdx++] = pBeat[i];
+        beatModel.input->data.f[xIdx++] = beat[i];
+        beatModel.input->data.f[xIdx++] = nBeat[i];
+#endif
     }
     // Invoke model
     TfLiteStatus invokeStatus = beatModel.interpreter->Invoke();
@@ -271,12 +296,15 @@ beat_inference(float32_t *pBeat, float32_t *beat, float32_t *nBeat, float32_t *y
     }
     // Dequantize output
     for (int i = 0; i < beatModel.output->dims->data[1]; i++) {
+#if (BEAT_QUANTIZE == 1)
         yCur = ((float32_t)beatModel.output->data.int8[i] - beatModel.output->params.zero_point) * beatModel.output->params.scale;
+#else
+        yCur = beatModel.output->data.f[i];
+#endif
         if ((i == 0) || (yCur > *yVal)) {
             *yVal = yCur;
             *yIdx = i;
         }
     }
-#endif
     return 0;
 }

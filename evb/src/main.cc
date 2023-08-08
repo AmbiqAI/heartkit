@@ -55,12 +55,12 @@ apply_arrhythmia_model() {
     uint32_t yIdx;
     float32_t yVal;
     for (size_t i = 0; i < HK_DATA_LEN - ARR_FRAME_LEN + 1; i += ARR_FRAME_LEN) {
-        err = arrhythmia_inference(&hkEcgData[i], &yVal, &yIdx);
+        err = arrhythmia_inference(&hkStore.ecgData[i], &yVal, &yIdx);
         ns_printf("Arrhythmia Detection: class=%lu confidence=%0.2f \n", yIdx, yVal);
         if (err) {
         } else if (yVal >= ARR_THRESHOLD && (yIdx == HeartRhythmAfib || yIdx == HeartRhythmAfut)) {
-            hkResults.arrhythmia = HeartRhythmAfib;
-            hkResults.heartRhythm = HeartRateTachycardia;
+            hkStore.results->arrhythmia = HeartRhythmAfib;
+            hkStore.results->heartRhythm = HeartRateTachycardia;
         }
     }
     return err;
@@ -70,10 +70,10 @@ uint32_t
 apply_segmentation_model() {
     uint32_t err = 0;
     for (size_t i = 0; i < HK_DATA_LEN - SEG_FRAME_LEN + 1; i += SEG_FRAME_LEN) {
-        err = segmentation_inference(&hkEcgData[i], &hkSegMask[i], SEG_OVERLAP_LEN, SEG_THRESHOLD);
+        err = segmentation_inference(&hkStore.ecgData[i], &hkStore.segMask[i], SEG_OVERLAP_LEN, SEG_THRESHOLD);
     }
-    err |= segmentation_inference(&hkEcgData[HK_DATA_LEN - SEG_FRAME_LEN], &hkSegMask[HK_DATA_LEN - SEG_FRAME_LEN], SEG_OVERLAP_LEN,
-                                  SEG_THRESHOLD);
+    err |= segmentation_inference(&hkStore.ecgData[HK_DATA_LEN - SEG_FRAME_LEN], &hkStore.segMask[HK_DATA_LEN - SEG_FRAME_LEN],
+                                  SEG_OVERLAP_LEN, SEG_THRESHOLD);
     return err;
 }
 
@@ -81,17 +81,17 @@ uint32_t
 apply_hrv_model() {
     uint32_t err = 0;
     for (size_t i = 0; i < HK_DATA_LEN; i++) {
-        hkQrsData[i] = hkSegMask[i] == HeartSegmentQrs ? 10 * hkQrsData[i] : hkQrsData[i];
+        hkStore.qrsData[i] = hkStore.segMask[i] == HeartSegmentQrs ? 10 * hkStore.qrsData[i] : hkStore.qrsData[i];
     }
     // Find QRS peaks
-    numQrsPeaks = pk_ecg_find_peaks(&qrsFindPeakCtx, hkQrsData, HK_DATA_LEN, hkQrsPeaks);
-    pk_compute_rr_intervals(hkQrsPeaks, numQrsPeaks, hkRRIntervals);
-    pk_filter_rr_intervals(hkRRIntervals, numQrsPeaks, hkQrsMask, SAMPLE_RATE);
-    pk_compute_hrv_from_rr_intervals(hkRRIntervals, numQrsPeaks, hkQrsMask, &hkHrvMetrics);
+    qrsCtx.numQrsPeaks = pk_ecg_find_peaks(qrsCtx.qrsFindPeakCtx, hkStore.qrsData, HK_DATA_LEN, qrsCtx.qrsPeaks);
+    pk_compute_rr_intervals(qrsCtx.qrsPeaks, qrsCtx.numQrsPeaks, qrsCtx.rrIntervals);
+    pk_filter_rr_intervals(qrsCtx.rrIntervals, qrsCtx.numQrsPeaks, qrsCtx.rrMask, SAMPLE_RATE);
+    pk_compute_hrv_from_rr_intervals(qrsCtx.rrIntervals, qrsCtx.numQrsPeaks, qrsCtx.rrMask, hkStore.hrvMetrics);
     // Apply HRV head
-    float32_t bpm = 60 / (hkHrvMetrics.meanNN / SAMPLE_RATE);
-    hkResults.heartRhythm = bpm < 60 ? HeartRateBradycardia : bpm <= 100 ? HeartRateNormal : HeartRateTachycardia;
-    hkResults.heartRate = (uint32_t)bpm;
+    float32_t bpm = 60 / (hkStore.hrvMetrics->meanNN / SAMPLE_RATE);
+    hkStore.results->heartRhythm = bpm < 60 ? HeartRateBradycardia : bpm <= 100 ? HeartRateNormal : HeartRateTachycardia;
+    hkStore.results->heartRate = (uint32_t)bpm;
     return err;
 }
 
@@ -102,22 +102,18 @@ apply_beat_model() {
     uint32_t beatLabel;
     float32_t beatValue;
 
-    hkResults.numPacBeats = 0;
-    hkResults.numPvcBeats = 0;
-    hkResults.numNormBeats = 0;
-    hkResults.numNoiseBeats = 0;
-
-    uint32_t avgRR = (uint32_t)(hkHrvMetrics.meanNN);
+    uint32_t avgRR = (uint32_t)(hkStore.hrvMetrics->meanNN);
     uint32_t bOffset = (BEAT_FRAME_LEN >> 1);
     uint32_t bStart = 0;
-    for (int i = 1; i < numQrsPeaks - 1; i++) {
-        bIdx = hkQrsPeaks[i];
+    for (int i = 1; i < qrsCtx.numQrsPeaks - 1; i++) {
+        bIdx = qrsCtx.qrsPeaks[i];
         bStart = bIdx - bOffset;
         if (bIdx < bOffset || bStart < avgRR || bStart + avgRR + BEAT_FRAME_LEN > HK_DATA_LEN) {
             beatLabel = HeartBeatNormal;
             beatValue = 1;
         } else {
-            err |= beat_inference(&hkEcgData[bStart - avgRR], &hkEcgData[bStart], &hkEcgData[bStart + avgRR], &beatValue, &beatLabel);
+            err |= beat_inference(&hkStore.ecgData[bStart - avgRR], &hkStore.ecgData[bStart], &hkStore.ecgData[bStart + avgRR], &beatValue,
+                                  &beatLabel);
         }
         ns_printf("Beat Detection: loc=%lu class=%lu confidence=%0.2f \n", bIdx, beatLabel, beatValue);
         // If confidence is too low, skip
@@ -125,19 +121,19 @@ apply_beat_model() {
             beatLabel = HeartBeatNoise;
         }
         // Place beat label in upper nibble
-        hkSegMask[bIdx] |= ((beatLabel + 1) << 4);
+        hkStore.segMask[bIdx] |= ((beatLabel + 1) << 4);
         switch (beatLabel) {
         case HeartBeatPac:
-            hkResults.numPacBeats += 1;
+            hkStore.results->numPacBeats += 1;
             break;
         case HeartBeatPvc:
-            hkResults.numPvcBeats += 1;
+            hkStore.results->numPvcBeats += 1;
             break;
         case HeartBeatNormal:
-            hkResults.numNormBeats += 1;
+            hkStore.results->numNormBeats += 1;
             break;
         case HeartBeatNoise:
-            hkResults.numNoiseBeats += 1;
+            hkStore.results->numNoiseBeats += 1;
             break;
         }
     }
@@ -202,7 +198,6 @@ fetch_samples_from_pc(float32_t *samples, uint32_t numSamples) {
     }
 
     uint32_t reqSamples = MIN(numSamples, RPC_BUF_LEN);
-
     dataBlock resultBlock = {.length = reqSamples,
                              .dType = float32_e,
                              .description = rpcFetchSamplesDesc,
@@ -247,7 +242,7 @@ send_samples_to_pc() {
     for (size_t i = 0; i < HK_DATA_LEN; i += RPC_BUF_LEN) {
         uint32_t numSamples = MIN(HK_DATA_LEN - i, RPC_BUF_LEN);
         commandBlock.length = i;
-        commandBlock.buffer.data = (uint8_t *)(&hkEcgData[i]);
+        commandBlock.buffer.data = (uint8_t *)(&hkStore.ecgData[i]);
         commandBlock.buffer.dataLength = numSamples * sizeof(float32_t);
         ns_rpc_data_sendBlockToPC(&commandBlock);
         ns_delay_us(200);
@@ -274,7 +269,7 @@ send_mask_to_pc() {
     for (size_t i = 0; i < HK_DATA_LEN; i += RPC_BUF_LEN) {
         uint32_t numSamples = MIN(HK_DATA_LEN - i, RPC_BUF_LEN);
         commandBlock.length = i;
-        commandBlock.buffer.data = (uint8_t *)(&hkSegMask[i]);
+        commandBlock.buffer.data = (uint8_t *)(&hkStore.segMask[i]);
         commandBlock.buffer.dataLength = numSamples * sizeof(uint8_t);
         ns_rpc_data_sendBlockToPC(&commandBlock);
     }
@@ -286,7 +281,7 @@ send_results_to_pc() {
      * @brief Send results to PC
      */
     static char rpcSendResultsDesc[] = "SEND_RESULTS";
-    print_hk_result(&hkResults);
+    print_hk_result(hkStore.results);
     if (!usbCfg.available) {
         return;
     }
@@ -295,10 +290,27 @@ send_results_to_pc() {
                               .description = rpcSendResultsDesc,
                               .cmd = generic_cmd,
                               .buffer = {
-                                  .data = (uint8_t *)&hkResults,
+                                  .data = (uint8_t *)hkStore.results,
                                   .dataLength = sizeof(hk_result_t),
                               }};
     ns_rpc_data_sendBlockToPC(&commandBlock);
+}
+
+uint32_t
+clear_results() {
+    /**
+     * @brief Clear results
+     */
+    hkStore.results->heartRate = 0;
+    hkStore.results->heartRhythm = HeartRateNormal;
+    hkStore.results->arrhythmia = HeartRhythmNormal;
+    hkStore.results->numPacBeats = 0;
+    hkStore.results->numPvcBeats = 0;
+    hkStore.results->numNormBeats = 0;
+    hkStore.results->numNoiseBeats = 0;
+    qrsCtx.numQrsPeaks = 0;
+    memset(hkStore.segMask, HeartSegmentNormal, HK_DATA_LEN);
+    return 0;
 }
 
 void
@@ -307,15 +319,16 @@ start_collecting(void) {
      * @brief Setup sensor for collecting
      *
      */
-    if (appStore.collectMode == SENSOR_DATA_COLLECT) {
+    if (hkStore.collectMode == SENSOR_DATA_COLLECT) {
         start_sensor(&sensorCtx);
         // Discard first second for sensor warm up time
         for (size_t i = 0; i < 100; i++) {
-            capture_sensor_data(&sensorCtx, hkRawData, NULL, NULL, NULL, SENSOR_LEN);
+            capture_sensor_data(&sensorCtx, hkStore.rawData, NULL, NULL, NULL, SENSOR_LEN);
             ns_delay_us(10000);
         }
     }
-    appStore.numSamples = 0;
+    clear_results();
+    hkStore.numSamples = 0;
 }
 
 uint32_t
@@ -325,19 +338,19 @@ collect_samples() {
      * @return # new samples collected
      */
     uint32_t newSamples = 0;
-    uint32_t reqSamples = HK_DATA_LEN - appStore.numSamples;
-    float32_t *data = &hkRawData[appStore.numSamples];
-    if (appStore.numSamples >= HK_DATA_LEN) {
+    uint32_t reqSamples = HK_DATA_LEN - hkStore.numSamples;
+    float32_t *data = &hkStore.rawData[hkStore.numSamples];
+    if (hkStore.numSamples >= HK_DATA_LEN) {
         return newSamples;
     }
-    if (appStore.collectMode == STIMULUS_DATA_COLLECT) {
+    if (hkStore.collectMode == STIMULUS_DATA_COLLECT) {
         // newSamples = fetch_samples_from_stimulus(data, reqSamples);
         newSamples = fetch_samples_from_pc(data, reqSamples);
         ns_delay_us(200);
-    } else if (appStore.collectMode == SENSOR_DATA_COLLECT) {
+    } else if (hkStore.collectMode == SENSOR_DATA_COLLECT) {
         newSamples = capture_sensor_data(&sensorCtx, data, NULL, NULL, NULL, reqSamples);
     }
-    appStore.numSamples += newSamples;
+    hkStore.numSamples += newSamples;
     ns_delay_us(5000);
     return newSamples;
 }
@@ -347,7 +360,7 @@ stop_collecting(void) {
     /**
      * @brief Stop collecting sensor data
      */
-    if (appStore.collectMode == SENSOR_DATA_COLLECT) {
+    if (hkStore.collectMode == SENSOR_DATA_COLLECT) {
         stop_sensor(&sensorCtx);
     }
 }
@@ -358,12 +371,11 @@ preprocess() {
      * @brief Run preprocess on data
      */
     uint32_t err = 0;
-    err |= pk_standardize(hkRawData, hkRawData, SENSOR_LEN, NORM_STD_EPS);
-    err |= pk_apply_biquad_filtfilt(&ecgFilterCtx, hkRawData, hkEcgData, HK_DATA_LEN, hkBufData);
-    err |= pk_apply_biquad_filtfilt(&qrsFilterCtx, hkRawData, hkQrsData, HK_DATA_LEN, hkBufData);
-    err |= pk_standardize(hkEcgData, hkEcgData, HK_DATA_LEN, NORM_STD_EPS);
-    err |= pk_standardize(hkQrsData, hkQrsData, HK_DATA_LEN, NORM_STD_EPS);
-    // send_samples_to_pc();
+    err |= pk_standardize(hkStore.rawData, hkStore.rawData, SENSOR_LEN, NORM_STD_EPS);
+    err |= pk_apply_biquad_filtfilt(&ecgFilterCtx, hkStore.rawData, hkStore.ecgData, HK_DATA_LEN, hkStore.bufData);
+    err |= pk_apply_biquad_filtfilt(&qrsFilterCtx, hkStore.rawData, hkStore.qrsData, HK_DATA_LEN, hkStore.bufData);
+    err |= pk_standardize(hkStore.ecgData, hkStore.ecgData, HK_DATA_LEN, NORM_STD_EPS);
+    err |= pk_standardize(hkStore.qrsData, hkStore.qrsData, HK_DATA_LEN, NORM_STD_EPS);
     return err;
 }
 
@@ -373,20 +385,9 @@ inference() {
      * @brief Run inference on data
      */
     uint32_t err = 0;
-    // Clear results
-    hkResults.heartRate = 0;
-    hkResults.heartRhythm = HeartRateNormal;
-    hkResults.arrhythmia = HeartRhythmNormal;
-    hkResults.numPacBeats = 0;
-    hkResults.numPvcBeats = 0;
-    hkResults.numNormBeats = 0;
-    hkResults.numNoiseBeats = 0;
-    numQrsPeaks = 0;
-    memset(hkSegMask, HeartSegmentNormal, HK_DATA_LEN);
-
     err = apply_arrhythmia_model();
     // If arrhythmia detected, skip other models
-    if (hkResults.arrhythmia == HeartRhythmNormal) {
+    if (hkStore.results->arrhythmia == HeartRhythmNormal) {
         err |= apply_segmentation_model();
         err |= apply_hrv_model();
         err |= apply_beat_model();
@@ -438,15 +439,15 @@ loop() {
     /**
      * @brief Application loop
      */
-    switch (appStore.state) {
+    switch (hkStore.state) {
     case IDLE_STATE:
-        appStore.collectMode = get_collect_mode();
-        if (appStore.collectMode != NO_DATA_COLLECT) {
-            appStore.state = START_COLLECT_STATE;
+        hkStore.collectMode = get_collect_mode();
+        if (hkStore.collectMode != NO_DATA_COLLECT) {
+            hkStore.state = START_COLLECT_STATE;
             wakeup();
         } else {
             ns_printf("\n\nIDLE_STATE\n");
-            appStore.state = IDLE_STATE;
+            hkStore.state = IDLE_STATE;
             deepsleep();
         }
         break;
@@ -455,33 +456,33 @@ loop() {
         print_to_pc("COLLECT_STATE\n");
         start_collecting();
         clear_collect_mode();
-        appStore.state = COLLECT_STATE;
+        hkStore.state = COLLECT_STATE;
         break;
 
     case COLLECT_STATE:
         collect_samples();
-        if (appStore.numSamples >= HK_DATA_LEN) {
-            appStore.state = STOP_COLLECT_STATE;
+        if (hkStore.numSamples >= HK_DATA_LEN) {
+            hkStore.state = STOP_COLLECT_STATE;
         }
         break;
 
     case STOP_COLLECT_STATE:
         stop_collecting();
-        appStore.state = PREPROCESS_STATE;
+        hkStore.state = PREPROCESS_STATE;
         break;
 
     case PREPROCESS_STATE:
         print_to_pc("PREPROCESS_STATE\n");
         am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_HIGH_PERFORMANCE);
-        appStore.errorCode = preprocess();
-        appStore.state = INFERENCE_STATE;
+        hkStore.errorCode = preprocess();
+        hkStore.state = INFERENCE_STATE;
         break;
 
     case INFERENCE_STATE:
         print_to_pc("INFERENCE_STATE\n");
-        appStore.errorCode = inference();
+        hkStore.errorCode = inference();
         am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_LOW_POWER);
-        appStore.state = appStore.errorCode == 1 ? FAIL_STATE : DISPLAY_STATE;
+        hkStore.state = hkStore.errorCode == 1 ? FAIL_STATE : DISPLAY_STATE;
         break;
 
     case DISPLAY_STATE:
@@ -490,17 +491,17 @@ loop() {
         send_results_to_pc();
         print_to_pc("DISPLAY_STATE\n");
         ns_delay_us(DISPLAY_LEN_USEC);
-        appStore.state = IDLE_STATE;
+        hkStore.state = IDLE_STATE;
         break;
 
     case FAIL_STATE:
-        ns_printf("FAIL_STATE err=%d\n", appStore.errorCode);
-        appStore.state = IDLE_STATE;
-        appStore.errorCode = 0;
+        ns_printf("FAIL_STATE err=%d\n", hkStore.errorCode);
+        hkStore.state = IDLE_STATE;
+        hkStore.errorCode = 0;
         break;
 
     default:
-        appStore.state = IDLE_STATE;
+        hkStore.state = IDLE_STATE;
         break;
     }
 }

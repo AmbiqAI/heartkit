@@ -27,11 +27,13 @@
 
 // Model block
 #define ARRHTYHMIA_ENABLE 1
+#define ARR_QUANTIZE (1)
 #define ARR_MODEL_SIZE_KB (65)
 #define ARR_FRAME_LEN (800)
 #define ARR_THRESHOLD (0.75)
 
-#define SEGMENTATION_ENABLE 1
+#define SEGMENTATION_ENABLE (1)
+#define SEGMENTATION_QUANTIZE (1)
 #define SEG_MODEL_SIZE_KB (85)
 #define SEG_FRAME_LEN (512)
 #define SEG_OVERLAP_LEN (20)
@@ -39,6 +41,7 @@
 #define SEG_THRESHOLD (0.75)
 
 #define BEAT_ENABLE 1
+#define BEAT_QUANTIZE (1)
 #define BEAT_MODEL_SIZE_KB (60)
 #define BEAT_FRAME_LEN (160)
 #define BEAT_THRESHOLD (0.75)
