@@ -70,14 +70,14 @@ stop_sensor(hk_sensor_t *ctx) {
 }
 
 uint32_t
-capture_sensor_data(hk_sensor_t *ctx, float32_t *slot0, float32_t *slot1, float32_t *slot2, float32_t *slot3, uint32_t maxSamples) {
-    uint32_t numSamples;
+capture_sensor_data(hk_sensor_t *ctx, float32_t *slot0, float32_t *slot1, float32_t *slot2, float32_t *slot3, uint32_t maxSamples,
+                    uint32_t *numSamples) {
     int32_t val;
     float32_t *slots[MAX86150_NUM_SLOTS] = {slot0, slot1, slot2, slot3};
     static uint32_t maxFifoBuffer[MAX86150_FIFO_DEPTH * MAX86150_NUM_SLOTS];
-    numSamples = max86150_read_fifo_samples(ctx->maxCtx, maxFifoBuffer, ctx->maxCfg->fifoSlotConfigs, ctx->maxCfg->numSlots);
-    numSamples = numSamples < maxSamples ? numSamples : maxSamples;
-    for (size_t i = 0; i < numSamples; i++) {
+    *numSamples = max86150_read_fifo_samples(ctx->maxCtx, maxFifoBuffer, ctx->maxCfg->fifoSlotConfigs, ctx->maxCfg->numSlots);
+    *numSamples = *numSamples < maxSamples ? *numSamples : maxSamples;
+    for (size_t i = 0; i < *numSamples; i++) {
         for (size_t j = 0; j < ctx->maxCfg->numSlots; j++) {
             val = maxFifoBuffer[ctx->maxCfg->numSlots * i + j];
             if (ctx->maxCfg->fifoSlotConfigs[j] == Max86150SlotEcg) {
@@ -91,5 +91,5 @@ capture_sensor_data(hk_sensor_t *ctx, float32_t *slot0, float32_t *slot1, float3
             }
         }
     }
-    return numSamples;
+    return 0;
 }

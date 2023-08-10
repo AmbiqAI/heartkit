@@ -39,7 +39,7 @@
 #define SEG_FRAME_LEN (512)
 #define SEG_OVERLAP_LEN (20)
 #define SEG_STEP_SIZE (SEG_FRAME_LEN - 2 * SEG_OVERLAP_LEN)
-#define SEG_THRESHOLD (0.75)
+#define SEG_THRESHOLD (0.50)
 
 // Beat block
 #define BEAT_ENABLE 1

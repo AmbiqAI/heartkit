@@ -20,5 +20,6 @@ typedef struct {
 
 uint32_t
 init_usb_handler(usb_config_t *ctx);
-
+void
+usb_update_state();
 #endif

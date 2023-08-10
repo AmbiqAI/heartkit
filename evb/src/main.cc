@@ -184,7 +184,7 @@ fetch_samples_from_stimulus(float32_t *samples, uint32_t numSamples) {
 }
 
 uint32_t
-fetch_samples_from_pc(float32_t *samples, uint32_t numSamples) {
+fetch_samples_from_pc(float32_t *samples, uint32_t numSamples, uint32_t *reqSamples) {
     /**
      * @brief Fetch samples from PC over RPC
      * @param samples Buffer to store samples
@@ -197,14 +197,14 @@ fetch_samples_from_pc(float32_t *samples, uint32_t numSamples) {
         return 0;
     }
 
-    uint32_t reqSamples = MIN(numSamples, RPC_BUF_LEN);
-    dataBlock resultBlock = {.length = reqSamples,
+    *reqSamples = MIN(numSamples, RPC_BUF_LEN);
+    dataBlock resultBlock = {.length = *reqSamples,
                              .dType = float32_e,
                              .description = rpcFetchSamplesDesc,
                              .cmd = generic_cmd,
                              .buffer = {
                                  .data = (uint8_t *)(samples),
-                                 .dataLength = reqSamples * sizeof(float32_t),
+                                 .dataLength = *reqSamples * sizeof(float32_t),
                              }};
 
     err = ns_rpc_data_computeOnPC(&resultBlock, &resultBlock);
@@ -216,10 +216,12 @@ fetch_samples_from_pc(float32_t *samples, uint32_t numSamples) {
     }
     if (err) {
         ns_printf("Failed fetching from PC w/ error: %x\n", err);
-        return 0;
+        *reqSamples = 0;
+        return 1;
     }
     memcpy(samples, resultBlock.buffer.data, resultBlock.buffer.dataLength);
-    return resultBlock.buffer.dataLength / sizeof(float32_t);
+    *reqSamples = resultBlock.buffer.dataLength / sizeof(float32_t);
+    return 0;
 }
 
 void
@@ -319,11 +321,12 @@ start_collecting(void) {
      * @brief Setup sensor for collecting
      *
      */
+    uint32_t newSamples = 0;
     if (hkStore.collectMode == SENSOR_DATA_COLLECT) {
         start_sensor(&sensorCtx);
         // Discard first second for sensor warm up time
         for (size_t i = 0; i < 100; i++) {
-            capture_sensor_data(&sensorCtx, hkStore.rawData, NULL, NULL, NULL, SENSOR_LEN);
+            capture_sensor_data(&sensorCtx, hkStore.rawData, NULL, NULL, NULL, SENSOR_LEN, &newSamples);
             ns_delay_us(10000);
         }
     }
@@ -337,6 +340,7 @@ collect_samples() {
      * @brief Collect samples from sensor or PC
      * @return # new samples collected
      */
+    uint32_t err = 0;
     uint32_t newSamples = 0;
     uint32_t reqSamples = HK_DATA_LEN - hkStore.numSamples;
     float32_t *data = &hkStore.rawData[hkStore.numSamples];
@@ -345,14 +349,14 @@ collect_samples() {
     }
     if (hkStore.collectMode == STIMULUS_DATA_COLLECT) {
         // newSamples = fetch_samples_from_stimulus(data, reqSamples);
-        newSamples = fetch_samples_from_pc(data, reqSamples);
+        err = fetch_samples_from_pc(data, reqSamples, &newSamples);
         ns_delay_us(200);
     } else if (hkStore.collectMode == SENSOR_DATA_COLLECT) {
-        newSamples = capture_sensor_data(&sensorCtx, data, NULL, NULL, NULL, reqSamples);
+        err = capture_sensor_data(&sensorCtx, data, NULL, NULL, NULL, reqSamples, &newSamples);
     }
     hkStore.numSamples += newSamples;
     ns_delay_us(5000);
-    return newSamples;
+    return err;
 }
 
 void
@@ -402,6 +406,8 @@ wakeup() {
      */
     am_bsp_itm_printf_enable();
     am_bsp_debug_printf_enable();
+    ns_delay_us(5000);
+    usb_update_state();
 }
 
 void
@@ -409,6 +415,7 @@ deepsleep() {
     /**
      * @brief Put SoC into deep sleep
      */
+    usbCfg.available = false;
     am_bsp_itm_printf_disable();
     am_bsp_debug_printf_disable();
     am_hal_sysctrl_sleep(AM_HAL_SYSCTRL_SLEEP_DEEP);
@@ -422,10 +429,10 @@ setup() {
     // Power configuration (mem, cache, peripherals, clock)
     NS_TRY(ns_core_init(&nsCoreCfg), "NS Core init failed");
     NS_TRY(ns_power_config(&nsPwrCfg), "NS Power config failed");
+    NS_TRY(init_usb_handler(&usbCfg), "USB init failed");
     am_hal_interrupt_master_enable();
     wakeup();
     ns_i2c_interface_init(&nsI2cCfg, AM_HAL_IOM_400KHZ);
-    NS_TRY(init_usb_handler(&usbCfg), "USB init failed");
     ns_rpc_genericDataOperations_init(&nsRpcCfg);
     NS_TRY(ns_peripheral_button_init(&nsBtnCfg), "NS Button init failed");
     NS_TRY(init_sensor(&sensorCtx), "Sensor init failed");
@@ -460,15 +467,17 @@ loop() {
         break;
 
     case COLLECT_STATE:
-        collect_samples();
-        if (hkStore.numSamples >= HK_DATA_LEN) {
+        hkStore.errorCode = collect_samples();
+        if (hkStore.errorCode != 0) {
+            hkStore.state = STOP_COLLECT_STATE;
+        } else if (hkStore.numSamples >= HK_DATA_LEN) {
             hkStore.state = STOP_COLLECT_STATE;
         }
         break;
 
     case STOP_COLLECT_STATE:
         stop_collecting();
-        hkStore.state = PREPROCESS_STATE;
+        hkStore.state = hkStore.errorCode != 0 ? FAIL_STATE : PREPROCESS_STATE;
         break;
 
     case PREPROCESS_STATE:
@@ -482,7 +491,7 @@ loop() {
         print_to_pc("INFERENCE_STATE\n");
         hkStore.errorCode = inference();
         am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_LOW_POWER);
-        hkStore.state = hkStore.errorCode == 1 ? FAIL_STATE : DISPLAY_STATE;
+        hkStore.state = hkStore.errorCode != 0 ? FAIL_STATE : DISPLAY_STATE;
         break;
 
     case DISPLAY_STATE:
