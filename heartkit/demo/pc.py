@@ -9,7 +9,7 @@ from rich.console import Console
 
 from neuralspot.tflite.model import load_model
 
-from ..datasets import IcentiaDataset
+from ..datasets import LudbDataset
 from ..defines import HeartBeat, HeartRate, HeartSegment
 from ..signal import (
     compute_rr_intervals,
@@ -54,7 +54,7 @@ class PcHandler:
         Returns:
             Generator[npt.NDArray[np.float32], None, None]: Data generator
         """
-        ds = IcentiaDataset(
+        ds = LudbDataset(
             ds_path=str(self.params.ds_path),
             frame_size=self.params.frame_size,
             target_rate=self.params.sampling_rate,
@@ -104,13 +104,13 @@ class PcHandler:
         return arr_labels
 
     def segmentation_inference(
-        self, data: npt.NDArray[np.float32], threshold: float = 0.75
+        self, data: npt.NDArray[np.float32], threshold: float = 0.50
     ) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.uint8]]:
         """Run segmentation model on data with given threshold
 
         Args:
             data (npt.NDArray[np.float32]): ECG data
-            threshold (float, optional): Confidence threshold. Defaults to 0.75.
+            threshold (float, optional): Confidence threshold. Defaults to 0.50.
 
         Returns:
             tuple[npt.NDArray[np.uint8], npt.NDArray[np.uint8]]: Segmentation and QRS mask
