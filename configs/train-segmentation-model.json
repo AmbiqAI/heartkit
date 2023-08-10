@@ -1,5 +1,6 @@
 {
     "job_dir": "./results/segmentation",
+    "model_file": "./results/segmentation-pre/model.tf",
     "ds_path": "./datasets",
     "sampling_rate": 200,
     "frame_size": 512,
@@ -8,12 +9,13 @@
     "val_patients": 0.10,
     "batch_size": 512,
     "buffer_size": 25000,
-    "epochs": 50,
+    "epochs": 40,
     "steps_per_epoch": 100,
     "val_metric": "loss",
     "datasets": ["ludb", "synthetic"],
-    "lr_rate": 5e-3,
-    "num_pts": 400,
+    "lr_rate": 1e-4,
+    "lr_cycles": 1,
+    "num_pts": 600,
     "quantization": true,
     "augmentations": [
         {

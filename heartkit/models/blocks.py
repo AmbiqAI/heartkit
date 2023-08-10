@@ -212,28 +212,29 @@ def mbconv_block(
         # NOTE: DepthwiseConv2D only supports equal size stride
         # Using Pooling operator for now
         name_dp = f"{name}.dp" if name else None
-        # y = tf.keras.layers.Conv2D(
-        #     input_filters,
-        #     kernel_size=kernel_size,
-        #     strides=strides,
-        #     groups=input_filters,
-        #     padding="same",
-        #     kernel_initializer="he_normal"
-        #     use_bias=False,
-        #     name=name_dp,
-        # )(y)
-        y = tf.keras.layers.DepthwiseConv2D(
+        y = tf.keras.layers.Conv2D(
+            input_filters,
             kernel_size=kernel_size,
-            strides=(1, 1),  # strides,
+            strides=strides,
+            groups=input_filters,
             padding="same",
+            kernel_initializer="he_normal",
             use_bias=False,
-            depthwise_initializer="he_normal",
             name=name_dp,
         )(y)
+        # y = tf.keras.layers.DepthwiseConv2D(
+        #     kernel_size=kernel_size,
+        #     # strides=strides,
+        #     strides=(1, 1),
+        #     padding="same",
+        #     use_bias=False,
+        #     depthwise_initializer="he_normal",
+        #     name=name_dp,
+        # )(y)
         y = batch_norm(name=name_dp)(y)
         y = relu6(name=name_dp)(y)
-        if is_downsample:
-            y = tf.keras.layers.MaxPool2D(pool_size=strides, padding="same")(y)
+        # if is_downsample:
+        #     y = tf.keras.layers.MaxPool2D(pool_size=strides, padding="same")(y)
 
         # SE: wide -> wide
         if se_ratio:

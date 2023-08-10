@@ -4,12 +4,11 @@
 
 The following table provides performance and accuracy results of all models when running on Apollo4 Plus EVB.
 
-| Task           | Params   | FLOPS   | Metric     |
-| -------------- | -------- | ------- | ---------- |
-| Segmentation   | 33K      | 6.5M    | 87.0% IOU  |
-| Arrhythmia     | 50K      | 3.6M    | 99.0% F1   |
-| Beat           | 73K      | 2.2M    | 91.5% F1   |
-| HRV            | N/A      | N/A     | N/A        |
+| Task           | Params   | FLOPS   | Metric     | Cycles/Inf | Time/Inf   |
+| -------------- | -------- | ------- | ---------- | ---------- | ---------- |
+| Segmentation   | 33K      | 6.5M    | 87.0% IOU  | 531ms      | 102M       |
+| Arrhythmia     | 50K      | 3.6M    | 99.0% F1   | 465ms      | 89M        |
+| Beat           | 73K      | 2.2M    | 91.5% F1   | 241ms      | 46M        |
 
 ## Segmentation Results
 

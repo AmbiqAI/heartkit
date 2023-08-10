@@ -154,6 +154,7 @@ class HeartTrainParams(BaseModel, extra=Extra.allow):
     )
     # Model arguments
     model: str | None = Field(default=None, description="Custom model")
+    model_file: str | None = Field(None, description="Path to model file")
     model_params: dict[str, Any] | None = Field(default=None, description="Custom model parameters")
 
     weights_file: Path | None = Field(None, description="Path to a checkpoint weights to load")

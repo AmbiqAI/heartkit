@@ -236,12 +236,15 @@ def train_model(params: HeartTrainParams):
         logger.info("Building model")
         in_shape, _ = get_task_shape(HeartTask.segmentation, params.frame_size)
         inputs = tf.keras.Input(shape=in_shape, batch_size=None, dtype=tf.float32)
-        model = create_task_model(
-            inputs,
-            HeartTask.segmentation,
-            name=params.model,
-            params=params.model_params,
-        )
+        if params.model_file:
+            model = load_model(str(params.model_file))
+        else:
+            model = create_task_model(
+                inputs,
+                HeartTask.segmentation,
+                name=params.model,
+                params=params.model_params,
+            )
         # If fine-tune, freeze model encoder weights
         if bool(getattr(params, "finetune", False)):
             for layer in model.layers:
@@ -254,12 +257,17 @@ def train_model(params: HeartTrainParams):
         lr_rate: float = getattr(params, "lr_rate", 1e-4)
         lr_cycles: int = getattr(params, "lr_cycles", 3)
         steps_per_epoch = params.steps_per_epoch or 1000
-        scheduler = tf.keras.optimizers.schedules.CosineDecayRestarts(
-            initial_learning_rate=lr_rate,
-            first_decay_steps=int(0.1 * steps_per_epoch * params.epochs),
-            t_mul=1.65 / (0.1 * lr_cycles * (lr_cycles - 1)),
-            m_mul=0.4,
-        )
+        if lr_cycles > 1:
+            scheduler = tf.keras.optimizers.schedules.CosineDecayRestarts(
+                initial_learning_rate=lr_rate,
+                first_decay_steps=int(0.1 * steps_per_epoch * params.epochs),
+                t_mul=1.65 / (0.1 * lr_cycles * (lr_cycles - 1)),
+                m_mul=0.4,
+            )
+        else:
+            scheduler = tf.keras.optimizers.schedules.CosineDecay(
+                initial_learning_rate=lr_rate / 5, decay_steps=steps_per_epoch * params.epochs
+            )
         optimizer = tf.keras.optimizers.Adam(scheduler, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
         loss = tf.keras.losses.CategoricalFocalCrossentropy(from_logits=True)
         metrics = [
@@ -270,16 +278,22 @@ def train_model(params: HeartTrainParams):
                 name="iou",
             ),
         ]
-        model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
-        model(inputs)
-
-        model.summary(print_fn=logger.info)
-        logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
         if params.weights_file:
             logger.info(f"Loading weights from file {params.weights_file}")
             model.load_weights(str(params.weights_file))
+
         params.weights_file = str(params.job_dir / "model.weights")
+
+        # Perform QAT if requested (typically used for fine-tuning)
+        if params.quantization:
+            logger.info("Performing QAT...")
+            model = tfmot.quantization.keras.quantize_model(model)
+
+        model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+        model(inputs)
+        model.summary(print_fn=logger.info)
+        logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
         model_callbacks = [
             tf.keras.callbacks.EarlyStopping(
@@ -316,66 +330,6 @@ def train_model(params: HeartTrainParams):
 
         # Restore best weights from checkpoint
         model.load_weights(params.weights_file)
-
-        if params.quantization:
-            logger.info("Performing QAT fine-tuning")
-            qmodel = tfmot.quantization.keras.quantize_model(model)
-            num_epochs = int(0.25 * params.epochs)
-            scheduler = tf.keras.optimizers.schedules.CosineDecay(
-                initial_learning_rate=lr_rate / 5, decay_steps=steps_per_epoch * num_epochs
-            )
-            optimizer = tf.keras.optimizers.Adam(scheduler, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
-            loss = tf.keras.losses.CategoricalFocalCrossentropy(from_logits=True)
-            metrics = [
-                tf.keras.metrics.CategoricalAccuracy(name="acc"),
-                tf.keras.metrics.OneHotIoU(
-                    num_classes=get_num_classes(HeartTask.segmentation),
-                    target_class_ids=tuple(s.value for s in HeartSegment),
-                    name="iou",
-                ),
-            ]
-            qmodel.compile(optimizer=optimizer, loss=loss, metrics=metrics)
-            qmodel(inputs)
-            qmodel.summary(print_fn=logger.info)
-
-            model_callbacks = [
-                tf.keras.callbacks.EarlyStopping(
-                    monitor=f"val_{params.val_metric}",
-                    patience=max(int(0.50 * num_epochs), 1),
-                    mode="max" if params.val_metric == "f1" else "auto",
-                    restore_best_weights=True,
-                ),
-                tf.keras.callbacks.ModelCheckpoint(
-                    filepath=params.weights_file,
-                    monitor=f"val_{params.val_metric}",
-                    save_best_only=True,
-                    save_weights_only=True,
-                    mode="max" if params.val_metric == "f1" else "auto",
-                    verbose=1,
-                ),
-                tf.keras.callbacks.CSVLogger(str(params.job_dir / "history.csv"), append=True),
-                tf.keras.callbacks.TensorBoard(log_dir=str(params.job_dir), write_steps_per_second=True),
-            ]
-            if env_flag("WANDB"):
-                model_callbacks.append(WandbCallback())
-
-            try:
-                qmodel.fit(
-                    train_ds,
-                    steps_per_epoch=steps_per_epoch,
-                    verbose=2,
-                    initial_epoch=params.epochs,
-                    epochs=params.epochs + num_epochs,
-                    validation_data=val_ds,
-                    callbacks=model_callbacks,
-                )
-            except KeyboardInterrupt:
-                logger.warning("Stopping training due to keyboard interrupt")
-
-            # Restore best weights from checkpoint
-            qmodel.load_weights(params.weights_file)
-            model = qmodel  # Replace model w/ quantized version
-        # END IF
 
         # Save full model
         tf_model_path = str(params.job_dir / "model.tf")
