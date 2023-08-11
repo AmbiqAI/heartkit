@@ -10,131 +10,86 @@
  */
 #include "sensor.h"
 #include "arm_math.h"
-#include "constants.h"
 #include "ns_ambiqsuite_harness.h"
 #include "ns_i2c.h"
 #include "ns_max86150_driver.h"
 
-#define NUM_SLOTS (1)
-max86150_slot_type maxSlotsConfig[] = {Max86150SlotEcg, Max86150SlotOff, Max86150SlotOff, Max86150SlotOff};
-
-uint32_t maxFifoBuffer[MAX86150_FIFO_DEPTH * NUM_SLOTS];
-
-ns_i2c_config_t i2cConfig = {.api = &ns_i2c_V1_0_0, .iom = 1};
-
-static int
-max86150_write_read(uint16_t addr, const void *write_buf, size_t num_write, void *read_buf, size_t num_read) {
-    return ns_i2c_write_read(&i2cConfig, addr, write_buf, num_write, read_buf, num_read);
-}
-static int
-max86150_read(const void *buf, uint32_t num_bytes, uint16_t addr) {
-    return ns_i2c_read(&i2cConfig, buf, num_bytes, addr);
-}
-static int
-max86150_write(const void *buf, uint32_t num_bytes, uint16_t addr) {
-    return ns_i2c_write(&i2cConfig, buf, num_bytes, addr);
-}
-
-max86150_context_t maxCtx = {
-    .addr = MAX86150_ADDR,
-    .i2c_write_read = max86150_write_read,
-    .i2c_read = max86150_read,
-    .i2c_write = max86150_write,
-};
-
-void
-generate_synthetic_data(float32_t *buffer, int len) {
-#ifdef EMULATION
-    float32_t dom_amp = 1000;
-    float32_t dom_freq = 3;
-    float32_t dom_offset = 100;
-    float32_t dom_phi = (0.0f / 180.0f) * PI;
-    float32_t sec_amp = 500;
-    float32_t sec_freq = 40;
-    float32_t sec_offset = 80;
-    float32_t sec_phi = (0.0f / 180.0f) * PI;
-    static float32_t t_step = 0.0;
-    for (int i = 0; i < len; i++) {
-        buffer[i] = dom_amp * arm_cos_f32(2 * PI * dom_freq * t_step + dom_phi) + dom_offset;
-        buffer[i] += sec_amp * arm_cos_f32(2 * PI * sec_freq * t_step + sec_phi) + sec_offset;
-        t_step += 1.0 / SAMPLE_RATE;
-    }
-#endif
-}
+#define MAX86150_NUM_SLOTS (4)
+#define RESET_DELAY_US (10000)
+#define MAX86150_FIFO_DEPTH (32)
 
 uint32_t
-init_sensor(void) {
+init_sensor(hk_sensor_t *ctx) {
     /**
      * @brief Initialize and configure sensor block (MAX86150)
      *
      */
-
-    ns_i2c_interface_init(&i2cConfig, AM_HAL_IOM_400KHZ);
-    max86150_powerup(&maxCtx);
-    ns_delay_us(10000);
-    max86150_reset(&maxCtx);
-    ns_delay_us(10000);
-    max86150_set_fifo_slots(&maxCtx, maxSlotsConfig);
-    max86150_set_almost_full_rollover(&maxCtx, 1); // FIFO rollover: should decide
-    max86150_set_ppg_sample_average(&maxCtx, 2);   // Avg 4 samples
-    max86150_set_ppg_adc_range(&maxCtx, 2);        // 16,384 nA Scale
-    max86150_set_ppg_sample_rate(&maxCtx, 5);      // 200 Samples/sec
-    max86150_set_ppg_pulse_width(&maxCtx, 1);      // 100 us
-    // max86150_set_proximity_threshold(&i2c_dev, MAX86150_ADDR, 0x1F); // Disabled
-
-    max86150_set_led_current_range(&maxCtx, 0, 0);      // IR LED 50 mA
-    max86150_set_led_current_range(&maxCtx, 1, 0);      // RED LED 50 mA
-    max86150_set_led_pulse_amplitude(&maxCtx, 0, 0x00); // IR LED 20 mA 0x32
-    max86150_set_led_pulse_amplitude(&maxCtx, 1, 0x00); // RED LED 20 mA 0x32
-    max86150_set_led_pulse_amplitude(&maxCtx, 2, 0x00); // AMB LED 20 mA 0x32
-
-    max86150_set_ecg_sample_rate(&maxCtx, 3); // Fs = 200 Hz
-    max86150_set_ecg_ia_gain(&maxCtx, 2);     // 9.5 V/V
-    max86150_set_ecg_pga_gain(&maxCtx, 3);    // 8 V/V
-    max86150_powerup(&maxCtx);
-    max86150_set_fifo_enable(&maxCtx, 0);
+    max86150_powerup(ctx->maxCtx);
+    ns_delay_us(RESET_DELAY_US);
+    max86150_reset(ctx->maxCtx);
+    ns_delay_us(RESET_DELAY_US);
+    max86150_set_fifo_slots(ctx->maxCtx, ctx->maxCfg->fifoSlotConfigs);
+    max86150_set_almost_full_rollover(ctx->maxCtx, ctx->maxCfg->fifoRolloverFlag);
+    max86150_set_ppg_sample_average(ctx->maxCtx, ctx->maxCfg->ppgSampleAvg);
+    max86150_set_ppg_adc_range(ctx->maxCtx, ctx->maxCfg->ppgAdcRange);
+    max86150_set_ppg_sample_rate(ctx->maxCtx, ctx->maxCfg->ppgSampleRate);
+    max86150_set_ppg_pulse_width(ctx->maxCtx, ctx->maxCfg->ppgPulseWidth);
+    max86150_set_prox_int_flag(ctx->maxCtx, 0);
+    max86150_set_led_current_range(ctx->maxCtx, 0, ctx->maxCfg->led0CurrentRange);
+    max86150_set_led_current_range(ctx->maxCtx, 1, ctx->maxCfg->led1CurrentRange);
+    max86150_set_led_current_range(ctx->maxCtx, 2, ctx->maxCfg->led2CurrentRange);
+    max86150_set_led_pulse_amplitude(ctx->maxCtx, 0, ctx->maxCfg->led0PulseAmplitude);
+    max86150_set_led_pulse_amplitude(ctx->maxCtx, 1, ctx->maxCfg->led1PulseAmplitude);
+    max86150_set_led_pulse_amplitude(ctx->maxCtx, 2, ctx->maxCfg->led2PulseAmplitude);
+    max86150_set_ecg_sample_rate(ctx->maxCtx, ctx->maxCfg->ecgSampleRate);
+    max86150_set_ecg_ia_gain(ctx->maxCtx, ctx->maxCfg->ecgIaGain);
+    max86150_set_ecg_pga_gain(ctx->maxCtx, ctx->maxCfg->ecgPgaGain);
+    max86150_powerup(ctx->maxCtx);
+    stop_sensor(ctx);
     return 0;
 }
 
 void
-start_sensor(void) {
+start_sensor(hk_sensor_t *ctx) {
     /**
      * @brief Takes sensor out of low-power mode and enables FIFO
      *
      */
     // max86150_powerup(&maxCtx);
-    max86150_set_fifo_enable(&maxCtx, 1);
+    max86150_set_fifo_enable(ctx->maxCtx, 1);
 }
 
 void
-stop_sensor(void) {
+stop_sensor(hk_sensor_t *ctx) {
     /**
      * @brief Puts sensor in low-power mode
      *
      */
-    max86150_set_fifo_enable(&maxCtx, 0);
+    max86150_set_fifo_enable(ctx->maxCtx, 0);
     // max86150_shutdown(&maxCtx);
 }
 
 uint32_t
-capture_sensor_data(float32_t *buffer) {
-    uint32_t numSamples;
-#ifdef EMULATION
-    numSamples = 10;
-    generate_synthetic_data(buffer, numSamples * NUM_SLOTS);
-#else
+capture_sensor_data(hk_sensor_t *ctx, float32_t *slot0, float32_t *slot1, float32_t *slot2, float32_t *slot3, uint32_t maxSamples,
+                    uint32_t *numSamples) {
     int32_t val;
-    numSamples = max86150_read_fifo_samples(&maxCtx, maxFifoBuffer, maxSlotsConfig, NUM_SLOTS);
-    for (size_t i = 0; i < numSamples; i++) {
-        for (size_t j = 0; j < NUM_SLOTS; j++) {
-            val = maxFifoBuffer[NUM_SLOTS * i + j];
-            // ECG data is 18-bit 2's complement. If MSB=1 then make negative
-            if ((maxSlotsConfig[j] == Max86150SlotEcg) && (val & (1 << 17))) {
-                val -= (1 << 18);
+    float32_t *slots[MAX86150_NUM_SLOTS] = {slot0, slot1, slot2, slot3};
+    static uint32_t maxFifoBuffer[MAX86150_FIFO_DEPTH * MAX86150_NUM_SLOTS];
+    *numSamples = max86150_read_fifo_samples(ctx->maxCtx, maxFifoBuffer, ctx->maxCfg->fifoSlotConfigs, ctx->maxCfg->numSlots);
+    *numSamples = *numSamples < maxSamples ? *numSamples : maxSamples;
+    for (size_t i = 0; i < *numSamples; i++) {
+        for (size_t j = 0; j < ctx->maxCfg->numSlots; j++) {
+            val = maxFifoBuffer[ctx->maxCfg->numSlots * i + j];
+            if (ctx->maxCfg->fifoSlotConfigs[j] == Max86150SlotEcg) {
+                // ECG data is 18-bit 2's complement. If MSB=1 then make negative
+                if (val & (1 << 17)) {
+                    val -= (1 << 18);
+                }
+                slots[j][i] = (float32_t)(val) * (0.012247 / 9.5 / 8); // 12.247μV/IA_GAIN/PGA_GAIN
+            } else {
+                slots[j][i] = (float32_t)(val);
             }
-            buffer[i] = (float32_t)(val);
         }
     }
-#endif
-    return numSamples;
+    return 0;
 }

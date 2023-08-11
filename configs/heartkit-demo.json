@@ -7,10 +7,11 @@
     "arrhythmia_model": "./results/arrhythmia/model.tf",
     "segmentation_model": "./results/segmentation/model.tf",
     "beat_model": "./results/beat/model.tf",
-    "samples_per_patient": 1,
-    "frame_size": 2500,
+    "samples_per_patient": 5,
+    "sampling_rate": 200,
+    "frame_size": 2000,
     "vid_pid": "51966:16385",
     "baudrate": "115200",
     "data_parallelism": 1,
-    "datasets": ["icentia11k"]
+    "dataset": "ludb"
 }

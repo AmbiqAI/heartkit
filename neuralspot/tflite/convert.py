@@ -1,8 +1,58 @@
+import io
 import os
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import tensorflow as tf
+
+
+def array_dump(
+    data: npt.NDArray,
+    dst_path: str,
+    var_name: str = "test_stimulus",
+    var_dtype: str | None = None,
+    row_len: int = 12,
+    is_header: bool = False,
+):
+    """Generate C array of values from flattened numpy array.
+    Args:
+        data (npt.NDArray): Data array
+        dst_path (str): C file destination path
+        var_name (str, optional): C variable name. Defaults to "test_stimulus".
+        var_dtype (str | None, optional): C variable type. Defaults to None.
+        row_len (int, optional): Elements to write per row. Defaults to 12.
+        is_header (bool): Write as header or source C file. Defaults to source.
+    """
+    data = data.flatten()
+
+    if isinstance(data[0], np.floating):
+        var_dtype = "float"
+    elif isinstance(data[0], np.int8):
+        var_dtype = "int8_t"
+    elif isinstance(data[0], np.int16):
+        var_dtype = "int16_t"
+    elif isinstance(data[0], np.integer):
+        var_dtype = "int32_t"
+    else:
+        raise ValueError("Unsupported dtype")
+
+    with open(dst_path, "w", encoding="UTF-8") as wfp:
+        if is_header:
+            wfp.write(f"#ifndef __{var_name.upper()}_H{os.linesep}")
+            wfp.write(f"#define __{var_name.upper()}_H{os.linesep}")
+
+        wfp.write(f"#include <cstdint>{os.linesep}{os.linesep}")
+
+        wfp.write(f"const {var_dtype} {var_name}[] = {{{os.linesep}")
+        for row in range(0, len(data), row_len):
+            wfp.write("  " + ", ".join((str(val) for val in data[row : row + row_len])) + f", {os.linesep}")
+        # END FOR
+        wfp.write(f"}};{os.linesep}")
+        wfp.write(f"const unsigned int {var_name}_len = {len(data)};{os.linesep}")
+        if is_header:
+            wfp.write(f"#endif // __{var_name.upper()}_H{os.linesep}")
+    # END WITH
 
 
 def xxd_c_dump(
@@ -19,6 +69,7 @@ def xxd_c_dump(
         dst_path (str): C file destination path
         var_name (str, optional): C variable name. Defaults to 'g_model'.
         chunk_len (int, optional): # of elements per row. Defaults to 12.
+        is_header (bool): Write as header or source C file. Defaults to source.
     """
     var_len = 0
     with open(src_path, "rb", encoding=None) as rfp, open(dst_path, "w", encoding="UTF-8") as wfp:
@@ -41,7 +92,7 @@ def xxd_c_dump(
 def convert_tflite(
     model: tf.keras.Model,
     quantize: bool = False,
-    test_x: npt.ArrayLike | None = None,
+    test_x: npt.NDArray | None = None,
     input_type: tf.DType | None = None,
     output_type: tf.DType | None = None,
 ) -> bytes:
@@ -50,7 +101,7 @@ def convert_tflite(
     Args:
         model (tf.keras.Model): TF model
         quantize (bool, optional): Enable PTQ. Defaults to False.
-        test_x (npt.ArrayLike | None, optional): Enables full integer PTQ. Defaults to None.
+        test_x (npt.NDArray | None, optional): Enables full integer PTQ. Defaults to None.
         input_type (tf.DType | None): Input type data format. Defaults to None.
         output_type (tf.DType | None): Output type data format. Defaults to None.
 
@@ -79,28 +130,75 @@ def convert_tflite(
     return converter.convert()
 
 
+def debug_quant_tflite(
+    model: tf.keras.Model,
+    test_x: npt.NDArray | None = None,
+    input_type: tf.DType | None = None,
+    output_type: tf.DType | None = None,
+) -> tuple[tf.lite.experimental.QuantizationDebugger, pd.DataFrame]:
+    """Debug quantized TFLite model content
+
+    Args:
+        model (tf.keras.Model): TF model
+        quantize (bool, optional): Enable PTQ. Defaults to False.
+        test_x (npt.NDArray | None, optional): Enables full integer PTQ. Defaults to None.
+        input_type (tf.DType | None): Input type data format. Defaults to None.
+        output_type (tf.DType | None): Output type data format. Defaults to None.
+
+    Returns:
+        tuple[tf.lite.experimental.QuantizationDebugger, pd.DataFrame]: TFlite debugger, Layer statistics
+
+    """
+    converter = tf.lite.TFLiteConverter.from_keras_model(model=model)
+
+    def rep_dataset():
+        for i in range(test_x.shape[0]):
+            yield [test_x[i : i + 1]]
+
+    # Quantize model
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+    converter.inference_input_type = input_type
+    converter.inference_output_type = output_type
+    converter.representative_dataset = rep_dataset
+
+    # Debug model
+    debugger = tf.lite.experimental.QuantizationDebugger(converter=converter, debug_dataset=rep_dataset)
+
+    with io.StringIO() as f:
+        debugger.layer_statistics_dump(f)
+        f.seek(0)
+        layer_stats = pd.read_csv(f)
+
+    # Add custom metrics
+    layer_stats["range"] = 255.0 * layer_stats["scale"]
+    layer_stats["rmse/scale"] = layer_stats.apply(lambda row: np.sqrt(row["mean_squared_error"]) / row["scale"], axis=1)
+    return debugger, layer_stats
+
+
 def predict_tflite(
     model_content: bytes,
-    test_x: npt.ArrayLike,
+    test_x: npt.NDArray,
     input_name: str | None = None,
     output_name: str | None = None,
-) -> npt.ArrayLike:
+) -> npt.NDArray:
     """Perform prediction using tflite model content
 
     Args:
         model_content (bytes): TFLite model content
-        test_x (npt.ArrayLike): Input dataset w/ no batch dimension
+        test_x (npt.NDArray): Input dataset w/ no batch dimension
         input_name (str | None, optional): Input layer name. Defaults to None.
         output_name (str | None, optional): Output layer name. Defaults to None.
 
     Returns:
-        npt.ArrayLike: Model outputs
+        npt.NDArray: Model outputs
     """
     # Prepare the test data
     inputs = test_x.copy()
     inputs = inputs.astype(np.float32)
 
     interpreter = tf.lite.Interpreter(model_content=model_content)
+    interpreter.allocate_tensors()
     model_sig = interpreter.get_signature_runner()
     inputs_details = model_sig.get_input_details()
     outputs_details = model_sig.get_output_details()
@@ -135,19 +233,19 @@ def predict_tflite(
 def evaluate_tflite(
     model: tf.keras.Model,
     model_content: bytes,
-    test_x: npt.ArrayLike,
-    y_true: npt.ArrayLike,
-) -> npt.ArrayLike:
+    test_x: npt.NDArray,
+    y_true: npt.NDArray,
+) -> npt.NDArray:
     """Get loss values of TFLite model for given dataset
 
     Args:
         model (tf.keras.Model): TF model
         model_content (bytes): TFLite model
-        test_x (npt.ArrayLike): Input samples
-        y_true (npt.ArrayLike): Input labels
+        test_x (npt.NDArray): Input samples
+        y_true (npt.NDArray): Input labels
 
     Returns:
-        npt.ArrayLike: Loss values
+        npt.NDArray: Loss values
     """
     y_pred = predict_tflite(model_content, test_x=test_x)
     loss_function = tf.keras.losses.get(model.loss)

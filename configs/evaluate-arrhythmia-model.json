@@ -1,11 +1,12 @@
 {
     "job_dir": "./results/arrhythmia",
     "ds_path": "./datasets",
-    "sampling_rate": 250,
-    "frame_size": 1000,
-    "samples_per_patient": [100, 800, 400],
+    "sampling_rate": 200,
+    "frame_size": 800,
+    "samples_per_patient": [50, 400, 200],
     "test_patients": 1000,
     "test_size": 100000,
     "model_file": "./results/arrhythmia/model.tf",
-    "threshold": 0.95
+    "model_file_rmt": "wandb://ambiq/model-registry/heartkit-arrhythmia:v0",
+    "threshold": 0.75
 }

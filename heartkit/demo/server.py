@@ -9,8 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from ..utils import setup_logger
 from .defines import AppState, HeartKitState, HKResult
+from .utils import setup_logger
 
 logger = setup_logger(__name__)
 
@@ -36,17 +36,13 @@ def emulate_data():
     logger.info("Emulation: Updating state")
     if random.random() < 0.5:
         return
-    num_samples = 2500
+    num_samples = 2000
     offset = random.uniform(0, 200)
     amp = random.uniform(3, 7)
-    data = [
-        amp * math.cos((i + offset) * 2 * math.pi / 250) for i in range(num_samples)
-    ]
+    data = [amp * math.cos((i + offset) * 2 * math.pi / 200) for i in range(num_samples)]
     seg_mask = []
     for _ in range(10):
-        seg_mask += (
-            50 * [0] + 35 * [1] + 17 * [0] + 18 * [2] + 22 * [0] + 58 * [3] + 50 * [0]
-        )
+        seg_mask += 50 * [0] + 35 * [1] + 17 * [0] + 18 * [2] + 22 * [0] + 58 * [3] + 50 * [0]
     state = HeartKitState(
         dataId=random.randint(0, 100),
         app_state=random.choice(list(AppState)),
@@ -58,6 +54,7 @@ def emulate_data():
             num_norm_beats=random.randint(0, 10),
             num_pac_beats=random.randint(0, 6),
             num_pvc_beats=random.randint(0, 3),
+            num_noise_beats=random.randint(0, 1),
             arrhythmia=bool(random.randint(0, 2)),
         ),
     )
@@ -177,9 +174,7 @@ def shutdown_event():
 
 def run_forever():
     """Run server forever"""
-    uvicorn.run(
-        app, host=os.getenv("HOST", "0.0.0.0"), port=int(os.getenv("PORT", "8000"))
-    )
+    uvicorn.run(app, host=os.getenv("HOST", "0.0.0.0"), port=int(os.getenv("PORT", "8000")))
 
 
 if __name__ == "__main__":

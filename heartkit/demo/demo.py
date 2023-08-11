@@ -1,10 +1,10 @@
 from multiprocessing import Process
 
-from ..defines import HeartDemoParams
-from ..utils import setup_logger
+from .defines import HeartDemoParams
 from .evb import EvbHandler
 from .pc import PcHandler
 from .ui import ConsoleUi
+from .utils import setup_logger
 
 logger = setup_logger(__name__)
 

@@ -15,8 +15,8 @@ class CustomCheckpoint(tf.keras.callbacks.Callback):
     def __init__(
         self,
         filepath: str,
-        data: tuple[npt.ArrayLike, npt.ArrayLike],
-        score_fn: Callable[[tuple[npt.ArrayLike, npt.ArrayLike]], npt.ArrayLike],
+        data: tuple[npt.NDArray, npt.NDArray],
+        score_fn: Callable[[tuple[npt.NDArray, npt.NDArray]], npt.NDArray],
         best: float = -np.Inf,
         save_best_only: bool = False,
         batch_size: bool | None = None,
@@ -26,8 +26,8 @@ class CustomCheckpoint(tf.keras.callbacks.Callback):
 
         Args:
             filepath (str): Save checkpoint filepath
-            data (tuple[npt.ArrayLike, npt.ArrayLike]): Data
-            score_fn (Callable[[tuple[npt.ArrayLike, npt.ArrayLike]], npt.ArrayLike]): Scoring function
+            data (tuple[npt.NDArray, npt.NDArray]): Data
+            score_fn (Callable[[tuple[npt.NDArray, npt.NDArray]], npt.NDArray]): Scoring function
             best (float, optional): Current best score. Defaults to -np.Inf.
             save_best_only (bool, optional): Save best checkpoint only. Defaults to False.
             batch_size (bool | None, optional): Batch size. Defaults to None.

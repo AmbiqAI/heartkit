@@ -1,13 +1,20 @@
 import os
 import tempfile
-from enum import Enum, IntEnum
+from enum import IntEnum, StrEnum
 from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, Extra, Field
 
 
-class HeartTask(str, Enum):
+class AugmentationParams(BaseModel, extra=Extra.allow):
+    """Augmentation parameters"""
+
+    name: str
+    args: dict[str, tuple[float | int, float | int]]
+
+
+class HeartTask(StrEnum):
     """Heart task"""
 
     arrhythmia = "arrhythmia"
@@ -16,7 +23,7 @@ class HeartTask(str, Enum):
     segmentation = "segmentation"
 
 
-class HeartKitMode(str, Enum):
+class HeartKitMode(StrEnum):
     """HeartKit Mode"""
 
     download = "download"
@@ -27,11 +34,8 @@ class HeartKitMode(str, Enum):
     demo = "demo"
 
 
-# resnet, efficientnet, unet
-BackendType = Literal["pc", "evb"]
-FrontendType = Literal["web", "console"]
-ArchitectureType = Literal["resnet", "efficientnet", "unet"]
-DatasetTypes = Literal["icentia11k", "ludb", "qtdb", "synthetic"]
+ArchitectureType = Literal["resnet", "efficientnet", "unet", "multiresnet"]
+DatasetTypes = Literal["icentia11k", "ludb", "qtdb", "synthetic", "ptbxl"]
 
 
 class HeartRhythm(IntEnum):
@@ -80,7 +84,7 @@ class HeartSegment(IntEnum):
     # uwave = 4  # Not used
 
 
-class HeartBeatName(str, Enum):
+class HeartBeatName(StrEnum):
     """Heart beat label names"""
 
     normal = "normal"
@@ -89,7 +93,7 @@ class HeartBeatName(str, Enum):
     noise = "noise"
 
 
-class HeartRhythmName(str, Enum):
+class HeartRhythmName(StrEnum):
     """Heart rhythm label names"""
 
     normal = "normal"
@@ -98,7 +102,7 @@ class HeartRhythmName(str, Enum):
     noise = "noise"
 
 
-class HeartRateName(str, Enum):
+class HeartRateName(StrEnum):
     """Heart rate label names"""
 
     normal = "normal"
@@ -107,7 +111,7 @@ class HeartRateName(str, Enum):
     noise = "noise"
 
 
-class HeartSegmentName(str, Enum):
+class HeartSegmentName(StrEnum):
     """Heart segment names"""
 
     normal = "normal"
@@ -123,9 +127,7 @@ class HeartDownloadParams(BaseModel, extra=Extra.allow):
     ds_path: Path = Field(default_factory=Path, description="Dataset root directory")
     datasets: list[DatasetTypes] = Field(default_factory=list, description="Datasets")
     progress: bool = Field(True, description="Display progress bar")
-    force: bool = Field(
-        False, description="Force download dataset- overriding existing files"
-    )
+    force: bool = Field(False, description="Force download dataset- overriding existing files")
     data_parallelism: int = Field(
         default_factory=lambda: os.cpu_count() or 1,
         description="# of data loaders running in parallel",
@@ -135,28 +137,16 @@ class HeartDownloadParams(BaseModel, extra=Extra.allow):
 class HeartTrainParams(BaseModel, extra=Extra.allow):
     """Train command params"""
 
-    job_dir: Path = Field(
-        default_factory=tempfile.gettempdir, description="Job output directory"
-    )
+    job_dir: Path = Field(default_factory=tempfile.gettempdir, description="Job output directory")
     # Dataset arguments
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
-    samples_per_patient: int | list[int] = Field(
-        1000, description="# train samples per patient"
-    )
-    val_samples_per_patient: int | list[int] = Field(
-        1000, description="# validation samples per patient"
-    )
-    train_patients: float | None = Field(
-        None, description="# or proportion of patients for training"
-    )
-    val_patients: float | None = Field(
-        None, description="# or proportion of patients for validation"
-    )
-    val_file: Path | None = Field(
-        None, description="Path to load/store pickled validation file"
-    )
+    samples_per_patient: int | list[int] = Field(1000, description="# train samples per patient")
+    val_samples_per_patient: int | list[int] = Field(1000, description="# validation samples per patient")
+    train_patients: float | None = Field(None, description="# or proportion of patients for training")
+    val_patients: float | None = Field(None, description="# or proportion of patients for validation")
+    val_file: Path | None = Field(None, description="Path to load/store pickled validation file")
     val_size: int | None = Field(None, description="# samples for validation")
     data_parallelism: int = Field(
         default_factory=lambda: os.cpu_count() or 1,
@@ -164,24 +154,18 @@ class HeartTrainParams(BaseModel, extra=Extra.allow):
     )
     # Model arguments
     model: str | None = Field(default=None, description="Custom model")
-    model_params: dict[str, Any] | None = Field(
-        default=None, description="Custom model parameters"
-    )
+    model_file: str | None = Field(None, description="Path to model file")
+    model_params: dict[str, Any] | None = Field(default=None, description="Custom model parameters")
 
-    weights_file: Path | None = Field(
-        None, description="Path to a checkpoint weights to load"
-    )
-    quantization: bool | None = Field(
-        None, description="Enable quantization aware training (QAT)"
-    )
+    weights_file: Path | None = Field(None, description="Path to a checkpoint weights to load")
+    quantization: bool | None = Field(None, description="Enable quantization aware training (QAT)")
     # Training arguments
     batch_size: int = Field(32, description="Batch size")
     buffer_size: int = Field(100, description="Buffer size")
     epochs: int = Field(50, description="Number of epochs")
     steps_per_epoch: int | None = Field(None, description="Number of steps per epoch")
-    val_metric: Literal["loss", "acc", "f1"] = Field(
-        "loss", description="Performance metric"
-    )
+    val_metric: Literal["loss", "acc", "f1"] = Field("loss", description="Performance metric")
+    augmentations: list[AugmentationParams] = Field(default_factory=list, description="Augmentations")
     # Extra arguments
     seed: int | None = Field(None, description="Random state seed")
 
@@ -189,19 +173,13 @@ class HeartTrainParams(BaseModel, extra=Extra.allow):
 class HeartTestParams(BaseModel, extra=Extra.allow):
     """Test command params"""
 
-    job_dir: Path = Field(
-        default_factory=tempfile.gettempdir, description="Job output directory"
-    )
+    job_dir: Path = Field(default_factory=tempfile.gettempdir, description="Job output directory")
     # Dataset arguments
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
-    samples_per_patient: int | list[int] = Field(
-        1000, description="# test samples per patient"
-    )
-    test_patients: float | None = Field(
-        None, description="# or proportion of patients for testing"
-    )
+    samples_per_patient: int | list[int] = Field(1000, description="# test samples per patient")
+    test_patients: float | None = Field(None, description="# or proportion of patients for testing")
     test_size: int = Field(200_000, description="# samples for testing")
     data_parallelism: int = Field(
         default_factory=lambda: os.cpu_count() or 1,
@@ -217,68 +195,21 @@ class HeartTestParams(BaseModel, extra=Extra.allow):
 class HeartExportParams(BaseModel, extra=Extra.allow):
     """Export command params"""
 
-    job_dir: Path = Field(
-        default_factory=tempfile.gettempdir, description="Job output directory"
-    )
+    job_dir: Path = Field(default_factory=tempfile.gettempdir, description="Job output directory")
     # Dataset arguments
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
-    samples_per_patient: int | list[int] = Field(
-        100, description="# test samples per patient"
-    )
+    samples_per_patient: int | list[int] = Field(100, description="# test samples per patient")
+    test_patients: float | None = Field(None, description="# or proportion of patients for testing")
     test_size: int = Field(100_000, description="# samples for testing")
     model_file: str | None = Field(None, description="Path to model file")
     threshold: float | None = Field(None, description="Model output threshold")
-    quantization: bool | None = Field(
-        None, description="Enable post training quantization (PQT)"
-    )
+    val_acc_threshold: float | None = Field(0.98, description="Validation accuracy threshold")
+    use_logits: bool = Field(True, description="Use logits output or softmax")
+    quantization: bool | None = Field(None, description="Enable post training quantization (PQT)")
     tflm_var_name: str = Field("g_model", description="TFLite Micro C variable name")
-    tflm_file: Path | None = Field(
-        None, description="Path to copy TFLM header file (e.g. ./model_buffer.h)"
-    )
-    data_parallelism: int = Field(
-        default_factory=lambda: os.cpu_count() or 1,
-        description="# of data loaders running in parallel",
-    )
-
-
-class HeartDemoParams(BaseModel, extra=Extra.allow):
-    """Demo command params"""
-
-    job_dir: Path = Field(
-        default_factory=tempfile.gettempdir, description="Job output directory"
-    )
-    rest_address: str = Field(
-        default_factory=lambda: f"{os.getenv('REST_ADDR', 'http://0.0.0.0')}:{os.getenv('REST_PORT', '80')}/api/v1"
-    )
-    backend: BackendType = Field(default="pc", description="Backend")
-    frontend: FrontendType | None = Field(default=None, description="Frontend")
-    # Model paths/arguments
-    arrhythmia_model: str | None = Field(
-        default=None, description="Arrhythmia TF model path"
-    )
-    segmentation_model: str | None = Field(
-        default=None, description="Segmentation TF model path"
-    )
-    beat_model: str | None = Field(default=None, description="Beat TF model path")
-
-    # EVB folder?
-    # datasets: ["Icentia"],
-    # Dataset arguments
-    ds_path: Path = Field(default_factory=Path, description="Dataset directory")
-    sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
-    frame_size: int = Field(1250, description="Frame size")
-    pad_size: int = Field(0, description="Pad size")
-    samples_per_patient: int | list[int] = Field(
-        10, description="# train samples per patient"
-    )
-    # EVB arguments
-    vid_pid: str | None = Field(
-        "51966:16385",
-        description="VID and PID of serial device formatted as `VID:PID` in base-10",
-    )
-    baudrate: int = Field(115200, description="Serial baudrate")
+    tflm_file: Path | None = Field(None, description="Path to copy TFLM header file (e.g. ./model_buffer.h)")
     data_parallelism: int = Field(
         default_factory=lambda: os.cpu_count() or 1,
         description="# of data loaders running in parallel",

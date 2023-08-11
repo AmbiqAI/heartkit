@@ -24,7 +24,14 @@ Please follow [EVB Setup Guide](./evb-setup.md) to prepare EVB and connect to PC
 
 ### 1. Train all the models
 
-1.1 Train the segmentation model:
+1.1 Train and fine-tune the segmentation model:
+
+```bash
+heartkit \
+    --task segmentation \
+    --mode train \
+    --config ./configs/pretrain-segmentation-model.json
+```
 
 ```bash
 heartkit \
@@ -32,6 +39,9 @@ heartkit \
     --mode train \
     --config ./configs/train-segmentation-model.json
 ```
+
+!!! note
+    The second train command uses quantization-aware training to reduce accuracy drop when exporting to 8-bit.
 
 1.2 Train the arrhythmia model:
 

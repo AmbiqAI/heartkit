@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field
 from . import arrhythmia, beat, hrv, segmentation
 from .datasets import download_datasets
 from .defines import (
-    HeartDemoParams,
     HeartDownloadParams,
     HeartExportParams,
     HeartKitMode,
@@ -15,6 +14,7 @@ from .defines import (
     HeartTestParams,
     HeartTrainParams,
 )
+from .demo.defines import HeartDemoParams
 from .demo.demo import demo
 from .utils import setup_logger
 
@@ -42,9 +42,7 @@ def parse_content(cls: Type[B], content: str) -> B:
     Returns:
         B: Pydantic model subclass instance
     """
-    return (
-        cls.parse_file(content) if os.path.isfile(content) else cls.parse_raw(content)
-    )
+    return cls.parse_file(content) if os.path.isfile(content) else cls.parse_raw(content)
 
 
 def run(inputs: list[str] | None = None):
@@ -59,7 +57,7 @@ def run(inputs: list[str] | None = None):
     )
     args = parser.parse_typed_args(inputs)
 
-    logger.info(f"#STARTED {args.mode.value} model")
+    logger.info(f"#STARTED {args.mode} model")
 
     if args.mode == HeartKitMode.download:
         download_datasets(parse_content(HeartDownloadParams, args.config))
@@ -99,7 +97,7 @@ def run(inputs: list[str] | None = None):
 
     # END MATCH
 
-    logger.info(f"#FINISHED {args.mode.value} model")
+    logger.info(f"#FINISHED {args.mode} model")
 
 
 if __name__ == "__main__":

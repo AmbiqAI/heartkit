@@ -1,18 +1,59 @@
 {
     "job_dir": "./results/segmentation",
+    "model_file": "./results/segmentation-pre/model.tf",
     "ds_path": "./datasets",
-    "sampling_rate": 250,
-    "frame_size": 624,
+    "sampling_rate": 200,
+    "frame_size": 512,
     "samples_per_patient": 100,
     "val_samples_per_patient": 100,
-    "val_patients": 0.20,
-    "arch": "unet",
-    "batch_size": 128,
-    "buffer_size": 16384,
-    "epochs": 120,
-    "steps_per_epoch": 550,
+    "val_patients": 0.10,
+    "batch_size": 512,
+    "buffer_size": 25000,
+    "epochs": 40,
+    "steps_per_epoch": 100,
     "val_metric": "loss",
     "datasets": ["ludb", "synthetic"],
     "lr_rate": 1e-4,
-    "num_pts": 720
+    "lr_cycles": 1,
+    "num_pts": 600,
+    "quantization": true,
+    "augmentations": [
+        {
+            "name": "baseline_wander",
+            "args": {
+                "amplitude": [0.5, 1.5],
+                "frequency": [0.4, 0.5]
+            }
+        },
+        {
+            "name": "motion_noise",
+            "args": {
+                "amplitude": [0.5, 1.5],
+                "frequency": [0.4, 0.7]
+            }
+        },
+        {
+            "name": "burst_noise",
+            "args": {
+                "burst_number": [2, 10],
+                "amplitude": [0.5, 1.5],
+                "frequency": [40, 100]
+            }
+        },
+        {
+            "name": "powerline_noise",
+            "args": {
+                "amplitude": [0.005, 0.01],
+                "frequency": [50, 60]
+            }
+        },
+        {
+            "name": "noise_sources",
+            "args": {
+                "num_sources": [1, 8],
+                "amplitude": [0.05, 0.25],
+                "frequency": [10, 40]
+            }
+        }
+    ]
 }

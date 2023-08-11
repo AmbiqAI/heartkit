@@ -16,9 +16,9 @@ from rich.styled import Styled
 from rich.table import Table
 from rich.text import Text
 
-from ..utils import setup_logger
 from .client import HKRestClient
 from .defines import HeartKitState
+from .utils import setup_logger
 
 logger = setup_logger(__name__)
 
@@ -76,15 +76,10 @@ class ConsoleUi:
             "Total Beats",
             f"{result.num_norm_beats + result.num_pac_beats + result.num_pvc_beats}",
         )
-        table.add_row(
-            "Normal Beats", "--" if result.arrhythmia else f"{result.num_norm_beats}"
-        )
-        table.add_row(
-            "PAC Beats", "--" if result.arrhythmia else f"{result.num_pac_beats}"
-        )
-        table.add_row(
-            "PVC Beats", "--" if result.arrhythmia else f"{result.num_pvc_beats}"
-        )
+        table.add_row("Normal Beats", "--" if result.arrhythmia else f"{result.num_norm_beats}")
+        table.add_row("PAC Beats", "--" if result.arrhythmia else f"{result.num_pac_beats}")
+        table.add_row("PVC Beats", "--" if result.arrhythmia else f"{result.num_pvc_beats}")
+        table.add_row("Noise Beats", "--" if result.arrhythmia else f"{result.num_noise_beats}")
         return table
 
     def create_layout(self):
@@ -106,9 +101,7 @@ class ConsoleUi:
 
     def update_layout(self):
         """Update layout"""
-        self.layout["liveLayout"].update(
-            Panel(PlotextMixin(make_plot=self.make_ecg_plot), title="ECG Data")
-        )
+        self.layout["liveLayout"].update(Panel(PlotextMixin(make_plot=self.make_ecg_plot), title="ECG Data"))
         self.layout["stateLayout"].update(
             Panel(
                 Text(f"{self.state.app_state}", justify="center"),
@@ -116,9 +109,7 @@ class ConsoleUi:
                 padding=1,
             )
         )
-        self.layout["tableLayout"].update(
-            Panel(self.make_result_table(), title="Results")
-        )
+        self.layout["tableLayout"].update(Panel(self.make_result_table(), title="Results"))
 
     def fetch_state(self) -> bool:
         """Fetch state"""

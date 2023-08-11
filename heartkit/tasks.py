@@ -1,13 +1,14 @@
 from typing import Any
 
 import tensorflow as tf
-from keras.engine.keras_tensor import KerasTensor
 
 from .defines import HeartTask
 from .models import (
     EfficientNetParams,
     EfficientNetV2,
     MBConvParams,
+    MultiresNet,
+    MultiresNetParams,
     ResNet,
     ResNetParams,
     UNet,
@@ -29,7 +30,7 @@ def get_class_names(task: HeartTask) -> list[str]:
         # NOTE: Bucket AFIB and AFL together
         return ["NSR", "AFIB/AFL"]
     if task == HeartTask.beat:
-        return ["NORMAL", "PAC", "PVC"]
+        return ["NORMAL", "PAC", "PVC"]  # , "NOISE"]
     if task == HeartTask.hrv:
         return ["NORMAL", "TACHYCARDIA", "BRADYCARDIA"]
     if task == HeartTask.segmentation:
@@ -57,7 +58,7 @@ def get_task_shape(task: HeartTask, frame_size: int) -> tuple[tuple[int], tuple[
         frame_size (int): Frame size
 
     Returns:
-        tuple[tf.TensorSpec]: Input shape
+        tuple[tuple[int], tuple[int]]: Input shape
     """
     num_classes = get_num_classes(task)
     if task == HeartTask.arrhythmia:
@@ -72,9 +73,7 @@ def get_task_shape(task: HeartTask, frame_size: int) -> tuple[tuple[int], tuple[
     raise ValueError(f"unknown task: {task}")
 
 
-def get_task_spec(
-    task: HeartTask, frame_size: int
-) -> tuple[tf.TensorSpec, tf.TensorSpec]:
+def get_task_spec(task: HeartTask, frame_size: int) -> tuple[tf.TensorSpec, tf.TensorSpec]:
     """Get task model spec
 
     Args:
@@ -92,7 +91,7 @@ def get_task_spec(
 
 
 def create_task_model(
-    inputs: KerasTensor,
+    inputs: tf.Tensor,
     task: HeartTask,
     name: str | None = None,
     params: dict[str, Any] | None = None,
@@ -100,7 +99,7 @@ def create_task_model(
     """Generate model for given task
 
     Args:
-        inputs (KerasTensor): Model inputs
+        inputs (tf.Tensor): Model inputs
         task (HeartTask): Heart task
         name (str | None, optional): Architecture type. Defaults to None.
         params (dict[str, Any] | None, optional): Model parameters. Defaults to None.
@@ -110,13 +109,17 @@ def create_task_model(
     """
     num_classes = get_num_classes(task=task)
     if name == "resnet":
-        return ResNet(
-            x=inputs, params=ResNetParams.parse_obj(params), num_classes=num_classes
-        )
+        return ResNet(x=inputs, params=ResNetParams.parse_obj(params), num_classes=num_classes)
     if name == "efficientnet":
         return EfficientNetV2(
             x=inputs,
             params=EfficientNetParams.parse_obj(params),
+            num_classes=num_classes,
+        )
+    if name == "multiresnet":
+        return MultiresNet(
+            x=inputs,
+            params=MultiresNetParams.parse_obj(params),
             num_classes=num_classes,
         )
     if name:
@@ -135,20 +138,21 @@ def create_task_model(
     raise NotImplementedError()
 
 
-def get_beat_model(inputs: KerasTensor, num_classes: int) -> tf.keras.Model:
+def get_beat_model(inputs: tf.Tensor, num_classes: int) -> tf.keras.Model:
     """Reference beat model"""
+    # return MobileOneU0(inputs, num_classes)
     blocks = [
         MBConvParams(
             filters=32,
-            depth=3,
+            depth=2,
             ex_ratio=1,
-            kernel_size=(1, 5),
-            strides=(1, 2),
+            kernel_size=(1, 3),
+            strides=(1, 1),
             se_ratio=2,
         ),
         MBConvParams(
             filters=48,
-            depth=3,
+            depth=2,
             ex_ratio=1,
             kernel_size=(1, 3),
             strides=(1, 2),
@@ -176,39 +180,39 @@ def get_beat_model(inputs: KerasTensor, num_classes: int) -> tf.keras.Model:
         params=EfficientNetParams(
             input_filters=24,
             input_strides=(1, 2),
-            input_kernel_size=(1, 7),
+            input_kernel_size=(1, 5),
             output_filters=0,
             blocks=blocks,
             include_top=True,
-            dropout=0.2,
+            dropout=0.0,
             drop_connect_rate=0.0,
         ),
         num_classes=num_classes,
     )
 
 
-def get_arrhythmia_model(inputs: KerasTensor, num_classes: int) -> tf.keras.Model:
+def get_arrhythmia_model(inputs: tf.Tensor, num_classes: int) -> tf.keras.Model:
     """Reference arrhythmia model"""
     blocks = [
         MBConvParams(
             filters=32,
-            depth=3,
+            depth=2,
             ex_ratio=1,
-            kernel_size=(1, 5),
+            kernel_size=(1, 3),
             strides=(1, 2),
             se_ratio=2,
         ),
         MBConvParams(
             filters=48,
-            depth=3,
+            depth=2,
             ex_ratio=1,
             kernel_size=(1, 3),
             strides=(1, 2),
-            se_ratio=4,
+            se_ratio=2,
         ),
         MBConvParams(
             filters=64,
-            depth=3,
+            depth=2,
             ex_ratio=1,
             kernel_size=(1, 3),
             strides=(1, 2),
@@ -216,7 +220,7 @@ def get_arrhythmia_model(inputs: KerasTensor, num_classes: int) -> tf.keras.Mode
         ),
         MBConvParams(
             filters=96,
-            depth=3,
+            depth=2,
             ex_ratio=1,
             kernel_size=(1, 3),
             strides=(1, 2),
@@ -227,28 +231,28 @@ def get_arrhythmia_model(inputs: KerasTensor, num_classes: int) -> tf.keras.Mode
         inputs,
         params=EfficientNetParams(
             input_filters=24,
-            input_kernel_size=(1, 7),
+            input_kernel_size=(1, 5),
             input_strides=(1, 2),
             blocks=blocks,
             output_filters=0,
             include_top=True,
-            dropout=0.2,
-            drop_connect_rate=0.2,
+            dropout=0.0,
+            drop_connect_rate=0.0,
         ),
         num_classes=num_classes,
     )
 
 
 def get_segmentation_model(
-    inputs: KerasTensor,
+    inputs: tf.Tensor,
     num_classes: int,
 ) -> tf.keras.Model:
     """Reference segmentation model"""
     blocks = [
-        UNetBlockParams(filters=16, depth=1, kernel=(1, 3), strides=(1, 2), skip=False),
-        UNetBlockParams(filters=32, depth=1, kernel=(1, 3), strides=(1, 2), skip=True),
-        UNetBlockParams(filters=48, depth=1, kernel=(1, 3), strides=(1, 2), skip=True),
-        UNetBlockParams(filters=64, depth=1, kernel=(1, 3), strides=(1, 2), skip=True),
+        UNetBlockParams(filters=8, depth=2, kernel=(1, 3), strides=(1, 2), skip=True),
+        UNetBlockParams(filters=16, depth=2, kernel=(1, 3), strides=(1, 2), skip=True),
+        UNetBlockParams(filters=24, depth=2, kernel=(1, 3), strides=(1, 2), skip=True),
+        UNetBlockParams(filters=32, depth=2, kernel=(1, 3), strides=(1, 2), skip=True),
     ]
     return UNet(
         inputs,

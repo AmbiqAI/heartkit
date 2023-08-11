@@ -27,7 +27,7 @@ The architecture consists of an **ECG segmentation** model followed by three ups
 
 ## Requirements
 
-* [Python 3.10+](https://www.python.org)
+* [Python 3.11+](https://www.python.org)
 * [Poetry 1.2.1+](https://python-poetry.org/docs/#installation)
 
 The following are also required to compile/flash the binary for the EVB demo:
@@ -59,7 +59,7 @@ __HeartKit__ can be used as either a CLI-based app or as a python package to per
 * `download`: Download datasets
 * `train`: Train a model for specified task and dataset(s)
 * `evaluate`: Evaluate a model for specified task and dataset(s)
-* `export`: Export a trained model to TensorFlow Lite and TFLM.
+* `export`: Export a trained model to TensorFlow Lite and TFLM
 * `demo`: Run full demo on PC or EVB
 
 ## Tasks
@@ -67,7 +67,7 @@ __HeartKit__ can be used as either a CLI-based app or as a python package to per
 * `Segmentation`: Perform ECG based segmentation (P-Wave, QRS, T-Wave)
 * `HRV`: Heart rate, rhythm, HRV metrics (RR interval)
 * `Arrhythmia`: Heart arrhythmia detection (AFIB, AFL)
-* `Beat`: Classify individual beats (PAC, PVC)
+* `Beat`: Classify individual beats (NORM, PAC, PVC, NOISE)
 
 ****
 ## Architecture
@@ -95,14 +95,14 @@ HeartKit leverages several open-source datasets for training each of the HeartKi
 
 The following table provides the latest performance and accuracy results of all models when running on Apollo4 Plus EVB. Additional result details can be found in [Results Section](./results.md).
 
-| Task           | Params   | FLOPS   | Metric      |
-| -------------- | -------- | ------- | ----------- |
-| Segmentation   | 105K     | 19.3M   | IOU=85.3%   |
-| Arrhythmia     | 76K      | 7.2M    | F1=99.4%    |
-| Beat           | 79K      | 1.6M    | F1=91.6%    |
-| HRV            | N/A      | N/A     | N/A         |
+| Task           | Params   | FLOPS   | Metric     | Cycles/Inf | Time/Inf   |
+| -------------- | -------- | ------- | ---------- | ---------- | ---------- |
+| Segmentation   | 33K      | 6.5M    | 87.0% IOU  | 531ms      | 102M       |
+| Arrhythmia     | 50K      | 3.6M    | 99.0% F1   | 465ms      | 89M        |
+| Beat           | 73K      | 2.2M    | 91.5% F1   | 241ms      | 46M        |
 
-## Reference Papers
+
+## References
 
 * [ECG Heartbeat classification using deep transfer learning with Convolutional Neural Network and STFT technique](https://arxiv.org/abs/2206.14200)
 * [Classification of ECG based on Hybrid Features using CNNs for Wearable Applications](https://arxiv.org/pdf/2206.07648.pdf)

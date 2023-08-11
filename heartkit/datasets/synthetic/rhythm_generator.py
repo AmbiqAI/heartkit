@@ -81,7 +81,7 @@ def generate_nsr(
 
     Args:
         leads (int, optional): # ECG leads. Max is 12. Defaults to 12.
-        signal_frequency (float, optional): Sampling frequency in Hz. Defaults to 200.
+        signal_frequency (float, optional): Sampling frequency in Hz. Defaults to 500.
         rate (int, optional): Heart rate (BPM). Defaults to 60.
         preset (str, optional): ECG Preset. Defaults to "SR".
         noise_multiplier (float, optional): Noise multiplier. Defaults to 1.0.

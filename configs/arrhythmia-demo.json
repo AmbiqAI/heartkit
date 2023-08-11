@@ -10,5 +10,5 @@
     "vid_pid": "51966:16385",
     "baudrate": "115200",
     "data_parallelism": 1,
-    "datasets": ["icentia11k"]
+    "dataset": "icentia11k"
 }

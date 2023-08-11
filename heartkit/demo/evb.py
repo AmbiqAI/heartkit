@@ -1,7 +1,7 @@
 import ctypes
 import threading
 import time
-from enum import Enum, IntEnum
+from enum import IntEnum, StrEnum
 from typing import Generator
 
 import erpc
@@ -15,11 +15,10 @@ from neuralspot.rpc import GenericDataOperations_EvbToPc as gen_evb2pc
 from neuralspot.rpc import GenericDataOperations_PcToEvb as gen_pc2evb
 from neuralspot.rpc.utils import get_serial_transport
 
-from ..datasets.icentia11k import IcentiaDataset
-from ..defines import HeartDemoParams
-from ..utils import setup_logger
+from ..datasets import IcentiaDataset, LudbDataset, SyntheticDataset
 from .client import HKRestClient
-from .defines import AppState, HeartKitState, HKResult
+from .defines import AppState, HeartDemoParams, HeartKitState, HKResult
+from .utils import setup_logger
 
 logger = setup_logger(__name__)
 
@@ -31,7 +30,7 @@ class RpcResponse(IntEnum):
     FAILURE = 1
 
 
-class RpcBlockCommands(str, Enum):
+class RpcBlockCommands(StrEnum):
     """RPC EVB block commands"""
 
     SEND_SAMPLES = "SEND_SAMPLES"
@@ -50,6 +49,7 @@ class HKResultStruct(ctypes.Structure):
         ("num_norm_beats", ctypes.c_uint32),
         ("num_pac_beats", ctypes.c_uint32),
         ("num_pvc_beats", ctypes.c_uint32),
+        ("num_noise_beats", ctypes.c_uint32),
         ("arrhythmia", ctypes.c_uint32),
     ]
 
@@ -61,6 +61,7 @@ class HKResultStruct(ctypes.Structure):
             num_norm_beats=self.num_norm_beats,
             num_pac_beats=self.num_pac_beats,
             num_pvc_beats=self.num_pvc_beats,
+            num_noise_beats=self.num_noise_beats,
             arrhythmia=bool(self.arrhythmia),
         )
 
@@ -97,15 +98,16 @@ class EvbHandler(gen_evb2pc.interface.Ievb_to_pc):
         Returns:
             Generator[npt.NDArray[np.float32], None, None]: Data generator
         """
-        ds = IcentiaDataset(
+        data_handlers = dict(icentia11k=IcentiaDataset, synthetic=SyntheticDataset, ludb=LudbDataset)
+        logger.info(f"Loading dataset {self.params.dataset}")
+        DataHandler = data_handlers.get(self.params.dataset, LudbDataset)
+        ds = DataHandler(
             ds_path=str(self.params.ds_path),
             frame_size=self.params.frame_size,
             target_rate=self.params.sampling_rate,
         )
-        pt_gen = ds.uniform_patient_generator(ds.get_train_patient_ids())
-        data_gen = ds.signal_generator(
-            pt_gen, samples_per_patient=self.params.samples_per_patient
-        )
+        pt_gen = ds.uniform_patient_generator(ds.get_test_patient_ids())
+        data_gen = ds.signal_generator(pt_gen, samples_per_patient=self.params.samples_per_patient)
         return data_gen
 
     def ns_rpc_data_sendBlockToPC(self, block: gen_pc2evb.common.dataBlock):
@@ -118,9 +120,7 @@ class EvbHandler(gen_evb2pc.interface.Ievb_to_pc):
             self._frame_idx = xs
 
         if RpcBlockCommands.SEND_RESULTS in block.description:
-            self.hk_state.results = HKResultStruct.from_buffer_copy(
-                block.buffer
-            ).to_pydantic()
+            self.hk_state.results = HKResultStruct.from_buffer_copy(block.buffer).to_pydantic()
 
         if RpcBlockCommands.SEND_MASK in block.description:
             x: list[int] = np.frombuffer(block.buffer, dtype=np.uint8).tolist()
@@ -133,16 +133,12 @@ class EvbHandler(gen_evb2pc.interface.Ievb_to_pc):
         """RPC callback handler"""
         return RpcResponse.SUCCESS
 
-    def ns_rpc_data_computeOnPC(
-        self, in_block: gen_evb2pc.common.dataBlock, result_block
-    ):
+    def ns_rpc_data_computeOnPC(self, in_block: gen_evb2pc.common.dataBlock, result_block):
         """RPC callback handler"""
         if RpcBlockCommands.FETCH_SAMPLES in in_block.description:
             xs = self._frame_idx
             xe = xs + min(in_block.length, len(self.hk_state.data) - xs)
-            x = np.ascontiguousarray(
-                self.hk_state.data[xs:xe], dtype=np.float32
-            ).tobytes("C")
+            x = np.ascontiguousarray(self.hk_state.data[xs:xe], dtype=np.float32).tobytes("C")
             self._frame_idx = xe
             result_block.value = gen_evb2pc.common.dataBlock(
                 length=xs,  # Use block.length as block offset
@@ -205,9 +201,7 @@ class EvbHandler(gen_evb2pc.interface.Ievb_to_pc):
             try:
                 if not self._run:
                     return
-                self._transport = get_serial_transport(
-                    vid_pid=self.params.vid_pid, baudrate=self.params.baudrate
-                )
+                self._transport = get_serial_transport(vid_pid=self.params.vid_pid, baudrate=self.params.baudrate)
             except TimeoutError:
                 logger.warning("Unable to locate EVB device. Retrying in 5 secs...")
                 self._transport = None

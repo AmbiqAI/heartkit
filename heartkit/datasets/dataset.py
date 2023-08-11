@@ -1,7 +1,6 @@
 import functools
 import logging
 import os
-from typing import Callable
 
 import numpy as np
 import numpy.typing as npt
@@ -11,11 +10,15 @@ import tensorflow as tf
 from ..defines import HeartTask
 from ..tasks import get_num_classes, get_task_shape, get_task_spec
 from ..utils import load_pkl, save_pkl
-from .defines import PatientGenerator, SampleGenerator
-from .preprocess import preprocess_signal
+from .defines import PatientGenerator, Preprocessor, SampleGenerator
 from .utils import create_dataset_from_data
 
 logger = logging.getLogger(__name__)
+
+
+def default_preprocess(x: npt.NDArray) -> npt.NDArray:
+    """Default identity preprocessing."""
+    return x
 
 
 class HeartKitDataset:
@@ -44,23 +47,28 @@ class HeartKitDataset:
     #############################################
 
     @property
+    def cachable(self) -> bool:
+        """If dataset supports file caching."""
+        return True
+
+    @property
     def sampling_rate(self) -> int:
         """Sampling rate in Hz"""
         return 0
 
-    def get_train_patient_ids(self) -> npt.ArrayLike:
+    def get_train_patient_ids(self) -> npt.NDArray:
         """Get training patient IDs
 
         Returns:
-            npt.ArrayLike: patient IDs
+            npt.NDArray: patient IDs
         """
         raise NotImplementedError()
 
-    def get_test_patient_ids(self) -> npt.ArrayLike:
+    def get_test_patient_ids(self) -> npt.NDArray:
         """Get patient IDs reserved for testing only
 
         Returns:
-            npt.ArrayLike: patient IDs
+            npt.NDArray: patient IDs
         """
         raise NotImplementedError()
 
@@ -91,13 +99,13 @@ class HeartKitDataset:
 
     def uniform_patient_generator(
         self,
-        patient_ids: npt.ArrayLike,
+        patient_ids: npt.NDArray,
         repeat: bool = True,
         shuffle: bool = True,
     ) -> PatientGenerator:
         """Yield data uniformly for each patient in the array.
         Args:
-            patient_ids (pt.ArrayLike): Array of patient ids
+            patient_ids (npt.NDArray): Array of patient ids
             repeat (bool, optional): Whether to repeat generator. Defaults to True.
             shuffle (bool, optional): Whether to shuffle patient ids. Defaults to True.
 
@@ -121,7 +129,7 @@ class HeartKitDataset:
         val_pt_samples: int | list[int] | None = None,
         val_size: int | None = None,
         val_file: str | None = None,
-        preprocess: bool = True,
+        preprocess: Preprocessor | None = None,
         num_workers: int = 1,
     ) -> tuple[tf.data.Dataset, tf.data.Dataset]:
         """Load training and validation TF datasets
@@ -150,21 +158,15 @@ class HeartKitDataset:
 
         # Use subset of training patients
         if train_patients is not None:
-            num_pts = (
-                int(train_patients)
-                if train_patients > 1
-                else int(train_patients * len(train_patient_ids))
-            )
+            num_pts = int(train_patients) if train_patients > 1 else int(train_patients * len(train_patient_ids))
             train_patient_ids = train_patient_ids[:num_pts]
         # END IF
 
         # Use existing validation data
-        if val_file and os.path.isfile(val_file):
+        if self.cachable and val_file and os.path.isfile(val_file):
             logger.info(f"Loading validation data from file {val_file}")
             val = load_pkl(val_file)
-            val_ds = create_dataset_from_data(
-                val["x"], val["y"], get_task_spec(self.task, self.frame_size)
-            )
+            val_ds = create_dataset_from_data(val["x"], val["y"], get_task_spec(self.task, self.frame_size))
             val_patient_ids = val["patient_ids"]
             train_patient_ids = np.setdiff1d(train_patient_ids, val_patient_ids)
         else:
@@ -179,16 +181,15 @@ class HeartKitDataset:
             val_ds = self._parallelize_dataset(
                 patient_ids=val_patient_ids,
                 samples_per_patient=val_pt_samples,
+                preprocess=preprocess,
                 repeat=False,
                 num_workers=num_workers,
             )
             val_x, val_y = next(val_ds.batch(val_size).as_numpy_iterator())
-            val_ds = create_dataset_from_data(
-                val_x, val_y, get_task_spec(self.task, self.frame_size)
-            )
+            val_ds = create_dataset_from_data(val_x, val_y, get_task_spec(self.task, self.frame_size))
 
             # Cache validation set
-            if val_file:
+            if self.cachable and val_file:
                 logger.info(f"Caching the validation set in {val_file}")
                 os.makedirs(os.path.dirname(val_file), exist_ok=True)
                 save_pkl(val_file, x=val_x, y=val_y, patient_ids=val_patient_ids)
@@ -199,8 +200,8 @@ class HeartKitDataset:
         train_ds = self._parallelize_dataset(
             patient_ids=train_patient_ids,
             samples_per_patient=train_pt_samples,
-            repeat=True,
             preprocess=preprocess,
+            repeat=True,
             num_workers=num_workers,
         )
         return train_ds, val_ds
@@ -210,7 +211,7 @@ class HeartKitDataset:
         test_patients: float | None = None,
         test_pt_samples: int | list[int] | None = None,
         repeat: bool = True,
-        preprocess: bool = True,
+        preprocess: Preprocessor | None = None,
         num_workers: int = 1,
     ) -> tf.data.Dataset:
         """Load testing datasets
@@ -226,18 +227,14 @@ class HeartKitDataset:
         test_patient_ids = self.get_test_patient_ids()
 
         if test_patients is not None:
-            num_pts = (
-                int(test_patients)
-                if test_patients > 1
-                else int(test_patients * len(test_patient_ids))
-            )
+            num_pts = int(test_patients) if test_patients > 1 else int(test_patients * len(test_patient_ids))
             test_patient_ids = test_patient_ids[:num_pts]
-        # test_patient_ids = tf.convert_to_tensor(test_patient_ids)
+
         test_ds = self._parallelize_dataset(
             patient_ids=test_patient_ids,
             samples_per_patient=test_pt_samples,
-            repeat=repeat,
             preprocess=preprocess,
+            repeat=repeat,
             num_workers=num_workers,
         )
         return test_ds
@@ -245,17 +242,17 @@ class HeartKitDataset:
     @tf.function
     def _parallelize_dataset(
         self,
-        patient_ids: int = None,
+        patient_ids: npt.NDArray,
         samples_per_patient: int | list[int] = 100,
+        preprocess: Preprocessor | None = None,
         repeat: bool = False,
-        preprocess: Callable[[npt.NDArray], npt.NDArray] | None = None,
         num_workers: int = 1,
     ) -> tf.data.Dataset:
         """Generates datasets for given task in parallel using TF `interleave`
 
         Args:
-            patient_ids (int, optional): List of patient IDs. Defaults to None.
-            samples_per_patient (int, optional): # Samples per pateint. Defaults to 100.
+            patient_ids (npt.NDArray): List of patient IDs.
+            samples_per_patient (int | list[int], optional): # Samples per patient and class. Defaults to 100.
             repeat (bool, optional): Should data generator repeat. Defaults to False.
             num_workers (int, optional): Number of parallel workers. Defaults to 1.
         Returns:
@@ -283,84 +280,77 @@ class HeartKitDataset:
             num_parallel_calls=tf.data.AUTOTUNE,
         )
 
-    def _split_train_test_patients(
-        self, patient_ids: npt.ArrayLike, test_size: float
-    ) -> list[list[int]]:
+    def _split_train_test_patients(self, patient_ids: npt.NDArray, test_size: float) -> list[list[int]]:
         """Perform train/test split on patients for given task.
         NOTE: We only perform inter-patient splits and not intra-patient.
 
         Args:
-            patient_ids (npt.ArrayLike): Patient Ids
+            patient_ids (npt.NDArray): Patient Ids
             test_size (float): Test size
 
         Returns:
             list[list[int]]: Train and test sets of patient ids
         """
-        return sklearn.model_selection.train_test_split(
-            patient_ids, test_size=test_size
-        )
+        return sklearn.model_selection.train_test_split(patient_ids, test_size=test_size)
 
     def _create_dataset_from_generator(
         self,
-        patient_ids: npt.ArrayLike,
-        samples_per_patient: int | list[int] = 1,
+        patient_ids: npt.NDArray,
+        samples_per_patient: int | list[int] = 100,
+        preprocess: Preprocessor | None = None,
         repeat: bool = True,
-        preprocess: bool = True,
     ) -> tf.data.Dataset:
         """Creates TF dataset generator for task.
 
         Args:
-            patient_ids (npt.ArrayLike): Patient IDs
-            samples_per_patient (int | list[int], optional): Samples per patient. Defaults to 1.
+            patient_ids (npt.NDArray): Patient IDs
+            samples_per_patient (int | list[int], optional): Samples per patient. Defaults to 100.
             repeat (bool, optional): Repeat. Defaults to True.
 
         Returns:
             tf.data.Dataset: Dataset generator
         """
+        ds_gen = functools.partial(self._dataset_sample_generator, preprocess=preprocess)
         dataset = tf.data.Dataset.from_generator(
-            generator=self._dataset_sample_generator,
+            generator=ds_gen,
             output_signature=get_task_spec(self.task, self.frame_size),
-            args=(patient_ids, samples_per_patient, repeat, preprocess),
+            args=(patient_ids, samples_per_patient, repeat),
         )
+        options = tf.data.Options()
+        options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.FILE
+        dataset = dataset.with_options(options)
         return dataset
 
     def _dataset_sample_generator(
         self,
-        patient_ids: npt.ArrayLike,
-        samples_per_patient: int | list[int] = 1,
+        patient_ids: npt.NDArray,
+        samples_per_patient: int | list[int] = 100,
         repeat: bool = True,
-        preprocess: bool = True,
+        preprocess: Preprocessor | None = None,
     ) -> SampleGenerator:
         """Internal sample generator for task.
 
         Args:
-            patient_ids (npt.ArrayLike): Patient IDs
-            samples_per_patient (int | list[int], optional): Samples per patient. Defaults to 1.
+            patient_ids (npt.NDArray): Patient IDs
+            samples_per_patient (int | list[int], optional): Samples per patient. Defaults to 100.
             repeat (bool, optional): Repeat. Defaults to True.
 
         Returns:
             SampleGenerator: Task sample generator
         """
-        num_classes = get_num_classes(self.task)
         patient_generator = self.uniform_patient_generator(patient_ids, repeat=repeat)
         data_generator = self.task_data_generator(
             patient_generator,
             samples_per_patient=samples_per_patient,
         )
-        if preprocess:
-            preprocess_func = functools.partial(
-                preprocess_signal, sample_rate=self.target_rate
-            )
-        else:
-            preprocess_func = lambda x: x
+        preprocess_fn = preprocess if preprocess else default_preprocess
 
+        num_classes = get_num_classes(self.task)
+        task_shape = get_task_shape(self.task, self.frame_size)[0]
         data_generator = map(
             lambda x_y: (
-                # Pre-process signal and convert to 3D shape
-                preprocess_func(x_y[0]).reshape(
-                    get_task_shape(self.task, self.frame_size)[0]
-                ),
-                tf.one_hot(x_y[1], num_classes),  # x_y[1]
+                preprocess_fn(x_y[0]).reshape(task_shape),
+                tf.one_hot(x_y[1], num_classes),
             ),
             data_generator,
         )
