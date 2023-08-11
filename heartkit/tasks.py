@@ -160,7 +160,7 @@ def get_beat_model(inputs: tf.Tensor, num_classes: int) -> tf.keras.Model:
         ),
         MBConvParams(
             filters=64,
-            depth=2,
+            depth=3,
             ex_ratio=1,
             kernel_size=(1, 3),
             strides=(1, 2),
@@ -168,7 +168,7 @@ def get_beat_model(inputs: tf.Tensor, num_classes: int) -> tf.keras.Model:
         ),
         MBConvParams(
             filters=96,
-            depth=2,
+            depth=3,
             ex_ratio=1,
             kernel_size=(1, 3),
             strides=(1, 2),
