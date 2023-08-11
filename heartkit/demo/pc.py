@@ -9,7 +9,7 @@ from rich.console import Console
 
 from neuralspot.tflite.model import load_model
 
-from ..datasets import LudbDataset
+from ..datasets import IcentiaDataset, LudbDataset, QtdbDataset, SyntheticDataset
 from ..defines import HeartBeat, HeartRate, HeartSegment
 from ..signal import (
     compute_rr_intervals,
@@ -54,7 +54,10 @@ class PcHandler:
         Returns:
             Generator[npt.NDArray[np.float32], None, None]: Data generator
         """
-        ds = LudbDataset(
+        data_handlers = dict(icentia11k=IcentiaDataset, synthetic=SyntheticDataset, ludb=LudbDataset, qtdb=QtdbDataset)
+        logger.info(f"Loading dataset {self.params.dataset}")
+        DataHandler = data_handlers.get(self.params.dataset, LudbDataset)
+        ds = DataHandler(
             ds_path=str(self.params.ds_path),
             frame_size=self.params.frame_size,
             target_rate=self.params.sampling_rate,
@@ -72,11 +75,12 @@ class PcHandler:
         if self.params.beat_model:
             self.beat_model = load_model(self.params.beat_model)
 
-    def preprocess(self, data: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
+    def preprocess(self, data: npt.NDArray[np.float32]) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
         """Perform pre-processing to data"""
-        data = filter_signal(data, lowcut=0.5, highcut=30, order=3, sample_rate=self.params.sampling_rate, axis=0)
         data = normalize_signal(data, eps=0.1, axis=None)
-        return data
+        ecg_data = filter_signal(data, lowcut=0.5, highcut=30, order=3, sample_rate=self.params.sampling_rate, axis=0)
+        qrs_data = filter_signal(data, lowcut=10, highcut=30, order=3, sample_rate=self.params.sampling_rate, axis=0)
+        return ecg_data, qrs_data
 
     def arrhythmia_inference(self, data: npt.NDArray[np.float32], threshold: float = 0.75) -> npt.NDArray[np.uint8]:
         """Apply arrhythmia model to data.
@@ -204,7 +208,7 @@ class PcHandler:
 
         # Pre-process
         self.update_app_state(AppState.PREPROCESS_STATE)
-        data = self.preprocess(data=data)
+        data, qrs_data = self.preprocess(data=data)
 
         # Inference
         self.update_app_state(AppState.INFERENCE_STATE)
@@ -221,7 +225,7 @@ class PcHandler:
             seg_mask, _ = self.segmentation_inference(data, threshold=0.7)
 
             # Apply HRV model and extract R peaks
-            rpeaks, rr_ints, _ = self.hrv_inference(data, seg_mask)
+            rpeaks, rr_ints, _ = self.hrv_inference(qrs_data, seg_mask)
             bpm = 60 / (np.mean(rr_ints) / self.params.sampling_rate)
             # bpm, _, rpeaks = compute_hrv(data, qrs_mask, self.params.sampling_rate)
             avg_rr = max(0, int(self.params.sampling_rate / (bpm / 60)))

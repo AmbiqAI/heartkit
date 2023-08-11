@@ -290,7 +290,34 @@ class QtdbDataset(HeartKitDataset):
             #     if num_samples > samples_per_patient:
             #         break
             # # END FOR
+        # END FOR
 
+    def signal_generator(self, patient_generator: PatientGenerator, samples_per_patient: int = 1) -> SampleGenerator:
+        """
+        Generate frames using patient generator.
+        from the segments in patient data by placing a frame in a random location within one of the segments.
+        Args:
+            patient_generator (PatientGenerator): Generator that yields a tuple of patient id and patient data.
+                    Patient data may contain only signals, since labels are not used.
+            samples_per_patient (int): Samples per patient.
+        Returns:
+            SampleGenerator: Generator of input data of shape (frame_size, 1)
+        """
+        for _, pt in patient_generator:
+            data = pt["data"][:]
+            if self.sampling_rate != self.target_rate:
+                data = resample_signal(data, self.sampling_rate, self.target_rate)
+            # END IF
+            for _ in range(samples_per_patient):
+                lead_idx = np.random.randint(data.shape[1])
+                if data.shape[0] > self.frame_size:
+                    frame_start = np.random.randint(data.shape[0] - self.frame_size)
+                else:
+                    frame_start = 0
+                frame_end = frame_start + self.frame_size
+                x = data[frame_start:frame_end, lead_idx].astype(np.float32).reshape((self.frame_size,))
+                yield x
+            # END FOR
         # END FOR
 
     def get_patient_data_segments(self, patient: int) -> tuple[npt.NDArray, npt.NDArray]:

@@ -7,6 +7,6 @@
     "test_patients": 1000,
     "test_size": 100000,
     "model_file": "./results/arrhythmia/model.tf",
-    "model_file_rmt": "wandb://ambiq/model-registry/heartkit-arrhythmia:v1",
+    "model_file_rmt": "wandb://ambiq/model-registry/heartkit-arrhythmia:v0",
     "threshold": 0.75
 }

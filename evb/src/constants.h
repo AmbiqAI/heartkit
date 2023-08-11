@@ -37,7 +37,7 @@
 #define SEGMENTATION_QUANTIZE (1)
 #define SEG_MODEL_SIZE_KB (85)
 #define SEG_FRAME_LEN (512)
-#define SEG_OVERLAP_LEN (20)
+#define SEG_OVERLAP_LEN (56)
 #define SEG_STEP_SIZE (SEG_FRAME_LEN - 2 * SEG_OVERLAP_LEN)
 #define SEG_THRESHOLD (0.50)
 
@@ -46,7 +46,7 @@
 #define BEAT_QUANTIZE (1)
 #define BEAT_MODEL_SIZE_KB (60)
 #define BEAT_FRAME_LEN (160)
-#define BEAT_THRESHOLD (0.75)
+#define BEAT_THRESHOLD (0.50)
 
 // App block
 #define DISPLAY_LEN_USEC (2000000)

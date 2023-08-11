@@ -15,7 +15,7 @@ from neuralspot.rpc import GenericDataOperations_EvbToPc as gen_evb2pc
 from neuralspot.rpc import GenericDataOperations_PcToEvb as gen_pc2evb
 from neuralspot.rpc.utils import get_serial_transport
 
-from ..datasets import SyntheticDataset
+from ..datasets import IcentiaDataset, LudbDataset, SyntheticDataset
 from .client import HKRestClient
 from .defines import AppState, HeartDemoParams, HeartKitState, HKResult
 from .utils import setup_logger
@@ -98,25 +98,16 @@ class EvbHandler(gen_evb2pc.interface.Ievb_to_pc):
         Returns:
             Generator[npt.NDArray[np.float32], None, None]: Data generator
         """
-
-        def default_gen():
-            while True:
-                yield np.random.rand(self.params.frame_size).astype(np.float32)
-
-        datasets: list[str] = self.params.datasets
-        if len(datasets) == 0:
-            data_gen = default_gen()
-        elif "icentia11k" in datasets:
-            ds = SyntheticDataset(
-                ds_path=str(self.params.ds_path),
-                frame_size=self.params.frame_size,
-                target_rate=self.params.sampling_rate,
-            )
-            pt_gen = ds.uniform_patient_generator(ds.get_test_patient_ids())
-            data_gen = ds.signal_generator(pt_gen, samples_per_patient=self.params.samples_per_patient)
-        else:
-            raise ValueError(f"Unsupported dataset: {datasets}")
-
+        data_handlers = dict(icentia11k=IcentiaDataset, synthetic=SyntheticDataset, ludb=LudbDataset)
+        logger.info(f"Loading dataset {self.params.dataset}")
+        DataHandler = data_handlers.get(self.params.dataset, LudbDataset)
+        ds = DataHandler(
+            ds_path=str(self.params.ds_path),
+            frame_size=self.params.frame_size,
+            target_rate=self.params.sampling_rate,
+        )
+        pt_gen = ds.uniform_patient_generator(ds.get_test_patient_ids())
+        data_gen = ds.signal_generator(pt_gen, samples_per_patient=self.params.samples_per_patient)
         return data_gen
 
     def ns_rpc_data_sendBlockToPC(self, block: gen_pc2evb.common.dataBlock):

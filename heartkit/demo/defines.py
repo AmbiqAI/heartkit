@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Extra, Field
 
+DatasetTypes = Literal["icentia11k", "ludb", "qtdb", "synthetic"]
+
 
 class AppState(StrEnum):
     """HeartKit backend app state"""
@@ -59,7 +61,7 @@ class HeartDemoParams(BaseModel, extra=Extra.allow):
     beat_model: str | None = Field(default=None, description="Beat TF model path")
 
     # Dataset arguments
-    datasets: list[str] = Field(default_factory=list, description="Dataset names")
+    dataset: DatasetTypes = Field(default="ludb", description="Dataset name")
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
     sampling_rate: int = Field(200, description="Target sampling rate (Hz)")
     frame_size: int = Field(2000, description="Frame size")

@@ -2,8 +2,8 @@
     "job_dir": "./results/heartkit-demo",
     "ds_path": "./datasets",
     "rest_address": "http://0.0.0.0:8000/api/v1",
-    "backend": "pc",
-    "frontend": "web",
+    "backend": "evb",
+    "frontend": "console",
     "arrhythmia_model": "./results/arrhythmia/model.tf",
     "segmentation_model": "./results/segmentation/model.tf",
     "beat_model": "./results/beat/model.tf",
@@ -13,5 +13,5 @@
     "vid_pid": "51966:16385",
     "baudrate": "115200",
     "data_parallelism": 1,
-    "datasets": ["icentia11k"]
+    "dataset": "ludb"
 }

@@ -69,7 +69,7 @@ apply_arrhythmia_model() {
 uint32_t
 apply_segmentation_model() {
     uint32_t err = 0;
-    for (size_t i = 0; i < HK_DATA_LEN - SEG_FRAME_LEN + 1; i += SEG_FRAME_LEN) {
+    for (size_t i = 0; i < HK_DATA_LEN - SEG_FRAME_LEN + 1; i += SEG_STEP_SIZE) {
         err = segmentation_inference(&hkStore.ecgData[i], &hkStore.segMask[i], SEG_OVERLAP_LEN, SEG_THRESHOLD);
     }
     err |= segmentation_inference(&hkStore.ecgData[HK_DATA_LEN - SEG_FRAME_LEN], &hkStore.segMask[HK_DATA_LEN - SEG_FRAME_LEN],
@@ -462,7 +462,6 @@ loop() {
     case START_COLLECT_STATE:
         print_to_pc("COLLECT_STATE\n");
         start_collecting();
-        clear_collect_mode();
         hkStore.state = COLLECT_STATE;
         break;
 
@@ -477,6 +476,7 @@ loop() {
 
     case STOP_COLLECT_STATE:
         stop_collecting();
+        clear_collect_mode();
         hkStore.state = hkStore.errorCode != 0 ? FAIL_STATE : PREPROCESS_STATE;
         break;
 
