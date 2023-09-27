@@ -11,5 +11,6 @@ __all__ = [
     "HeartKitDataset",
     "IcentiaDataset",
     "LudbDataset",
+    "QtdbDataset",
     "SyntheticDataset",
 ]

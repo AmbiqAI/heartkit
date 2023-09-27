@@ -3,6 +3,7 @@ import shutil
 
 import numpy as np
 import numpy.typing as npt
+import physiokit as pk
 import tensorflow as tf
 import wandb
 from rich.console import Console
@@ -13,7 +14,6 @@ from neuralspot.tflite.convert import convert_tflite, predict_tflite, xxd_c_dump
 from neuralspot.tflite.metrics import get_flops
 from neuralspot.tflite.model import get_strategy, load_model
 
-from . import signal
 from .datasets import IcentiaDataset, augment_pipeline
 from .defines import HeartExportParams, HeartTask, HeartTestParams, HeartTrainParams
 from .metrics import confusion_matrix_plot, roc_auc_plot
@@ -27,7 +27,7 @@ logger = setup_logger(__name__)
 
 def prepare(x: npt.NDArray, sample_rate: float) -> npt.NDArray:
     """Prepare dataset."""
-    x = signal.filter_signal(
+    x = pk.signal.filter_signal(
         x,
         lowcut=0.5,
         highcut=30,
@@ -36,7 +36,7 @@ def prepare(x: npt.NDArray, sample_rate: float) -> npt.NDArray:
         axis=0,
         forward_backward=True,
     )
-    x = signal.normalize_signal(x, eps=0.1, axis=None)
+    x = pk.signal.normalize_signal(x, eps=0.1, axis=None)
     return x
 
 

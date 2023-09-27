@@ -8,13 +8,13 @@ from multiprocessing import Pool
 import h5py
 import numpy as np
 import numpy.typing as npt
+import physiokit as pk
 from tqdm import tqdm
 
 from ..defines import HeartTask
 from ..utils import download_file
 from .dataset import HeartKitDataset
 from .defines import PatientGenerator, SampleGenerator
-from .preprocess import resample_signal
 
 logger = logging.getLogger(__name__)
 
@@ -236,7 +236,7 @@ class QtdbDataset(HeartKitDataset):
 
             if self.sampling_rate != self.target_rate:
                 ratio = self.target_rate / self.sampling_rate
-                data = resample_signal(data, self.sampling_rate, self.target_rate)
+                data = pk.signal.resample_signal(data, self.sampling_rate, self.target_rate)
                 segs[:, (SEG_BEG_IDX, SEG_END_IDX)] = segs[:, (SEG_BEG_IDX, SEG_END_IDX)] * ratio
                 fids[:, FID_LOC_IDX] = fids[:, FID_LOC_IDX] * ratio
             # END IF
@@ -306,7 +306,7 @@ class QtdbDataset(HeartKitDataset):
         for _, pt in patient_generator:
             data = pt["data"][:]
             if self.sampling_rate != self.target_rate:
-                data = resample_signal(data, self.sampling_rate, self.target_rate)
+                data = pk.signal.resample_signal(data, self.sampling_rate, self.target_rate)
             # END IF
             for _ in range(samples_per_patient):
                 lead_idx = np.random.randint(data.shape[1])

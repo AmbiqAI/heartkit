@@ -4,12 +4,12 @@ import random
 
 import numpy as np
 import numpy.typing as npt
+import physiokit as pk
+from physiokit.ecg.synthetic.defines import EcgPresets, SyntheticSegments
 
-from ...defines import HeartSegment, HeartTask
-from ..dataset import HeartKitDataset
-from ..defines import PatientGenerator, SampleGenerator
-from .defines import EcgPresets, SyntheticSegments
-from .rhythm_generator import generate_nsr
+from ..defines import HeartSegment, HeartTask
+from .dataset import HeartKitDataset
+from .defines import PatientGenerator, SampleGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +121,7 @@ class SyntheticDataset(HeartKitDataset):
         preset_weights = (14, 1, 1, 1, 1, 1, 1)
 
         for _ in patient_generator:
-            _, syn_ecg, _, _, _ = generate_nsr(
+            _, syn_ecg, _, _, _ = pk.ecg.generate_nsr(
                 leads=num_leads,
                 signal_frequency=self.sampling_rate,
                 rate=np.random.uniform(40, 120),
@@ -175,7 +175,7 @@ class SyntheticDataset(HeartKitDataset):
         preset_weights = (14, 1, 1, 1, 1, 1, 1)
 
         for _ in patient_generator:
-            _, syn_ecg, syn_segs_t, _, _ = generate_nsr(
+            _, syn_ecg, syn_segs_t, _, _ = pk.ecg.generate_nsr(
                 leads=num_leads,
                 signal_frequency=self.sampling_rate,
                 rate=np.random.uniform(40, 120),

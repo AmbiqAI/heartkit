@@ -896,6 +896,7 @@ url = "https://github.com/AmbiqAI/erpc.git"
 reference = "develop"
 resolved_reference = "a2991a0b4a2fe03d473d30e0aca5a2beadfa3971"
 subdirectory = "erpc_python"
+
 [[package]]
 name = "executing"
 version = "1.2.0"
@@ -2942,6 +2943,24 @@ files = [
 
 [package.dependencies]
 ptyprocess = ">=0.5"
+
+[[package]]
+name = "physiokit"
+version = "0.2.0"
+description = "PhysioKit, process raw ambulatory bio-signals."
+category = "main"
+optional = false
+python-versions = ">=3.11,<3.13"
+files = [
+    {file = "physiokit-0.2.0-py3-none-any.whl", hash = "sha256:123752e99f6baf1704bb26c79ce83806118d6cbe5df9b1c15ee596b7ae48e9c7"},
+    {file = "physiokit-0.2.0.tar.gz", hash = "sha256:73a447ec0de7a10986a870651c92cdee43c9a98b7b835e80a844753717fd75e0"},
+]
+
+[package.dependencies]
+neurokit2 = ">=0.2.4,<0.3.0"
+numpy = ">=1.24.3,<2.0.0"
+requests = ">=2.31.0,<3.0.0"
+scipy = ">=1.10.1,<2.0.0"
 
 [[package]]
 name = "pickleshare"
@@ -5264,4 +5283,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.12"
-content-hash = "16eea37a517b965f7b7a64377d60c0c3b600b2a3bbb17b5d29823f69f0a36078"
+content-hash = "1cbaaa269e0d0cbcba8f6a436967d4c00b0eb7a1863cf9e5c93ebee065906d45"

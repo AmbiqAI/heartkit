@@ -3,6 +3,7 @@ from typing import Generator
 
 import numpy as np
 import numpy.typing as npt
+import physiokit as pk
 from requests.exceptions import ConnectionError as ReqConnectionError
 from requests.exceptions import ConnectTimeout, HTTPError
 from rich.console import Console
@@ -11,13 +12,6 @@ from neuralspot.tflite.model import load_model
 
 from ..datasets import IcentiaDataset, LudbDataset, QtdbDataset, SyntheticDataset
 from ..defines import HeartBeat, HeartRate, HeartSegment
-from ..signal import (
-    compute_rr_intervals,
-    filter_rr_intervals,
-    filter_signal,
-    find_peaks,
-    normalize_signal,
-)
 from .client import HKRestClient
 from .defines import AppState, HeartDemoParams, HeartKitState, HKResult
 from .utils import setup_logger
@@ -77,9 +71,13 @@ class PcHandler:
 
     def preprocess(self, data: npt.NDArray[np.float32]) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
         """Perform pre-processing to data"""
-        data = normalize_signal(data, eps=0.1, axis=None)
-        ecg_data = filter_signal(data, lowcut=0.5, highcut=30, order=3, sample_rate=self.params.sampling_rate, axis=0)
-        qrs_data = filter_signal(data, lowcut=10, highcut=30, order=3, sample_rate=self.params.sampling_rate, axis=0)
+        data = pk.signal.normalize_signal(data, eps=0.1, axis=None)
+        ecg_data = pk.signal.filter_signal(
+            data, lowcut=0.5, highcut=30, order=3, sample_rate=self.params.sampling_rate, axis=0
+        )
+        qrs_data = pk.signal.filter_signal(
+            data, lowcut=10, highcut=30, order=3, sample_rate=self.params.sampling_rate, axis=0
+        )
         return ecg_data, qrs_data
 
     def arrhythmia_inference(self, data: npt.NDArray[np.float32], threshold: float = 0.75) -> npt.NDArray[np.uint8]:
@@ -147,9 +145,9 @@ class PcHandler:
         """Run HRV inference on data"""
         qrs_data = data.squeeze()
         qrs_data = np.where(seg_mask == HeartSegment.qrs, 10 * qrs_data, qrs_data)
-        rpeaks = find_peaks(qrs_data, sample_rate=self.params.sampling_rate)
-        rr_ints = compute_rr_intervals(rpeaks, sample_rate=self.params.sampling_rate)
-        rr_mask = filter_rr_intervals(rr_ints, sample_rate=self.params.sampling_rate)
+        rpeaks = pk.ecg.find_peaks(qrs_data, sample_rate=self.params.sampling_rate)
+        rr_ints = pk.ecg.compute_rr_intervals(rpeaks)
+        rr_mask = pk.ecg.filter_rr_intervals(rr_ints, sample_rate=self.params.sampling_rate)
         return rpeaks, rr_ints, rr_mask
 
     def beat_inference(

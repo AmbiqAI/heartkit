@@ -14,6 +14,7 @@ import h5py
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import physiokit as pk
 import sklearn.model_selection
 import sklearn.preprocessing
 from botocore import UNSIGNED
@@ -24,7 +25,6 @@ from ..defines import HeartBeat, HeartRate, HeartRhythm, HeartTask
 from ..utils import download_file
 from .dataset import HeartKitDataset
 from .defines import PatientGenerator, SampleGenerator
-from .preprocess import resample_signal
 
 logger = logging.getLogger(__name__)
 
@@ -301,7 +301,7 @@ class IcentiaDataset(HeartKitDataset):
             for seg_idx, frame_start, frame_end, label in seg_samples:
                 x: npt.NDArray = segments[seg_map[seg_idx]]["data"][frame_start:frame_end].astype(np.float32)
                 if self.sampling_rate != self.target_rate:
-                    x = resample_signal(x, self.sampling_rate, self.target_rate)
+                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate)
                 yield x, label
             # END FOR
         # END FOR
@@ -423,7 +423,7 @@ class IcentiaDataset(HeartKitDataset):
                 )
                 x = np.nan_to_num(x).astype(np.float32)
                 if self.sampling_rate != self.target_rate:
-                    x = resample_signal(x, self.sampling_rate, self.target_rate)
+                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate)
                 y = beat
                 yield x, y
             # END FOR
@@ -458,7 +458,7 @@ class IcentiaDataset(HeartKitDataset):
                 signal_frame_end = frame_center + self.frame_size // 2
                 x = segment["data"][signal_frame_start:signal_frame_end]
                 if self.sampling_rate != self.target_rate:
-                    x = resample_signal(x, self.sampling_rate, self.target_rate)
+                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate)
                 label_frame_start = frame_center - label_frame_size // 2
                 label_frame_end = frame_center + label_frame_size // 2
                 beat_indices = segment["blabels"][:, 0]
@@ -489,7 +489,7 @@ class IcentiaDataset(HeartKitDataset):
                 x = segment["data"][frame_start:frame_end]
                 x = np.nan_to_num(x).astype(np.float32)
                 if self.sampling_rate != self.target_rate:
-                    x = resample_signal(x, self.sampling_rate, self.target_rate)
+                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate)
                 yield x
             # END FOR
         # END FOR
