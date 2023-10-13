@@ -103,12 +103,12 @@ class IcentiaDataset(HeartKitDataset):
 
     def __init__(
         self,
-        ds_path: str,
+        ds_path: os.PathLike,
         task: HeartTask = HeartTask.arrhythmia,
         frame_size: int = 1250,
         target_rate: int = 250,
     ) -> None:
-        super().__init__(os.path.join(ds_path, "icentia11k"), task, frame_size, target_rate)
+        super().__init__(ds_path / "icentia11k", task, frame_size, target_rate)
 
     @property
     def sampling_rate(self) -> int:
@@ -301,7 +301,7 @@ class IcentiaDataset(HeartKitDataset):
             for seg_idx, frame_start, frame_end, label in seg_samples:
                 x: npt.NDArray = segments[seg_map[seg_idx]]["data"][frame_start:frame_end].astype(np.float32)
                 if self.sampling_rate != self.target_rate:
-                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate)
+                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate, axis=0)
                 yield x, label
             # END FOR
         # END FOR
@@ -423,7 +423,7 @@ class IcentiaDataset(HeartKitDataset):
                 )
                 x = np.nan_to_num(x).astype(np.float32)
                 if self.sampling_rate != self.target_rate:
-                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate)
+                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate, axis=0)
                 y = beat
                 yield x, y
             # END FOR
@@ -458,7 +458,7 @@ class IcentiaDataset(HeartKitDataset):
                 signal_frame_end = frame_center + self.frame_size // 2
                 x = segment["data"][signal_frame_start:signal_frame_end]
                 if self.sampling_rate != self.target_rate:
-                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate)
+                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate, axis=0)
                 label_frame_start = frame_center - label_frame_size // 2
                 label_frame_end = frame_center + label_frame_size // 2
                 beat_indices = segment["blabels"][:, 0]
@@ -489,7 +489,7 @@ class IcentiaDataset(HeartKitDataset):
                 x = segment["data"][frame_start:frame_end]
                 x = np.nan_to_num(x).astype(np.float32)
                 if self.sampling_rate != self.target_rate:
-                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate)
+                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate, axis=0)
                 yield x
             # END FOR
         # END FOR
@@ -519,7 +519,7 @@ class IcentiaDataset(HeartKitDataset):
                 np.random.shuffle(patient_ids)
             for patient_id in patient_ids:
                 pt_key = self._pt_key(patient_id)
-                with h5py.File(os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r") as h5:
+                with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
                     patient_data = h5[pt_key]
                     yield patient_id, patient_data
             # END FOR
@@ -547,7 +547,7 @@ class IcentiaDataset(HeartKitDataset):
         while True:
             for patient_id in np.random.choice(patient_ids, size=1024, p=patient_weights):
                 pt_key = self._pt_key(patient_id)
-                with h5py.File(os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r") as h5:
+                with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
                     patient_data = h5[pt_key]
                     yield patient_id, patient_data
             # END FOR
@@ -659,7 +659,7 @@ class IcentiaDataset(HeartKitDataset):
 
     def _pt_has_rhythm_arrhythmia(self, patient_id: int):
         pt_key = self._pt_key(patient_id)
-        with h5py.File(os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r") as h5:
+        with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
             for _, segment in h5[pt_key].items():
                 rlabels = segment["rlabels"][:]
                 if not rlabels.shape[0]:
@@ -739,7 +739,7 @@ class IcentiaDataset(HeartKitDataset):
 
         def download_s3_file(
             s3_file: str,
-            save_path: str,
+            save_path: os.PathLike,
             bucket: str,
             client: boto3.client,
             force: bool = False,
@@ -749,7 +749,7 @@ class IcentiaDataset(HeartKitDataset):
             client.download_file(
                 Bucket=bucket,
                 Key=s3_file,
-                Filename=save_path,
+                Filename=str(save_path),
             )
 
         s3_bucket = "ambiqai-ecg-icentia11k-dataset"
@@ -772,7 +772,7 @@ class IcentiaDataset(HeartKitDataset):
                     executor.submit(
                         func,
                         f"{s3_prefix}/{pt_key}.h5",
-                        os.path.join(self.ds_path, f"{pt_key}.h5"),
+                        self.ds_path / f"{pt_key}.h5",
                     )
                     for pt_key in pt_keys
                 )
@@ -797,7 +797,7 @@ class IcentiaDataset(HeartKitDataset):
             "https://physionet.org/static/published-projects/icentia11k-continuous-ecg/"
             "icentia11k-single-lead-continuous-raw-electrocardiogram-dataset-1.0.zip"
         )
-        ds_zip_path = os.path.join(self.ds_path, "icentia11k.zip")
+        ds_zip_path = self.ds_path / "icentia11k.zip"
         os.makedirs(self.ds_path, exist_ok=True)
         if os.path.exists(ds_zip_path) and not force:
             logger.warning(
@@ -815,12 +815,12 @@ class IcentiaDataset(HeartKitDataset):
         )
         logger.info("Finished icentia11k patient data")
 
-    def _convert_dataset_pt_zip_to_hdf5(self, patient: int, zip_path: str, force: bool = False):
+    def _convert_dataset_pt_zip_to_hdf5(self, patient: int, zip_path: os.PathLike, force: bool = False):
         """Extract patient data from Icentia zipfile. Pulls out ECG data along with all labels.
 
         Args:
             patient (int): Patient id
-            zip_path (str): Zipfile path
+            zip_path (PathLike): Zipfile path
             force (bool, optional): Whether to override destination if it exists. Defaults to False.
         """
         import re  # pylint: disable=import-outside-toplevel
@@ -833,7 +833,7 @@ class IcentiaDataset(HeartKitDataset):
 
         logger.info(f"Processing patient {patient}")
         pt_id = self._pt_key(patient)
-        pt_path = os.path.join(self.ds_path, f"{pt_id}.h5")
+        pt_path = self.ds_path / f"{pt_id}.h5"
         if not force and os.path.exists(pt_path):
             print("skipping patient")
             return
@@ -891,7 +891,7 @@ class IcentiaDataset(HeartKitDataset):
 
     def _convert_dataset_zip_to_hdf5(
         self,
-        zip_path: str,
+        zip_path: os.PathLike,
         patient_ids: npt.NDArray | None = None,
         force: bool = False,
         num_workers: int | None = None,
@@ -899,7 +899,7 @@ class IcentiaDataset(HeartKitDataset):
         """Convert zipped Icentia dataset into individial patient HDF5 files.
 
         Args:
-            zip_path (str): Zipfile path
+            zip_path (PathLike): Zipfile path
             patient_ids (npt.NDArray | None, optional): List of patient IDs to extract. Defaults to all.
             force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
             num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().

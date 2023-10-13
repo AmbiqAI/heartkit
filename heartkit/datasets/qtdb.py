@@ -39,12 +39,12 @@ class QtdbDataset(HeartKitDataset):
 
     def __init__(
         self,
-        ds_path: str,
+        ds_path: os.PathLike,
         task: HeartTask = HeartTask.arrhythmia,
         frame_size: int = 1250,
         target_rate: int = 250,
     ) -> None:
-        super().__init__(os.path.join(ds_path, "qtdb"), task, frame_size, target_rate)
+        super().__init__(ds_path / "qtdb", task, frame_size, target_rate)
 
     @property
     def sampling_rate(self) -> int:
@@ -236,7 +236,7 @@ class QtdbDataset(HeartKitDataset):
 
             if self.sampling_rate != self.target_rate:
                 ratio = self.target_rate / self.sampling_rate
-                data = pk.signal.resample_signal(data, self.sampling_rate, self.target_rate)
+                data = pk.signal.resample_signal(data, self.sampling_rate, self.target_rate, axis=0)
                 segs[:, (SEG_BEG_IDX, SEG_END_IDX)] = segs[:, (SEG_BEG_IDX, SEG_END_IDX)] * ratio
                 fids[:, FID_LOC_IDX] = fids[:, FID_LOC_IDX] * ratio
             # END IF
@@ -306,7 +306,7 @@ class QtdbDataset(HeartKitDataset):
         for _, pt in patient_generator:
             data = pt["data"][:]
             if self.sampling_rate != self.target_rate:
-                data = pk.signal.resample_signal(data, self.sampling_rate, self.target_rate)
+                data = pk.signal.resample_signal(data, self.sampling_rate, self.target_rate, axis=0)
             # END IF
             for _ in range(samples_per_patient):
                 lead_idx = np.random.randint(data.shape[1])
@@ -329,7 +329,7 @@ class QtdbDataset(HeartKitDataset):
             tuple[npt.NDArray, npt.NDArray]: (data, segment labels)
         """
         pt_key = f"p{patient:05d}"
-        with h5py.File(os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r") as pt:
+        with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as pt:
             data: npt.NDArray = pt["data"][:]
             segs: npt.NDArray = pt["segmentations"][:]
         labels = np.zeros_like(data)
@@ -363,7 +363,7 @@ class QtdbDataset(HeartKitDataset):
                 np.random.shuffle(patient_ids)
             for patient_id in patient_ids:
                 pt_key = f"{patient_id}"
-                with h5py.File(os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r") as h5:
+                with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
                     yield patient_id, h5
             # END FOR
             if not repeat:
@@ -371,22 +371,22 @@ class QtdbDataset(HeartKitDataset):
         # END WHILE
 
     def convert_pt_wfdb_to_hdf5(
-        self, patient: int, src_path: str, dst_path: str, force: bool = False
+        self, patient: int, src_path: os.PathLike, dst_path: os.PathLike, force: bool = False
     ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """Convert QTDB patient data from WFDB to more consumable HDF5 format.
 
         Args:
             patient (int): Patient id (1-based)
-            src_path (str): Source path to WFDB folder
-            dst_path (str): Destination path to store HDF5 file
+            src_path (PathLike): Source path to WFDB folder
+            dst_path (PathLike): Destination path to store HDF5 file
 
         Returns:
             tuple[npt.NDArray, npt.NDArray, npt.NDArray]: data, segments, and fiducials
         """
         import wfdb  # pylint: disable=import-outside-toplevel
 
-        pt_id = f"sel{patient}" if os.path.isfile(os.path.join(src_path, f"sel{patient}.dat")) else f"sele{patient:04d}"
-        pt_src_path = os.path.join(src_path, pt_id)
+        pt_id = f"sel{patient}" if os.path.isfile(src_path / f"sel{patient}.dat") else f"sele{patient:04d}"
+        pt_src_path = str(src_path / pt_id)
         rec = wfdb.rdrecord(pt_src_path)
         data = np.zeros_like(rec.p_signal)
         segs = []
@@ -422,7 +422,7 @@ class QtdbDataset(HeartKitDataset):
 
         if dst_path:
             os.makedirs(dst_path, exist_ok=True)
-            pt_dst_path = os.path.join(dst_path, f"{patient}.h5")
+            pt_dst_path = dst_path / f"{patient}.h5"
             with h5py.File(pt_dst_path, "w") as h5:
                 h5.create_dataset("data", data=data, compression="gzip")
                 h5.create_dataset("segmentations", data=segs, compression="gzip")
@@ -434,7 +434,7 @@ class QtdbDataset(HeartKitDataset):
 
     def convert_dataset_zip_to_hdf5(
         self,
-        zip_path: str,
+        zip_path: os.PathLike,
         patient_ids: npt.NDArray | None = None,
         force: bool = False,
         num_workers: int | None = None,
@@ -442,7 +442,7 @@ class QtdbDataset(HeartKitDataset):
         """Convert dataset into individial patient HDF5 files.
 
         Args:
-            zip_path (str): Zip path
+            zip_path (PathLike): Zip path
             patient_ids (npt.NDArray | None, optional): List of patient IDs to extract. Defaults to all.
             force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
             num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
@@ -454,12 +454,12 @@ class QtdbDataset(HeartKitDataset):
         with Pool(processes=num_workers) as pool, tempfile.TemporaryDirectory() as tmpdir, zipfile.ZipFile(
             zip_path, mode="r"
         ) as zp:
-            qtdb_dir = os.path.join(tmpdir, "qtdb")
+            qtdb_dir = tmpdir / "qtdb"
             zp.extractall(qtdb_dir)
 
             f = functools.partial(
                 self.convert_pt_wfdb_to_hdf5,
-                src_path=os.path.join(qtdb_dir, subdir),
+                src_path=qtdb_dir / subdir,
                 dst_path=self.ds_path,
                 force=force,
             )
@@ -476,7 +476,7 @@ class QtdbDataset(HeartKitDataset):
 
         logger.info("Downloading QTDB dataset")
         ds_url = "https://physionet.org/static/published-projects/qtdb/qt-database-1.0.0.zip"
-        ds_zip_path = os.path.join(self.ds_path, "qtdb.zip")
+        ds_zip_path = self.ds_path / "qtdb.zip"
         os.makedirs(self.ds_path, exist_ok=True)
         if os.path.exists(ds_zip_path) and not force:
             logger.warning(

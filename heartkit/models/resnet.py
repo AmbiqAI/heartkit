@@ -122,16 +122,23 @@ def ResNet(
     Returns:
         tf.keras.Model: Model
     """
+
+    requires_reshape = len(x.shape) == 3
+    if requires_reshape:
+        y = tf.keras.layers.Reshape((1,) + x.shape[1:])(x)
+    else:
+        y = x
+    # END IF
+
     if params.input_filters:
         y = conv2d(
             params.input_filters,
             kernel_size=params.input_kernel_size,
             strides=params.input_strides,
-        )(x)
+        )(y)
         y = batch_norm()(y)
         y = relu6()(y)
-    else:
-        y = x
+    # END IF
 
     for stage, block in enumerate(params.blocks):
         for d in range(block.depth):

@@ -3,5 +3,4 @@ from .mobileone import MobileOne, MobileOneU0
 from .multiresnet import MultiresNet, MultiresNetParams
 from .resnet import ResNet, ResNetBlockParams, ResNetParams
 from .unet import UNet, UNetBlockParams, UNetParams
-
-__all__ = ["EfficientNetV2", "ResNet", "UNet", "MultiresNet"]
+from .unext import UNext, UNextBlockParams, UNextParams

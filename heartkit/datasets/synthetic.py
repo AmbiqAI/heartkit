@@ -19,13 +19,13 @@ class SyntheticDataset(HeartKitDataset):
 
     def __init__(
         self,
-        ds_path: str,
+        ds_path: os.PathLike,
         task: HeartTask = HeartTask.arrhythmia,
         frame_size: int = 1250,
         target_rate: int = 250,
         num_pts: int = 250,
     ) -> None:
-        super().__init__(os.path.join(ds_path, "synthetic"), task, frame_size, target_rate)
+        super().__init__(ds_path / "synthetic", task, frame_size, target_rate)
         self._num_pts = num_pts
 
     @property

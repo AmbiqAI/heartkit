@@ -3,12 +3,11 @@ name = "heartkit"
 version = "1.1.0"
 description = "AI driven heart monitoring kit for ultra low-power wearables."
 license = "BSD-3-Clause"
-authors = ["Adam Page <adam.page@ambiq.com>"]
+authors = ["Ambiq AI <support.aitg@ambiq.com>"]
 readme = "README.md"
 homepage = "https://ambiq.ai"
 packages = [
-    { include = "heartkit" },
-    { include = "neuralspot" },
+    { include = "heartkit" }
 ]
 
 include = [
@@ -19,8 +18,8 @@ include = [
 heartkit = 'heartkit.cli:run'
 
 [tool.taskipy.tasks]
-format = "isort --profile black heartkit neuralspot && black --line-length 120 heartkit neuralspot"
-lint = "pylint heartkit neuralspot"
+format = "isort --profile black heartkit && black --line-length 120 heartkit"
+lint = "pylint heartkit"
 test = "pytest tests/"
 clean = "make -C ./evb clean"
 build = "make -C ./evb"
@@ -39,16 +38,17 @@ filterwarnings = [
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
-tensorflow-macos = {version = "^2.13.0", platform = "darwin"}
-tensorflow = {version = "^2.13.0", markers = "sys_platform != 'darwin'"}
+tensorflow-macos = {version = "^2.14.0", platform = "darwin"}
+tensorflow = {version = "^2.14.0", markers = "sys_platform != 'darwin'"}
 numpy = "^1.24.3"
 scikit-learn = "^1.3.0"
 wfdb = "^4.1.2"
-tensorflow-metal = {version = "^1.0.1", platform = "darwin"}
+tensorflow-metal = {version = "^1.1.0", platform = "darwin"}
 fastparquet = "^2023.7.0"
 plotly = "^5.15.0"
 tqdm = "^4.65.0"
 seaborn = "^0.12.2"
+matplotlib = "3.7.3"
 neurokit2 = "^0.2.4"
 tensorflow-model-optimization = "^0.7.3"
 pydantic = "^1.10.2"
@@ -102,8 +102,8 @@ line-length = 120
 
 [tool.pylint.master]
 ignore-paths = [
-    "neuralspot/rpc/GenericDataOperations_EvbToPc",
-    "neuralspot/rpc/GenericDataOperations_PcToEvb"
+    "heartkit/demo/rpc/GenericDataOperations_EvbToPc",
+    "heartkit/demo/rpc/GenericDataOperations_PcToEvb"
 ]
 extension-pkg-whitelist = "pydantic"
 
@@ -129,7 +129,8 @@ max-locals = 50
 max-statements = 80
 max-module-lines = 2000
 max-attributes = 10
-max-branches = 20
+max-branches = 50
+max-returns = 10
 
 [tool.pyright]
 

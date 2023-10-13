@@ -174,6 +174,7 @@ def mobileone_block(
         y = relu6(name=name)(y)
         return y
 
+    # END DEF
     return layer
 
 
@@ -194,6 +195,13 @@ def MobileOne(
         tf.keras.Model: Model
     """
 
+    requires_reshape = len(x.shape) == 3
+    if requires_reshape:
+        y = tf.keras.layers.Reshape((1,) + x.shape[1:])(x)
+    else:
+        y = x
+    # END IF
+
     y = mobileone_block(
         output_filters=params.input_filters,
         kernel_size=params.input_kernel_size,
@@ -202,7 +210,7 @@ def MobileOne(
         groups=1,
         inference_mode=inference_mode,
         name=f"M0.B{0}.D{0}.DW",
-    )(x)
+    )(y)
 
     for b, block in enumerate(params.blocks):
         for d in range(block.depth):
@@ -241,7 +249,9 @@ def MobileOne(
         if 0 < params.dropout < 1:
             y = tf.keras.layers.Dropout(params.dropout)(y)
         y = tf.keras.layers.Dense(num_classes, name=name)(y)
+
     model = tf.keras.Model(x, y, name=params.model_name)
+
     return model
 
 

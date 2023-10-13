@@ -14,6 +14,8 @@ from .models import (
     UNet,
     UNetBlockParams,
     UNetParams,
+    UNext,
+    UNextParams,
 )
 
 
@@ -62,13 +64,13 @@ def get_task_shape(task: HeartTask, frame_size: int) -> tuple[tuple[int], tuple[
     """
     num_classes = get_num_classes(task)
     if task == HeartTask.arrhythmia:
-        return (1, frame_size, 1), (num_classes,)
+        return (frame_size, 1), (num_classes,)
 
     if task == HeartTask.beat:
-        return (1, frame_size, 3), (num_classes,)
+        return (frame_size, 3), (num_classes,)
 
     if task == HeartTask.segmentation:
-        return (1, frame_size, 1), (frame_size, num_classes)
+        return (frame_size, 1), (frame_size, num_classes)
 
     raise ValueError(f"unknown task: {task}")
 
@@ -107,40 +109,66 @@ def create_task_model(
     Returns:
         tf.keras.Model: Model
     """
+    if name is None:
+        return get_default_model(inputs=inputs, task=task)
+    # END IF
+
     num_classes = get_num_classes(task=task)
-    if name == "resnet":
-        return ResNet(x=inputs, params=ResNetParams.parse_obj(params), num_classes=num_classes)
-    if name == "efficientnet":
-        return EfficientNetV2(
-            x=inputs,
-            params=EfficientNetParams.parse_obj(params),
-            num_classes=num_classes,
-        )
-    if name == "multiresnet":
-        return MultiresNet(
-            x=inputs,
-            params=MultiresNetParams.parse_obj(params),
-            num_classes=num_classes,
-        )
-    if name:
-        raise ValueError(f"No network architecture with name {name}")
+    match name:
+        case "resnet":
+            return ResNet(x=inputs, params=ResNetParams.parse_obj(params), num_classes=num_classes)
+        case "efficientnet":
+            return EfficientNetV2(
+                x=inputs,
+                params=EfficientNetParams.parse_obj(params),
+                num_classes=num_classes,
+            )
 
-    # Otherwise use reference model
-    if task == HeartTask.segmentation:
-        return get_segmentation_model(inputs=inputs, num_classes=num_classes)
+        case "multiresnet":
+            return MultiresNet(
+                x=inputs,
+                params=MultiresNetParams.parse_obj(params),
+                num_classes=num_classes,
+            )
 
-    if task == HeartTask.arrhythmia:
-        return get_arrhythmia_model(inputs=inputs, num_classes=num_classes)
+        case "unet":
+            return UNet(
+                x=inputs,
+                params=UNetParams.parse_obj(params),
+                num_classes=num_classes,
+            )
 
-    if task == HeartTask.beat:
-        return get_beat_model(inputs=inputs, num_classes=num_classes)
+        case "unext":
+            return UNext(
+                x=inputs,
+                params=UNextParams.parse_obj(params),
+                num_classes=num_classes,
+            )
+        case _:
+            raise ValueError(f"No network architecture with name {name}")
+    # END MATCH
 
-    raise NotImplementedError()
+
+def get_default_model(
+    inputs: tf.Tensor,
+    task: HeartTask,
+):
+    """Get default model for given task"""
+    num_classes = get_num_classes(task=task)
+    match task:
+        case HeartTask.segmentation:
+            return get_segmentation_model(inputs=inputs, num_classes=num_classes)
+        case HeartTask.arrhythmia:
+            return get_arrhythmia_model(inputs=inputs, num_classes=num_classes)
+        case HeartTask.beat:
+            return get_beat_model(inputs=inputs, num_classes=num_classes)
+        case _:
+            raise ValueError(f"No default model for task {task}")
+    # END MATCH
 
 
 def get_beat_model(inputs: tf.Tensor, num_classes: int) -> tf.keras.Model:
     """Reference beat model"""
-    # return MobileOneU0(inputs, num_classes)
     blocks = [
         MBConvParams(
             filters=32,
@@ -249,10 +277,10 @@ def get_segmentation_model(
 ) -> tf.keras.Model:
     """Reference segmentation model"""
     blocks = [
-        UNetBlockParams(filters=8, depth=2, kernel=(1, 3), strides=(1, 2), skip=True),
-        UNetBlockParams(filters=16, depth=2, kernel=(1, 3), strides=(1, 2), skip=True),
-        UNetBlockParams(filters=24, depth=2, kernel=(1, 3), strides=(1, 2), skip=True),
-        UNetBlockParams(filters=32, depth=2, kernel=(1, 3), strides=(1, 2), skip=True),
+        UNetBlockParams(filters=8, depth=2, ddepth=1, kernel=(1, 3), strides=(1, 2), skip=True),
+        UNetBlockParams(filters=16, depth=2, ddepth=1, kernel=(1, 3), strides=(1, 2), skip=True),
+        UNetBlockParams(filters=24, depth=2, ddepth=1, kernel=(1, 3), strides=(1, 2), skip=True),
+        UNetBlockParams(filters=32, depth=2, ddepth=1, kernel=(1, 3), strides=(1, 2), skip=True),
     ]
     return UNet(
         inputs,
@@ -263,3 +291,48 @@ def get_segmentation_model(
         ),
         num_classes=num_classes,
     )
+    # blocks = [
+    #     UNetBlockParams(
+    #         filters=8, depth=2, kernel=(1, 5), strides=(1, 2), skip=True, seperable=True, norm="layer", dilation=(1, 2)
+    #     ),
+    #     UNetBlockParams(
+    #         filters=16, depth=2, kernel=(1, 5), strides=(1, 2), skip=True, seperable=True, norm="layer", dilation=(1, 2)
+    #     ),
+    #     UNetBlockParams(
+    #         filters=24, depth=2, kernel=(1, 5), strides=(1, 2), skip=True, seperable=True, norm="layer", dilation=(1, 2)
+    #     ),
+    #     UNetBlockParams(
+    #         filters=32,
+    #         depth=2,
+    #         kernel=(1, 5),
+    #         strides=(1, 2),
+    #         skip=True,
+    #         seperable=False,
+    #         norm="layer",
+    #         dilation=(1, 2),
+    #     ),
+    # ]
+    # return UNet(
+    #     inputs,
+    #     params=UNetParams(
+    #         blocks=blocks,
+    #         output_kernel_size=(1, 5),
+    #         include_top=True,
+    #     ),
+    #     num_classes=num_classes,
+    # )
+    # blocks = [
+    #     UNextBlockParams(filters=8, depth=2, kernel=3, pool=2, strides=2, skip=True, expand_ratio=1, se_ratio=1, dropout=0),
+    #     UNextBlockParams(filters=16, depth=2, kernel=3, pool=2, strides=2, skip=True, expand_ratio=1, se_ratio=1, dropout=0),
+    #     UNextBlockParams(filters=24, depth=2, kernel=3, pool=2, strides=2, skip=True, expand_ratio=1, se_ratio=1, dropout=0),
+    #     UNextBlockParams(filters=32, depth=2, kernel=53, pool=2, strides=2, skip=True, expand_ratio=1, se_ratio=1, dropout=0),
+    # ]
+    # return UNext(
+    #     inputs,
+    #     params=UNextParams(
+    #         blocks=blocks,
+    #         output_kernel_size=3,
+    #         include_top=True,
+    #     ),
+    #     num_classes=num_classes,
+    # )

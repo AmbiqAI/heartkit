@@ -8,10 +8,9 @@ from requests.exceptions import ConnectionError as ReqConnectionError
 from requests.exceptions import ConnectTimeout, HTTPError
 from rich.console import Console
 
-from neuralspot.tflite.model import load_model
-
 from ..datasets import IcentiaDataset, LudbDataset, QtdbDataset, SyntheticDataset
 from ..defines import HeartBeat, HeartRate, HeartSegment
+from ..tflite.model import load_model
 from .client import HKRestClient
 from .defines import AppState, HeartDemoParams, HeartKitState, HKResult
 from .utils import setup_logger
@@ -52,7 +51,7 @@ class PcHandler:
         logger.info(f"Loading dataset {self.params.dataset}")
         DataHandler = data_handlers.get(self.params.dataset, LudbDataset)
         ds = DataHandler(
-            ds_path=str(self.params.ds_path),
+            ds_path=self.params.ds_path,
             frame_size=self.params.frame_size,
             target_rate=self.params.sampling_rate,
         )

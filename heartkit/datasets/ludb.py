@@ -4,6 +4,7 @@ import os
 import tempfile
 import zipfile
 from multiprocessing import Pool
+from pathlib import Path
 
 import h5py
 import numpy as np
@@ -53,12 +54,12 @@ class LudbDataset(HeartKitDataset):
 
     def __init__(
         self,
-        ds_path: str,
+        ds_path: os.PathLike,
         task: HeartTask = HeartTask.arrhythmia,
         frame_size: int = 1250,
         target_rate: int = 250,
     ) -> None:
-        super().__init__(os.path.join(ds_path, "ludb"), task, frame_size, target_rate)
+        super().__init__(ds_path / "ludb", task, frame_size, target_rate)
 
     @property
     def sampling_rate(self) -> int:
@@ -144,7 +145,7 @@ class LudbDataset(HeartKitDataset):
 
             if self.sampling_rate != self.target_rate:
                 ratio = self.target_rate / self.sampling_rate
-                data = pk.signal.resample_signal(data, self.sampling_rate, self.target_rate)
+                data = pk.signal.resample_signal(data, self.sampling_rate, self.target_rate, axis=0)
                 segs[:, (SEG_BEG_IDX, SEG_END_IDX)] = segs[:, (SEG_BEG_IDX, SEG_END_IDX)] * ratio
                 fids[:, FID_LOC_IDX] = fids[:, FID_LOC_IDX] * ratio
             # END IF
@@ -207,7 +208,7 @@ class LudbDataset(HeartKitDataset):
         for _, pt in patient_generator:
             data = pt["data"][:]
             if self.sampling_rate != self.target_rate:
-                data = pk.signal.resample_signal(data, self.sampling_rate, self.target_rate)
+                data = pk.signal.resample_signal(data, self.sampling_rate, self.target_rate, axis=0)
             # END IF
             for _ in range(samples_per_patient):
                 lead_idx = np.random.randint(data.shape[1])
@@ -230,7 +231,7 @@ class LudbDataset(HeartKitDataset):
             tuple[npt.NDArray, npt.NDArray]: (data, segment labels)
         """
         pt_key = f"p{patient:05d}"
-        with h5py.File(os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r") as pt:
+        with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as pt:
             data: npt.NDArray = pt["data"][:]
             segs: npt.NDArray = pt["segmentations"][:]
         labels = np.zeros_like(data)
@@ -265,7 +266,7 @@ class LudbDataset(HeartKitDataset):
                 np.random.shuffle(patient_ids)
             for patient_id in patient_ids:
                 pt_key = f"p{patient_id:05d}"
-                with h5py.File(os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r") as h5:
+                with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
                     yield patient_id, h5
             # END FOR
             if not repeat:
@@ -273,7 +274,7 @@ class LudbDataset(HeartKitDataset):
         # END WHILE
 
     def convert_pt_wfdb_to_hdf5(
-        self, patient: int, src_path: str, dst_path: str, force: bool = False
+        self, patient: int, src_path: os.PathLike, dst_path: os.PathLike, force: bool = False
     ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """Convert LUDB patient data from WFDB to more consumable HDF5 format.
 
@@ -288,7 +289,7 @@ class LudbDataset(HeartKitDataset):
         import wfdb  # pylint: disable=import-outside-toplevel
 
         pt_id = f"p{patient:05d}"
-        pt_src_path = os.path.join(src_path, f"{patient}")
+        pt_src_path = str(src_path / f"{patient}")
         rec = wfdb.rdrecord(pt_src_path)
         data = np.zeros_like(rec.p_signal)
         segs = []
@@ -323,7 +324,7 @@ class LudbDataset(HeartKitDataset):
 
         if dst_path:
             os.makedirs(dst_path, exist_ok=True)
-            pt_dst_path = os.path.join(dst_path, f"{pt_id}.h5")
+            pt_dst_path = dst_path / f"{pt_id}.h5"
             with h5py.File(pt_dst_path, "w") as h5:
                 h5.create_dataset("data", data=data, compression="gzip")
                 h5.create_dataset("segmentations", data=segs, compression="gzip")
@@ -335,7 +336,7 @@ class LudbDataset(HeartKitDataset):
 
     def convert_dataset_zip_to_hdf5(
         self,
-        zip_path: str,
+        zip_path: os.PathLike,
         patient_ids: npt.NDArray | None = None,
         force: bool = False,
         num_workers: int | None = None,
@@ -343,7 +344,7 @@ class LudbDataset(HeartKitDataset):
         """Convert dataset into individial patient HDF5 files.
 
         Args:
-            zip_path (str): Zip path
+            zip_path (PathLike): Zip path
             patient_ids (npt.NDArray | None, optional): List of patient IDs to extract. Defaults to all.
             force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
             num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
@@ -355,11 +356,11 @@ class LudbDataset(HeartKitDataset):
         with Pool(processes=num_workers) as pool, tempfile.TemporaryDirectory() as tmpdir, zipfile.ZipFile(
             zip_path, mode="r"
         ) as zp:
-            ludb_dir = os.path.join(tmpdir, "ludb")
+            ludb_dir = Path(tmpdir, "ludb")
             zp.extractall(ludb_dir)
             f = functools.partial(
                 self.convert_pt_wfdb_to_hdf5,
-                src_path=os.path.join(ludb_dir, subdir, "data"),
+                src_path=ludb_dir / subdir / "data",
                 dst_path=self.ds_path,
                 force=force,
             )
@@ -379,7 +380,7 @@ class LudbDataset(HeartKitDataset):
             "https://physionet.org/static/published-projects/ludb/"
             "lobachevsky-university-electrocardiography-database-1.0.1.zip"
         )
-        ds_zip_path = os.path.join(self.ds_path, "ludb.zip")
+        ds_zip_path = self.ds_path / "ludb.zip"
         os.makedirs(self.ds_path, exist_ok=True)
         if os.path.exists(ds_zip_path) and not force:
             logger.warning(

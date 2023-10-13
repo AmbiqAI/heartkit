@@ -16,25 +16,25 @@ def download_datasets(params: HeartDownloadParams):
     os.makedirs(params.ds_path, exist_ok=True)
 
     if "icentia11k" in params.datasets:
-        IcentiaDataset(str(params.ds_path)).download(
+        IcentiaDataset(params.ds_path).download(
             num_workers=params.data_parallelism,
             force=params.force,
         )
 
     if "ludb" in params.datasets:
-        LudbDataset(str(params.ds_path)).download(
+        LudbDataset(params.ds_path).download(
             num_workers=params.data_parallelism,
             force=params.force,
         )
 
     if "qtdb" in params.datasets:
-        QtdbDataset(str(params.ds_path)).download(
+        QtdbDataset(params.ds_path).download(
             num_workers=params.data_parallelism,
             force=params.force,
         )
 
     if "ptbxl" in params.datasets:
-        PtbxlDataset(str(params.ds_path)).download(
+        PtbxlDataset(params.ds_path).download(
             num_workers=params.data_parallelism,
             force=params.force,
         )

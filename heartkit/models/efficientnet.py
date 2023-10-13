@@ -2,8 +2,9 @@
 import tensorflow as tf
 from pydantic import BaseModel, Field
 
-from .blocks import batch_norm, conv2d, make_divisible, mbconv_block, relu6
+from .blocks import batch_norm, conv2d, mbconv_block, relu6
 from .defines import KerasLayer, MBConvParams
+from .utils import make_divisible
 
 
 class EfficientNetParams(BaseModel):
@@ -53,6 +54,7 @@ def efficientnet_core(blocks: list[MBConvParams], drop_connect_rate: float = 0) 
         # END FOR
         return x
 
+    # END DEF
     return layer
 
 
@@ -71,6 +73,15 @@ def EfficientNetV2(
     Returns:
         tf.keras.Model: Model
     """
+
+    # Force input to be 4D (add dummy dimension)
+    requires_reshape = len(x.shape) == 3
+    if requires_reshape:
+        y = tf.keras.layers.Reshape((1,) + x.shape[1:])(x)
+    else:
+        y = x
+    # END IF
+
     # Stem
     if params.input_filters > 0:
         name = "stem"
@@ -80,11 +91,10 @@ def EfficientNetV2(
             kernel_size=params.input_kernel_size,
             strides=params.input_strides,
             name=name,
-        )(x)
+        )(y)
         y = batch_norm(name=name)(y)
         y = relu6(name=name)(y)
-    else:
-        y = x
+    # END IF
 
     y = efficientnet_core(blocks=params.blocks, drop_connect_rate=params.drop_connect_rate)(y)
 
@@ -101,5 +111,6 @@ def EfficientNetV2(
         if 0 < params.dropout < 1:
             y = tf.keras.layers.Dropout(params.dropout)(y)
         y = tf.keras.layers.Dense(num_classes, name=name)(y)
+
     model = tf.keras.Model(x, y, name=params.model_name)
     return model

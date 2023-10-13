@@ -4,15 +4,12 @@ import shutil
 import numpy as np
 import numpy.typing as npt
 import physiokit as pk
+import sklearn.utils
 import tensorflow as tf
 import tensorflow_model_optimization as tfmot
 import wandb
 from rich.console import Console
 from wandb.keras import WandbCallback
-
-from neuralspot.tflite.convert import convert_tflite, predict_tflite, xxd_c_dump
-from neuralspot.tflite.metrics import get_flops
-from neuralspot.tflite.model import get_strategy, load_model
 
 from .datasets import (
     HeartKitDataset,
@@ -28,8 +25,11 @@ from .defines import (
     HeartTestParams,
     HeartTrainParams,
 )
-from .metrics import compute_iou, confusion_matrix_plot
+from .metrics import compute_iou, confusion_matrix_plot, f1_score
 from .tasks import create_task_model, get_class_names, get_num_classes, get_task_shape
+from .tflite.convert import convert_tflite, predict_tflite, xxd_c_dump
+from .tflite.metrics import get_flops
+from .tflite.model import get_strategy, load_model
 from .utils import env_flag, set_random_seed, setup_logger
 
 console = Console()
@@ -66,7 +66,7 @@ def load_train_datasets(
     if "synthetic" in dataset_names:
         datasets.append(
             SyntheticDataset(
-                str(params.ds_path),
+                params.ds_path,
                 task=HeartTask.segmentation,
                 frame_size=params.frame_size,
                 target_rate=params.sampling_rate,
@@ -76,7 +76,7 @@ def load_train_datasets(
     if "ludb" in dataset_names:
         datasets.append(
             LudbDataset(
-                str(params.ds_path),
+                params.ds_path,
                 task=HeartTask.segmentation,
                 frame_size=params.frame_size,
                 target_rate=params.sampling_rate,
@@ -85,7 +85,7 @@ def load_train_datasets(
     if "qtdb" in dataset_names:
         datasets.append(
             QtdbDataset(
-                str(params.ds_path),
+                params.ds_path,
                 task=HeartTask.segmentation,
                 frame_size=params.frame_size,
                 target_rate=params.sampling_rate,
@@ -164,7 +164,7 @@ def load_test_datasets(
         if "synthetic" in dataset_names:
             datasets.append(
                 SyntheticDataset(
-                    str(params.ds_path),
+                    params.ds_path,
                     task=HeartTask.segmentation,
                     frame_size=params.frame_size,
                     target_rate=params.sampling_rate,
@@ -174,7 +174,7 @@ def load_test_datasets(
         if "ludb" in dataset_names:
             datasets.append(
                 LudbDataset(
-                    str(params.ds_path),
+                    params.ds_path,
                     task=HeartTask.segmentation,
                     frame_size=params.frame_size,
                     target_rate=params.sampling_rate,
@@ -183,7 +183,7 @@ def load_test_datasets(
         if "qtdb" in dataset_names:
             datasets.append(
                 QtdbDataset(
-                    str(params.ds_path),
+                    params.ds_path,
                     task=HeartTask.segmentation,
                     frame_size=params.frame_size,
                     target_rate=params.sampling_rate,
@@ -213,12 +213,16 @@ def train_model(params: HeartTrainParams):
     Args:
         params (HeartTrainParams): Training parameters
     """
+    params.finetune = bool(getattr(params, "finetune", False))
+    params.lr_rate = getattr(params, "lr_rate", 1e-4)
+    params.lr_cycles = int(getattr(params, "lr_cycles", 3))
+    params.steps_per_epoch = params.steps_per_epoch or 100
     params.seed = set_random_seed(params.seed)
     logger.info(f"Random seed {params.seed}")
 
-    os.makedirs(str(params.job_dir), exist_ok=True)
+    os.makedirs(params.job_dir, exist_ok=True)
     logger.info(f"Creating working directory in {params.job_dir}")
-    with open(str(params.job_dir / "train_config.json"), "w", encoding="utf-8") as fp:
+    with open(params.job_dir / "train_config.json", "w", encoding="utf-8") as fp:
         fp.write(params.json(indent=2))
 
     if env_flag("WANDB"):
@@ -231,13 +235,18 @@ def train_model(params: HeartTrainParams):
 
     train_ds, val_ds = load_train_datasets(params)
 
+    test_labels = [y.numpy() for _, y in val_ds]
+    y_true = np.argmax(np.concatenate(test_labels).squeeze(), axis=-1).flatten()
+    class_weights = sklearn.utils.compute_class_weight("balanced", classes=[s.value for s in HeartSegment], y=y_true)
+    class_weights = 0.25
+
     strategy = get_strategy()
     with strategy.scope():
         logger.info("Building model")
         in_shape, _ = get_task_shape(HeartTask.segmentation, params.frame_size)
         inputs = tf.keras.Input(shape=in_shape, batch_size=None, dtype=tf.float32)
         if params.model_file:
-            model = load_model(str(params.model_file))
+            model = load_model(params.model_file)
         else:
             model = create_task_model(
                 inputs,
@@ -246,30 +255,31 @@ def train_model(params: HeartTrainParams):
                 params=params.model_params,
             )
         # If fine-tune, freeze model encoder weights
-        if bool(getattr(params, "finetune", False)):
+        if params.finetune:
             for layer in model.layers:
                 if layer.name.startswith("ENC"):
                     logger.info(f"Freezing {layer.name}")
                     layer.trainable = False
-        flops = get_flops(model, batch_size=1, fpath=str(params.job_dir / "model_flops.log"))
+        flops = get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
 
         # Grab optional LR parameters
-        lr_rate: float = getattr(params, "lr_rate", 1e-4)
-        lr_cycles: int = getattr(params, "lr_cycles", 3)
-        steps_per_epoch = params.steps_per_epoch or 1000
-        if lr_cycles > 1:
+
+        if params.lr_cycles > 1:
             scheduler = tf.keras.optimizers.schedules.CosineDecayRestarts(
-                initial_learning_rate=lr_rate,
-                first_decay_steps=int(0.1 * steps_per_epoch * params.epochs),
-                t_mul=1.65 / (0.1 * lr_cycles * (lr_cycles - 1)),
+                initial_learning_rate=params.lr_rate,
+                first_decay_steps=int(0.1 * params.steps_per_epoch * params.epochs),
+                t_mul=1.65 / (0.1 * params.lr_cycles * (params.lr_cycles - 1)),
                 m_mul=0.4,
             )
         else:
             scheduler = tf.keras.optimizers.schedules.CosineDecay(
-                initial_learning_rate=lr_rate / 5, decay_steps=steps_per_epoch * params.epochs
+                initial_learning_rate=params.lr_rate, decay_steps=params.steps_per_epoch * params.epochs
             )
         optimizer = tf.keras.optimizers.Adam(scheduler, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
-        loss = tf.keras.losses.CategoricalFocalCrossentropy(from_logits=True)
+        loss = tf.keras.losses.CategoricalFocalCrossentropy(
+            from_logits=True,
+            alpha=class_weights,
+        )
         metrics = [
             tf.keras.metrics.CategoricalAccuracy(name="acc"),
             tf.keras.metrics.OneHotIoU(
@@ -281,9 +291,9 @@ def train_model(params: HeartTrainParams):
 
         if params.weights_file:
             logger.info(f"Loading weights from file {params.weights_file}")
-            model.load_weights(str(params.weights_file))
+            model.load_weights(params.weights_file)
 
-        params.weights_file = str(params.job_dir / "model.weights")
+        params.weights_file = params.job_dir / "model.weights"
 
         # Perform QAT if requested (typically used for fine-tuning)
         if params.quantization:
@@ -310,8 +320,8 @@ def train_model(params: HeartTrainParams):
                 mode="max" if params.val_metric == "f1" else "auto",
                 verbose=1,
             ),
-            tf.keras.callbacks.CSVLogger(str(params.job_dir / "history.csv")),
-            tf.keras.callbacks.TensorBoard(log_dir=str(params.job_dir), write_steps_per_second=True),
+            tf.keras.callbacks.CSVLogger(params.job_dir / "history.csv"),
+            tf.keras.callbacks.TensorBoard(log_dir=params.job_dir, write_steps_per_second=True),
         ]
         if env_flag("WANDB"):
             model_callbacks.append(WandbCallback())
@@ -319,7 +329,7 @@ def train_model(params: HeartTrainParams):
         try:
             model.fit(
                 train_ds,
-                steps_per_epoch=steps_per_epoch,
+                steps_per_epoch=params.steps_per_epoch,
                 verbose=2,
                 epochs=params.epochs,
                 validation_data=val_ds,
@@ -332,9 +342,33 @@ def train_model(params: HeartTrainParams):
         model.load_weights(params.weights_file)
 
         # Save full model
-        tf_model_path = str(params.job_dir / "model.tf")
+        tf_model_path = params.job_dir / "model.tf"
         logger.info(f"Model saved to {tf_model_path}")
         model.save(tf_model_path)
+
+        # Get full validation results
+        logger.info("Performing full validation")
+        y_pred = np.argmax(model.predict(val_ds).squeeze(), axis=-1).flatten()
+
+        class_names = get_class_names(HeartTask.segmentation)
+        confusion_matrix_plot(
+            y_true=y_true,
+            y_pred=y_pred,
+            labels=class_names,
+            save_path=params.job_dir / "confusion_matrix.png",
+            normalize="true",
+        )
+        if env_flag("WANDB"):
+            conf_mat = wandb.plot.confusion_matrix(preds=y_pred, y_true=y_true, class_names=class_names)
+            wandb.log({"conf_mat": conf_mat})
+        # END IF
+
+        # Summarize results
+        test_acc = np.sum(y_pred == y_true) / y_true.size
+        test_f1 = f1_score(y_true=y_true, y_pred=y_pred, average="weighted")
+        test_iou = compute_iou(y_true, y_pred, average="weighted")
+        logger.info(f"[TEST SET] ACC={test_acc:.2%}, F1={test_f1:.2%} IoU={test_iou:0.2%}")
+
     # END WITH
 
 
@@ -351,8 +385,8 @@ def evaluate_model(params: HeartTestParams):
 
     with tfmot.quantization.keras.quantize_scope():
         logger.info("Loading model")
-        model = load_model(str(params.model_file))
-        flops = get_flops(model, batch_size=1, fpath=str(params.job_dir / "model_flops.log"))
+        model = load_model(params.model_file)
+        flops = get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
 
         model.summary(print_fn=logger.info)
         logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
@@ -369,13 +403,12 @@ def evaluate_model(params: HeartTestParams):
     test_iou = compute_iou(y_true, y_pred, average="weighted")
     logger.info(f"[TEST SET] ACC={test_acc:.2%}, IoU={test_iou:.2%}")
 
-    cm_path = str(params.job_dir / "confusion_matrix_test.png")
     class_names = get_class_names(HeartTask.segmentation)
     confusion_matrix_plot(
         y_true.flatten(),
         y_pred.flatten(),
         labels=class_names,
-        save_path=cm_path,
+        save_path=params.job_dir / "confusion_matrix_test.png",
         normalize="true",
     )
 
@@ -386,13 +419,13 @@ def export_model(params: HeartExportParams):
     Args:
         params (HeartDemoParams): Deployment parameters
     """
-    tfl_model_path = str(params.job_dir / "model.tflite")
-    tflm_model_path = str(params.job_dir / "model_buffer.h")
+    tfl_model_path = params.job_dir / "model.tflite"
+    tflm_model_path = params.job_dir / "model_buffer.h"
 
     # Load model and set fixed batch size of 1
     logger.info("Loading trained model")
     with tfmot.quantization.keras.quantize_scope():
-        model = load_model(str(params.model_file))
+        model = load_model(params.model_file)
 
     in_shape, _ = get_task_shape(HeartTask.segmentation, params.frame_size)
     inputs = tf.keras.layers.Input(in_shape, dtype=tf.float32, batch_size=1)
@@ -402,7 +435,7 @@ def export_model(params: HeartExportParams):
         model = tf.keras.Model(inputs, outputs, name=model.name)
         outputs = model(inputs)
     # END IF
-    flops = get_flops(model, batch_size=1, fpath=str(params.job_dir / "model_flops.log"))
+    flops = get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
     model.summary(print_fn=logger.info)
 
     logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")

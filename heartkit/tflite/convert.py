@@ -9,7 +9,7 @@ import tensorflow as tf
 
 def array_dump(
     data: npt.NDArray,
-    dst_path: str,
+    dst_path: os.PathLike,
     var_name: str = "test_stimulus",
     var_dtype: str | None = None,
     row_len: int = 12,
@@ -18,7 +18,7 @@ def array_dump(
     """Generate C array of values from flattened numpy array.
     Args:
         data (npt.NDArray): Data array
-        dst_path (str): C file destination path
+        dst_path (PathLike): C file destination path
         var_name (str, optional): C variable name. Defaults to "test_stimulus".
         var_dtype (str | None, optional): C variable type. Defaults to None.
         row_len (int, optional): Elements to write per row. Defaults to 12.
@@ -56,8 +56,8 @@ def array_dump(
 
 
 def xxd_c_dump(
-    src_path: str,
-    dst_path: str,
+    src_path: os.PathLike,
+    dst_path: os.PathLike,
     var_name: str = "tflm_model",
     chunk_len: int = 12,
     is_header: bool = False,
@@ -65,8 +65,8 @@ def xxd_c_dump(
     """Generate C like char array of hex values from binary source. Equivalent to `xxd -i src_path > dst_path`
         but with added features to provide # columns and variable name.
     Args:
-        src_path (str): Binary file source path
-        dst_path (str): C file destination path
+        src_path (PathLike): Binary file source path
+        dst_path (PathLike): C file destination path
         var_name (str, optional): C variable name. Defaults to 'g_model'.
         chunk_len (int, optional): # of elements per row. Defaults to 12.
         is_header (bool): Write as header or source C file. Defaults to source.
@@ -231,7 +231,7 @@ def predict_tflite(
 
 
 def evaluate_tflite(
-    model: tf.keras.Model,
+    model: bytes,
     model_content: bytes,
     test_x: npt.NDArray,
     y_true: npt.NDArray,
@@ -239,7 +239,7 @@ def evaluate_tflite(
     """Get loss values of TFLite model for given dataset
 
     Args:
-        model (tf.keras.Model): TF model
+        model (bytes): TFLite model bytes
         model_content (bytes): TFLite model
         test_x (npt.NDArray): Input samples
         y_true (npt.NDArray): Input labels

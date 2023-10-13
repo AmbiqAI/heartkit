@@ -11,6 +11,7 @@
         "ghcr.io/devcontainers/features/nvidia-cuda:1": {
             "installCudnn": true,
             "installNvtx": true,
+            "installToolkit": true,
             "cudaVersion": "11.8",
             "cudnnVersion": "8.6.0.163"
         },

@@ -25,13 +25,13 @@ class HeartKitDataset:
     """HeartKit dataset base class"""
 
     target_rate: int
-    ds_path: str
+    ds_path: os.PathLike
     task: HeartTask
     frame_size: int
 
     def __init__(
         self,
-        ds_path: str,
+        ds_path: os.PathLike,
         task: HeartTask = HeartTask.arrhythmia,
         frame_size: int = 1250,
         target_rate: int = 250,

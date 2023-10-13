@@ -123,7 +123,8 @@ def MultiresNet(
     num_classes: int | None = None,
 ):
     """MultiresNet architecture"""
-    y = tf.keras.layers.Reshape(x.shape[2:])(x)
+    y = x
+
     # Apply stem
     y = tf.keras.layers.Conv1D(params.d_model, kernel_size=1)(y)
 

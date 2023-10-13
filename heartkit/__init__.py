@@ -1,13 +1,21 @@
 import os
+from importlib.metadata import version
 
-from . import arrhythmia, beat, datasets, hrv, segmentation, tasks
+from . import (
+    arrhythmia,
+    beat,
+    cli,
+    datasets,
+    hrv,
+    metrics,
+    models,
+    segmentation,
+    tasks,
+    tflite,
+)
 from .utils import setup_logger
 
-try:
-    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-    setup_logger(__name__)
-    from importlib.metadata import version
+__version__ = version(__name__)
 
-    __version__ = version(__name__)
-except ImportError:
-    __version__ = "0.0.0"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+setup_logger(__name__)

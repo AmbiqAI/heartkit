@@ -65,4 +65,6 @@ def augment_pipeline(x: npt.NDArray, augmentations: list[AugmentationParams], sa
                 frequencies=[np.random.uniform(frequency[0], frequency[1]) for _ in range(num_sources)],
                 sample_rate=sample_rate,
             )
+        # END IF
+    # END FOR
     return x

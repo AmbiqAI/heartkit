@@ -11,13 +11,12 @@ from erpc.simple_server import ServerThread as RpcServerThread
 from erpc.transport import SerialTransport
 from serial.serialutil import SerialException
 
-from neuralspot.rpc import GenericDataOperations_EvbToPc as gen_evb2pc
-from neuralspot.rpc import GenericDataOperations_PcToEvb as gen_pc2evb
-from neuralspot.rpc.utils import get_serial_transport
-
 from ..datasets import IcentiaDataset, LudbDataset, SyntheticDataset
 from .client import HKRestClient
 from .defines import AppState, HeartDemoParams, HeartKitState, HKResult
+from .rpc import GenericDataOperations_EvbToPc as gen_evb2pc
+from .rpc import GenericDataOperations_PcToEvb as gen_pc2evb
+from .rpc.utils import get_serial_transport
 from .utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -102,7 +101,7 @@ class EvbHandler(gen_evb2pc.interface.Ievb_to_pc):
         logger.info(f"Loading dataset {self.params.dataset}")
         DataHandler = data_handlers.get(self.params.dataset, LudbDataset)
         ds = DataHandler(
-            ds_path=str(self.params.ds_path),
+            ds_path=self.params.ds_path,
             frame_size=self.params.frame_size,
             target_rate=self.params.sampling_rate,
         )

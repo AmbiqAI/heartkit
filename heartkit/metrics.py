@@ -89,7 +89,7 @@ def confusion_matrix_plot(
     y_true: npt.NDArray,
     y_pred: npt.NDArray,
     labels: list[str],
-    save_path: str | None = None,
+    save_path: os.PathLike | None = None,
     normalize: Literal["true", "pred", "all"] | None = False,
     **kwargs,
 ) -> tuple[plt.Figure, plt.Axes] | None:
@@ -126,7 +126,7 @@ def roc_auc_plot(
     y_true: npt.NDArray,
     y_prob: npt.NDArray,
     labels: list[str],
-    save_path: str | None = None,
+    save_path: os.PathLike | None = None,
     **kwargs,
 ):
     """Generate ROC plot via matplotlib/seaborn
