@@ -16,6 +16,7 @@ def array_dump(
     is_header: bool = False,
 ):
     """Generate C array of values from flattened numpy array.
+
     Args:
         data (npt.NDArray): Data array
         dst_path (PathLike): C file destination path

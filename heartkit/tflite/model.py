@@ -12,6 +12,7 @@ def load_model(model_path: str) -> tf.keras.Model:
             WANDB: wandb://[[entity/]project/]collectionName:[alias]
             FILE: file://path/to/model.tf
             S3: S3://bucket/prefix/model.tf
+
     Returns:
         tf.keras.Model: Model
     """
@@ -36,8 +37,10 @@ def load_model(model_path: str) -> tf.keras.Model:
 
 def get_strategy(use_mixed_precision: bool = False) -> tf.distribute.Strategy:
     """Select best distribution strategy.
+
     Args:
         use_mixed_precision (bool, optional): Use mixed precision on TPU. Defaults to False.
+
     Returns:
         tf.distribute.Strategy: Strategy
     """

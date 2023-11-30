@@ -49,7 +49,6 @@ plotly = "^5.15.0"
 tqdm = "^4.65.0"
 seaborn = "^0.12.2"
 matplotlib = "3.7.3"
-neurokit2 = "^0.2.4"
 tensorflow-model-optimization = "^0.7.3"
 pydantic = "^1.10.2"
 pydantic-argparse = "^0.5.0"
@@ -59,10 +58,10 @@ pyserial = "^3.5"
 rich = "^13.4.2"
 wandb = "^0.15.8"
 scipy = "^1.11.1"
-plotext = "^5.2.8"
 boto3 = "^1.27.1"
 orjson = "^3.9.1"
 physiokit = "^0.7.0"
+requests = "^2.31.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "23.3.0"
@@ -74,11 +73,6 @@ pre-commit = "^2.20.0"
 jupyter = "^1.0.0"
 notebook = "^6.5.2"
 tensorboard-plugin-profile = "^2.13.0"
-
-[tool.poetry.group.gui.dependencies]
-fastapi = "^0.95.0"
-uvicorn = "^0.21.1"
-requests = "^2.28.2"
 
 [tool.poetry.group.docs]
 optional = true

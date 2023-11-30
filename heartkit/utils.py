@@ -96,9 +96,11 @@ def env_flag(env_var: str, default: bool = False) -> bool:
           - 0
           - no
     - Ignore case and leading/trailing whitespace.
+
     Args:
         env_var (str): Environment variable name
         default (bool, optional): Default value. Defaults to False.
+
     Returns:
         bool: Value of environment variable
     """

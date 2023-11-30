@@ -13,10 +13,14 @@ def get_flops(model: tf.keras.Model, batch_size: int | None = None, fpath: os.Pa
     """Calculate FLOPS for tf.keras.Model or tf.keras.Sequential.
     Ignore operations used in only training mode such as Initialization.
     Use tf.profiler of tensorflow v2 api.
+
+    Known Limitations: Does not support LSTM and GRU.
+
     Args:
         model (tf.keras.Model|tf.keras.Sequential): Model
         batch_size (int, optional): Batch size. Defaults to None.
         fpath (os.PathLike, optional): Output file path. Defaults to None.
+
     Returns:
         float: FLOPS
     """
