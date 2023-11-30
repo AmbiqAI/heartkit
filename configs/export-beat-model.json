@@ -3,6 +3,7 @@
     "ds_path": "./datasets",
     "sampling_rate": 200,
     "frame_size": 160,
+    "num_classes": 3,
     "samples_per_patient": [10, 20, 20],
     "test_patients": 1000,
     "test_size": 10000,

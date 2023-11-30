@@ -62,7 +62,7 @@ def EfficientNetV2(
     x: tf.Tensor,
     params: EfficientNetParams,
     num_classes: int | None = None,
-):
+) -> tf.keras.Model:
     """Create EfficientNet V2 TF functional model
 
     Args:

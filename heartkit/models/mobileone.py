@@ -52,11 +52,9 @@ def mobileone_block(
 
     Args:
         output_filters (int): # output filter channels
-        expand_ratio (float, optional): Expansion ratio. Defaults to 1.
         kernel_size (int | tuple[int, int], optional): Kernel size. Defaults to 3.
         strides (int | tuple[int, int], optional): Stride length. Defaults to 1.
         se_ratio (float, optional): SE ratio. Defaults to 8.
-        droprate (float, optional): Drop rate. Defaults to 0.
         name (str|None, optional): Block name. Defaults to None.
 
     Returns:
@@ -183,7 +181,7 @@ def MobileOne(
     params: MobileOneParams,
     num_classes: int | None = None,
     inference_mode: bool = False,
-):
+) -> tf.keras.Model:
     """Create MobileOne TF functional model
 
     Args:

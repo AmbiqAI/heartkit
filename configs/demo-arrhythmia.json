@@ -1,0 +1,9 @@
+{
+    "job_dir": "./results/arrhythmia",
+    "ds_path": "./datasets",
+    "sampling_rate": 200,
+    "frame_size": 800,
+    "num_classes": 2,
+    "model_file": "./results/arrhythmia/model.tflite",
+    "backend": "pc"
+}

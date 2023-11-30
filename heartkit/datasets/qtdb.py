@@ -43,8 +43,9 @@ class QtdbDataset(HeartKitDataset):
         task: HeartTask = HeartTask.arrhythmia,
         frame_size: int = 1250,
         target_rate: int = 250,
+        class_map: dict[int, int] | None = None,
     ) -> None:
-        super().__init__(ds_path / "qtdb", task, frame_size, target_rate)
+        super().__init__(ds_path / "qtdb", task, frame_size, target_rate, class_map)
 
     @property
     def sampling_rate(self) -> int:
@@ -260,46 +261,16 @@ class QtdbDataset(HeartKitDataset):
                 y = labels[frame_start:frame_end, lead_idx].astype(np.int32)
                 yield x, y
             # END FOR
-
-            # start_offset = max(segs[0][SEG_BEG_IDX], int(0.55 * self.frame_size))
-            # stop_offset = int(data.shape[0] - 0.55 * self.frame_size)
-            # # Identify R peak locations and randomly shuffle
-            # rfids = fids[
-            #     (fids[:, FID_LBL_IDX] == 2)
-            #     & (start_offset < fids[:, FID_LOC_IDX])
-            #     & (fids[:, FID_LOC_IDX] < stop_offset)
-            # ]
-            # if rfids.shape[0] <= 2:
-            #     continue
-
-            # np.random.shuffle(rfids)
-            # num_samples = 0
-            # for i in range(rfids.shape[0]):
-            #     lead_idx = rfids[i, FID_LEAD_IDX]
-            #     frame_start = max(rfids[i, FID_LOC_IDX] - int(random.uniform(0.45, 0.55) * self.frame_size), 0)
-            #     frame_end = frame_start + self.frame_size
-            #     if frame_end - frame_start < self.frame_size:
-            #         continue
-            #     x = data[frame_start:frame_end, lead_idx].astype(np.float32).reshape((self.frame_size,))
-            #     y = labels[frame_start:frame_end, lead_idx].astype(np.int32)
-            #     # Should contain all fiducials
-            #     if np.intersect1d(y, [1, 2, 3]).size < 3:
-            #         continue
-            #     yield x, y
-            #     num_samples += 1
-            #     if num_samples > samples_per_patient:
-            #         break
-            # # END FOR
         # END FOR
 
     def signal_generator(self, patient_generator: PatientGenerator, samples_per_patient: int = 1) -> SampleGenerator:
-        """
-        Generate frames using patient generator.
-        from the segments in patient data by placing a frame in a random location within one of the segments.
+        """Generate frames using patient generator.
+
         Args:
             patient_generator (PatientGenerator): Generator that yields a tuple of patient id and patient data.
                     Patient data may contain only signals, since labels are not used.
             samples_per_patient (int): Samples per patient.
+
         Returns:
             SampleGenerator: Generator of input data of shape (frame_size, 1)
         """
@@ -322,6 +293,7 @@ class QtdbDataset(HeartKitDataset):
 
     def get_patient_data_segments(self, patient: int) -> tuple[npt.NDArray, npt.NDArray]:
         """Get patient's entire data and segments
+
         Args:
             patient (int): Patient ID (1-based)
 

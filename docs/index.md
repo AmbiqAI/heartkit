@@ -15,9 +15,9 @@ title:
 
 ---
 
-HeartKit is an optimized open-source TinyML model purpose-built to enable running a variety of real-time heart-monitoring applications on battery-powered, edge devices. By leveraging a modern multi-head network architecture coupled with Ambiq's ultra low-power SoC, the model is designed to be **efficient**, **explainable**, and **extensible**.
+HeartKit is an optimized open-source TinyML model purpose-built to enable running a variety of real-time heart-monitoring applications on battery-powered, edge devices.
 
-The architecture consists of an **ECG segmentation** model followed by three upstream heads: **HRV head**, **arrhythmia head**, and **beat head**. The ECG segmentation model serves as the backbone and is used to annotate every sample as either P-wave, QRS, T-wave, or none. The arrhythmia head is used to detect the presence of Atrial Fibrillation (AFIB) or Atrial Flutter (AFL). The HRV head is used to calculate heart rate, rhythm (e.g., bradycardia), and heart rate variability from the R peaks. Lastly, the beat head is used to identify individual irregular beats (PAC, PVC).
+...
 
 **Key Features:**
 
@@ -27,18 +27,20 @@ The architecture consists of an **ECG segmentation** model followed by three ups
 
 ## Requirements
 
-* [Python 3.11+](https://www.python.org)
-* [Poetry 1.2.1+](https://python-poetry.org/docs/#installation)
+* [Python ^3.11+](https://www.python.org)
+* [Poetry ^1.6.1+](https://python-poetry.org/docs/#installation)
 
 The following are also required to compile/flash the binary for the EVB demo:
 
-* [Arm GNU Toolchain 11.3](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads)
-* [Segger J-Link v7.56+](https://www.segger.com/downloads/jlink/)
+* [Arm GNU Toolchain ^12.2](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads)
+* [Segger J-Link ^7.92](https://www.segger.com/downloads/jlink/)
 
 !!! note
     A [VSCode Dev Container](https://code.visualstudio.com/docs/devcontainers/containers) is also available and defined in [./.devcontainer](https://github.com/AmbiqAI/heartkit/tree/main/.devcontainer).
 
 ## Installation
+
+To get started, first install the local python package `heartkit` along with its dependencies via `Poetry`:
 
 <div class="termy">
 
@@ -49,10 +51,13 @@ $ poetry install
 ```
 </div>
 
+---
 
 ## Usage
 
 __HeartKit__ can be used as either a CLI-based app or as a python package to perform advanced experimentation. In both forms, HeartKit exposes a number of modes and tasks discussed below. Refer to the [Overview Guide](./overview.md) to learn more about available options and configurations.
+
+---
 
 ## Modes
 
@@ -60,40 +65,46 @@ __HeartKit__ can be used as either a CLI-based app or as a python package to per
 * `train`: Train a model for specified task and dataset(s)
 * `evaluate`: Evaluate a model for specified task and dataset(s)
 * `export`: Export a trained model to TensorFlow Lite and TFLM
-* `demo`: Run full demo on PC or EVB
+* `demo`: Run task-level demo on PC or EVB
+
+---
 
 ## Tasks
 
 * `Segmentation`: Perform ECG based segmentation (P-Wave, QRS, T-Wave)
-* `HRV`: Heart rate, rhythm, HRV metrics (RR interval)
 * `Arrhythmia`: Heart arrhythmia detection (AFIB, AFL)
 * `Beat`: Classify individual beats (NORM, PAC, PVC, NOISE)
 
-****
+---
+
 ## Architecture
 
-HeartKit leverages a multi-head network- a backbone segmentation model followed by 3 uptream heads:
+HeartKit leverages modern architectural design strategies to achieve high accuracy while maintaining a small memory footprint and low power consumption.
 
-* __Segmentation backbone__ utilizes a custom 1-D UNET architecture to perform ECG segmentation.
-* __HRV head__ utilizes segmentation results to derive a number of useful metrics including heart rate, rhythm and RR interval.
-* __Arrhythmia head__ utilizes a 1-D MBConv CNN to detect arrhythmias include AFIB and AFL.
-* __Beat-level head__ utilizes a 1-D MBConv CNN to detect irregular individual beats (PAC, PVC).
+* Seperable (depthwise + pointwise) Convolutions
+* Inverted Residual Bottlenecks
+* Squeeze & Excitation Blocks
+* MBConv Blocks
+* Over-Parameterized Convolutional Branches
+* Dilated Convolutions
 
-<p align="center">
-  <img src="./assets/heartkit-architecture.svg" alt="HeartKit Architecture">
-</p>
+Refer to specific task guides for additional details on the full model design.
 
-Refer to [Architecture Overview](./architecture.md) for additional details on the model design.
+---
 
+## Sensing Modalities
+
+The two primary sensing modalities to monitor cardiac cycles are electrocardiograph (ECG) and photoplethysmography (PPG).
 
 ## Datasets
 
-HeartKit leverages several open-source datasets for training each of the HeartKit models. Additionally, HeartKit contains a customizable synthetic 12-lead ECG generator. Check out the [Datasets Guide](./datasets.md) to learn more about the datasets used along with their corresponding licenses and limitations.
+HeartKit leverages several open-source datasets for training each of the HeartKit models. Additionally, HeartKit leverages [PhysioKit's synthetic ECG generator](https://ambiqai.github.io/physiokit) to generate additional training data. Check out the [Datasets Guide](./datasets.md) to learn more about the datasets used along with their corresponding licenses and limitations.
 
+---
 
 ## Results
 
-The following table provides the latest performance and accuracy results of all models when running on Apollo4 Plus EVB. Additional result details can be found in [Results Section](./results.md).
+The following table provides the latest performance and accuracy results of all pre-trained task models when running on Apollo4 Plus EVB. Additional result details can be found in [Results Section](./results.md) alogn with task-level documentation.
 
 | Task           | Params   | FLOPS   | Metric     | Cycles/Inf | Time/Inf   |
 | -------------- | -------- | ------- | ---------- | ---------- | ---------- |
@@ -101,6 +112,7 @@ The following table provides the latest performance and accuracy results of all 
 | Arrhythmia     | 50K      | 3.6M    | 99.0% F1   | 465ms      | 89M        |
 | Beat           | 73K      | 2.2M    | 91.5% F1   | 241ms      | 46M        |
 
+---
 
 ## References
 

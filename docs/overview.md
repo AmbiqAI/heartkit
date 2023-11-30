@@ -2,6 +2,7 @@
 
 __HeartKit__ can be used as either a CLI-based app or as a python package to perform advanced experimentation. In both forms, HeartKit exposes a number of modes and tasks discussed below:
 
+---
 
 ## Modes
 
@@ -9,14 +10,36 @@ __HeartKit__ can be used as either a CLI-based app or as a python package to per
 * `train`: Train a model for specified task and dataset(s)
 * `evaluate`: Evaluate a model for specified task and dataset(s)
 * `export`: Export a trained model to TensorFlow Lite and TFLM
-* `demo`: Run full demo on PC or EVB
+* `demo`: Run task-level demo on PC or EVB
 
-## Tasks
+---
 
-* `Segmentation`: Perform ECG based segmentation (P-Wave, QRS, T-Wave)
-* `HRV`: Heart rate, rhythm, HRV metrics (RR interval)
-* `Arrhythmia`: Heart arrhythmia detection (AFIB, AFL)
-* `Beat`: Classify individual beats (PAC, PVC)
+!!! Tasks
+
+    === "segmentation"
+
+        ### ECG Segmentation
+
+        Delineate ECG signal into individual waves (P, QRS, T). <br>
+        Refer to [Segmentation Task](./segmentation/overview.md) for more details.
+
+    === "arrhythmia"
+
+        ### Arrhythmia Classification
+
+        Identify rhythm-level arrhythmias such as AFIB and AFL. <br>
+        Refer to [Arrhythmia Task](./arrhythmia/overview.md) for more details.
+
+
+    === "beat"
+
+        ### Beat Classification
+
+        Identify premature and escape beats. <br>
+        Refer to [Beat Task](./beat/overview.md) for more details.
+
+
+---
 
 ## Using CLI
 
@@ -28,19 +51,13 @@ The HeartKit command line interface (CLI) makes it easy to run a variefy of sing
 $ heartkit --help
 
 HeartKit CLI Options:
-    --task [segmentation, arrhythmia, beat, hrv]
+    --task [segmentation, arrhythmia, beat]
     --mode [download, train, evaluate, export, demo]
     --config ["./path/to/config.json", or '{"raw: "json"}']
 ```
 
 </div>
 
-<!-- ```bash
-heartkit
---task [segmentation, arrhythmia, beat, hrv]
---mode [download, train, evaluate, export, demo]
---config ["./path/to/config.json", or '{"raw: "json"}']
-``` -->
 
 !!! note
     Before running commands, be sure to activate python environment: `poetry shell`. On Windows using Powershell, use `.venv\Scripts\activate.ps1`.
@@ -71,14 +88,16 @@ The following example will download and prepare all currently used datasets.
         ))
         ```
 
-!!! note
+???+ note
     The __Icentia11k dataset__ requires roughly 200 GB of disk space and can take around 2 hours to download.
 
 ## __2. Train Model__
 
-The `train` command is used to train a HeartKit model. The following command will train the arrhythmia model using the reference configuration. Please refer to `heartkit/defines.py` to see supported options.
+The `train` command is used to train a HeartKit model for the specified `task` and `dataset`. Please refer to `heartkit/defines.py` to see supported options.
 
 !!! example
+
+    The following command will train a 2-class arrhythmia model using the reference configuration:
 
     === "CLI"
 
@@ -91,13 +110,14 @@ The `train` command is used to train a HeartKit model. The following command wil
         ```python
         import heartkit as hk
 
-        hk.arrhythmia.train_model(hk.defines.HeartTrainParams(
+        hk.arrhythmia.train(hk.defines.HeartTrainParams(
             job_dir="./results/arrhythmia",
             ds_path="./datasets",
             sampling_rate=200,
             frame_size=800,
-            samples_per_patient=[100, 800, 800],
-            val_samples_per_patient=[100, 800, 800],
+            num_classes=2,
+            samples_per_patient=[100, 800],
+            val_samples_per_patient=[100, 800],
             train_patients=10000,
             val_patients=0.10,
             val_size=200000,
@@ -112,9 +132,11 @@ The `train` command is used to train a HeartKit model. The following command wil
 
 ## __3. Evaluate Model__
 
-The `evaluate` command will evaluate the performance of the model on the reserved test set. A confidence threshold can also be set such that a label is only assigned when the model's probability is greater than the threshold; otherwise, a label of inconclusive will be assigned.
+The `evaluate` command will evaluate the performance of the model on the reserved test set for the specified `task`. For certain tasks, a confidence threshold can also be set such that a label is only assigned when the model's probability is greater than the threshold; otherwise, a label of inconclusive will be assigned.
 
 !!! example
+
+    The following command will test the 2-class arrhythmia model using the reference configuration:
 
     === "CLI"
 
@@ -127,16 +149,17 @@ The `evaluate` command will evaluate the performance of the model on the reserve
         ```python
         import heartkit as hk
 
-        hk.arrhythmia.evaluate_model(hk.defines.HeartTestParams(
+        hk.arrhythmia.evaluate(hk.defines.HeartTestParams(
             job_dir="./results/arrhythmia",
             ds_path="./datasets",
             sampling_rate=200,
             frame_size=800,
-            samples_per_patient=[100, 800, 800],
+            num_classes=2,
+            samples_per_patient=[100, 800],
             test_patients=1000,
             test_size=100000,
             model_file="./results/arrhythmia/model.tf",
-            threshold=0.95
+            threshold=0.75
         ))
         ```
 
@@ -145,6 +168,8 @@ The `evaluate` command will evaluate the performance of the model on the reserve
 The `export` command will convert the trained TensorFlow model into both TensorFlow Lite (TFL) and TensorFlow Lite for microcontroller (TFLM) variants. The command will also verify the models' outputs match. Post-training quantization can also be enabled by setting the `quantization` flag in the configuration.
 
 !!! example
+
+    The following command will export the 2-class arrhythmia model to TF Lite and TFLM:
 
     === "CLI"
 
@@ -157,11 +182,12 @@ The `export` command will convert the trained TensorFlow model into both TensorF
         ```python
         import heartkit as hk
 
-        hk.arrhythmia.export_model(hk.defines.HeartExportParams(
+        hk.arrhythmia.export(hk.defines.HeartExportParams(
             job_dir="./results/arrhythmia",
             ds_path="./datasets",
             sampling_rate=200,
             frame_size=800,
+            num_classes=2,
             samples_per_patient=[100, 500, 100],
             model_file="./results/arrhythmia/model.tf",
             quantization=true,
@@ -173,8 +199,30 @@ The `export` command will convert the trained TensorFlow model into both TensorF
 
 Once converted, the TFLM header file will be copied to location specified by `tflm_file`. If parameters were changed (e.g. window size, quantization), `./evb/src/constants.h` will need to be updated accordingly.
 
-## __5. Demo__
+## __5. Task Demo__
 
-The `demo` command is used to run a full-fledged HeartKit demonstration. The demo is decoupled into three tasks: (1) a REST server to provide a unified API, (2) a front-end UI, and (3) a backend to fetch samples and perform inference. The host PC performs tasks (1) and (2). For (3), the trained models can run on either the `PC` or an Apollo 4 evaluation board (`EVB`) by setting the `backend` field in the configuration. When the `PC` backend is selected, the host PC will perform task (3) entirely to fetch samples and perform inference. When the `EVB` backend is selected, the `EVB` will perform inference using either sensor data or prior data. The PC connects to the `EVB` via RPC over serial transport to provide sample data and capture inference results.
+The `demo` command is used to run a task-level demonstration using either the PC or EVB as backend inference engine.
 
-Please refer to [Arrhythmia Demo Tutorial](./tutorials/arrhythmia-demo.md) and [HeartKit Demo Tutorial](./tutorials/heartkit-demo.md) for further instructions.
+!!! example
+
+    === "CLI"
+
+        ```bash
+        heartkit --task arrhythmia --mode demo --config ./configs/demo-arrhythmia.json
+        ```
+
+    === "Python"
+
+        ```python
+        import heartkit as hk
+
+        hk.arrhythmia.demo(hk.defines.HKDemoParams(
+            job_dir="./results/arrhythmia",
+            ds_path="./datasets",
+            sampling_rate=200,
+            frame_size=800,
+            num_classes=2,
+            model_file="./results/arrhythmia/model.tflite",
+            backend="pc"
+        ))
+        ```

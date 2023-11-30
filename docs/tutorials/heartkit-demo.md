@@ -1,5 +1,8 @@
 # :octicons-heart-fill-24:{ .heart } HeartKit Tutorial
 
+
+![HeartKit Architecture](../assets/heartkit-architecture.svg)
+
 This tutorial shows running the full HeartKit demonstrator on the Apollo 4 EVB. The basic flow chart is depicted below.
 
 ```mermaid

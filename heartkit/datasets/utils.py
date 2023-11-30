@@ -21,9 +21,11 @@ def numpy_dataset_generator(x: npt.NDArray, y: npt.NDArray) -> Generator[tuple[n
 
 def create_dataset_from_data(x: npt.NDArray, y: npt.NDArray, spec: tuple[tf.TensorSpec]) -> tf.data.Dataset:
     """Helper function to create dataset from static data
+
     Args:
         x (npt.NDArray): Numpy data
         y (npt.NDArray): Numpy labels
+
     Returns:
         tf.data.Dataset: Dataset
     """

@@ -8,7 +8,6 @@ import sklearn
 import tensorflow as tf
 
 from ..defines import HeartTask
-from ..tasks import get_num_classes, get_task_shape, get_task_spec
 from ..utils import load_pkl, save_pkl
 from .defines import PatientGenerator, Preprocessor, SampleGenerator
 from .utils import create_dataset_from_data
@@ -28,19 +27,22 @@ class HeartKitDataset:
     ds_path: os.PathLike
     task: HeartTask
     frame_size: int
+    class_map: dict[int, int]
 
     def __init__(
         self,
         ds_path: os.PathLike,
-        task: HeartTask = HeartTask.arrhythmia,
-        frame_size: int = 1250,
+        task: HeartTask,
+        frame_size: int,
         target_rate: int = 250,
+        class_map: dict[int, int] | None = None,
     ) -> None:
         """HeartKit dataset base class"""
         self.ds_path = ds_path
         self.task = task
         self.frame_size = frame_size
         self.target_rate = target_rate
+        self.class_map = class_map or {}
 
     #############################################
     # !! Below must be implemented in subclass !!
@@ -104,6 +106,7 @@ class HeartKitDataset:
         shuffle: bool = True,
     ) -> PatientGenerator:
         """Yield data uniformly for each patient in the array.
+
         Args:
             patient_ids (npt.NDArray): Array of patient ids
             repeat (bool, optional): Whether to repeat generator. Defaults to True.
@@ -121,6 +124,57 @@ class HeartKitDataset:
     # !! Above must be implemented in subclass !!
     #############################################
 
+    @property
+    def feat_shape(self) -> tuple[int, ...]:
+        """Get dataset feature shape
+
+        Returns:
+            tuple[int, ...]: Feature shape
+        """
+        match self.task:
+            case HeartTask.arrhythmia:
+                return (self.frame_size, 1)
+            case HeartTask.beat:
+                return (self.frame_size, 3)
+            case HeartTask.segmentation:
+                return (self.frame_size, 1)
+            case _:
+                raise ValueError(f"unknown task: {self.task}")
+
+    @property
+    def class_shape(self) -> tuple[int, ...]:
+        """Get dataset class shape
+
+        Returns:
+            tuple[int, ...]: Class shape
+        """
+        num_classes = len(set(self.class_map.values()))
+        match self.task:
+            case HeartTask.arrhythmia:
+                return (num_classes,)
+            case HeartTask.beat:
+                return (num_classes,)
+            case HeartTask.segmentation:
+                return (self.frame_size, num_classes)
+            case _:
+                raise ValueError(f"unknown task: {self.task}")
+
+    @property
+    def input_spec(self) -> tuple[tf.TensorSpec, tf.TensorSpec]:
+        """Get dataset input spec
+
+        Args:
+            task (HeartTask): Heart task
+            frame_size (int): Frame size
+
+        Returns:
+            tuple[tf.TensorSpec]: TF input spec
+        """
+        return (
+            tf.TensorSpec(self.feat_shape, tf.float32),
+            tf.TensorSpec(self.class_shape, tf.int32),
+        )
+
     def load_train_datasets(
         self,
         train_patients: float | None = None,
@@ -133,6 +187,7 @@ class HeartKitDataset:
         num_workers: int = 1,
     ) -> tuple[tf.data.Dataset, tf.data.Dataset]:
         """Load training and validation TF datasets
+
         Args:
             train_patients (float | None, optional): # or proportion of train patients. Defaults to None.
             val_patients (float | None, optional): # or proportion of val patients. Defaults to None.
@@ -166,7 +221,7 @@ class HeartKitDataset:
         if self.cachable and val_file and os.path.isfile(val_file):
             logger.info(f"Loading validation data from file {val_file}")
             val = load_pkl(val_file)
-            val_ds = create_dataset_from_data(val["x"], val["y"], get_task_spec(self.task, self.frame_size))
+            val_ds = create_dataset_from_data(val["x"], val["y"], self.input_spec)
             val_patient_ids = val["patient_ids"]
             train_patient_ids = np.setdiff1d(train_patient_ids, val_patient_ids)
         else:
@@ -186,7 +241,7 @@ class HeartKitDataset:
                 num_workers=num_workers,
             )
             val_x, val_y = next(val_ds.batch(val_size).as_numpy_iterator())
-            val_ds = create_dataset_from_data(val_x, val_y, get_task_spec(self.task, self.frame_size))
+            val_ds = create_dataset_from_data(val_x, val_y, self.input_spec)
 
             # Cache validation set
             if self.cachable and val_file:
@@ -215,6 +270,7 @@ class HeartKitDataset:
         num_workers: int = 1,
     ) -> tf.data.Dataset:
         """Load testing datasets
+
         Args:
             test_patients (float | None, optional): # or proportion of test patients. Defaults to None.
             test_pt_samples (int | None, optional): # samples per patient for testing. Defaults to None.
@@ -255,6 +311,7 @@ class HeartKitDataset:
             samples_per_patient (int | list[int], optional): # Samples per patient and class. Defaults to 100.
             repeat (bool, optional): Should data generator repeat. Defaults to False.
             num_workers (int, optional): Number of parallel workers. Defaults to 1.
+
         Returns:
             tf.data.Dataset: Parallelize dataset
         """
@@ -313,7 +370,7 @@ class HeartKitDataset:
         ds_gen = functools.partial(self._dataset_sample_generator, preprocess=preprocess)
         dataset = tf.data.Dataset.from_generator(
             generator=ds_gen,
-            output_signature=get_task_spec(self.task, self.frame_size),
+            output_signature=self.input_spec,
             args=(patient_ids, samples_per_patient, repeat),
         )
         options = tf.data.Options()
@@ -344,12 +401,11 @@ class HeartKitDataset:
             samples_per_patient=samples_per_patient,
         )
         preprocess_fn = preprocess if preprocess else default_preprocess
+        num_classes = len(set(self.class_map.values()))
 
-        num_classes = get_num_classes(self.task)
-        task_shape = get_task_shape(self.task, self.frame_size)[0]
         data_generator = map(
             lambda x_y: (
-                preprocess_fn(x_y[0]).reshape(task_shape),
+                preprocess_fn(x_y[0]).reshape(self.feat_shape),
                 tf.one_hot(x_y[1], num_classes),
             ),
             data_generator,

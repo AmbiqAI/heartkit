@@ -1,18 +1,7 @@
 import os
 from importlib.metadata import version
 
-from . import (
-    arrhythmia,
-    beat,
-    cli,
-    datasets,
-    hrv,
-    metrics,
-    models,
-    segmentation,
-    tasks,
-    tflite,
-)
+from . import arrhythmia, beat, cli, datasets, metrics, models, segmentation, tflite
 from .utils import setup_logger
 
 __version__ = version(__name__)

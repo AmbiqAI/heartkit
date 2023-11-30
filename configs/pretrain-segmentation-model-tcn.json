@@ -1,0 +1,75 @@
+{
+    "job_dir": "./results/segmentation-pre-tcn-15",
+    "ds_path": "./datasets",
+    "sampling_rate": 200,
+    "frame_size": 512,
+    "num_classes": 4,
+    "samples_per_patient": 50,
+    "val_samples_per_patient": 50,
+    "val_patients": 0.10,
+    "batch_size": 256,
+    "buffer_size": 10000,
+    "epochs": 100,
+    "steps_per_epoch": 50,
+    "val_metric": "loss",
+    "datasets": ["ludb", "synthetic"],
+    "lr_rate": 1e-3,
+    "lr_cycles": 1,
+    "num_pts": 400,
+    "quantization": false,
+    "model": "tcn",
+    "model_params": {
+        "input_kernel": [1, 3],
+        "input_norm": "batch",
+        "blocks": [
+            {"depth": 1, "branch": 1, "filters": 8, "kernel": [1, 3], "dilation": [1, 1], "dropout": 0.10, "ex_ratio": 1, "se_ratio": 0, "norm": "batch"},
+            {"depth": 2, "branch": 1, "filters": 16, "kernel": [1, 3], "dilation": [1, 1], "dropout": 0.10, "ex_ratio": 1, "se_ratio": 4, "norm": "batch"},
+            {"depth": 2, "branch": 1, "filters": 24, "kernel": [1, 3], "dilation": [1, 2], "dropout": 0.10, "ex_ratio": 1, "se_ratio": 4, "norm": "batch"},
+            {"depth": 2, "branch": 1, "filters": 32, "kernel": [1, 3], "dilation": [1, 4], "dropout": 0.10, "ex_ratio": 1, "se_ratio": 4, "norm": "batch"},
+            {"depth": 1, "branch": 1, "filters": 40, "kernel": [1, 3], "dilation": [1, 8], "dropout": 0.10, "ex_ratio": 1, "se_ratio": 4, "norm": "batch"}
+        ],
+        "output_kernel": [1, 3],
+        "include_top": true,
+        "use_logits": true,
+        "model_name": "tcn"
+    },
+    "augmentations-dis": [
+        {
+            "name": "baseline_wander",
+            "args": {
+                "amplitude": [0.5, 1.5],
+                "frequency": [0.4, 0.5]
+            }
+        },
+        {
+            "name": "motion_noise",
+            "args": {
+                "amplitude": [0.5, 1.5],
+                "frequency": [0.4, 0.7]
+            }
+        },
+        {
+            "name": "burst_noise",
+            "args": {
+                "burst_number": [2, 10],
+                "amplitude": [0.5, 1.5],
+                "frequency": [40, 100]
+            }
+        },
+        {
+            "name": "powerline_noise",
+            "args": {
+                "amplitude": [0.005, 0.01],
+                "frequency": [50, 60]
+            }
+        },
+        {
+            "name": "noise_sources",
+            "args": {
+                "num_sources": [1, 8],
+                "amplitude": [0.05, 0.25],
+                "frequency": [10, 40]
+            }
+        }
+    ]
+}

@@ -19,7 +19,6 @@ class HeartTask(StrEnum):
 
     arrhythmia = "arrhythmia"
     beat = "beat"
-    hrv = "hrv"
     segmentation = "segmentation"
 
 
@@ -30,12 +29,27 @@ class HeartKitMode(StrEnum):
     train = "train"
     evaluate = "evaluate"
     export = "export"
-    predict = "predict"
     demo = "demo"
 
 
-ArchitectureType = Literal["resnet", "efficientnet", "unet", "multiresnet"]
-DatasetTypes = Literal["icentia11k", "ludb", "qtdb", "synthetic", "ptbxl"]
+class HeartSegment(IntEnum):
+    """Heart segment labels"""
+
+    normal = 0
+    pwave = 1
+    qrs = 2
+    twave = 3
+    uwave = 4  # Not used
+
+
+class HeartSegmentName(StrEnum):
+    """Heart segment names"""
+
+    normal = "normal"
+    pwave = "pwave"
+    qrs = "qrs"
+    twave = "twave"
+    uwave = "uwave"  # Not used
 
 
 class HeartRhythm(IntEnum):
@@ -47,13 +61,13 @@ class HeartRhythm(IntEnum):
     noise = 3  # Not used
 
 
-class HeartBeat(IntEnum):
-    """Heart beat labels"""
+class HeartRhythmName(StrEnum):
+    """Heart rhythm label names"""
 
-    normal = 0
-    pac = 1
-    pvc = 2
-    noise = 3  # Not used
+    normal = "normal"
+    afib = "afib"
+    aflut = "aflut"
+    noise = "noise"
 
 
 class HeartRate(IntEnum):
@@ -74,14 +88,22 @@ class HeartRate(IntEnum):
         return cls.normal
 
 
-class HeartSegment(IntEnum):
-    """ "Heart segment labels"""
+class HeartRateName(StrEnum):
+    """Heart rate label names"""
+
+    normal = "normal"
+    tachycardia = "tachy"
+    bradycardia = "brady"
+    noise = "noise"
+
+
+class HeartBeat(IntEnum):
+    """Heart beat labels"""
 
     normal = 0
-    pwave = 1
-    qrs = 2
-    twave = 3
-    # uwave = 4  # Not used
+    pac = 1
+    pvc = 2
+    noise = 3  # Not used
 
 
 class HeartBeatName(StrEnum):
@@ -93,32 +115,8 @@ class HeartBeatName(StrEnum):
     noise = "noise"
 
 
-class HeartRhythmName(StrEnum):
-    """Heart rhythm label names"""
-
-    normal = "normal"
-    afib = "afib"
-    aflut = "aflut"
-    noise = "noise"
-
-
-class HeartRateName(StrEnum):
-    """Heart rate label names"""
-
-    normal = "normal"
-    tachycardia = "tachy"
-    bradycardia = "brady"
-    noise = "noise"
-
-
-class HeartSegmentName(StrEnum):
-    """Heart segment names"""
-
-    normal = "normal"
-    pwave = "pwave"
-    qrs = "qrs"
-    twave = "twave"
-    uwave = "uwave"
+ArchitectureType = Literal["resnet", "efficientnet", "unet", "multiresnet", "unext"]
+DatasetTypes = Literal["icentia11k", "ludb", "qtdb", "synthetic", "ptbxl"]
 
 
 class HeartDownloadParams(BaseModel, extra=Extra.allow):
@@ -142,6 +140,7 @@ class HeartTrainParams(BaseModel, extra=Extra.allow):
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
+    num_classes: int = Field(3, description="# of classes")
     samples_per_patient: int | list[int] = Field(1000, description="# train samples per patient")
     val_samples_per_patient: int | list[int] = Field(1000, description="# validation samples per patient")
     train_patients: float | None = Field(None, description="# or proportion of patients for training")
@@ -178,6 +177,7 @@ class HeartTestParams(BaseModel, extra=Extra.allow):
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
+    num_classes: int = Field(3, description="# of classes")
     samples_per_patient: int | list[int] = Field(1000, description="# test samples per patient")
     test_patients: float | None = Field(None, description="# or proportion of patients for testing")
     test_size: int = Field(200_000, description="# samples for testing")
@@ -200,6 +200,7 @@ class HeartExportParams(BaseModel, extra=Extra.allow):
     ds_path: Path = Field(default_factory=Path, description="Dataset directory")
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
+    num_classes: int = Field(3, description="# of classes")
     samples_per_patient: int | list[int] = Field(100, description="# test samples per patient")
     test_patients: float | None = Field(None, description="# or proportion of patients for testing")
     test_size: int = Field(100_000, description="# samples for testing")
@@ -214,3 +215,19 @@ class HeartExportParams(BaseModel, extra=Extra.allow):
         default_factory=lambda: os.cpu_count() or 1,
         description="# of data loaders running in parallel",
     )
+
+
+class HeartDemoParams(BaseModel, extra=Extra.allow):
+    """HK demo command params"""
+
+    job_dir: Path = Field(default_factory=tempfile.gettempdir, description="Job output directory")
+    # Dataset arguments
+    ds_path: Path = Field(default_factory=Path, description="Dataset base directory")
+    sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
+    frame_size: int = Field(1250, description="Frame size")
+    num_classes: int = Field(3, description="# of classes")
+    # Model arguments
+    model_file: str | None = Field(None, description="Path to model file")
+    backend: Literal["pc", "evb"] = Field("pc", description="Backend")
+    # Extra arguments
+    seed: int | None = Field(None, description="Random state seed")

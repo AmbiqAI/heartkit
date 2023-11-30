@@ -1,11 +1,27 @@
 # Models
 
-See [Architecture](../architecture.md) for information about overall network architecture and models used.
+A number of custom model architectures are provided in the `heartkit.models` module. These models are designed to be used with the `heartkit` package, but can be used independently as well.
 
-::: heartkit.segmentation
+::: heartkit.models.blocks
 
-::: heartkit.arrhythmia
+::: heartkit.models.callbacks
 
-::: heartkit.beat
+::: heartkit.models.defines
 
-::: heartkit.hrv
+::: heartkit.models.efficientnet
+
+::: heartkit.models.factory
+
+::: heartkit.models.mobileone
+
+::: heartkit.models.multiresnet
+
+::: heartkit.models.resnet
+
+::: heartkit.models.tcn
+
+::: heartkit.models.unet
+
+::: heartkit.models.unext
+
+::: heartkit.models.utils

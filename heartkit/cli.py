@@ -4,9 +4,10 @@ from typing import Type, TypeVar
 import pydantic_argparse
 from pydantic import BaseModel, Field
 
-from . import arrhythmia, beat, hrv, segmentation
+from . import arrhythmia, beat, segmentation
 from .datasets import download_datasets
 from .defines import (
+    HeartDemoParams,
     HeartDownloadParams,
     HeartExportParams,
     HeartKitMode,
@@ -14,8 +15,6 @@ from .defines import (
     HeartTestParams,
     HeartTrainParams,
 )
-from .demo.defines import HeartDemoParams
-from .demo.demo import demo
 from .utils import setup_logger
 
 logger = setup_logger(__name__)
@@ -47,6 +46,7 @@ def parse_content(cls: Type[B], content: str) -> B:
 
 def run(inputs: list[str] | None = None):
     """Main CLI app runner
+
     Args:
         inputs (list[str] | None, optional): App arguments. Defaults to CLI arguments.
     """
@@ -70,27 +70,22 @@ def run(inputs: list[str] | None = None):
             task_handler = beat
         case HeartTask.segmentation:
             task_handler = segmentation
-        case HeartTask.hrv:
-            task_handler = hrv
         case _:
             raise NotImplementedError()
     # END MATCH
 
     match args.mode:
         case HeartKitMode.train:
-            task_handler.train_model(parse_content(HeartTrainParams, args.config))
+            task_handler.train(parse_content(HeartTrainParams, args.config))
 
         case HeartKitMode.evaluate:
-            task_handler.evaluate_model(parse_content(HeartTestParams, args.config))
+            task_handler.evaluate(parse_content(HeartTestParams, args.config))
 
         case HeartKitMode.export:
-            task_handler.export_model(parse_content(HeartExportParams, args.config))
+            task_handler.export(parse_content(HeartExportParams, args.config))
 
         case HeartKitMode.demo:
-            demo(params=parse_content(HeartDemoParams, args.config))
-
-        case HeartKitMode.predict:
-            raise NotImplementedError()
+            task_handler.demo(parse_content(HeartDemoParams, args.config))
 
         case _:
             logger.error("Error: Unknown command")

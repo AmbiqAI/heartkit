@@ -3,6 +3,7 @@
     "ds_path": "./datasets",
     "sampling_rate": 200,
     "frame_size": 512,
+    "num_classes": 4,
     "samples_per_patient": 100,
     "val_samples_per_patient": 100,
     "val_patients": 0.10,
@@ -13,7 +14,7 @@
     "val_metric": "loss",
     "datasets": ["ludb", "synthetic"],
     "lr_rate": 5e-3,
-    "num_pts": 600,
+    "num_pts": 400,
     "quantization": false,
     "augmentations": [
         {

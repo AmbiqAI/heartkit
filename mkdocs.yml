@@ -9,15 +9,38 @@ nav:
   - HeartKit: index.md
   - Overview: overview.md
   - Datasets: datasets.md
-  - Architecture: architecture.md
   - Results: results.md
+
+  - Segmentation Task:
+    - Overview: segmentation/overview.md
+    - Methods: segmentation/methods.md
+    - Results: segmentation/results.md
+    - Demo: segmentation/demo.md
+
+  - Arrhythmia Task:
+    - Overview: arrhythmia/overview.md
+    - Methods: arrhythmia/methods.md
+    - Results: arrhythmia/results.md
+    - Demo: arrhythmia/demo.md
+
+  - Beat Task:
+    - Overview: beat/overview.md
+    - Methods: beat/methods.md
+    - Results: beat/results.md
+    - Demo: beat/demo.md
+
   - Tutorials:
     - EVB Setup: ./tutorials/evb-setup.md
     - Arrhythmia Demo: ./tutorials/arrhythmia-demo.md
     - HeartKit Demo: ./tutorials/heartkit-demo.md
+
   - API:
+    - HeartKit: ./api/heartkit.md
     - Datasets: ./api/datasets.md
     - Models: ./api/models.md
+    - Segmentation: ./api/segmentation.md
+    - Arrhythmia: ./api/arrhythmia.md
+    - Beat: ./api/beat.md
 
 theme:
   name: material
@@ -84,7 +107,8 @@ markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
-  - pymdownx.snippets
+  - pymdownx.snippets:
+      base_path: 'docs/'
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
@@ -92,7 +116,7 @@ markdown_extensions:
   - pymdownx.tabbed:
       alternate_style: true
   - pymdownx.emoji:
-      emoji_index: !!python/name:materialx.emoji.twemoji
-      emoji_generator: !!python/name:materialx.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - tables
   - md_in_html

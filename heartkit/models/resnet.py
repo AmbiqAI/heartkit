@@ -37,7 +37,6 @@ def generate_bottleneck_block(
     """Generate functional bottleneck block.
 
     Args:
-        x (tf.Tensor): Input
         filters (int): Filter size
         kernel_size (int | tuple[int, int], optional): Kernel size. Defaults to 3.
         strides (int | tuple[int, int], optional): Stride length. Defaults to 1.
@@ -80,7 +79,6 @@ def generate_residual_block(
     """Generate functional residual block
 
     Args:
-        x (tf.Tensor): Input
         filters (int): Filter size
         kernel_size (int | tuple[int, int], optional): Kernel size. Defaults to 3.
         strides (int | tuple[int, int], optional): Stride length. Defaults to 1.
@@ -112,7 +110,7 @@ def ResNet(
     x: tf.Tensor,
     params: ResNetParams,
     num_classes: int | None = None,
-):
+) -> tf.keras.Model:
     """Generate functional ResNet model.
     Args:
         x (tf.Tensor): Inputs

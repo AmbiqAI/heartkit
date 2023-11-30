@@ -1,3 +1,16 @@
+
+# WSLENV ?= notwsl
+UNAME_R := $(shell uname -r)
+ifneq ($(filter %WSL2,$(UNAME_R)),)
+EXEEXT:=.exe
+endif
+
+# ifndef WSLENV
+# # Windows and WSL are a mess. Add executable extension when
+# # running in WSL.
+# EXEEXT = .exe
+# endif
+
 source-to-object = $(addprefix $(BINDIR)/,$(subst .c,.o,$(filter %.c,$1))) \
                    $(addprefix $(BINDIR)/,$(subst .s,.o,$(filter %.s,$1))) \
                    $(addprefix $(BINDIR)/,$(subst .cc,.o,$(filter %.cc,$1))) \
@@ -13,22 +26,30 @@ subdirectory = $(patsubst %/module.mk,%,                        \
 # $(call make-library, library-name, source-file-list)
 define make-library
 libraries += $1
-sources   += $2
-
+# sources   += $2
 $1: $(call source-to-object,$2)
 	@echo " Building $(AR) $$@ to make library $$@"
 	@mkdir -p $$(@D)
-	$(Q) $(AR) rsc $$@ $$^
+	$(Q) $(AR) $(ARFLAGS) $$@ $$^
+endef
+
+define make-override-library
+override_libraries += $1
+# sources   += $2
+$1: $(call source-to-object,$2)
+	@echo " Building $(AR) $$@ to make override library $$@"
+	@mkdir -p $$(@D)
+	$(Q) $(AR) $(ARFLAGS) $$@ $$^
 endef
 
 # $(call make-axf, axf-name, source-file-list, main-file)
-define make-axf
-local_objs := $(call source-to-object,$1)
-$2.axf: $(local_objs) $(libraries)
-	@echo " Linking $(COMPILERNAME) $@"
-	@mkdir -p $(@D)
-	$(Q) $(CC) -Wl,-T,$(LINKER_FILE) -o $@ $(LFLAGS)
-endef
+# define make-axf
+# local_objs := $(call source-to-object,$1)
+# $2.axf: $(local_objs) $(libraries)
+# 	@echo " Linking $(COMPILERNAME) $@"
+# 	@mkdir -p $(@D)
+# 	$(Q) $(CC) -Wl,-T,$(LINKER_FILE) -o $@ $(LFLAGS)
+# endef
 
 FILTER_OUT = $(foreach v,$(2),$(if $(findstring $(1),$(v)),,$(v)))
 FILTER_IN = $(foreach v,$(2),$(if $(findstring $(1),$(v)),$(v)))

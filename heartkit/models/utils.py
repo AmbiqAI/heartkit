@@ -6,6 +6,7 @@ import pandas as pd
 def make_divisible(v: int, divisor: int = 4, min_value: int | None = None) -> int:
     """Ensure layer has # channels divisble by divisor
        https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet/mobilenet.py
+
     Args:
         v (int): # channels
         divisor (int, optional): Divisor. Defaults to 4.
@@ -128,10 +129,12 @@ def create_predictions_frame(
     return predictions_frame
 
 
-def read_predictions(file: str):
+def read_predictions(file: str) -> dict[str, any]:
     """Read predictions matrix.
+
     Args:
-    file (str): Path to the csv file with predictions.
+        file (str): Path to the csv file with predictions.
+
     Returns:
         Dict[str, any]: Keys: `y_prob`, (optionally) `y_true`, (optionally) `y_pred`, and `classes`.
     """
@@ -159,12 +162,17 @@ def is_multiclass(labels: npt.NDArray) -> bool:
     return labels.squeeze().ndim == 2 and any(labels.sum(axis=1) != 1)
 
 
-def matches_spec(o, spec, ignore_batch_dim: bool = False):
+SpecType = list[npt.ArrayLike] | tuple[npt.ArrayLike] | dict[str, npt.ArrayLike] | npt.ArrayLike
+
+
+def matches_spec(o: SpecType, spec: SpecType, ignore_batch_dim: bool = False) -> bool:
     """Test whether data object matches the desired spec.
+
     Args:
-        o: Data object.
-        spec: Metadata for describing the the data object.
+        o (SpecType): Data object.
+        spec (SpecType): Metadata for describing the the data object.
         ignore_batch_dim: Ignore first dimension when checking shapes.
+
     Returns:
         bool: If matches
     """

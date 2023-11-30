@@ -72,8 +72,9 @@ class PtbxlDataset(HeartKitDataset):
         task: HeartTask = HeartTask.arrhythmia,
         frame_size: int = 1250,
         target_rate: int = 250,
+        class_map: dict[int, int] | None = None,
     ) -> None:
-        super().__init__(ds_path / "ptbxl", task, frame_size, target_rate)
+        super().__init__(ds_path / "ptbxl", task, frame_size, target_rate, class_map)
         if frame_size / target_rate > 10:
             raise ValueError("Frame size must be less than 10 seconds")
 

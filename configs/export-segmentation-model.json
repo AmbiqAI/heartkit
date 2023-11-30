@@ -1,19 +1,19 @@
 {
-    "job_dir": "./results/segmentation",
+    "job_dir": "./results/segmentation-pre-tcn-14",
     "ds_path": "./datasets",
     "sampling_rate": 200,
     "frame_size": 512,
     "samples_per_patient": 100,
     "num_pts": 400,
-    "test_size": 8000,
+    "test_size": 1000,
     "datasets": ["synthetic", "ludb"],
-    "model_file": "./results/segmentation/model.tf",
+    "model_file": "./results/segmentation-pre-tcn-14/model.tf",
     "model_file_rmt": "wandb://ambiq/model-registry/heartkit-segmentation:v1",
     "quantization": true,
     "use_logits": false,
     "threshold": 0.50,
     "val_acc_threshold": 0.98,
     "tflm_var_name": "g_segmentation_model",
-    "tflm_file": "./evb/src/segmentation_model_buffer.h"
+    "tflm_file_dis": "./evb/src/segmentation_model_buffer.h"
 
 }

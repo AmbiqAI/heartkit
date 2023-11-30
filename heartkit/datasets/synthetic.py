@@ -23,9 +23,10 @@ class SyntheticDataset(HeartKitDataset):
         task: HeartTask = HeartTask.arrhythmia,
         frame_size: int = 1250,
         target_rate: int = 250,
+        class_map: dict[int, int] | None = None,
         num_pts: int = 250,
     ) -> None:
-        super().__init__(ds_path / "synthetic", task, frame_size, target_rate)
+        super().__init__(ds_path / "synthetic", task, frame_size, target_rate, class_map)
         self._num_pts = num_pts
 
     @property
@@ -97,12 +98,12 @@ class SyntheticDataset(HeartKitDataset):
         raise NotImplementedError()
 
     def signal_generator(self, patient_generator: PatientGenerator, samples_per_patient: int = 1) -> SampleGenerator:
-        """
-        Generate frames using patient generator.
+        """Generate frames using patient generator.
+
         Args:
             patient_generator (PatientGenerator): Generator that yields a tuple of patient id and patient data.
-                    Patient data may contain only signals, since labels are not used.
             samples_per_patient (int): Samples per patient.
+
         Returns:
             SampleGenerator: Generator of input data of shape (frame_size, 1)
         """
@@ -156,8 +157,10 @@ class SyntheticDataset(HeartKitDataset):
         Args:
             patient_generator (PatientGenerator): Patient Generator
             samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
+
         Returns:
             SampleGenerator: Sample generator
+
         Yields:
             Iterator[SampleGenerator]
         """
@@ -198,29 +201,6 @@ class SyntheticDataset(HeartKitDataset):
                 syn_segs[i, np.where((syn_segs_t[i] == SyntheticSegments.t_wave))[0]] = HeartSegment.twave
             # END FOR
 
-            # # BELOW NEW
-            # start_offset = int(0.55 * self.frame_size)
-            # stop_offset = int(syn_ecg.shape[1] - 0.55 * self.frame_size)
-            # rfids = np.vstack(
-            #     np.where((syn_fids_t == SyntheticFiducials.r_peak) | (syn_fids_t == SyntheticFiducials.rpr_peak))
-            # ).T
-            # rfids = rfids[(rfids[:, 1] > start_offset) & (rfids[:, 1] < stop_offset)]
-            # if rfids.shape[0] <= 2:
-            #     continue
-            # np.random.shuffle(rfids)
-            # for i in range(min(samples_per_patient, rfids.shape[0])):
-            #     lead_idx = rfids[i, 0]
-            #     frame_start = rfids[i, 1] - int(random.uniform(0.45, 0.55) * self.frame_size)
-            #     frame_end = frame_start + self.frame_size
-            #     if frame_end - frame_start < self.frame_size:
-            #         print("x")
-            #         continue
-            #     x = syn_ecg[lead_idx, frame_start:frame_end].astype(np.float32).reshape((self.frame_size,))
-            #     y = syn_segs[lead_idx, frame_start:frame_end].astype(np.int32)
-            #     yield x, y
-            # # END FOR
-            # # ABOVE NEW
-
             for i in range(samples_per_patient):
                 # Randomly pick an ECG lead and frame
                 lead_idx = np.random.randint(syn_ecg.shape[0])
@@ -228,6 +208,7 @@ class SyntheticDataset(HeartKitDataset):
                 frame_end = frame_start + self.frame_size
                 x = syn_ecg[lead_idx, frame_start:frame_end].astype(np.float32)
                 y = syn_segs[lead_idx, frame_start:frame_end].astype(np.int32)
+                y = np.vectorize(self.class_map.get, otypes=[int])(y)
                 yield x, y
             # END FOR
         # END FOR

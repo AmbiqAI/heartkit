@@ -7,10 +7,12 @@ from ..defines import AugmentationParams
 
 def augment_pipeline(x: npt.NDArray, augmentations: list[AugmentationParams], sample_rate: float) -> npt.NDArray:
     """Apply augmentation pipeline
+
     Args:
         x (npt.NDArray): Signal
         augmentations (list[AugmentationParams]): Augmentations to apply
         sample_rate: Sampling rate in Hz.
+
     Returns:
         npt.NDArray: Augmented signal
     """

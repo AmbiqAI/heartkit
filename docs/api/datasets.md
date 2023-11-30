@@ -9,8 +9,6 @@ See [Datasets](../datasets.md) for information about available datasets.
 
 ::: heartkit.datasets.augmentation
 
-::: heartkit.datasets.preprocess
-
 ::: heartkit.datasets.icentia11k
 
 ::: heartkit.datasets.ludb

@@ -64,6 +64,7 @@ def xxd_c_dump(
 ):
     """Generate C like char array of hex values from binary source. Equivalent to `xxd -i src_path > dst_path`
         but with added features to provide # columns and variable name.
+
     Args:
         src_path (PathLike): Binary file source path
         dst_path (PathLike): C file destination path
@@ -95,6 +96,7 @@ def convert_tflite(
     test_x: npt.NDArray | None = None,
     input_type: tf.DType | None = None,
     output_type: tf.DType | None = None,
+    supported_ops: list | None = None,
 ) -> bytes:
     """Convert TF model into TFLite model content
 
@@ -116,7 +118,7 @@ def convert_tflite(
     if quantize:
         converter.optimizations = [tf.lite.Optimize.DEFAULT]
         if test_x is not None:
-            converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+            converter.target_spec.supported_ops = supported_ops or [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
             converter.inference_input_type = input_type
             converter.inference_output_type = output_type
 
@@ -135,6 +137,7 @@ def debug_quant_tflite(
     test_x: npt.NDArray | None = None,
     input_type: tf.DType | None = None,
     output_type: tf.DType | None = None,
+    supported_ops: list | None = None,
 ) -> tuple[tf.lite.experimental.QuantizationDebugger, pd.DataFrame]:
     """Debug quantized TFLite model content
 
@@ -157,13 +160,14 @@ def debug_quant_tflite(
 
     # Quantize model
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
-    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+    converter.target_spec.supported_ops = supported_ops or [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
     converter.inference_input_type = input_type
     converter.inference_output_type = output_type
     converter.representative_dataset = rep_dataset
 
     # Debug model
     debugger = tf.lite.experimental.QuantizationDebugger(converter=converter, debug_dataset=rep_dataset)
+    debugger.run()
 
     with io.StringIO() as f:
         debugger.layer_statistics_dump(f)
@@ -213,6 +217,7 @@ def predict_tflite(
     output_scale: list[float] = output_details["quantization_parameters"]["scales"]
     output_zero_point: list[int] = output_details["quantization_parameters"]["zero_points"]
 
+    inputs = inputs.reshape([-1] + input_details["shape_signature"].tolist()[1:])
     if len(input_scale) and len(input_zero_point):
         inputs = inputs / input_scale[0] + input_zero_point[0]
         inputs = inputs.astype(input_details["dtype"])
@@ -226,7 +231,6 @@ def predict_tflite(
         outputs = outputs.astype(np.float32)
         outputs = (outputs - output_zero_point[0]) * output_scale[0]
 
-    print(input_zero_point, input_scale, output_zero_point, output_scale)
     return outputs
 
 
