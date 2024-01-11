@@ -2,7 +2,7 @@
 
 ## <span class="sk-h2-span">Overview</span>
 
-The results of the arrhythmia models when testing on 1,000 patients (not used during training) is summarized below. The baseline model is simply selecting the argmax of model outputs (`normal`, `AFIB/AFL`). The 75% confidence version adds inconclusive label that is assigned when softmax output is less than 75% for any model output.
+The results of the pretrained arrhythmia models when testing on 1,000 patients (not used during training) is summarized below. The baseline model is simply selecting the argmax of model outputs (e.g. `AFIB/AFL`). The 75% confidence version adds inconclusive label that is assigned when softmax output is less than 75% for any model output.
 
 | Task           | Params   | FLOPS   | Metric     | Cycles/Inf | Time/Inf   |
 | -------------- | -------- | ------- | ---------- | ---------- | ---------- |

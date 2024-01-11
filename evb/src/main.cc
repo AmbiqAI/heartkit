@@ -29,10 +29,6 @@
 #include "main.h"
 #include "model.h"
 
-// RPC
-static uint8_t rpcRxBuffer[USB_RX_BUFSIZE];
-static uint8_t rpcTxBuffer[USB_TX_BUFSIZE];
-
 // TFLM
 alignas(16) unsigned char modelBuffer[1024 * MAX_MODEL_SIZE];
 static TfLiteTensor *inputs;
@@ -46,6 +42,9 @@ static uint32_t outputIdx = 0;
 static AppState state = IDLE_STATE;
 static uint32_t app_err = 0;
 
+// RPC
+static uint8_t rpcRxBuffer[USB_RX_BUFSIZE];
+static uint8_t rpcTxBuffer[USB_TX_BUFSIZE];
 ns_rpc_config_t rpcConfig = {.api = &ns_rpc_gdo_V1_0_0,
                              .mode = NS_RPC_GENERICDATA_SERVER,
                              .rx_buf = rpcRxBuffer,
@@ -103,7 +102,7 @@ ns_rpc_data_to_evb_cb(const dataBlock *block) {
         if (modelIdx >= block->length) {
             ns_printf("Received model (%d)\n", block->length);
             reset_state();
-            setup_model(modelBuffer, inputs, outputs);
+            model_setup(modelBuffer, inputs, outputs);
             modelInitialized = true;
         }
     }
@@ -203,7 +202,7 @@ setup() {
     NS_TRY(ns_rpc_genericDataOperations_init(&rpcConfig), "RPC Init Failed\n");
 
     // Initialize model
-    NS_TRY(init_model(), "Model init failed\n");
+    NS_TRY(model_init(), "Model init failed\n");
 
     ns_delay_us(5000);
     ns_lp_printf("Inference engine running...\n");
@@ -223,7 +222,7 @@ loop() {
     case INFERENCE_STATE:
         ns_printf("INFERENCE_STATE\n");
         gpio_write(GPIO_TRIGGER, 1);
-        app_err = run_model();
+        app_err = model_run();
         gpio_write(GPIO_TRIGGER, 0);
         state = IDLE_STATE;
         break;

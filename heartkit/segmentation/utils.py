@@ -3,44 +3,47 @@ from typing import Any
 
 import numpy as np
 import numpy.typing as npt
-import physiokit as pk
 import tensorflow as tf
 from rich.console import Console
 
 from ..datasets import (
     HeartKitDataset,
+    IcentiaDataset,
     LudbDataset,
     QtdbDataset,
     SyntheticDataset,
     augment_pipeline,
+    preprocess_pipeline,
 )
-from ..defines import HeartExportParams, HeartTask, HeartTestParams, HeartTrainParams
+from ..defines import (
+    HeartExportParams,
+    HeartTask,
+    HeartTestParams,
+    HeartTrainParams,
+    PreprocessParams,
+)
 from ..models import UNet, UNetBlockParams, UNetParams, generate_model
 
 console = Console()
 
 
-def prepare(x: npt.NDArray, sample_rate: float) -> npt.NDArray:
+def prepare(x: npt.NDArray, sample_rate: float, preprocesses: list[PreprocessParams]) -> npt.NDArray:
     """Prepare dataset
 
     Args:
         x (npt.NDArray): Input signal
         sample_rate (float): Sampling rate
+        preprocesses (list[PreprocessParams]): Preprocessing pipeline
 
     Returns:
         npt.NDArray: Prepared signal
     """
-    x = pk.signal.filter_signal(
-        x,
-        lowcut=0.5,
-        highcut=30,
-        order=3,
-        sample_rate=sample_rate,
-        axis=0,
-        forward_backward=True,
-    )
-    x = pk.signal.normalize_signal(x, eps=0.1, axis=None)
-    return x
+    if not preprocesses:
+        preprocesses = [
+            dict(name="filter", args=dict(axis=0, lowcut=0.5, highcut=30, order=3, sample_rate=sample_rate)),
+            dict(name="znorm", args=dict(axis=None, eps=0.1)),
+        ]
+    return preprocess_pipeline(x, preprocesses=preprocesses, sample_rate=sample_rate)
 
 
 def load_datasets(
@@ -96,6 +99,16 @@ def load_datasets(
                 class_map=class_map,
             )
         )
+    if "icentia11k" in dataset_names:
+        datasets.append(
+            IcentiaDataset(
+                ds_path,
+                task=HeartTask.segmentation,
+                frame_size=frame_size,
+                target_rate=sampling_rate,
+                class_map=class_map,
+            )
+        )
     return datasets
 
 
@@ -104,8 +117,11 @@ def load_train_datasets(
     params: HeartTrainParams,
 ) -> tuple[tf.data.Dataset, tf.data.Dataset]:
     """Load segmentation train datasets.
+
     Args:
+        datasets (list[HeartKitDataset]): Datasets
         params (HeartTrainParams): Train params
+
     Returns:
         tuple[tf.data.Dataset, tf.data.Dataset]: ds, train and validation datasets
     """
@@ -114,7 +130,7 @@ def load_train_datasets(
         xx = x.copy().squeeze()
         if params.augmentations:
             xx = augment_pipeline(xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
-        xx = prepare(xx, sample_rate=params.sampling_rate)
+        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
         return xx
 
     train_datasets = []
@@ -176,7 +192,7 @@ def load_test_datasets(
 
     def preprocess(x: npt.NDArray) -> npt.NDArray:
         xx = x.copy().squeeze()
-        xx = prepare(xx, sample_rate=params.sampling_rate)
+        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
         return xx
 
     with console.status("[bold green] Loading test dataset..."):

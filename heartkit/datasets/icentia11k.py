@@ -15,13 +15,14 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import physiokit as pk
+import scipy.ndimage
 import sklearn.model_selection
 import sklearn.preprocessing
 from botocore import UNSIGNED
 from botocore.client import Config
 from tqdm import tqdm
 
-from ..defines import HeartBeat, HeartRate, HeartRhythm, HeartTask
+from ..defines import HeartBeat, HeartRate, HeartRhythm, HeartSegment, HeartTask
 from ..utils import download_file
 from .dataset import HeartKitDataset
 from .defines import PatientGenerator, SampleGenerator
@@ -170,6 +171,11 @@ class IcentiaDataset(HeartKitDataset):
                 patient_generator=patient_generator,
                 samples_per_patient=samples_per_patient,
             )
+        if self.task == HeartTask.segmentation:
+            return self.segmentation_data_generator(
+                patient_generator=patient_generator,
+                samples_per_patient=samples_per_patient,
+            )
         raise NotImplementedError()
 
     def _split_train_test_patients(self, patient_ids: npt.NDArray, test_size: float) -> list[list[int]]:
@@ -298,6 +304,82 @@ class IcentiaDataset(HeartKitDataset):
                 if self.sampling_rate != self.target_rate:
                     x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate, axis=0)
                 yield x, label
+            # END FOR
+        # END FOR
+
+    def segmentation_data_generator(
+        self,
+        patient_generator: PatientGenerator,
+        samples_per_patient: int | list[int] = 1,
+    ) -> SampleGenerator:
+        """Gnerate frames with annotated segments.
+
+        Args:
+            patient_generator (PatientGenerator): Patient generator
+            samples_per_patient (int | list[int], optional):
+
+        Returns:
+            SampleGenerator: Sample generator
+        """
+        assert not isinstance(samples_per_patient, Iterable)
+        input_size = int(np.round((self.sampling_rate / self.target_rate) * self.frame_size))
+
+        # For each patient
+        for _, segments in patient_generator:
+            for _ in range(samples_per_patient):
+                # Randomly pick a segment
+                seg_key = np.random.choice(list(segments.keys()))
+                # Randomly pick a frame
+                frame_start = np.random.randint(segments[seg_key]["data"].shape[0] - input_size)
+                frame_end = frame_start + input_size
+                # Get data and labels
+                data = segments[seg_key]["data"][frame_start:frame_end].squeeze()
+
+                if self.sampling_rate != self.target_rate:
+                    ds_ratio = self.target_rate / self.sampling_rate
+                    data = pk.signal.resample_signal(data, self.sampling_rate, self.target_rate, axis=0)
+                else:
+                    ds_ratio = 1
+
+                blabels = segments[seg_key]["blabels"]
+                blabels = blabels[(blabels[:, 0] >= frame_start) & (blabels[:, 0] < frame_end)]
+                # Create segment mask
+                mask = np.zeros_like(data, dtype=np.int32)
+                for i in range(blabels.shape[0]):
+                    bidx = int((blabels[i, 0] - frame_start) * ds_ratio)
+                    btype = blabels[i, 1]
+                    if btype == IcentiaBeat.undefined:
+                        continue
+
+                    # Extract QRS segment
+                    qrs_window = 0.1
+                    avg_window = 1.0
+                    qrs_prom_weight = 1.5
+                    abs_grad = np.abs(np.gradient(data))
+                    qrs_kernel = int(np.rint(qrs_window * self.target_rate))
+                    avg_kernel = int(np.rint(avg_window * self.target_rate))
+                    # Smooth gradients
+                    qrs_grad = scipy.ndimage.uniform_filter1d(abs_grad, qrs_kernel, mode="nearest")
+                    avg_grad = scipy.ndimage.uniform_filter1d(qrs_grad, avg_kernel, mode="nearest")
+                    min_qrs_height = qrs_prom_weight * avg_grad
+                    qrs = qrs_grad - min_qrs_height
+                    win_len = max(1, int(0.08 * self.target_rate))  # 80 ms
+                    b_left = max(0, bidx - win_len)
+                    b_right = min(data.shape[0], bidx + win_len)
+                    onset = np.where(np.flip(qrs[b_left:bidx]) < 0)[0]
+                    onset = onset[0] if onset.size else b_left
+                    offset = np.where(qrs[bidx + 1 : b_right] < 0)[0]
+                    offset = offset[0] if offset.size else b_right
+                    mask[bidx - onset : bidx + offset] = self.class_map.get(HeartSegment.qrs.value, 0)
+                    # Ignore P, T, and U waves for now
+                # END FOR
+                x = np.nan_to_num(data).astype(np.float32)
+                y = mask.astype(np.int32)
+                # if self.sampling_rate != self.target_rate:
+                #     x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate, axis=0)
+                #     y = pk.signal.filter.resample_signal(y, self.sampling_rate, self.target_rate, axis=0)
+                # # END IF
+                yield x, y
             # END FOR
         # END FOR
 
@@ -500,7 +582,7 @@ class IcentiaDataset(HeartKitDataset):
                 segment_size = segment["data"].shape[0]
                 frame_start = np.random.randint(segment_size - input_size)
                 frame_end = frame_start + input_size
-                x = segment["data"][frame_start:frame_end]
+                x = segment["data"][frame_start:frame_end].squeeze()
                 x = np.nan_to_num(x).astype(np.float32)
                 if self.sampling_rate != self.target_rate:
                     x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate, axis=0)

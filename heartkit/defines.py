@@ -7,6 +7,13 @@ from typing import Any, Literal
 from pydantic import BaseModel, Extra, Field
 
 
+class PreprocessParams(BaseModel, extra=Extra.allow):
+    """Preprocessing parameters"""
+
+    name: str
+    args: dict[str, Any]
+
+
 class AugmentationParams(BaseModel, extra=Extra.allow):
     """Augmentation parameters"""
 
@@ -164,6 +171,8 @@ class HeartTrainParams(BaseModel, extra=Extra.allow):
     epochs: int = Field(50, description="Number of epochs")
     steps_per_epoch: int | None = Field(None, description="Number of steps per epoch")
     val_metric: Literal["loss", "acc", "f1"] = Field("loss", description="Performance metric")
+    # Preprocessing/Augmentation arguments
+    preprocesses: list[PreprocessParams] = Field(default_factory=list, description="Preprocesses")
     augmentations: list[AugmentationParams] = Field(default_factory=list, description="Augmentations")
     # Extra arguments
     seed: int | None = Field(None, description="Random state seed")
@@ -185,6 +194,7 @@ class HeartTestParams(BaseModel, extra=Extra.allow):
         default_factory=lambda: os.cpu_count() or 1,
         description="# of data loaders running in parallel",
     )
+    preprocesses: list[PreprocessParams] = Field(default_factory=list, description="Preprocesses")
     # Model arguments
     model_file: str | None = Field(None, description="Path to model file")
     threshold: float | None = Field(None, description="Model output threshold")
@@ -201,6 +211,7 @@ class HeartExportParams(BaseModel, extra=Extra.allow):
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
     num_classes: int = Field(3, description="# of classes")
+    preprocesses: list[PreprocessParams] = Field(default_factory=list, description="Preprocesses")
     samples_per_patient: int | list[int] = Field(100, description="# test samples per patient")
     test_patients: float | None = Field(None, description="# or proportion of patients for testing")
     test_size: int = Field(100_000, description="# samples for testing")
@@ -226,6 +237,7 @@ class HeartDemoParams(BaseModel, extra=Extra.allow):
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
     num_classes: int = Field(3, description="# of classes")
+    preprocesses: list[PreprocessParams] = Field(default_factory=list, description="Preprocesses")
     # Model arguments
     model_file: str | None = Field(None, description="Path to model file")
     backend: Literal["pc", "evb"] = Field("pc", description="Backend")

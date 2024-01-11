@@ -10,24 +10,24 @@ nav:
   - Overview: overview.md
   - Datasets: datasets.md
   - Results: results.md
+  - Tasks:
+    - Segmentation:
+      - Overview: segmentation/overview.md
+      - Methods: segmentation/methods.md
+      - Results: segmentation/results.md
+      - Demo: segmentation/demo.md
 
-  - Segmentation Task:
-    - Overview: segmentation/overview.md
-    - Methods: segmentation/methods.md
-    - Results: segmentation/results.md
-    - Demo: segmentation/demo.md
+    - Arrhythmia:
+      - Overview: arrhythmia/overview.md
+      - Methods: arrhythmia/methods.md
+      - Results: arrhythmia/results.md
+      - Demo: arrhythmia/demo.md
 
-  - Arrhythmia Task:
-    - Overview: arrhythmia/overview.md
-    - Methods: arrhythmia/methods.md
-    - Results: arrhythmia/results.md
-    - Demo: arrhythmia/demo.md
-
-  - Beat Task:
-    - Overview: beat/overview.md
-    - Methods: beat/methods.md
-    - Results: beat/results.md
-    - Demo: beat/demo.md
+    - Beat:
+      - Overview: beat/overview.md
+      - Methods: beat/methods.md
+      - Results: beat/results.md
+      - Demo: beat/demo.md
 
   - Tutorials:
     - EVB Setup: ./tutorials/evb-setup.md

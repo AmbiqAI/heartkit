@@ -120,9 +120,15 @@ class SyntheticDataset(HeartKitDataset):
             EcgPresets.high_take_off,
         )
         preset_weights = (14, 1, 1, 1, 1, 1, 1)
+        generate_funcs = (
+            pk.ecg.generate_nsr,
+            pk.ecg.generate_afib,
+        )
+        generate_weights = (5, 1)
 
         for _ in patient_generator:
-            _, syn_ecg, _, _, _ = pk.ecg.generate_nsr(
+            generate_func = random.choices(generate_funcs, generate_weights, k=1)[0]
+            _, syn_ecg, _, _, _ = generate_func(
                 leads=num_leads,
                 signal_frequency=self.sampling_rate,
                 rate=np.random.uniform(40, 120),

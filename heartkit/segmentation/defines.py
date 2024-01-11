@@ -10,7 +10,7 @@ def get_classes(nclasses: int = 4) -> list[str]:
     Returns:
         list[str]: List of class names
     """
-    if 2 <= nclasses <= 5:
+    if 2 <= nclasses <= 4:
         return list(range(nclasses))
     raise ValueError(f"Invalid number of classes: {nclasses}")
 
@@ -49,14 +49,6 @@ def get_class_mapping(nclasses: int = 4) -> dict[int, int]:
                 HeartSegment.twave: 3,
                 HeartSegment.uwave: 0,
             }
-        case 5:
-            return {
-                HeartSegment.normal: 0,
-                HeartSegment.pwave: 1,
-                HeartSegment.qrs: 2,
-                HeartSegment.twave: 3,
-                HeartSegment.uwave: 4,
-            }
         case _:
             raise ValueError(f"Invalid number of classes: {nclasses}")
     # END MATCH
@@ -78,7 +70,5 @@ def get_class_names(nclasses: int = 4) -> list[str]:
             return ["NONE", "QRS", "P/T-WAVE"]
         case 4:
             return ["NONE", "P-WAVE", "QRS", "T-WAVE"]
-        case 5:
-            return ["NONE", "P-WAVE", "QRS", "T-WAVE", "U-WAVE"]
         case _:
             raise ValueError(f"Invalid number of classes: {nclasses}")

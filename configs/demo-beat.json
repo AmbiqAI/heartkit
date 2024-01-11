@@ -1,9 +1,0 @@
-{
-    "job_dir": "./results/beat",
-    "ds_path": "./datasets",
-    "sampling_rate": 200,
-    "frame_size": 160,
-    "num_classes": 3,
-    "model_file": "./results/beat/model.tflite",
-    "backend": "pc"
-}

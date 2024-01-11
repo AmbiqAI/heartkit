@@ -52,7 +52,7 @@ def demo(params: HeartDemoParams):
             start, stop = x.shape[0] - params.frame_size, x.shape[0]
         else:
             start, stop = i, i + params.frame_size
-        xx = prepare(x[start:stop, :], sample_rate=params.sampling_rate)
+        xx = prepare(x[start:stop, :], sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
         runner.set_inputs(xx)
         runner.perform_inference()
         yy = runner.get_outputs()

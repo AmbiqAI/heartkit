@@ -2,30 +2,44 @@ from pathlib import Path
 from typing import Any
 
 import numpy.typing as npt
-import physiokit as pk
 import tensorflow as tf
 from rich.console import Console
 
-from ..datasets import HeartKitDataset, IcentiaDataset, augment_pipeline
-from ..defines import HeartExportParams, HeartTask, HeartTestParams, HeartTrainParams
+from ..datasets import (
+    HeartKitDataset,
+    IcentiaDataset,
+    augment_pipeline,
+    preprocess_pipeline,
+)
+from ..defines import (
+    HeartExportParams,
+    HeartTask,
+    HeartTestParams,
+    HeartTrainParams,
+    PreprocessParams,
+)
 from ..models import EfficientNetParams, EfficientNetV2, MBConvParams, generate_model
 
 console = Console()
 
 
-def prepare(x: npt.NDArray, sample_rate: float) -> npt.NDArray:
-    """Prepare dataset."""
-    x = pk.signal.filter_signal(
-        x,
-        lowcut=0.5,
-        highcut=30,
-        order=3,
-        sample_rate=sample_rate,
-        axis=0,
-        forward_backward=True,
-    )
-    x = pk.signal.normalize_signal(x, eps=0.1, axis=None)
-    return x
+def prepare(x: npt.NDArray, sample_rate: float, preprocesses: list[PreprocessParams]) -> npt.NDArray:
+    """Prepare dataset.
+
+    Args:
+        x (npt.NDArray): Input signal
+        sample_rate (float): Sampling rate
+        preprocesses (list[PreprocessParams]): Preprocessing pipeline
+
+    Returns:
+        npt.NDArray: Prepared signal
+    """
+    if not preprocesses:
+        preprocesses = [
+            dict(name="filter", args=dict(axis=0, lowcut=0.5, highcut=30, order=3, sample_rate=sample_rate)),
+            dict(name="znorm", args=dict(axis=None, eps=0.1)),
+        ]
+    return preprocess_pipeline(x, preprocesses=preprocesses, sample_rate=sample_rate)
 
 
 def load_dataset(ds_path: Path, frame_size: int, sampling_rate: int, class_map: dict[int, int]) -> HeartKitDataset:
@@ -75,7 +89,7 @@ def load_train_datasets(
                     sample_rate=params.sampling_rate,
                 )
         # END FOR
-        xx = prepare(xx, sample_rate=params.sampling_rate)
+        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
         return xx
 
     # Create TF datasets
@@ -127,7 +141,7 @@ def load_test_dataset(
 
     def preprocess(x: npt.NDArray) -> npt.NDArray:
         xx = x.copy()
-        xx = prepare(xx, sample_rate=params.sampling_rate)
+        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
         return xx
 
     with console.status("[bold green] Loading test dataset..."):

@@ -14,8 +14,17 @@
 enum AppState { IDLE_STATE, INFERENCE_STATE, FAIL_STATE };
 typedef enum AppState AppState;
 
+/**
+ * @brief Application setup
+ *
+ */
 void
 setup(void);
+
+/**
+ * @brief Application loop
+ *
+ */
 void
 loop(void);
 

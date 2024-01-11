@@ -1,4 +1,4 @@
-from .augmentation import AugmentationParams, augment_pipeline
+from .augmentation import augment_pipeline, preprocess_pipeline
 from .dataset import HeartKitDataset
 from .download import download_datasets
 from .icentia11k import IcentiaDataset

@@ -1,0 +1,95 @@
+{
+    "job_dir": "./results/segmentation-tcn-class-2",
+    "ds_path": "./datasets",
+    "sampling_rate": 100,
+    "frame_size": 250,
+    "num_classes": 2,
+    "samples_per_patient": 10,
+    "val_samples_per_patient": 10,
+    "val_patients": 0.10,
+    "batch_size": 128,
+    "buffer_size": 40000,
+    "epochs": 100,
+    "steps_per_epoch": 50,
+    "val_metric": "loss",
+    "datasets": ["icentia11k", "synthetic", "ludb"],
+    "lr_rate": 1e-3,
+    "lr_cycles": 1,
+    "num_pts": 500,
+    "quantization": false,
+    "model": "tcn",
+    "model_params": {
+        "input_kernel": [1, 3],
+        "input_norm": "batch",
+        "blocks": [
+            {"depth": 1, "branch": 1, "filters": 12, "kernel": [1, 3], "dilation": [1, 1], "dropout": 0.10, "ex_ratio": 1, "se_ratio": 0, "norm": "batch"},
+            {"depth": 1, "branch": 1, "filters": 20, "kernel": [1, 3], "dilation": [1, 1], "dropout": 0.10, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
+            {"depth": 1, "branch": 1, "filters": 28, "kernel": [1, 3], "dilation": [1, 2], "dropout": 0.10, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
+            {"depth": 1, "branch": 1, "filters": 36, "kernel": [1, 3], "dilation": [1, 4], "dropout": 0.10, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
+            {"depth": 1, "branch": 1, "filters": 40, "kernel": [1, 3], "dilation": [1, 8], "dropout": 0.10, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"}
+        ],
+        "output_kernel": [1, 3],
+        "include_top": true,
+        "use_logits": true,
+        "model_name": "tcn"
+    },
+    "preprocesses": [
+        {
+            "name": "filter",
+            "args": {
+                "lowcut": 0.5,
+                "highcut": 30,
+                "order": 3,
+                "forward_backward": true,
+                "axis": 0
+            }
+        },
+        {
+            "name": "znorm",
+            "args": {
+                "eps": 0.1,
+                "axis": null
+            }
+        }
+
+    ],
+    "augmentations": [
+        {
+            "name": "baseline_wander",
+            "args": {
+                "amplitude": [0.5, 1.5],
+                "frequency": [0.4, 0.5]
+            }
+        },
+        {
+            "name": "motion_noise",
+            "args": {
+                "amplitude": [0.5, 1.5],
+                "frequency": [0.4, 0.7]
+            }
+        },
+        {
+            "name": "burst_noise",
+            "args": {
+                "burst_number": [2, 10],
+                "amplitude": [0.5, 1.5],
+                "frequency": [40, 100]
+            }
+        },
+        {
+            "name": "powerline_noise",
+            "args": {
+                "amplitude": [0.005, 0.01],
+                "frequency": [50, 60]
+            }
+        },
+        {
+            "name": "noise_sources",
+            "args": {
+                "num_sources": [1, 8],
+                "amplitude": [0.05, 0.25],
+                "frequency": [10, 40]
+            }
+        }
+    ]
+}

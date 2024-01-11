@@ -24,7 +24,7 @@ static tflite::MicroInterpreter *interpreter = nullptr;
 static tflite::MicroProfiler *profiler = nullptr;
 
 uint32_t
-init_model() {
+model_init() {
     tflite::MicroErrorReporter micro_error_reporter;
     errorReporter = &micro_error_reporter;
 
@@ -151,7 +151,7 @@ init_model() {
 }
 
 uint32_t
-setup_model(const void *modelBuffer, TfLiteTensor *inputs, TfLiteTensor *outputs) {
+model_setup(const void *modelBuffer, TfLiteTensor *inputs, TfLiteTensor *outputs) {
     size_t bytesUsed;
     TfLiteStatus allocateStatus;
     model = tflite::GetModel(modelBuffer);
@@ -183,7 +183,7 @@ setup_model(const void *modelBuffer, TfLiteTensor *inputs, TfLiteTensor *outputs
 }
 
 uint32_t
-run_model() {
+model_run() {
     TfLiteStatus invokeStatus;
     invokeStatus = interpreter->Invoke();
     if (invokeStatus != kTfLiteOk) {

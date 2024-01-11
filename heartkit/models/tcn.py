@@ -12,7 +12,7 @@ class TcnBlockParams(BaseModel):
     """TCN block parameters"""
 
     depth: int = Field(default=1, description="Layer depth")
-    branch: int | None = Field(default=None, description="Number of branches")
+    branch: int = Field(default=1, description="Number of branches")
     filters: int = Field(..., description="# filters")
     kernel: int | tuple[int, int] = Field(default=3, description="Kernel size")
     dilation: int | tuple[int, int] = Field(default=1, description="Dilation rate")
@@ -27,6 +27,7 @@ class TcnParams(BaseModel):
 
     input_kernel: int | tuple[int, int] | None = Field(default=None, description="Input kernel size")
     input_norm: Literal["batch", "layer"] | None = Field(default="layer", description="Input normalization type")
+    block_type: Literal["lg", "mb", "sm"] = Field(default="mb", description="Block type")
     blocks: list[TcnBlockParams] = Field(default_factory=list, description="UNext blocks")
     output_kernel: int | tuple[int, int] = Field(default=3, description="Output kernel size")
     include_top: bool = Field(default=True, description="Include top")
@@ -35,9 +36,25 @@ class TcnParams(BaseModel):
 
 
 def norm_layer(norm: str, name: str) -> KerasLayer:
-    """Normalization layer"""
+    """Normalization layer
+
+    Args:
+        norm (str): Normalization type
+        name (str): Name
+
+    Returns:
+        KerasLayer: Layer
+    """
 
     def layer(x: tf.Tensor) -> tf.Tensor:
+        """Functional normalization layer
+
+        Args:
+            x (tf.Tensor): Input tensor
+
+        Returns:
+            tf.Tensor: Output tensor
+        """
         if norm == "batch":
             return tf.keras.layers.BatchNormalization(axis=-1, name=f"{name}.BN")(x)
         if norm == "layer":
@@ -47,8 +64,8 @@ def norm_layer(norm: str, name: str) -> KerasLayer:
     return layer
 
 
-def tcn_block(params: TcnBlockParams, name: str) -> KerasLayer:
-    """TCN block
+def tcn_block_lg(params: TcnBlockParams, name: str) -> KerasLayer:
+    """TCN large block
 
     Args:
         params (TcnBlockParams): Parameters
@@ -112,8 +129,8 @@ def tcn_block(params: TcnBlockParams, name: str) -> KerasLayer:
     return layer
 
 
-def tcn_block_sm2(params: TcnBlockParams, name: str) -> KerasLayer:
-    """TCN block
+def tcn_block_mb(params: TcnBlockParams, name: str) -> KerasLayer:
+    """TCN mbconv block
 
     Args:
         params (TcnBlockParams): Parameters
@@ -171,7 +188,7 @@ def tcn_block_sm2(params: TcnBlockParams, name: str) -> KerasLayer:
             y = tf.keras.layers.Activation("relu6", name=f"{lcl_name}.DW.RELU")(y)
 
             # Squeeze and excite
-            if params.se_ratio > 0:
+            if params.se_ratio and y.shape[-1] // params.se_ratio > 0:
                 y = se_block(ratio=params.se_ratio, name=f"{lcl_name}.SE")(y)
             # END IF
 
@@ -183,7 +200,6 @@ def tcn_block_sm2(params: TcnBlockParams, name: str) -> KerasLayer:
                     kernel_size=(1, 1),
                     strides=(1, 1),
                     padding="same",
-                    # groups=int(params.se_ratio) if params.se_ratio > 0 else 1,
                     use_bias=params.norm is None,
                     kernel_initializer="he_normal",
                     kernel_regularizer=tf.keras.regularizers.L2(1e-3),
@@ -215,7 +231,7 @@ def tcn_block_sm2(params: TcnBlockParams, name: str) -> KerasLayer:
 
 
 def tcn_block_sm(params: TcnBlockParams, name: str) -> KerasLayer:
-    """TCN block
+    """TCN small block
 
     Args:
         params (TcnBlockParams): Parameters
@@ -284,7 +300,7 @@ def tcn_block_sm(params: TcnBlockParams, name: str) -> KerasLayer:
         # END FOR
 
         # Squeeze and excite
-        if params.se_ratio > 0:
+        if y.shape[-1] // params.se_ratio > 1:
             y = se_block(ratio=params.se_ratio, name=f"{name}.SE")(y)
         # END IF
 
@@ -309,13 +325,20 @@ def tcn_core(params: TcnParams) -> KerasLayer:
     Returns:
         KerasLayer: Layer
     """
+    if params.block_type == "lg":
+        tcn_block = tcn_block_lg
+    elif params.block_type == "mb":
+        tcn_block = tcn_block_mb
+    elif params.block_type == "sm":
+        tcn_block = tcn_block_sm
+    else:
+        raise ValueError(f"Invalid block type: {params.block_type}")
 
     def layer(x: tf.Tensor) -> tf.Tensor:
         y = x
         for i, block in enumerate(params.blocks):
             name = f"B{i+1}"
-            y = tcn_block_sm2(params=block, name=name)(y)
-            # y = tcn_block_sm(params=block, name=name)(y)
+            y = tcn_block(params=block, name=name)(y)
         # END IF
         return y
 

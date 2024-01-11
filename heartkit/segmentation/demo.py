@@ -58,7 +58,7 @@ def demo(params: HeartDemoParams):
             start, stop = x.size - params.frame_size, x.size
         else:
             start, stop = i, i + params.frame_size
-        xx = prepare(x[start:stop], sample_rate=params.sampling_rate)
+        xx = prepare(x[start:stop], sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
         runner.set_inputs(xx)
         runner.perform_inference()
         yy = runner.get_outputs()
@@ -77,7 +77,7 @@ def demo(params: HeartDemoParams):
             [{"colspan": 3, "type": "xy", "secondary_y": True}, None, None],
             [{"type": "xy"}, {"type": "bar"}, {"type": "table"}],
         ],
-        subplot_titles=("ECG Plot", "IBI Poincaré Plot", "HRV Frequency Bands"),
+        subplot_titles=("ECG Plot", "IBI Poincare Plot", "HRV Frequency Bands"),
         horizontal_spacing=0.1,
         vertical_spacing=0.2,
     )

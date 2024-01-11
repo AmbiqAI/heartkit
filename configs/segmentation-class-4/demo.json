@@ -1,0 +1,28 @@
+{
+    "job_dir": "./results/segmentation-class-4",
+    "ds_path": "./datasets",
+    "num_classes": 4,
+    "sampling_rate": 200,
+    "frame_size": 512,
+    "model_file": "./results/segmentation-class-4/model.tflite",
+    "backend": "pc",
+    "preprocesses": [
+        {
+            "name": "filter",
+            "args": {
+                "lowcut": 0.5,
+                "highcut": 30,
+                "order": 3,
+                "forward_backward": true,
+                "axis": 0
+            }
+        },
+        {
+            "name": "znorm",
+            "args": {
+                "eps": 0.1,
+                "axis": null
+            }
+        }
+    ]
+}

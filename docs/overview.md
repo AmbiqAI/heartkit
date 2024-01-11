@@ -1,4 +1,6 @@
-# Overview
+# :octicons-heart-fill-24:{ .heart } Overview
+
+
 
 __HeartKit__ can be used as either a CLI-based app or as a python package to perform advanced experimentation. In both forms, HeartKit exposes a number of modes and tasks discussed below:
 
@@ -102,7 +104,7 @@ The `train` command is used to train a HeartKit model for the specified `task` a
     === "CLI"
 
         ```bash
-        heartkit --task arrhythmia --mode train --config ./configs/train-arrhythmia-model.json
+        heartkit --task arrhythmia --mode train --config ./configs/arrhythmia-class-2/train.json
         ```
 
     === "Python"
@@ -111,7 +113,7 @@ The `train` command is used to train a HeartKit model for the specified `task` a
         import heartkit as hk
 
         hk.arrhythmia.train(hk.defines.HeartTrainParams(
-            job_dir="./results/arrhythmia",
+            job_dir="./results/arrhythmia-class-2",
             ds_path="./datasets",
             sampling_rate=200,
             frame_size=800,
@@ -141,7 +143,7 @@ The `evaluate` command will evaluate the performance of the model on the reserve
     === "CLI"
 
         ```bash
-        heartkit --task arrhythmia --mode evaluate --config ./configs/evaluate-arrhythmia-model.json
+        heartkit --task arrhythmia --mode evaluate --config ./configs/arrhythmia-class-2/evaluate.json
         ```
 
     === "Python"
@@ -150,7 +152,7 @@ The `evaluate` command will evaluate the performance of the model on the reserve
         import heartkit as hk
 
         hk.arrhythmia.evaluate(hk.defines.HeartTestParams(
-            job_dir="./results/arrhythmia",
+            job_dir="./results/arrhythmia-class-2",
             ds_path="./datasets",
             sampling_rate=200,
             frame_size=800,
@@ -158,7 +160,7 @@ The `evaluate` command will evaluate the performance of the model on the reserve
             samples_per_patient=[100, 800],
             test_patients=1000,
             test_size=100000,
-            model_file="./results/arrhythmia/model.tf",
+            model_file="./results/arrhythmia-class-2/model.tf",
             threshold=0.75
         ))
         ```
@@ -174,7 +176,7 @@ The `export` command will convert the trained TensorFlow model into both TensorF
     === "CLI"
 
         ```bash
-        heartkit --task arrhythmia --mode export --config ./configs/export-arrhythmia-model.json
+        heartkit --task arrhythmia --mode export --config ./configs/arrhythmia-class-2/export.json
         ```
 
     === "Python"
@@ -183,17 +185,17 @@ The `export` command will convert the trained TensorFlow model into both TensorF
         import heartkit as hk
 
         hk.arrhythmia.export(hk.defines.HeartExportParams(
-            job_dir="./results/arrhythmia",
+            job_dir="./results/arrhythmia-class-2",
             ds_path="./datasets",
             sampling_rate=200,
             frame_size=800,
             num_classes=2,
             samples_per_patient=[100, 500, 100],
-            model_file="./results/arrhythmia/model.tf",
+            model_file="./results/arrhythmia-class-2/model.tf",
             quantization=true,
             threshold=0.95,
             tflm_var_name="g_arrhythmia_model",
-            tflm_file="./evb/src/arrhythmia_model_buffer.h"
+            tflm_file="./results/arrhythmia-class-2/arrhythmia_model_buffer.h"
         ))
         ```
 
@@ -208,7 +210,7 @@ The `demo` command is used to run a task-level demonstration using either the PC
     === "CLI"
 
         ```bash
-        heartkit --task arrhythmia --mode demo --config ./configs/demo-arrhythmia.json
+        heartkit --task arrhythmia --mode demo --config ./configs/arrhythmia-class-2/demo.json
         ```
 
     === "Python"
@@ -217,12 +219,12 @@ The `demo` command is used to run a task-level demonstration using either the PC
         import heartkit as hk
 
         hk.arrhythmia.demo(hk.defines.HKDemoParams(
-            job_dir="./results/arrhythmia",
+            job_dir="./results/arrhythmia-class-2",
             ds_path="./datasets",
             sampling_rate=200,
             frame_size=800,
             num_classes=2,
-            model_file="./results/arrhythmia/model.tflite",
+            model_file="./results/arrhythmia-class-2/model.tflite",
             backend="pc"
         ))
         ```

@@ -1,0 +1,31 @@
+{
+    "job_dir": "./results/arrhythmia-class-3",
+    "ds_path": "./datasets",
+    "sampling_rate": 200,
+    "frame_size": 800,
+    "num_classes": 3,
+    "samples_per_patient": [25, 100, 100],
+    "test_patients": 1000,
+    "test_size": 50000,
+    "model_file": "./results/arrhythmia-class-3/model.tf",
+    "threshold": 0.5,
+    "preprocesses": [
+        {
+            "name": "filter",
+            "args": {
+                "lowcut": 0.5,
+                "highcut": 30,
+                "order": 3,
+                "forward_backward": true,
+                "axis": 0
+            }
+        },
+        {
+            "name": "znorm",
+            "args": {
+                "eps": 0.1,
+                "axis": null
+            }
+        }
+    ]
+}

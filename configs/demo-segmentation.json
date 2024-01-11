@@ -1,9 +1,0 @@
-{
-    "job_dir": "./results/segmentation",
-    "ds_path": "./datasets",
-    "num_classes": 4,
-    "sampling_rate": 200,
-    "frame_size": 512,
-    "model_file": "./results/segmentation/model.tflite",
-    "backend": "pc"
-}

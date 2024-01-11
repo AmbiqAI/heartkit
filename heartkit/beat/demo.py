@@ -70,7 +70,7 @@ def demo(params: HeartDemoParams):
                 x[start + avg_rr : stop + avg_rr],
             )
         ).T
-        xx = prepare(xx, sample_rate=params.sampling_rate)
+        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
         runner.set_inputs(xx)
         runner.perform_inference()
         yy = runner.get_outputs()

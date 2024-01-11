@@ -1,21 +1,42 @@
 {
-    "job_dir": "./results/segmentation-pre",
+    "job_dir": "./results/segmentation-class-2",
+    "model_file": "./results/segmentation-class-2/model.tf",
     "ds_path": "./datasets",
     "sampling_rate": 200,
     "frame_size": 512,
-    "num_classes": 4,
+    "num_classes": 2,
     "samples_per_patient": 100,
     "val_samples_per_patient": 100,
     "val_patients": 0.10,
-    "batch_size": 512,
+    "batch_size": 128,
     "buffer_size": 25000,
-    "epochs": 80,
+    "epochs": 40,
     "steps_per_epoch": 100,
     "val_metric": "loss",
     "datasets": ["ludb", "synthetic"],
-    "lr_rate": 5e-3,
-    "num_pts": 400,
-    "quantization": false,
+    "lr_rate": 1e-4,
+    "lr_cycles": 1,
+    "num_pts": 500,
+    "quantization": true,
+    "preprocesses": [
+        {
+            "name": "filter",
+            "args": {
+                "lowcut": 0.5,
+                "highcut": 30,
+                "order": 3,
+                "forward_backward": true,
+                "axis": 0
+            }
+        },
+        {
+            "name": "znorm",
+            "args": {
+                "eps": 0.1,
+                "axis": null
+            }
+        }
+    ],
     "augmentations": [
         {
             "name": "baseline_wander",

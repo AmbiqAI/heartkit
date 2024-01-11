@@ -1,22 +1,42 @@
 {
-    "job_dir": "./results/beat",
+    "job_dir": "./results/arrhythmia-class-3",
     "ds_path": "./datasets",
     "sampling_rate": 200,
-    "frame_size": 160,
+    "frame_size": 800,
     "num_classes": 3,
-    "samples_per_patient": [50, 400, 400],
-    "val_samples_per_patient": [50, 100, 100],
+    "samples_per_patient": [25, 100, 100],
+    "val_samples_per_patient": [25, 100, 100],
     "train_patients": 10000,
-    "val_file-dis": "./results/beat-1000pt-800ms-200fs-4n.pkl",
-    "val_patients": 0.10,
-    "val_size": 20000,
-    "batch_size": 512,
-    "buffer_size": 10000,
+    "val_file": "./results/arrhythmia-class-3-10000pt-200fs-4s.pkl",
+    "val_patients": 0.20,
+    "val_size": 100000,
+    "batch_size": 256,
+    "buffer_size": 100000,
     "epochs": 150,
     "steps_per_epoch": 20,
     "val_metric": "loss",
     "datasets": ["icentia11k"],
     "lr_rate": 5e-3,
+    "lr_cycles": 1,
+    "preprocesses": [
+        {
+            "name": "filter",
+            "args": {
+                "lowcut": 0.5,
+                "highcut": 30,
+                "order": 3,
+                "forward_backward": true,
+                "axis": 0
+            }
+        },
+        {
+            "name": "znorm",
+            "args": {
+                "eps": 0.1,
+                "axis": null
+            }
+        }
+    ],
     "augmentations": [
         {
             "name": "baseline_wander",

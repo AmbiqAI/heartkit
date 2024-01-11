@@ -69,7 +69,7 @@ def train(params: HeartTrainParams):
     y_true = np.argmax(np.concatenate(test_labels).squeeze(), axis=-1).flatten()
 
     class_weights = sklearn.utils.compute_class_weight("balanced", classes=classes, y=y_true)
-    class_weights = 0.25
+    # class_weights = 0.25
 
     with tfa.get_strategy().scope():
         logger.info("Building model")

@@ -2,7 +2,7 @@
 
 ## <span class="sk-h2-span">Datasets</span>
 
-For training arrhythmia classification models, we use the [Icentia11k dataset](https://physionet.org/content/icentia11k-continuous-ecg/1.0.0/). This dataset consists of single lead ECG recordings from 11,000 patients and 2 billion labelled beats.
+For training arrhythmia classification models, we currently use the [Icentia11k dataset](https://physionet.org/content/icentia11k-continuous-ecg/1.0.0/). This dataset consists of single lead ECG recordings from 11,000 patients and 2 billion labelled beats.
 
 ---
 
@@ -12,15 +12,16 @@ The arrhythmia model utilizes a 1-D CNN built using MBConv style blocks that inc
 
 ---
 
-## <span class="sk-h2-span">Feature Extraction</span>
+## <span class="sk-h2-span">Feature Sets</span>
 
-The arrhythmia classification models is trained directly on single channel ECG data. No feature extraction is performed. However, we do preprocess the data by applying a bandpass filter to remove noise followed by downsampling.
+### ECG Signal
 
----
+The model is trained directly on single channel ECG data. No feature extraction is performed other than applying a bandpass filter to remove noise followed by downsampling. The signal is then normalized by subtracting the mean and dividing by the standard deviation. We also add a small epsilon value to the standard deviation to avoid division by zero.
 
-## <span class="sk-h2-span">Feature Normalization</span>
 
-The filtered ECG signals are normalized by subtracting the mean and dividing by the standard deviation. We also add a small epsilon value to the standard deviation to avoid division by zero.
+### HR/HRV Metrics
+
+From either ECG or PPG signals, we identify the R peaks (or systolic peaks) and compute a variety of heart rate (HR) and heart rate variability (HRV) metrics from the inter-beat intervals (IBI).
 
 ---
 
