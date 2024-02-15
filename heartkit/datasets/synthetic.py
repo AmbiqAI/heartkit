@@ -5,28 +5,36 @@ import random
 import numpy as np
 import numpy.typing as npt
 import physiokit as pk
-from physiokit.ecg.synthetic.defines import EcgPresets, SyntheticSegments
+import tensorflow as tf
 
-from ..defines import HeartSegment, HeartTask
-from .dataset import HeartKitDataset
+from ..defines import HeartSegment
+from .dataset import HKDataset
 from .defines import PatientGenerator, SampleGenerator
 
 logger = logging.getLogger(__name__)
 
 
-class SyntheticDataset(HeartKitDataset):
+class SyntheticDataset(HKDataset):
     """Synthetic dataset"""
 
     def __init__(
         self,
         ds_path: os.PathLike,
-        task: HeartTask = HeartTask.arrhythmia,
-        frame_size: int = 1250,
-        target_rate: int = 250,
+        task: str,
+        frame_size: int,
+        target_rate: int,
+        spec: tuple[tf.TensorSpec, tf.TensorSpec],
         class_map: dict[int, int] | None = None,
         num_pts: int = 250,
     ) -> None:
-        super().__init__(ds_path / "synthetic", task, frame_size, target_rate, class_map)
+        super().__init__(
+            ds_path=ds_path / "synthetic",
+            task=task,
+            frame_size=frame_size,
+            target_rate=target_rate,
+            spec=spec,
+            class_map=class_map,
+        )
         self._num_pts = num_pts
 
     @property
@@ -90,8 +98,13 @@ class SyntheticDataset(HeartKitDataset):
         Returns:
             SampleGenerator: Sample data generator
         """
-        if self.task == HeartTask.segmentation:
+        if self.task == "segmentation":
             return self.segmentation_generator(
+                patient_generator=patient_generator,
+                samples_per_patient=samples_per_patient,
+            )
+        if self.task == "denoise":
+            return self.denoising_generator(
                 patient_generator=patient_generator,
                 samples_per_patient=samples_per_patient,
             )
@@ -111,37 +124,31 @@ class SyntheticDataset(HeartKitDataset):
         start_offset = 0
         num_leads = 12  # Use all 12 leads
         presets = (
-            EcgPresets.SR,
-            EcgPresets.LAHB,
-            EcgPresets.LPHB,
-            EcgPresets.LBBB,
-            EcgPresets.ant_STEMI,
-            EcgPresets.random_morphology,
-            EcgPresets.high_take_off,
+            pk.ecg.EcgPreset.SR,
+            pk.ecg.EcgPreset.AFIB,
+            pk.ecg.EcgPreset.LAHB,
+            pk.ecg.EcgPreset.LPHB,
+            pk.ecg.EcgPreset.LBBB,
+            pk.ecg.EcgPreset.ant_STEMI,
+            pk.ecg.EcgPreset.random_morphology,
+            pk.ecg.EcgPreset.high_take_off,
         )
-        preset_weights = (14, 1, 1, 1, 1, 1, 1)
-        generate_funcs = (
-            pk.ecg.generate_nsr,
-            pk.ecg.generate_afib,
-        )
-        generate_weights = (5, 1)
+        preset_weights = (14, 1, 1, 1, 1, 1, 1, 1)
+        signal_length = max(2 * self.frame_size, int(self.frame_size * samples_per_patient / num_leads))
 
         for _ in patient_generator:
-            generate_func = random.choices(generate_funcs, generate_weights, k=1)[0]
-            _, syn_ecg, _, _, _ = generate_func(
+            syn_ecg, _, _ = pk.ecg.synthesize(
+                signal_length=signal_length,
+                sample_rate=self.sampling_rate,
                 leads=num_leads,
-                signal_frequency=self.sampling_rate,
-                rate=np.random.uniform(40, 120),
+                heart_rate=np.random.uniform(40, 120),
                 preset=random.choices(presets, preset_weights, k=1)[0].value,
-                noise_multiplier=np.random.uniform(0.2, 0.8),
-                impedance=np.random.uniform(0.60, 1.1),
-                p_multiplier=np.random.uniform(0.60, 1.1),
-                t_multiplier=np.random.uniform(0.60, 1.1),
-                duration=max(
-                    10,
-                    (self.frame_size / self.sampling_rate) * (samples_per_patient),
-                ),
-                voltage_factor=np.random.uniform(275, 325),
+                impedance=np.random.uniform(1.0, 2.0),
+                p_multiplier=np.random.uniform(0.80, 1.2),
+                t_multiplier=np.random.uniform(0.80, 1.2),
+                noise_multiplier=0,
+                # noise_multiplier=np.random.uniform(0.25, 1.0),
+                voltage_factor=np.random.uniform(800, 1000),
             )
             for _ in range(samples_per_patient):
                 # Randomly pick an ECG lead and frame
@@ -173,38 +180,38 @@ class SyntheticDataset(HeartKitDataset):
         start_offset = 0
         num_leads = 12  # Use all 12 leads
         presets = (
-            EcgPresets.SR,
-            EcgPresets.LAHB,
-            EcgPresets.LPHB,
-            EcgPresets.LBBB,
-            EcgPresets.ant_STEMI,
-            EcgPresets.random_morphology,
-            EcgPresets.high_take_off,
+            pk.ecg.EcgPreset.SR,
+            pk.ecg.EcgPreset.AFIB,
+            pk.ecg.EcgPreset.LAHB,
+            pk.ecg.EcgPreset.LPHB,
+            pk.ecg.EcgPreset.LBBB,
+            pk.ecg.EcgPreset.ant_STEMI,
+            pk.ecg.EcgPreset.random_morphology,
+            pk.ecg.EcgPreset.high_take_off,
         )
-        preset_weights = (14, 1, 1, 1, 1, 1, 1)
+        preset_weights = (14, 1, 1, 1, 1, 1, 1, 1)
+        signal_length = max(2 * self.frame_size, int(self.frame_size * samples_per_patient / num_leads))
 
         for _ in patient_generator:
-            _, syn_ecg, syn_segs_t, _, _ = pk.ecg.generate_nsr(
+            syn_ecg, syn_segs_t, _ = pk.ecg.synthesize(
+                signal_length=signal_length,
+                sample_rate=self.sampling_rate,
                 leads=num_leads,
-                signal_frequency=self.sampling_rate,
-                rate=np.random.uniform(40, 120),
+                heart_rate=np.random.uniform(40, 120),
                 preset=random.choices(presets, preset_weights, k=1)[0].value,
-                noise_multiplier=np.random.uniform(0.2, 0.8),
-                impedance=np.random.uniform(0.60, 1.1),
-                p_multiplier=np.random.uniform(0.60, 1.1),
-                t_multiplier=np.random.uniform(0.60, 1.1),
-                duration=max(
-                    10,
-                    (self.frame_size / self.sampling_rate) * (samples_per_patient / num_leads / 2),
-                ),
-                voltage_factor=np.random.uniform(275, 325),
+                impedance=np.random.uniform(1.0, 2.0),
+                p_multiplier=np.random.uniform(0.80, 1.2),
+                t_multiplier=np.random.uniform(0.80, 1.2),
+                noise_multiplier=0,
+                # noise_multiplier=np.random.uniform(0.25, 1.0),
+                voltage_factor=np.random.uniform(800, 1000),
             )
             syn_segs = np.zeros_like(syn_segs_t)
             for i in range(syn_segs_t.shape[0]):
-                syn_segs[i, np.where((syn_segs_t[i] == SyntheticSegments.tp_overlap))[0]] = HeartSegment.pwave
-                syn_segs[i, np.where((syn_segs_t[i] == SyntheticSegments.p_wave))[0]] = HeartSegment.pwave
-                syn_segs[i, np.where((syn_segs_t[i] == SyntheticSegments.qrs_complex))[0]] = HeartSegment.qrs
-                syn_segs[i, np.where((syn_segs_t[i] == SyntheticSegments.t_wave))[0]] = HeartSegment.twave
+                syn_segs[i, np.where((syn_segs_t[i] == pk.ecg.EcgSegment.tp_overlap))[0]] = HeartSegment.pwave
+                syn_segs[i, np.where((syn_segs_t[i] == pk.ecg.EcgSegment.p_wave))[0]] = HeartSegment.pwave
+                syn_segs[i, np.where((syn_segs_t[i] == pk.ecg.EcgSegment.qrs_complex))[0]] = HeartSegment.qrs
+                syn_segs[i, np.where((syn_segs_t[i] == pk.ecg.EcgSegment.t_wave))[0]] = HeartSegment.twave
             # END FOR
 
             for i in range(samples_per_patient):
@@ -218,6 +225,22 @@ class SyntheticDataset(HeartKitDataset):
                 yield x, y
             # END FOR
         # END FOR
+
+    def denoising_generator(
+        self,
+        patient_generator: PatientGenerator,
+        samples_per_patient: int | list[int] = 1,
+    ) -> SampleGenerator:
+        """Generate frames and denoised frames."""
+        gen = self.signal_generator(patient_generator, samples_per_patient)
+        for x in gen:
+            x = x.reshape((self.frame_size, 1))
+            y = x.copy()
+            y = pk.signal.filter_signal(
+                y, sample_rate=self.sampling_rate, lowcut=1.0, highcut=30, order=3, forward_backward=True, axis=0
+            )
+            y = pk.signal.normalize_signal(y, eps=0.01, axis=None)
+            yield x, y
 
     def uniform_patient_generator(
         self,

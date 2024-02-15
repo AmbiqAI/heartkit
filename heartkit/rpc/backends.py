@@ -8,7 +8,7 @@ import numpy.typing as npt
 import tensorflow as tf
 
 from .. import tflite
-from ..defines import HeartDemoParams
+from ..defines import HKDemoParams
 from ..utils import setup_logger
 from . import GenericDataOperations_PcToEvb as pc2evb
 from .utils import get_serial_transport
@@ -29,7 +29,7 @@ class RpcCommands(IntEnum):
 class DemoBackend(abc.ABC):
     """Demo backend base class"""
 
-    def __init__(self, params: HeartDemoParams) -> None:
+    def __init__(self, params: HKDemoParams) -> None:
         self.params = params
 
     def open(self):
@@ -56,7 +56,7 @@ class DemoBackend(abc.ABC):
 class EvbBackend(DemoBackend):
     """Demo backend for EVB"""
 
-    def __init__(self, params: HeartDemoParams) -> None:
+    def __init__(self, params: HKDemoParams) -> None:
         super().__init__(params=params)
         self._interpreter = None
         self._transport = None
@@ -165,15 +165,22 @@ class EvbBackend(DemoBackend):
 class PcBackend(DemoBackend):
     """Demo backend for PC"""
 
-    def __init__(self, params: HeartDemoParams) -> None:
+    def __init__(self, params: HKDemoParams) -> None:
         super().__init__(params=params)
         self._inputs = None
         self._outputs = None
         self._model = None
 
+    def _is_tf_model(self) -> bool:
+        ext = self.params.model_file.split(".")[-1]
+        return ext in ["h5", "hdf5", "keras", "tf"]
+
     def open(self):
-        with open(self.params.model_file, "rb") as fp:
-            self._model = fp.read()
+        if self._is_tf_model():
+            self._model = tflite.load_model(self.params.model_file)
+        else:
+            with open(self.params.model_file, "rb") as fp:
+                self._model = fp.read()
 
     def close(self):
         self._model = None
@@ -182,7 +189,10 @@ class PcBackend(DemoBackend):
         self._inputs = inputs
 
     def perform_inference(self):
-        self._outputs = tflite.predict_tflite(self._model, self._inputs)
+        if self._is_tf_model():
+            self._outputs = self._model.predict(np.expand_dims(self._inputs, 0)).squeeze(0)
+        else:
+            self._outputs = tflite.predict_tflite(self._model, self._inputs)
 
     def get_outputs(self) -> npt.NDArray:
         return self._outputs

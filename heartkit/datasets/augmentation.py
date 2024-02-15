@@ -19,9 +19,9 @@ def preprocess_pipeline(x: npt.NDArray, preprocesses: list[PreprocessParams], sa
     for preprocess in preprocesses:
         match preprocess.name:
             case "filter":
-                x = pk.signal.filter_signal(x, sample_rate=sample_rate, **preprocess.args)
+                x = pk.signal.filter_signal(x, sample_rate=sample_rate, **preprocess.params)
             case "znorm":
-                x = pk.signal.normalize_signal(x, **preprocess.args)
+                x = pk.signal.normalize_signal(x, **preprocess.params)
             case _:
                 raise ValueError(f"Unknown preprocess '{preprocess.name}'")
         # END MATCH
@@ -40,8 +40,9 @@ def augment_pipeline(x: npt.NDArray, augmentations: list[AugmentationParams], sa
     Returns:
         npt.NDArray: Augmented signal
     """
+    x_sd = np.nanstd(x)
     for augmentation in augmentations:
-        args = augmentation.args
+        args = augmentation.params
         match augmentation.name:
             case "baseline_wander":
                 amplitude = args.get("amplitude", [0.05, 0.06])
@@ -51,6 +52,7 @@ def augment_pipeline(x: npt.NDArray, augmentations: list[AugmentationParams], sa
                     amplitude=np.random.uniform(amplitude[0], amplitude[1]),
                     frequency=np.random.uniform(frequency[0], frequency[1]),
                     sample_rate=sample_rate,
+                    signal_sd=x_sd,
                 )
             case "motion_noise":
                 amplitude = args.get("amplitude", [0.5, 1.0])
@@ -60,6 +62,7 @@ def augment_pipeline(x: npt.NDArray, augmentations: list[AugmentationParams], sa
                     amplitude=np.random.uniform(amplitude[0], amplitude[1]),
                     frequency=np.random.uniform(frequency[0], frequency[1]),
                     sample_rate=sample_rate,
+                    signal_sd=x_sd,
                 )
             case "burst_noise":
                 amplitude = args.get("amplitude", [0.05, 0.5])
@@ -69,8 +72,9 @@ def augment_pipeline(x: npt.NDArray, augmentations: list[AugmentationParams], sa
                     x,
                     amplitude=np.random.uniform(amplitude[0], amplitude[1]),
                     frequency=np.random.uniform(frequency[0], frequency[1]),
-                    burst_number=np.random.randint(burst_number[0], burst_number[1]),
+                    num_bursts=np.random.randint(burst_number[0], burst_number[1]),
                     sample_rate=sample_rate,
+                    signal_sd=x_sd,
                 )
             case "powerline_noise":
                 amplitude = args.get("amplitude", [0.005, 0.01])
@@ -80,6 +84,7 @@ def augment_pipeline(x: npt.NDArray, augmentations: list[AugmentationParams], sa
                     amplitude=np.random.uniform(amplitude[0], amplitude[1]),
                     frequency=np.random.uniform(frequency[0], frequency[1]),
                     sample_rate=sample_rate,
+                    signal_sd=x_sd,
                 )
             case "noise_sources":
                 num_sources = args.get("num_sources", [1, 2])
@@ -90,7 +95,15 @@ def augment_pipeline(x: npt.NDArray, augmentations: list[AugmentationParams], sa
                     x,
                     amplitudes=[np.random.uniform(amplitude[0], amplitude[1]) for _ in range(num_sources)],
                     frequencies=[np.random.uniform(frequency[0], frequency[1]) for _ in range(num_sources)],
+                    noise_shapes=["laplace" for _ in range(num_sources)],
                     sample_rate=sample_rate,
+                    signal_sd=x_sd,
+                )
+            case "lead_noise":
+                scale = args.get("scale", [1e-3, 1e-2])
+                x = pk.signal.add_lead_noise(
+                    x,
+                    scale=np.random.uniform(scale[0], scale[1]),
                 )
             case _:
                 raise ValueError(f"Unknown augmentation '{augmentation.name}'")

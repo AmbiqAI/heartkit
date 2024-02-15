@@ -7,7 +7,6 @@ import numpy.typing as npt
 import sklearn
 import tensorflow as tf
 
-from ..defines import HeartTask
 from ..utils import load_pkl, save_pkl
 from .defines import PatientGenerator, Preprocessor, SampleGenerator
 from .utils import create_dataset_from_data
@@ -20,21 +19,23 @@ def default_preprocess(x: npt.NDArray) -> npt.NDArray:
     return x
 
 
-class HeartKitDataset:
+class HKDataset:
     """HeartKit dataset base class"""
 
     target_rate: int
     ds_path: os.PathLike
-    task: HeartTask
+    task: str
     frame_size: int
+    spec: tuple[tf.TensorSpec, tf.TensorSpec]
     class_map: dict[int, int]
 
     def __init__(
         self,
         ds_path: os.PathLike,
-        task: HeartTask,
+        task: str,
         frame_size: int,
-        target_rate: int = 250,
+        target_rate: int,
+        spec: tuple[tf.TensorSpec, tf.TensorSpec],
         class_map: dict[int, int] | None = None,
     ) -> None:
         """HeartKit dataset base class"""
@@ -42,6 +43,7 @@ class HeartKitDataset:
         self.task = task
         self.frame_size = frame_size
         self.target_rate = target_rate
+        self.spec = spec
         self.class_map = class_map or {}
 
     #############################################
@@ -124,57 +126,6 @@ class HeartKitDataset:
     # !! Above must be implemented in subclass !!
     #############################################
 
-    @property
-    def feat_shape(self) -> tuple[int, ...]:
-        """Get dataset feature shape
-
-        Returns:
-            tuple[int, ...]: Feature shape
-        """
-        match self.task:
-            case HeartTask.arrhythmia:
-                return (self.frame_size, 1)
-            case HeartTask.beat:
-                return (self.frame_size, 3)
-            case HeartTask.segmentation:
-                return (self.frame_size, 1)
-            case _:
-                raise ValueError(f"unknown task: {self.task}")
-
-    @property
-    def class_shape(self) -> tuple[int, ...]:
-        """Get dataset class shape
-
-        Returns:
-            tuple[int, ...]: Class shape
-        """
-        num_classes = len(set(self.class_map.values()))
-        match self.task:
-            case HeartTask.arrhythmia:
-                return (num_classes,)
-            case HeartTask.beat:
-                return (num_classes,)
-            case HeartTask.segmentation:
-                return (self.frame_size, num_classes)
-            case _:
-                raise ValueError(f"unknown task: {self.task}")
-
-    @property
-    def input_spec(self) -> tuple[tf.TensorSpec, tf.TensorSpec]:
-        """Get dataset input spec
-
-        Args:
-            task (HeartTask): Heart task
-            frame_size (int): Frame size
-
-        Returns:
-            tuple[tf.TensorSpec]: TF input spec
-        """
-        return (
-            tf.TensorSpec(self.feat_shape, tf.float32),
-            tf.TensorSpec(self.class_shape, tf.int32),
-        )
-
     def load_train_datasets(
         self,
         train_patients: float | None = None,
@@ -221,7 +172,7 @@ class HeartKitDataset:
         if self.cachable and val_file and os.path.isfile(val_file):
             logger.info(f"Loading validation data from file {val_file}")
             val = load_pkl(val_file)
-            val_ds = create_dataset_from_data(val["x"], val["y"], self.input_spec)
+            val_ds = create_dataset_from_data(val["x"], val["y"], self.spec)
             val_patient_ids = val["patient_ids"]
             train_patient_ids = np.setdiff1d(train_patient_ids, val_patient_ids)
         else:
@@ -241,7 +192,7 @@ class HeartKitDataset:
                 num_workers=num_workers,
             )
             val_x, val_y = next(val_ds.batch(val_size).as_numpy_iterator())
-            val_ds = create_dataset_from_data(val_x, val_y, self.input_spec)
+            val_ds = create_dataset_from_data(val_x, val_y, self.spec)
 
             # Cache validation set
             if self.cachable and val_file:
@@ -370,7 +321,7 @@ class HeartKitDataset:
         ds_gen = functools.partial(self._dataset_sample_generator, preprocess=preprocess)
         dataset = tf.data.Dataset.from_generator(
             generator=ds_gen,
-            output_signature=self.input_spec,
+            output_signature=self.spec,
             args=(patient_ids, samples_per_patient, repeat),
         )
         options = tf.data.Options()
@@ -402,11 +353,12 @@ class HeartKitDataset:
         )
         preprocess_fn = preprocess if preprocess else default_preprocess
         num_classes = len(set(self.class_map.values()))
+        feat_shape = tuple(self.spec[0].shape)
 
         data_generator = map(
             lambda x_y: (
-                preprocess_fn(x_y[0]).reshape(self.feat_shape),
-                tf.one_hot(x_y[1], num_classes),
+                preprocess_fn(x_y[0]).reshape(feat_shape),
+                x_y[0] if num_classes <= 1 else tf.one_hot(x_y[1], num_classes),
             ),
             data_generator,
         )

@@ -7,11 +7,12 @@ authors = ["Ambiq AI <support.aitg@ambiq.com>"]
 readme = "README.md"
 homepage = "https://ambiq.ai"
 packages = [
-    { include = "heartkit" }
+    { include = "heartkit" },
 ]
 
 include = [
-    { path = "tests", format = "sdist" }
+    { path = "tests", format = "sdist" },
+    { path = "./heartkit/cfg/*.json"}
 ]
 
 [tool.poetry.scripts]
@@ -21,8 +22,6 @@ heartkit = 'heartkit.cli:run'
 format = "isort --profile black heartkit && black --line-length 120 heartkit"
 lint = "pylint heartkit"
 test = "pytest tests/"
-clean = "make -C ./evb clean"
-build = "make -C ./evb"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -38,49 +37,47 @@ filterwarnings = [
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
-tensorflow-macos = {version = "^2.14.0", platform = "darwin"}
-tensorflow = {version = "^2.14.0", markers = "sys_platform != 'darwin'"}
-numpy = "^1.24.3"
-scikit-learn = "^1.3.0"
+tensorflow-macos = {version = "^2.15.0", platform = "darwin"}
+tensorflow = {version = "^2.15.0", markers = "sys_platform != 'darwin'"}
+numpy = "^1.26.4"
+scikit-learn = "^1.4.0"
 wfdb = "^4.1.2"
 tensorflow-metal = {version = "^1.1.0", platform = "darwin"}
-fastparquet = "^2023.7.0"
-plotly = "^5.15.0"
-tqdm = "^4.65.0"
-seaborn = "^0.12.2"
-matplotlib = "3.7.3"
-tensorflow-model-optimization = "^0.7.3"
-pydantic = "^1.10.2"
-pydantic-argparse = "^0.5.0"
-typer = {version = "^0.9.0", extras = ["all"]}
+fastparquet = "^2023.10.1"
+plotly = "^5.18.0"
+tqdm = "^4.66.1"
+seaborn = "^0.13.2"
+matplotlib = "3.8.2"
+tensorflow-model-optimization = "^0.7.5"
+pydantic = "^2.5.3"
 erpc = {git = "https://github.com/AmbiqAI/erpc.git", rev = "develop", subdirectory = "erpc_python"}
 pyserial = "^3.5"
-rich = "^13.4.2"
-wandb = "^0.15.8"
-scipy = "^1.11.1"
-boto3 = "^1.27.1"
-orjson = "^3.9.1"
-physiokit = "^0.7.0"
+rich = "^13.7.0"
+wandb = "^0.16.3"
+scipy = "^1.12.0"
+boto3 = "^1.34.36"
+orjson = "^3.9.13"
+physiokit = "^0.8.1"
 requests = "^2.31.0"
+argdantic = {extras = ["all"], version = "^1.0.0"}
 
 [tool.poetry.group.dev.dependencies]
-black = "23.3.0"
-ipython = "^8.4.0"
-pylint = "^2.15.2"
-pytest = "^7.1.3"
-taskipy = "^1.10.3"
-pre-commit = "^2.20.0"
-jupyter = "^1.0.0"
-notebook = "^6.5.2"
-tensorboard-plugin-profile = "^2.13.0"
+black = "^24.1.1"
+ipython = "^8.21.0"
+pylint = "^3.0.3"
+pytest = "^8.0.0"
+taskipy = "^1.12.0"
+pre-commit = "^3.6.0"
+notebook = "^7.0.2"
+tensorboard-plugin-profile = "^2.14.0"
 
 [tool.poetry.group.docs]
 optional = true
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.5.3"
-mkdocs-material = "^9.4.6"
-mkdocstrings-python = "^1.7.3"
+mkdocs-material = "^9.5.8"
+mkdocstrings-python = "^1.8.0"
 markdown-include = "^0.8.1"
 mkdocs-exclude = "^1.0.2"
 
@@ -120,11 +117,11 @@ max-line-length = 140
 [tool.pylint.design]
 max-args = 50
 max-locals = 50
-max-statements = 80
+max-statements = 100
 max-module-lines = 2000
-max-attributes = 10
+max-attributes = 20
 max-branches = 50
-max-returns = 10
+max-returns = 20
 
 [tool.pyright]
 

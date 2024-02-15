@@ -9,11 +9,11 @@ import h5py
 import numpy as np
 import numpy.typing as npt
 import physiokit as pk
+import tensorflow as tf
 from tqdm import tqdm
 
-from ..defines import HeartTask
 from ..utils import download_file
-from .dataset import HeartKitDataset
+from .dataset import HKDataset
 from .defines import PatientGenerator, SampleGenerator
 
 logger = logging.getLogger(__name__)
@@ -34,18 +34,26 @@ SEG_BEG_IDX = 2
 SEG_END_IDX = 3
 
 
-class QtdbDataset(HeartKitDataset):
+class QtdbDataset(HKDataset):
     """QT dataset"""
 
     def __init__(
         self,
         ds_path: os.PathLike,
-        task: HeartTask = HeartTask.arrhythmia,
-        frame_size: int = 1250,
-        target_rate: int = 250,
+        task: str,
+        frame_size: int,
+        target_rate: int,
+        spec: tuple[tf.TensorSpec, tf.TensorSpec],
         class_map: dict[int, int] | None = None,
     ) -> None:
-        super().__init__(ds_path / "qtdb", task, frame_size, target_rate, class_map)
+        super().__init__(
+            ds_path=ds_path / "qtdb",
+            task=task,
+            frame_size=frame_size,
+            target_rate=target_rate,
+            spec=spec,
+            class_map=class_map,
+        )
 
     @property
     def sampling_rate(self) -> int:
@@ -206,7 +214,7 @@ class QtdbDataset(HeartKitDataset):
         Returns:
             SampleGenerator: Sample data generator
         """
-        if self.task == HeartTask.segmentation:
+        if self.task == "segmentation":
             return self.segmentation_generator(
                 patient_generator=patient_generator,
                 samples_per_patient=samples_per_patient,

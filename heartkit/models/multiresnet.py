@@ -1,5 +1,6 @@
 import math
 
+import keras
 import tensorflow as tf
 from pydantic import BaseModel, Field
 
@@ -73,10 +74,10 @@ def multiresnet_block(
     def layer(x: tf.Tensor) -> tf.Tensor:
         if tree_select == "fading":
             res_lo = x
-            y = tf.keras.layers.DepthwiseConv1D(
+            y = keras.layers.DepthwiseConv1D(
                 kernel_size=1,
             )(x)
-            conv_hi = tf.keras.layers.Conv1D(
+            conv_hi = keras.layers.Conv1D(
                 filters=d_model,
                 kernel_size=kernel_size,
                 kernel_initializer=h1,
@@ -84,7 +85,7 @@ def multiresnet_block(
                 padding="valid",
                 groups=x.shape[2],
             )
-            conv_lo = tf.keras.layers.Conv1D(
+            conv_lo = keras.layers.Conv1D(
                 filters=d_model,
                 kernel_size=kernel_size,
                 kernel_initializer=h0,
@@ -95,22 +96,22 @@ def multiresnet_block(
             dilation = 1
             for _ in range(depth, 0, -1):
                 padding = dilation * (kernel_size - 1)
-                res_lo_pad = tf.keras.layers.ZeroPadding1D((padding, 0))(res_lo)
+                res_lo_pad = keras.layers.ZeroPadding1D((padding, 0))(res_lo)
                 res_hi = SharedWeightsConv(conv_hi, dilation_rate=dilation)(res_lo_pad)
                 res_lo = SharedWeightsConv(conv_lo, dilation_rate=dilation)(res_lo_pad)
-                res_hi = tf.keras.layers.DepthwiseConv1D(kernel_size=1)(res_hi)
-                y = tf.keras.layers.add([y, res_hi])
+                res_hi = keras.layers.DepthwiseConv1D(kernel_size=1)(res_hi)
+                y = keras.layers.add([y, res_hi])
                 dilation *= 2
             # END FOR
-            res_lo = tf.keras.layers.DepthwiseConv1D(
+            res_lo = keras.layers.DepthwiseConv1D(
                 kernel_size=1,
             )(res_lo)
-            y = tf.keras.layers.add([y, res_lo])
+            y = keras.layers.add([y, res_lo])
 
         elif tree_select == "uniform":
             raise NotImplementedError("tree_select == 'uniform' is not implemented yet")
 
-        y = tf.keras.layers.Dropout(droprate)(y)
+        y = keras.layers.Dropout(droprate)(y)
         y = relu6()(y)
         return y
 
@@ -126,7 +127,7 @@ def MultiresNet(
     y = x
 
     # Apply stem
-    y = tf.keras.layers.Conv1D(params.d_model, kernel_size=1)(y)
+    y = keras.layers.Conv1D(params.d_model, kernel_size=1)(y)
 
     # Apply multiresnet blocks
     for _ in range(params.n_layers):
@@ -139,18 +140,18 @@ def MultiresNet(
             droprate=params.dropout,
         )(y)
         # Mix channels
-        y = tf.keras.layers.Conv1D(int(params.activation_scaling * params.d_model), 1)(y)
+        y = keras.layers.Conv1D(int(params.activation_scaling * params.d_model), 1)(y)
         y = glu()(y)
-        y = tf.keras.layers.Dropout(params.dropout)(y)
-        y = tf.keras.layers.Add()([y, y_res])
+        y = keras.layers.Dropout(params.dropout)(y)
+        y = keras.layers.Add()([y, y_res])
         y = batch_norm()(y)
     # END FOR
 
     if params.include_top:
         name = "top"
-        y = tf.keras.layers.GlobalAveragePooling1D(name=f"{name}.pool")(y)
+        y = keras.layers.GlobalAveragePooling1D(name=f"{name}.pool")(y)
         if 0 < params.dropout < 1:
-            y = tf.keras.layers.Dropout(params.dropout)(y)
-        y = tf.keras.layers.Dense(num_classes, name=name)(y)
-    model = tf.keras.Model(x, y, name=params.model_name)
+            y = keras.layers.Dropout(params.dropout)(y)
+        y = keras.layers.Dense(num_classes, name=name)(y)
+    model = keras.Model(x, y, name=params.model_name)
     return model

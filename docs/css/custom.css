@@ -37,6 +37,10 @@ a.internal-link::after {
   box-shadow: 5px 5px 10px #999;
 }
 
+.md-grid {
+  max-width: 1440px;
+}
+
 /* Give space to lower icons so Gitter chat doesn't get on top of them */
 .md-footer-meta {
   padding-bottom: 2em;

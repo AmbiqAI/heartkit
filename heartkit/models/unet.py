@@ -1,6 +1,8 @@
 """ UNet """
+
 from typing import Literal
 
+import keras
 import tensorflow as tf
 from pydantic import BaseModel, Field
 
@@ -38,7 +40,7 @@ def UNet(
     x: tf.Tensor,
     params: UNetParams,
     num_classes: int,
-) -> tf.keras.Model:
+) -> keras.Model:
     """Create UNet TF functional model
 
     Args:
@@ -47,17 +49,17 @@ def UNet(
         num_classes (int, optional): # classes.
 
     Returns:
-        tf.keras.Model: Model
+        keras.Model: Model
     """
     requires_reshape = len(x.shape) == 3
     if requires_reshape:
-        y = tf.keras.layers.Reshape((1,) + x.shape[1:])(x)
+        y = keras.layers.Reshape((1,) + x.shape[1:])(x)
     else:
         y = x
     # END IF
 
     #### ENCODER ####
-    skip_layers: list[tf.keras.layers.Layer | None] = []
+    skip_layers: list[keras.layers.Layer | None] = []
     for i, block in enumerate(params.blocks):
         name = f"ENC{i+1}"
         ym = y
@@ -70,7 +72,7 @@ def UNet(
             else:
                 dilation_rate = (block.dilation[0] ** d, block.dilation[1] ** d)
             if block.seperable:
-                ym = tf.keras.layers.SeparableConv2D(
+                ym = keras.layers.SeparableConv2D(
                     block.filters,
                     kernel_size=block.kernel,
                     strides=(1, 1),
@@ -78,20 +80,20 @@ def UNet(
                     dilation_rate=dilation_rate,
                     depthwise_initializer="he_normal",
                     pointwise_initializer="he_normal",
-                    depthwise_regularizer=tf.keras.regularizers.L2(1e-3),
-                    pointwise_regularizer=tf.keras.regularizers.L2(1e-3),
+                    depthwise_regularizer=keras.regularizers.L2(1e-3),
+                    pointwise_regularizer=keras.regularizers.L2(1e-3),
                     use_bias=block.norm is None,
                     name=f"{dname}.conv",
                 )(ym)
             else:
-                ym = tf.keras.layers.Conv2D(
+                ym = keras.layers.Conv2D(
                     block.filters,
                     kernel_size=block.kernel,
                     strides=(1, 1),
                     padding="same",
                     dilation_rate=dilation_rate,
                     kernel_initializer="he_normal",
-                    kernel_regularizer=tf.keras.regularizers.L2(1e-3),
+                    kernel_regularizer=keras.regularizers.L2(1e-3),
                     use_bias=block.norm is None,
                     name=f"{dname}.conv",
                 )(ym)
@@ -103,23 +105,23 @@ def UNet(
         # END FOR
 
         # Project residual
-        yr = tf.keras.layers.Conv2D(
+        yr = keras.layers.Conv2D(
             block.filters,
             kernel_size=(1, 1),
             strides=(1, 1),
             padding="same",
             kernel_initializer="he_normal",
-            kernel_regularizer=tf.keras.regularizers.L2(1e-3),
+            kernel_regularizer=keras.regularizers.L2(1e-3),
             name=f"{name}.skip",
         )(y)
 
         if block.dropout is not None:
-            ym = tf.keras.layers.Dropout(block.dropout, noise_shape=ym.shape)(ym)
-        y = tf.keras.layers.add([ym, yr], name=f"{name}.add")
+            ym = keras.layers.Dropout(block.dropout, noise_shape=ym.shape)(ym)
+        y = keras.layers.add([ym, yr], name=f"{name}.add")
 
         skip_layers.append(y if block.skip else None)
 
-        y = tf.keras.layers.MaxPooling2D(block.pool, strides=block.strides, padding="same", name=f"{name}.pool")(y)
+        y = keras.layers.MaxPooling2D(block.pool, strides=block.strides, padding="same", name=f"{name}.pool")(y)
     # END FOR
 
     #### DECODER ####
@@ -128,7 +130,7 @@ def UNet(
         for d in range(block.ddepth or block.depth):
             dname = f"{name}.D{d+1}"
             if block.seperable:
-                y = tf.keras.layers.SeparableConv2D(
+                y = keras.layers.SeparableConv2D(
                     block.filters,
                     kernel_size=block.kernel,
                     strides=(1, 1),
@@ -136,20 +138,20 @@ def UNet(
                     dilation_rate=dilation_rate,
                     depthwise_initializer="he_normal",
                     pointwise_initializer="he_normal",
-                    depthwise_regularizer=tf.keras.regularizers.L2(1e-3),
-                    pointwise_regularizer=tf.keras.regularizers.L2(1e-3),
+                    depthwise_regularizer=keras.regularizers.L2(1e-3),
+                    pointwise_regularizer=keras.regularizers.L2(1e-3),
                     use_bias=block.norm is None,
                     name=f"{dname}.conv",
                 )(y)
             else:
-                y = tf.keras.layers.Conv2D(
+                y = keras.layers.Conv2D(
                     block.filters,
                     kernel_size=block.kernel,
                     strides=(1, 1),
                     padding="same",
                     dilation_rate=dilation_rate,
                     kernel_initializer="he_normal",
-                    kernel_regularizer=tf.keras.regularizers.L2(1e-3),
+                    kernel_regularizer=keras.regularizers.L2(1e-3),
                     use_bias=block.norm is None,
                     name=f"{dname}.conv",
                 )(y)
@@ -160,20 +162,20 @@ def UNet(
             y = relu6(name=dname)(y)
         # END FOR
 
-        y = tf.keras.layers.UpSampling2D(size=block.strides, name=f"{dname}.unpool")(y)
+        y = keras.layers.UpSampling2D(size=block.strides, name=f"{dname}.unpool")(y)
 
         # Add skip connection
         dname = f"{name}.D{block.depth+1}"
         skip_layer = skip_layers.pop()
         if skip_layer is not None:
-            y = tf.keras.layers.concatenate([y, skip_layer], name=f"{dname}.cat")  # Can add or concatenate
+            y = keras.layers.concatenate([y, skip_layer], name=f"{dname}.cat")  # Can add or concatenate
             # Use 1x1 conv to reduce filters
-            y = tf.keras.layers.Conv2D(
+            y = keras.layers.Conv2D(
                 block.filters,
                 kernel_size=(1, 1),
                 padding="same",
                 kernel_initializer="he_normal",
-                kernel_regularizer=tf.keras.regularizers.L2(1e-3),
+                kernel_regularizer=keras.regularizers.L2(1e-3),
                 use_bias=block.norm is None,
                 name=f"{dname}.conv",
             )(y)
@@ -186,26 +188,26 @@ def UNet(
 
         dname = f"{name}.D{block.depth+2}"
         if block.seperable:
-            ym = tf.keras.layers.SeparableConv2D(
+            ym = keras.layers.SeparableConv2D(
                 block.filters,
                 kernel_size=block.kernel,
                 strides=(1, 1),
                 padding="same",
                 depthwise_initializer="he_normal",
                 pointwise_initializer="he_normal",
-                depthwise_regularizer=tf.keras.regularizers.L2(1e-3),
-                pointwise_regularizer=tf.keras.regularizers.L2(1e-3),
+                depthwise_regularizer=keras.regularizers.L2(1e-3),
+                pointwise_regularizer=keras.regularizers.L2(1e-3),
                 use_bias=block.norm is None,
                 name=f"{dname}.conv",
             )(y)
         else:
-            ym = tf.keras.layers.Conv2D(
+            ym = keras.layers.Conv2D(
                 block.filters,
                 kernel_size=block.kernel,
                 strides=(1, 1),
                 padding="same",
                 kernel_initializer="he_normal",
-                kernel_regularizer=tf.keras.regularizers.L2(1e-3),
+                kernel_regularizer=keras.regularizers.L2(1e-3),
                 use_bias=block.norm is None,
                 name=f"{dname}.conv",
             )(y)
@@ -216,36 +218,36 @@ def UNet(
         ym = relu6(name=dname)(ym)
 
         # Project residual
-        yr = tf.keras.layers.Conv2D(
+        yr = keras.layers.Conv2D(
             block.filters,
             kernel_size=(1, 1),
             padding="same",
             kernel_initializer="he_normal",
-            kernel_regularizer=tf.keras.regularizers.L2(1e-3),
+            kernel_regularizer=keras.regularizers.L2(1e-3),
             name=f"{name}.skip",
         )(y)
-        y = tf.keras.layers.add([ym, yr], name=f"{name}.add")  # Add back residual
+        y = keras.layers.add([ym, yr], name=f"{name}.add")  # Add back residual
     # END FOR
 
     if params.include_top:
         # Add a per-point classification layer
-        y = tf.keras.layers.Conv2D(
+        y = keras.layers.Conv2D(
             num_classes,
             kernel_size=params.output_kernel_size,
             padding="same",
             kernel_initializer="he_normal",
-            kernel_regularizer=tf.keras.regularizers.L2(1e-3),
+            kernel_regularizer=keras.regularizers.L2(1e-3),
             name="NECK.conv",
             use_bias=True,
         )(y)
-        # y = tf.keras.layers.Reshape(y.shape[2:])(y)
         if not params.use_logits:
-            y = tf.keras.layers.Softmax()(y)
+            y = keras.layers.Softmax()(y)
         # END IF
     # END IF
+
     if requires_reshape:
-        y = tf.keras.layers.Reshape(y.shape[2:])(y)
+        y = keras.layers.Reshape(y.shape[2:])(y)
     # END IF
     # Define the model
-    model = tf.keras.Model(x, y, name=params.model_name)
+    model = keras.Model(x, y, name=params.model_name)
     return model

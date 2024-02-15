@@ -1,31 +1,24 @@
 import os
 from typing import Type, TypeVar
 
-import pydantic_argparse
-from pydantic import BaseModel, Field
+from argdantic import ArgField, ArgParser
+from pydantic import BaseModel
 
-from . import arrhythmia, beat, segmentation
 from .datasets import download_datasets
 from .defines import (
-    HeartDemoParams,
-    HeartDownloadParams,
-    HeartExportParams,
-    HeartKitMode,
-    HeartTask,
-    HeartTestParams,
-    HeartTrainParams,
+    HKDemoParams,
+    HKDownloadParams,
+    HKExportParams,
+    HKMode,
+    HKTestParams,
+    HKTrainParams,
 )
+from .tasks import TaskFactory
 from .utils import setup_logger
 
 logger = setup_logger(__name__)
 
-
-class CliArgs(BaseModel):
-    """CLI arguments"""
-
-    task: HeartTask = Field(default=HeartTask.segmentation)
-    mode: HeartKitMode = Field(default=HeartKitMode.train)
-    config: str = Field(description="JSON config file path or string")
+cli = ArgParser()
 
 
 B = TypeVar("B", bound=BaseModel)
@@ -41,58 +34,55 @@ def parse_content(cls: Type[B], content: str) -> B:
     Returns:
         B: Pydantic model subclass instance
     """
-    return cls.parse_file(content) if os.path.isfile(content) else cls.parse_raw(content)
+    if os.path.isfile(content):
+        with open(content, "r", encoding="utf-8") as f:
+            content = f.read()
+
+    return cls.model_validate_json(json_data=content)
 
 
-def run(inputs: list[str] | None = None):
-    """Main CLI app runner
+@cli.command(name="run")
+def _run(
+    mode: HKMode = ArgField("-m", description="Mode"),
+    task: str = ArgField("-t", description="Task"),
+    config: str = ArgField("-c", description="File path or JSON content"),
+):
+    """ "HeartKit CLI"""
 
-    Args:
-        inputs (list[str] | None, optional): App arguments. Defaults to CLI arguments.
-    """
-    parser = pydantic_argparse.ArgumentParser(
-        model=CliArgs,
-        prog="HeartKit CLI",
-        description="HeartKit leverages AI for heart monitoring tasks.",
-    )
-    args = parser.parse_typed_args(inputs)
+    logger.info(f"#STARTED {mode} mode")
 
-    logger.info(f"#STARTED {args.mode} model")
-
-    if args.mode == HeartKitMode.download:
-        download_datasets(parse_content(HeartDownloadParams, args.config))
+    if mode == HKMode.download:
+        download_datasets(parse_content(HKDownloadParams, config))
         return
 
-    match args.task:
-        case HeartTask.arrhythmia:
-            task_handler = arrhythmia
-        case HeartTask.beat:
-            task_handler = beat
-        case HeartTask.segmentation:
-            task_handler = segmentation
-        case _:
-            raise NotImplementedError()
-    # END MATCH
+    if not TaskFactory.has(task):
+        logger.error(f"Error: Unknown task {task}")
+    task_handler = TaskFactory.get(task)
 
-    match args.mode:
-        case HeartKitMode.train:
-            task_handler.train(parse_content(HeartTrainParams, args.config))
+    match mode:
+        case HKMode.train:
+            task_handler.train(parse_content(HKTrainParams, config))
 
-        case HeartKitMode.evaluate:
-            task_handler.evaluate(parse_content(HeartTestParams, args.config))
+        case HKMode.evaluate:
+            task_handler.evaluate(parse_content(HKTestParams, config))
 
-        case HeartKitMode.export:
-            task_handler.export(parse_content(HeartExportParams, args.config))
+        case HKMode.export:
+            task_handler.export(parse_content(HKExportParams, config))
 
-        case HeartKitMode.demo:
-            task_handler.demo(parse_content(HeartDemoParams, args.config))
+        case HKMode.demo:
+            task_handler.demo(parse_content(HKDemoParams, config))
 
         case _:
             logger.error("Error: Unknown command")
 
     # END MATCH
 
-    logger.info(f"#FINISHED {args.mode} model")
+    logger.info(f"#FINISHED {mode} mode")
+
+
+def run():
+    """Run CLI."""
+    cli()
 
 
 if __name__ == "__main__":

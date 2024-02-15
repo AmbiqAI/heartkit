@@ -98,6 +98,7 @@ def confusion_matrix_plot(
         y_pred (npt.NDArray): Predicted y labels
         labels (list[str]): Label names
         save_path (str | None): Path to save plot. Defaults to None.
+
     Returns:
         tuple[plt.Figure, plt.Axes] | None: Figure and axes
     """

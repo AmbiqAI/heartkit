@@ -1,17 +1,29 @@
 import os
 from importlib.metadata import version
 
-from . import (
-    arrhythmia,
-    beat,
-    cli,
-    datasets,
-    defines,
-    metrics,
-    models,
-    segmentation,
-    tflite,
+from . import cli, datasets, metrics, models, rpc, tasks, tflite
+from .datasets import DatasetFactory, HKDataset
+from .defines import (
+    AugmentationParams,
+    DatasetParams,
+    HeartBeat,
+    HeartBeatName,
+    HeartRate,
+    HeartRateName,
+    HeartRhythm,
+    HeartRhythmName,
+    HeartSegment,
+    HeartSegmentName,
+    HKDemoParams,
+    HKDownloadParams,
+    HKExportParams,
+    HKMode,
+    HKTestParams,
+    HKTrainParams,
+    PreprocessParams,
 )
+from .models import ModelFactory
+from .tasks import HKTask, TaskFactory
 from .utils import setup_logger
 
 __version__ = version(__name__)

@@ -1,46 +1,101 @@
 site_name: HeartKit
 site_dir: "site"
-site_description: HeartKit, perform AI-based heart monitoring tasks
+site_url: "https://ambiqai.github.io/heartkit"
+site_description: HeartKit, AI Development Kit for AI heart monitoring on the edge
 repo_name: AmbiqAI/hearkit
 repo_url: https://github.com/AmbiqAI/heartkit
 copyright: Copyright &copy; 2023 Ambiq
 
 nav:
-  - HeartKit: index.md
-  - Overview: overview.md
-  - Datasets: datasets.md
-  - Results: results.md
+  - Home:
+    - Home: index.md
+    - Quickstart: quickstart.md
+    - Modes:
+      - modes/index.md
+      - Download: modes/download.md
+      - Train: modes/train.md
+      - Evaluate: modes/evaluate.md
+      - Export: modes/export.md
+      - Demo: modes/demo.md
+    - Tasks:
+      - tasks/index.md
+      - Segmentation: tasks/segmentation.md
+      - Arrhythmia: tasks/arrhythmia.md
+      - Beat: tasks/beat.md
+      - Denoise: tasks/denoise.md
+    - Model Zoo:
+      - zoo/index.md
+    - Models:
+      - models/index.md
+    - Datasets:
+      - datasets/index.md
+    - Experiments:
+      - experiments/index.md
+    - Guides:
+      - guides/index.md
+
+  - Quickstart:
+    - quickstart.md
+    - Usage:
+      - CLI: usage/cli.md
+      - Python: usage/python.md
+
+  - Modes:
+    - modes/index.md
+    - Download: modes/download.md
+    - Train: modes/train.md
+    - Evaluate: modes/evaluate.md
+    - Export: modes/export.md
+    - Demo: modes/demo.md
+
   - Tasks:
-    - Segmentation:
-      - Overview: segmentation/overview.md
-      - Methods: segmentation/methods.md
-      - Results: segmentation/results.md
-      - Demo: segmentation/demo.md
+    - tasks/index.md
+    - Segmentation: tasks/segmentation.md
+    - Arrhythmia: tasks/arrhythmia.md
+    - Beat: tasks/beat.md
+    - Denoise: tasks/denoise.md
+    - BYOT: tasks/byot.md
 
-    - Arrhythmia:
-      - Overview: arrhythmia/overview.md
-      - Methods: arrhythmia/methods.md
-      - Results: arrhythmia/results.md
-      - Demo: arrhythmia/demo.md
+  - Model Zoo:
+    - zoo/index.md
+    - Segmentation: zoo/segmentation.md
+    - Arrhythmia: zoo/arrhythmia.md
+    - Beat: zoo/beat.md
+    - Denoise: zoo/denoise.md
 
-    - Beat:
-      - Overview: beat/overview.md
-      - Methods: beat/methods.md
-      - Results: beat/results.md
-      - Demo: beat/demo.md
+  - Models:
+    - models/index.md
+    - TCN: models/tcn.md
+    - EfficientNetV2: models/efficientnet.md
+    - MobileOne: models/mobileone.md
+    - UNet: models/unet.md
+    - UNeXt: models/unext.md
+    - ResNet: models/resnet.md
 
-  - Tutorials:
-    - EVB Setup: ./tutorials/evb-setup.md
-    - Arrhythmia Demo: ./tutorials/arrhythmia-demo.md
-    - HeartKit Demo: ./tutorials/heartkit-demo.md
+  - Datasets:
+    - datasets/index.md
+    - Icentia11k: datasets/icentia11k.md
+    - Synthetic: datasets/synthetic.md
+    - QTDB: datasets/qtdb.md
+    - LUDB: datasets/ludb.md
+    - PTB-XL: datasets/ptbxl.md
+    - MIT-BIH: datasets/mitbih.md
+    - BYOD: datasets/byod.md
 
-  - API:
-    - HeartKit: ./api/heartkit.md
-    - Datasets: ./api/datasets.md
-    - Models: ./api/models.md
-    - Segmentation: ./api/segmentation.md
-    - Arrhythmia: ./api/arrhythmia.md
-    - Beat: ./api/beat.md
+  - Experiments:
+    - experiments/index.md
+
+  - Guides:
+    - guides/index.md
+    - EVB Setup: guides/evb-setup.md
+    - Arrhythmia Demo: guides/arrhythmia-demo.md
+    - HeartKit Demo: guides/heartkit-demo.md
+
+  - Reference:
+    - HeartKit: api/heartkit.md
+    - Datasets: api/datasets.md
+    - Models: api/models.md
+    - Tasks: api/tasks.md
 
 theme:
   name: material
@@ -73,7 +128,24 @@ theme:
         icon: material/brightness-4
         name: Switch to dark theme
   features:
-    - content.tabs.link
+    - content.code.annotate
+    - content.code.copy
+    - content.tooltips
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+    - navigation.top
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.prune
+    - navigation.footer
+    - navigation.tracking
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.indexes
+    - navigation.sections  # navigation.expand or navigation.sections
+    - content.tabs.link # all code tabs change simultaneously
 
 plugins:
   - search
@@ -120,3 +192,4 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - tables
   - md_in_html
+  - sane_lists

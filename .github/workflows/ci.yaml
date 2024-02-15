@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install poetry
-        run: pipx install poetry==1.6.1
+        run: pipx install poetry
       - uses: actions/setup-python@v4
         with:
           python-version: '3.11'

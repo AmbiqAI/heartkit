@@ -15,16 +15,16 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import physiokit as pk
-import scipy.ndimage
 import sklearn.model_selection
 import sklearn.preprocessing
+import tensorflow as tf
 from botocore import UNSIGNED
 from botocore.client import Config
 from tqdm import tqdm
 
-from ..defines import HeartBeat, HeartRate, HeartRhythm, HeartSegment, HeartTask
+from ..defines import HeartBeat, HeartRate, HeartRhythm, HeartSegment
 from ..utils import download_file
-from .dataset import HeartKitDataset
+from .dataset import HKDataset
 from .defines import PatientGenerator, SampleGenerator
 
 logger = logging.getLogger(__name__)
@@ -77,18 +77,26 @@ HeartBeatMap = {
 }
 
 
-class IcentiaDataset(HeartKitDataset):
+class IcentiaDataset(HKDataset):
     """Icentia dataset"""
 
     def __init__(
         self,
         ds_path: os.PathLike,
-        task: HeartTask = HeartTask.arrhythmia,
-        frame_size: int = 1250,
-        target_rate: int = 250,
+        task: str,
+        frame_size: int,
+        target_rate: int,
+        spec: tuple[tf.TensorSpec, tf.TensorSpec],
         class_map: dict[int, int] | None = None,
     ) -> None:
-        super().__init__(ds_path / "icentia11k", task, frame_size, target_rate, class_map)
+        super().__init__(
+            ds_path=ds_path / "icentia11k",
+            task=task,
+            frame_size=frame_size,
+            target_rate=target_rate,
+            spec=spec,
+            class_map=class_map,
+        )
 
     @property
     def sampling_rate(self) -> int:
@@ -161,18 +169,18 @@ class IcentiaDataset(HeartKitDataset):
         Returns:
             SampleGenerator: Sample data generator
         """
-        if self.task == HeartTask.arrhythmia:
+        if self.task == "arrhythmia":
             return self.rhythm_data_generator(
                 patient_generator=patient_generator,
                 samples_per_patient=samples_per_patient,
             )
-        if self.task == HeartTask.beat:
+        if self.task == "beat":
             return self.beat_data_generator(
                 patient_generator=patient_generator,
                 samples_per_patient=samples_per_patient,
             )
-        if self.task == HeartTask.segmentation:
-            return self.segmentation_data_generator(
+        if self.task == "segmentation":
+            return self.segmentation_generator(
                 patient_generator=patient_generator,
                 samples_per_patient=samples_per_patient,
             )
@@ -190,7 +198,7 @@ class IcentiaDataset(HeartKitDataset):
             list[list[int]]: Train and test sets of patient ids
         """
         # Use stratified split for arrhythmia task
-        if self.task == HeartTask.arrhythmia:
+        if self.task == "arrhythmia":
             arr_pt_ids = np.intersect1d(self.arr_rhythm_patients, patient_ids)
             norm_pt_ids = np.setdiff1d(patient_ids, arr_pt_ids)
             (
@@ -307,7 +315,7 @@ class IcentiaDataset(HeartKitDataset):
             # END FOR
         # END FOR
 
-    def segmentation_data_generator(
+    def segmentation_generator(
         self,
         patient_generator: PatientGenerator,
         samples_per_patient: int | list[int] = 1,
@@ -352,33 +360,21 @@ class IcentiaDataset(HeartKitDataset):
                         continue
 
                     # Extract QRS segment
-                    qrs_window = 0.1
-                    avg_window = 1.0
-                    qrs_prom_weight = 1.5
-                    abs_grad = np.abs(np.gradient(data))
-                    qrs_kernel = int(np.rint(qrs_window * self.target_rate))
-                    avg_kernel = int(np.rint(avg_window * self.target_rate))
-                    # Smooth gradients
-                    qrs_grad = scipy.ndimage.uniform_filter1d(abs_grad, qrs_kernel, mode="nearest")
-                    avg_grad = scipy.ndimage.uniform_filter1d(qrs_grad, avg_kernel, mode="nearest")
-                    min_qrs_height = qrs_prom_weight * avg_grad
-                    qrs = qrs_grad - min_qrs_height
+                    qrs = pk.signal.moving_gradient_filter(
+                        data, sample_rate=self.target_rate, sig_window=0.1, avg_window=1.0, sig_prom_weight=1.5
+                    )
                     win_len = max(1, int(0.08 * self.target_rate))  # 80 ms
                     b_left = max(0, bidx - win_len)
                     b_right = min(data.shape[0], bidx + win_len)
                     onset = np.where(np.flip(qrs[b_left:bidx]) < 0)[0]
-                    onset = onset[0] if onset.size else b_left
+                    onset = onset[0] if onset.size else win_len
                     offset = np.where(qrs[bidx + 1 : b_right] < 0)[0]
-                    offset = offset[0] if offset.size else b_right
+                    offset = offset[0] if offset.size else win_len
                     mask[bidx - onset : bidx + offset] = self.class_map.get(HeartSegment.qrs.value, 0)
                     # Ignore P, T, and U waves for now
                 # END FOR
                 x = np.nan_to_num(data).astype(np.float32)
                 y = mask.astype(np.int32)
-                # if self.sampling_rate != self.target_rate:
-                #     x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate, axis=0)
-                #     y = pk.signal.filter.resample_signal(y, self.sampling_rate, self.target_rate, axis=0)
-                # # END IF
                 yield x, y
             # END FOR
         # END FOR
@@ -834,7 +830,7 @@ class IcentiaDataset(HeartKitDataset):
                 for future in as_completed(futures):
                     err = future.exception()
                     if err:
-                        print("Failed on file", err)
+                        logger.exception("Failed on file")
                     pbar.update(1)
                 # END FOR
             # END WITH
@@ -903,7 +899,7 @@ class IcentiaDataset(HeartKitDataset):
         pt_id = self._pt_key(patient)
         pt_path = self.ds_path / f"{pt_id}.h5"
         if not force and os.path.exists(pt_path):
-            print("skipping patient")
+            logger.debug(f"Skipping patient {pt_id}")
             return
         zp = zipfile.ZipFile(zip_path, mode="r")  # pylint: disable=consider-using-with
         h5 = h5py.File(pt_path, mode="w")
@@ -953,7 +949,7 @@ class IcentiaDataset(HeartKitDataset):
                 h5.create_dataset(name=f"{pt_seg_path}/blabels", data=blabels)
                 h5.create_dataset(name=f"{pt_seg_path}/rlabels", data=rlabels)
             except Exception as err:  # pylint: disable=broad-except
-                print(f"Failed processing {zp_rec_name}", err)
+                logger.warning(f"Failed processing {zp_rec_name}", err)
                 continue
         h5.close()
 

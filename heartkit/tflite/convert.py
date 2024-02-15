@@ -1,6 +1,7 @@
 import io
 import os
 
+import keras
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -92,21 +93,21 @@ def xxd_c_dump(
 
 
 def convert_tflite(
-    model: tf.keras.Model,
+    model: keras.Model,
     quantize: bool = False,
     test_x: npt.NDArray | None = None,
-    input_type: tf.DType | None = None,
-    output_type: tf.DType | None = None,
+    input_type: str | None = None,
+    output_type: str | None = None,
     supported_ops: list | None = None,
 ) -> bytes:
     """Convert TF model into TFLite model content
 
     Args:
-        model (tf.keras.Model): TF model
+        model (keras.Model): TF model
         quantize (bool, optional): Enable PTQ. Defaults to False.
         test_x (npt.NDArray | None, optional): Enables full integer PTQ. Defaults to None.
-        input_type (tf.DType | None): Input type data format. Defaults to None.
-        output_type (tf.DType | None): Output type data format. Defaults to None.
+        input_type (str | None): Input type data format. Defaults to None.
+        output_type (str | None): Output type data format. Defaults to None.
 
     Returns:
         bytes: TFLite content
@@ -118,10 +119,11 @@ def convert_tflite(
     # Optionally quantize model
     if quantize:
         converter.optimizations = [tf.lite.Optimize.DEFAULT]
+
         if test_x is not None:
             converter.target_spec.supported_ops = supported_ops or [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-            converter.inference_input_type = input_type
-            converter.inference_output_type = output_type
+            converter.inference_input_type = tf.dtypes.as_dtype(input_type) if input_type else None
+            converter.inference_output_type = tf.dtypes.as_dtype(output_type) if output_type else None
 
             def rep_dataset():
                 for i in range(test_x.shape[0]):
@@ -129,25 +131,27 @@ def convert_tflite(
 
             converter.representative_dataset = rep_dataset
         # END IF
+    # END IF
+
     # Convert model
     return converter.convert()
 
 
 def debug_quant_tflite(
-    model: tf.keras.Model,
+    model: keras.Model,
     test_x: npt.NDArray | None = None,
-    input_type: tf.DType | None = None,
-    output_type: tf.DType | None = None,
+    input_type: str | None = None,
+    output_type: str | None = None,
     supported_ops: list | None = None,
 ) -> tuple[tf.lite.experimental.QuantizationDebugger, pd.DataFrame]:
     """Debug quantized TFLite model content
 
     Args:
-        model (tf.keras.Model): TF model
+        model (keras.Model): TF model
         quantize (bool, optional): Enable PTQ. Defaults to False.
         test_x (npt.NDArray | None, optional): Enables full integer PTQ. Defaults to None.
-        input_type (tf.DType | None): Input type data format. Defaults to None.
-        output_type (tf.DType | None): Output type data format. Defaults to None.
+        input_type (str | None): Input type data format. Defaults to None.
+        output_type (str | None): Output type data format. Defaults to None.
 
     Returns:
         tuple[tf.lite.experimental.QuantizationDebugger, pd.DataFrame]: TFlite debugger, Layer statistics
@@ -162,8 +166,8 @@ def debug_quant_tflite(
     # Quantize model
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
     converter.target_spec.supported_ops = supported_ops or [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-    converter.inference_input_type = input_type
-    converter.inference_output_type = output_type
+    converter.inference_input_type = tf.dtypes.as_dtype(input_type) if input_type else None
+    converter.inference_output_type = tf.dtypes.as_dtype(output_type) if output_type else None
     converter.representative_dataset = rep_dataset
 
     # Debug model
@@ -253,6 +257,6 @@ def evaluate_tflite(
         npt.NDArray: Loss values
     """
     y_pred = predict_tflite(model_content, test_x=test_x)
-    loss_function = tf.keras.losses.get(model.loss)
+    loss_function = keras.losses.get(model.loss)
     loss = loss_function(y_true, y_pred).numpy()
     return loss

@@ -1,7 +1,3 @@
----
-title:
----
-#
 
 <p align="center">
   <a href="https://github.com/AmbiqAI/heartkit"><img src="./docs/assets/heartkit-banner.png" alt="HeartKit"></a>
@@ -15,17 +11,17 @@ title:
 
 ---
 
-HeartKit is an optimized open-source TinyML model purpose-built to enable running a variety of real-time heart-monitoring applications on battery-powered, edge devices.
-
-...
+HeartKit is an AI Development Kit (ADK) that enables developers to easily train and deploy real-time __heart-monitoring__ models onto [Ambiq's family of ultra-low power SoCs](https://ambiq.com/soc/). The kit provides a variety of datasets, efficient model architectures, and heart-related tasks. In addition, HeartKit provides optimization and deployment routines to generate efficient inference models. Finally, the kit includes a number of pre-trained models and task-level demos to showcase the capabilities.
 
 **Key Features:**
 
-* **Efficient**: Novel architecture coupled w/ Ambiq's ultra low-power SoCs enable extreme energy efficiency.
-* **Explainable**: Inference results are paired with metrics to provide explainable insights.
-* **Extensible**: Add or remove heads for desired end application.
+* **Real-time**: Inference is performed in real-time on battery-powered, edge devices.
+* **Efficient**: Leverage Ambiq's ultra low-power SoCs for extreme energy efficiency.
+* **Extensible**: Easily add new tasks, models, and datasets to the framework.
+* **Open Source**: HeartKit is open source and available on GitHub.
 
-## Requirements
+
+## <span class="sk-h2-span">Requirements
 
 * [Python ^3.11+](https://www.python.org)
 * [Poetry ^1.6.1+](https://python-poetry.org/docs/#installation)
@@ -38,82 +34,87 @@ The following are also required to compile/flash the binary for the EVB demo:
 !!! note
     A [VSCode Dev Container](https://code.visualstudio.com/docs/devcontainers/containers) is also available and defined in [./.devcontainer](https://github.com/AmbiqAI/heartkit/tree/main/.devcontainer).
 
-## Installation
+## <span class="sk-h2-span">Installation</span>
 
 To get started, first install the local python package `heartkit` along with its dependencies via `Poetry`:
 
-```bash
-poetry install
+
+```console
+$ poetry install
 ```
 
 ---
 
-## Usage
+## <span class="sk-h2-span">Usage</span>
 
-__HeartKit__ can be used as either a CLI-based app or as a python package to perform advanced experimentation. In both forms, HeartKit exposes a number of modes and tasks discussed below. Refer to the [Overview Guide](./docs/overview.md) to learn more about available options and configurations.
-
----
-
-## Modes
-
-* `download`: Download datasets
-* `train`: Train a model for specified task and dataset(s)
-* `evaluate`: Evaluate a model for specified task and dataset(s)
-* `export`: Export a trained model to TensorFlow Lite and TFLM
-* `demo`: Run task-level demo on PC or EVB
+__HeartKit__ can be used as either a CLI-based tool or as a Python package to perform advanced development. In both forms, HeartKit exposes a number of modes and tasks outlined below. In addition, by leveraging highly-customizable configurations, HeartKit can be used to create custom workflows for a given application with minimal coding. Refer to the [Quickstart](https://ambiqai.github.io/heartkit/quickstart/) to quickly get up and running in minutes.
 
 ---
 
-## Tasks
+## <span class="sk-h2-span">Modes</span>
 
-* `Segmentation`: Perform ECG based segmentation (P-Wave, QRS, T-Wave)
-* `Arrhythmia`: Heart arrhythmia detection (AFIB, AFL)
-* `Beat`: Classify individual beats (NORM, PAC, PVC, NOISE)
+__HeartKit__ provides a number of **modes** that can be invoked for a given task. These modes can be accessed via the CLI or directly from the `task` within the Python package.
 
----
-
-## Architecture
-
-HeartKit leverages modern architectural design strategies to achieve high accuracy while maintaining a small memory footprint and low power consumption.
-
-* Seperable (depthwise + pointwise) Convolutions
-* Inverted Residual Bottlenecks
-* Squeeze & Excitation Blocks
-* MBConv Blocks
-* Over-Parameterized Convolutional Branches
-* Dilated Convolutions
-
-Refer to specific task guides for additional details on the full model design.
+- **Download**: Download specified datasets
+- **Train**: Train a model for specified task and datasets
+- **Evaluate**: Evaluate a model for specified task and datasets
+- **Export**: Export a trained model to TensorFlow Lite and TFLM
+- **Demo**: Run task-level demo on PC or remotely on Ambiq EVB
 
 ---
 
-## Sensing Modalities
+## <span class="sk-h2-span">Task Factory</span>
 
-The two primary sensing modalities to monitor cardiac cycles are electrocardiograph (ECG) and photoplethysmography (PPG).
+__HeartKit__ includes a number of built-in **tasks**. Each task provides reference routines for training, evaluating, and exporting the model. The routines can be customized by providing a configuration file or by setting the parameters directly in the code. Additional tasks can be easily added to the __HeartKit__ framework by creating a new task class and registering it to the __task factory__.
 
-## Datasets
-
-HeartKit leverages several open-source datasets for training each of the HeartKit models. Additionally, HeartKit leverages [PhysioKit's synthetic ECG generator](https://ambiqai.github.io/physiokit) to generate additional training data. Check out the [Datasets Guide](./docs/datasets.md) to learn more about the datasets used along with their corresponding licenses and limitations.
-
----
-
-## Results
-
-The following table provides the latest performance and accuracy results of all pre-trained task models when running on Apollo4 Plus EVB. Additional result details can be found in [Results Section](./docs/results.md) alogn with task-level documentation.
-
-| Task           | Params   | FLOPS   | Metric     | Cycles/Inf | Time/Inf   |
-| -------------- | -------- | ------- | ---------- | ---------- | ---------- |
-| Segmentation   | 33K      | 6.5M    | 87.0% IOU  | 531ms      | 102M       |
-| Arrhythmia     | 50K      | 3.6M    | 99.0% F1   | 465ms      | 89M        |
-| Beat           | 73K      | 2.2M    | 91.5% F1   | 241ms      | 46M        |
+- **Segmentation**: Perform ECG based segmentation (P-Wave, QRS, T-Wave)
+- **Arrhythmia**: Heart arrhythmia detection (AFIB, AFL)
+- **Beat**: Classify individual beats (NORM, PAC, PVC, NOISE)
+- **Denoise**: Denoise ECG signal
+- **BYOT**: Bring-Your-Own-Task (BYOT) to create custom tasks
 
 ---
 
-## References
+## <span class="sk-h2-span">Model Factory</span>
 
-* [ECG Heartbeat classification using deep transfer learning with Convolutional Neural Network and STFT technique](https://arxiv.org/abs/2206.14200)
-* [Classification of ECG based on Hybrid Features using CNNs for Wearable Applications](https://arxiv.org/pdf/2206.07648.pdf)
-* [ECG Heartbeat classification using deep transfer learning with Convolutional Neural Network and STFT technique](https://arxiv.org/pdf/2206.14200.pdf)
-* [U2-Net: Going Deeper with Nested U-Structure for Salient Object Detection](https://arxiv.org/abs/2005.09007)
-* [UNET 3+: A FULL-SCALE CONNECTED UNET FOR MEDICAL IMAGE SEGMENTATION](https://arxiv.org/pdf/2004.08790.pdf)
-* [ResUNet-a: a deep learning framework for semantic segmentation of remotely sensed data](https://arxiv.org/pdf/1904.00592.pdf)
+__HeartKit__ provides a __model factory__ that allows you to easily create and train customized models. The model factory includes a number of modern networks well suited for efficient, real-time edge applications. Each model architecture exposes a number of high-level parameters that can be used to customize the network for a given application. These parameters can be set as part of the configuration accessible via the CLI and Python package.
+
+---
+
+## <span class="sk-h2-span">Sensing Modalities</span>
+
+The two primary sensing modalities to monitor cardiac cycles are electrocardiograph (ECG) and photoplethysmography (PPG). Since HeartKit is targeted for low-power, wearable applications we focus on either single-lead ECG and/or 1-2 channels of PPG that can be easily captured on wrist, ear, or chest. The following table provides a comparison of the two modalities:
+
+| Modality | ECG | PPG |
+| -------- | --- | --- |
+| Description | Electrical activity of heart | Blood volume changes in tissue |
+| Location | Chest, Wrist, Ear | Wrist, Ear |
+| Channels | 1-3 | 1-2 |
+| SNR | High | Low |
+| Noise | Low | High |
+| Fidelity | High | Low |
+| Power | High | Low |
+| Contact | Yes | No |
+
+---
+
+## <span class="sk-h2-span">Datasets</span>
+
+## <span class="sk-h2-span">Dataset Factory</span>
+
+__HeartKit__ exposes several open-source datasets for training each of the HeartKit tasks via a __dataset factory__. For certain tasks, we also provide synthetic data provided by [PhysioKit](https://ambiqai.github.io/physiokit) to help improve model generalization. Each dataset has a corresponding Python class to aid in downloading and generating data for the given task. Additional datasets can be easily added to the HeartKit framework by creating a new dataset class and registering it to the dataset factory.
+
+* **Icentia11k**: 11-lead ECG data collected from 11,000 subjects captured continously over two weeks.
+* **LUDB**: 200 ten-second 12-lead ECG records w/ annotated P-wave, QRS, and T-wave boundaries.
+* **QTDB**: 100+ fifteen-minute two-lead ECG recordings w/ annotated P-wave, QRS, and T-wave boundaries.
+* **PTB-XL**: 10-second, 12-lead ECG dataset collected from 18,885 subjects w/ 72 different diagnostic classes.
+* **Synthetic**: A synthetic dataset generator from [PhysioKit](https://ambiqai.github.io/physiokit).
+* **BYOD**: Bring-Your-Own-Dataset (BYOD) to add additional datasets.
+
+---
+
+## <span class="sk-h2-span">Model Zoo</span>
+
+A number of pre-trained models are available for each task. These models are trained on a variety of datasets and are optimized for deployment on Ambiq's ultra-low power SoCs. In addition to providing links to download the models, __HeartKit__ provides the corresponding configuration files and performance metrics. The configuration files allow you to easily retrain the models or use them as a starting point for a custom model. Furthermore, the performance metrics provide insights into the model's accuracy, precision, recall, and F1 score. For a number of the models, we provide experimental and ablation studies to showcase the impact of various design choices. Check out the [Model Zoo](https://ambiqai.github.io/heartkit/zoo) to learn more about the available models and their corresponding performance metrics.
+
+---

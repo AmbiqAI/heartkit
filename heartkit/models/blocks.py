@@ -1,3 +1,4 @@
+import keras
 import tensorflow as tf
 
 from .defines import KerasLayer
@@ -6,13 +7,13 @@ from .defines import KerasLayer
 def layer_norm(name: str | None = None, axis=-1, scale: bool = True) -> KerasLayer:
     """Layer normalization layer"""
     name = name + ".ln" if name else None
-    return tf.keras.layers.LayerNormalization(axis=axis, name=name, scale=scale)
+    return keras.layers.LayerNormalization(axis=axis, name=name, scale=scale)
 
 
 def batch_norm(name: str | None = None, momentum=0.9, epsilon=1e-3) -> KerasLayer:
     """Batch normalization layer"""
     name = name + ".bn" if name else None
-    return tf.keras.layers.BatchNormalization(momentum=momentum, epsilon=epsilon, name=name)
+    return keras.layers.BatchNormalization(momentum=momentum, epsilon=epsilon, name=name)
 
 
 def glu(dim: int = -1) -> KerasLayer:
@@ -31,31 +32,31 @@ def glu(dim: int = -1) -> KerasLayer:
 def relu(name: str | None = None) -> KerasLayer:
     """ReLU activation layer"""
     name = name + ".act" if name else None
-    return tf.keras.layers.ReLU(name=name)
+    return keras.layers.ReLU(name=name)
 
 
 def relu6(name: str | None = None) -> KerasLayer:
     """Hard ReLU activation layer"""
     name = name + ".act" if name else None
-    return tf.keras.layers.Activation(tf.nn.relu6, name=name)
+    return keras.layers.Activation(tf.nn.relu6, name=name)
 
 
 def mish(name: str | None = None) -> KerasLayer:
     """Mish activation layer"""
     name = name + ".act" if name else None
-    return tf.keras.layers.Activation(tf.keras.activations.mish, name=name)
+    return keras.layers.Activation(keras.activations.mish, name=name)
 
 
 def gelu(name: str | None = None) -> KerasLayer:
     """GeLU activation layer"""
     name = name + ".act" if name else None
-    return tf.keras.layers.Activation("gelu", name=name)
+    return keras.layers.Activation("gelu", name=name)
 
 
 def hard_sigmoid(name: str | None = None) -> KerasLayer:
     """Hard sigmoid activation layer"""
     name = name + ".act" if name else None
-    return tf.keras.layers.Activation(tf.keras.activations.hard_sigmoid, name=name)
+    return keras.layers.Activation(keras.activations.hard_sigmoid, name=name)
 
 
 def conv2d(
@@ -82,7 +83,7 @@ def conv2d(
         KerasLayer: Functional 2D conv layer
     """
     name = name + ".conv" if name else None
-    return tf.keras.layers.Conv2D(
+    return keras.layers.Conv2D(
         filters,
         kernel_size=kernel_size,
         strides=strides,
@@ -117,7 +118,7 @@ def conv1d(
         KerasLayer: Functional 1D conv layer
     """
     name = name + ".conv" if name else None
-    return tf.keras.layers.Conv2D(
+    return keras.layers.Conv2D(
         filters,
         kernel_size=(1, kernel_size),
         strides=(1, strides),
@@ -144,14 +145,14 @@ def se_block(ratio: int = 8, name: str | None = None) -> KerasLayer:
         # Squeeze
         name_pool = f"{name}.pool" if name else None
         name_sq = f"{name}.sq" if name else None
-        y = tf.keras.layers.GlobalAveragePooling2D(name=name_pool, keepdims=True)(x)
+        y = keras.layers.GlobalAveragePooling2D(name=name_pool, keepdims=True)(x)
         y = conv2d(num_chan // ratio, kernel_size=(1, 1), use_bias=True, name=name_sq)(y)
         y = relu6(name=name_sq)(y)
         # Excite
         name_ex = f"{name}.ex" if name else None
         y = conv2d(num_chan, kernel_size=(1, 1), use_bias=True, name=name_ex)(y)
         y = hard_sigmoid(name=name_ex)(y)
-        y = tf.keras.layers.Multiply()([x, y])
+        y = keras.layers.Multiply()([x, y])
         return y
 
     return layer
@@ -199,7 +200,7 @@ def mbconv_block(
         # Apply: wide -> wide
         # NOTE: DepthwiseConv2D only supports equal size stride -> use maxpooling instead
         name_dp = f"{name}.dp" if name else None
-        y = tf.keras.layers.DepthwiseConv2D(
+        y = keras.layers.DepthwiseConv2D(
             kernel_size=kernel_size,
             strides=(1, 1),
             padding="same",
@@ -210,7 +211,7 @@ def mbconv_block(
         y = batch_norm(name=name_dp)(y)
         y = relu6(name=name_dp)(y)
         if is_downsample:
-            y = tf.keras.layers.MaxPool2D(pool_size=strides, padding="same")(y)
+            y = keras.layers.MaxPool2D(pool_size=strides, padding="same")(y)
 
         # SE: wide -> wide
         if se_ratio:
@@ -232,14 +233,14 @@ def mbconv_block(
         if add_residual:
             name_res = f"{name}.res" if name else None
             if droprate > 0:
-                y = tf.keras.layers.Dropout(droprate, noise_shape=(None, 1, 1, 1))(y)
-            y = tf.keras.layers.add([x, y], name=name_res)
+                y = keras.layers.Dropout(droprate, noise_shape=(None, 1, 1, 1))(y)
+            y = keras.layers.add([x, y], name=name_res)
         return y
 
     return layer
 
 
-class SharedWeightsConv(tf.keras.layers.Layer):
+class SharedWeightsConv(keras.layers.Layer):
     """Allows sharing weights between conv layers."""
 
     def __init__(
@@ -252,16 +253,16 @@ class SharedWeightsConv(tf.keras.layers.Layer):
         **kwargs,
     ):
         conv_classes = (
-            tf.keras.layers.Conv1D,
-            tf.keras.layers.Conv2D,
-            tf.keras.layers.Conv3D,
+            keras.layers.Conv1D,
+            keras.layers.Conv2D,
+            keras.layers.Conv3D,
         )
         if not any(isinstance(parent, cls) for cls in conv_classes):
             raise TypeError("'parent' should be a keras convolution layer.")
         super().__init__(**kwargs)
         self.parent = parent
         self.rank = parent.rank
-        self.activation = parent.activation if activation is None else tf.keras.activations.get(activation)
+        self.activation = parent.activation if activation is None else keras.activations.get(activation)
         cnn_kwargs = {
             "strides": strides,
             "padding": padding,
@@ -271,9 +272,9 @@ class SharedWeightsConv(tf.keras.layers.Layer):
         self.cnn_kwargs = {key: getattr(parent, key) if value is None else value for key, value in cnn_kwargs.items()}
         self.built = self.parent.built
         self.cnn_op = {
-            1: tf.keras.backend.conv1d,
-            2: tf.keras.backend.conv2d,
-            3: tf.keras.backend.conv3d,
+            1: keras.backend.conv1d,
+            2: keras.backend.conv2d,
+            3: keras.backend.conv3d,
         }.get(self.rank)
 
     def build(self, input_shape):

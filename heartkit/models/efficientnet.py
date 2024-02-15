@@ -1,4 +1,6 @@
 """ EfficientNet https://arxiv.org/abs/2104.00298"""
+
+import keras
 import tensorflow as tf
 from pydantic import BaseModel, Field
 
@@ -62,7 +64,7 @@ def EfficientNetV2(
     x: tf.Tensor,
     params: EfficientNetParams,
     num_classes: int | None = None,
-) -> tf.keras.Model:
+) -> keras.Model:
     """Create EfficientNet V2 TF functional model
 
     Args:
@@ -71,13 +73,13 @@ def EfficientNetV2(
         num_classes (int, optional): # classes.
 
     Returns:
-        tf.keras.Model: Model
+        keras.Model: Model
     """
 
     # Force input to be 4D (add dummy dimension)
     requires_reshape = len(x.shape) == 3
     if requires_reshape:
-        y = tf.keras.layers.Reshape((1,) + x.shape[1:])(x)
+        y = keras.layers.Reshape((1,) + x.shape[1:])(x)
     else:
         y = x
     # END IF
@@ -107,10 +109,10 @@ def EfficientNetV2(
 
     if params.include_top:
         name = "top"
-        y = tf.keras.layers.GlobalAveragePooling2D(name=f"{name}.pool")(y)
+        y = keras.layers.GlobalAveragePooling2D(name=f"{name}.pool")(y)
         if 0 < params.dropout < 1:
-            y = tf.keras.layers.Dropout(params.dropout)(y)
-        y = tf.keras.layers.Dense(num_classes, name=name)(y)
+            y = keras.layers.Dropout(params.dropout)(y)
+        y = keras.layers.Dense(num_classes, name=name)(y)
 
-    model = tf.keras.Model(x, y, name=params.model_name)
+    model = keras.Model(x, y, name=params.model_name)
     return model

@@ -4,9 +4,10 @@ from enum import IntEnum
 
 import numpy as np
 import numpy.typing as npt
+import tensorflow as tf
 
-from ..defines import HeartRhythm, HeartTask
-from .dataset import HeartKitDataset
+from ..defines import HeartRhythm
+from .dataset import HKDataset
 from .defines import PatientGenerator, SampleGenerator
 
 logger = logging.getLogger(__name__)
@@ -63,20 +64,26 @@ PtbxlLeadsMap = {
 }
 
 
-class PtbxlDataset(HeartKitDataset):
+class PtbxlDataset(HKDataset):
     """PTBXL dataset"""
 
     def __init__(
         self,
         ds_path: os.PathLike,
-        task: HeartTask = HeartTask.arrhythmia,
-        frame_size: int = 1250,
-        target_rate: int = 250,
+        task: str,
+        frame_size: int,
+        target_rate: int,
+        spec: tuple[tf.TensorSpec, tf.TensorSpec],
         class_map: dict[int, int] | None = None,
     ) -> None:
-        super().__init__(ds_path / "ptbxl", task, frame_size, target_rate, class_map)
-        if frame_size / target_rate > 10:
-            raise ValueError("Frame size must be less than 10 seconds")
+        super().__init__(
+            ds_path=ds_path / "ptbxl",
+            task=task,
+            frame_size=frame_size,
+            target_rate=target_rate,
+            spec=spec,
+            class_map=class_map,
+        )
 
     @property
     def sampling_rate(self) -> int:

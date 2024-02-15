@@ -1,13 +1,10 @@
 import os
 
-from ..defines import HeartDownloadParams
-from .icentia11k import IcentiaDataset
-from .ludb import LudbDataset
-from .ptbxl import PtbxlDataset
-from .qtdb import QtdbDataset
+from ..defines import HKDownloadParams
+from .factory import DatasetFactory
 
 
-def download_datasets(params: HeartDownloadParams):
+def download_datasets(params: HKDownloadParams):
     """Download all specified datasets.
 
     Args:
@@ -15,26 +12,9 @@ def download_datasets(params: HeartDownloadParams):
     """
     os.makedirs(params.ds_path, exist_ok=True)
 
-    if "icentia11k" in params.datasets:
-        IcentiaDataset(params.ds_path).download(
-            num_workers=params.data_parallelism,
-            force=params.force,
-        )
-
-    if "ludb" in params.datasets:
-        LudbDataset(params.ds_path).download(
-            num_workers=params.data_parallelism,
-            force=params.force,
-        )
-
-    if "qtdb" in params.datasets:
-        QtdbDataset(params.ds_path).download(
-            num_workers=params.data_parallelism,
-            force=params.force,
-        )
-
-    if "ptbxl" in params.datasets:
-        PtbxlDataset(params.ds_path).download(
-            num_workers=params.data_parallelism,
-            force=params.force,
-        )
+    for dataset in params.datasets:
+        if DatasetFactory.has(dataset):
+            DatasetFactory.get(dataset).download(
+                num_workers=params.data_parallelism,
+                force=params.force,
+            )

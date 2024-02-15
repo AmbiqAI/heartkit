@@ -110,7 +110,7 @@ def env_flag(env_var: str, default: bool = False) -> bool:
     return environ_string in ["1", "true", "yes", "on"]
 
 
-def download_file(src: str, dst: os.PathLike, progress: bool = True):
+def download_file(src: str, dst: os.PathLike, progress: bool = True, chunk_size: int = 8192):
     """Download file from supplied url to destination streaming.
 
     Args:
@@ -124,7 +124,7 @@ def download_file(src: str, dst: os.PathLike, progress: bool = True):
         req_len = int(r.headers.get("Content-length", 0))
         prog_bar = tqdm(total=req_len, unit="iB", unit_scale=True) if progress else None
         with open(dst, "wb") as f:
-            for chunk in r.iter_content(chunk_size=8192):
+            for chunk in r.iter_content(chunk_size=chunk_size):
                 f.write(chunk)
                 if prog_bar:
                     prog_bar.update(len(chunk))

@@ -1,4 +1,6 @@
 """ ResNet """
+
+import keras
 import tensorflow as tf
 from pydantic import BaseModel, Field
 
@@ -64,7 +66,7 @@ def generate_bottleneck_block(
         if projection:
             x = conv2d(filters * expansion, 1, strides)(x)
             x = batch_norm()(x)
-        x = tf.keras.layers.Add()([bx, x])
+        x = keras.layers.Add()([bx, x])
         x = relu6()(x)
         return x
 
@@ -99,7 +101,7 @@ def generate_residual_block(
         if projection:
             x = conv2d(filters, 1, strides)(x)
             x = batch_norm()(x)
-        x = tf.keras.layers.Add()([bx, x])
+        x = keras.layers.Add()([bx, x])
         x = relu6()(x)
         return x
 
@@ -110,7 +112,7 @@ def ResNet(
     x: tf.Tensor,
     params: ResNetParams,
     num_classes: int | None = None,
-) -> tf.keras.Model:
+) -> keras.Model:
     """Generate functional ResNet model.
     Args:
         x (tf.Tensor): Inputs
@@ -118,12 +120,12 @@ def ResNet(
         num_classes (int, optional): # class outputs. Defaults to None.
 
     Returns:
-        tf.keras.Model: Model
+        keras.Model: Model
     """
 
     requires_reshape = len(x.shape) == 3
     if requires_reshape:
-        y = tf.keras.layers.Reshape((1,) + x.shape[1:])(x)
+        y = keras.layers.Reshape((1,) + x.shape[1:])(x)
     else:
         y = x
     # END IF
@@ -150,8 +152,8 @@ def ResNet(
     # END FOR
 
     if params.include_top:
-        y = tf.keras.layers.GlobalAveragePooling2D()(y)
-        y = tf.keras.layers.Dense(num_classes)(y)
+        y = keras.layers.GlobalAveragePooling2D()(y)
+        y = keras.layers.Dense(num_classes)(y)
 
-    model = tf.keras.Model(x, y, name="model")
+    model = keras.Model(x, y, name="model")
     return model

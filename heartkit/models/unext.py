@@ -1,6 +1,8 @@
 """ UNext """
+
 from typing import Literal
 
+import keras
 import tensorflow as tf
 from pydantic import BaseModel, Field
 
@@ -40,18 +42,16 @@ def se_block(ratio: int = 8, name: str | None = None):
     def layer(x: tf.Tensor) -> tf.Tensor:
         num_chan = x.shape[-1]
         # Squeeze
-        y = tf.keras.layers.GlobalAveragePooling2D(name=f"{name}.pool" if name else None, keepdims=True)(x)
+        y = keras.layers.GlobalAveragePooling2D(name=f"{name}.pool" if name else None, keepdims=True)(x)
 
-        y = tf.keras.layers.Conv2D(
-            num_chan // ratio, kernel_size=1, use_bias=True, name=f"{name}.sq" if name else None
-        )(y)
+        y = keras.layers.Conv2D(num_chan // ratio, kernel_size=1, use_bias=True, name=f"{name}.sq" if name else None)(y)
 
-        y = tf.keras.layers.Activation(tf.nn.relu6, name=f"{name}.relu" if name else None)(y)
+        y = keras.layers.Activation(tf.nn.relu6, name=f"{name}.relu" if name else None)(y)
 
         # Excite
-        y = tf.keras.layers.Conv2D(num_chan, kernel_size=1, use_bias=True, name=f"{name}.ex" if name else None)(y)
-        y = tf.keras.layers.Activation(tf.keras.activations.hard_sigmoid, name=f"{name}.sigg" if name else None)(y)
-        y = tf.keras.layers.Multiply(name=f"{name}.mul" if name else None)([x, y])
+        y = keras.layers.Conv2D(num_chan, kernel_size=1, use_bias=True, name=f"{name}.ex" if name else None)(y)
+        y = keras.layers.Activation(keras.activations.hard_sigmoid, name=f"{name}.sigg" if name else None)(y)
+        y = keras.layers.Multiply(name=f"{name}.mul" if name else None)([x, y])
         return y
 
     return layer
@@ -91,7 +91,7 @@ def UNext_block(
         ln_axis = 2 if x.shape[1] == 1 else 1 if x.shape[2] == 1 else (1, 2)
 
         # Depthwise conv
-        y = tf.keras.layers.Conv2D(
+        y = keras.layers.Conv2D(
             input_filters,
             kernel_size=kernel_size,
             groups=input_filters,
@@ -99,22 +99,22 @@ def UNext_block(
             padding="same",
             use_bias=norm is None,
             kernel_initializer="he_normal",
-            kernel_regularizer=tf.keras.regularizers.L2(1e-3),
+            kernel_regularizer=keras.regularizers.L2(1e-3),
             name=f"{name}.dwconv" if name else None,
         )(x)
         if norm == "batch":
-            y = tf.keras.layers.BatchNormalization(
+            y = keras.layers.BatchNormalization(
                 name=f"{name}.norm",
             )(y)
         elif norm == "layer":
-            y = tf.keras.layers.LayerNormalization(
+            y = keras.layers.LayerNormalization(
                 axis=ln_axis,
                 name=f"{name}.norm" if name else None,
             )(y)
         # END IF
 
         # Inverted expansion block
-        y = tf.keras.layers.Conv2D(
+        y = keras.layers.Conv2D(
             filters=int(expand_ratio * input_filters),
             kernel_size=1,
             strides=1,
@@ -122,11 +122,11 @@ def UNext_block(
             use_bias=norm is None,
             groups=input_filters,
             kernel_initializer="he_normal",
-            kernel_regularizer=tf.keras.regularizers.L2(1e-3),
+            kernel_regularizer=keras.regularizers.L2(1e-3),
             name=f"{name}.expand" if name else None,
         )(y)
 
-        y = tf.keras.layers.Activation(
+        y = keras.layers.Activation(
             tf.nn.relu6,
             name=f"{name}.relu" if name else None,
         )(y)
@@ -136,25 +136,25 @@ def UNext_block(
             name_se = f"{name}.se" if name else None
             y = se_block(ratio=se_ratio, name=name_se)(y)
 
-        y = tf.keras.layers.Conv2D(
+        y = keras.layers.Conv2D(
             filters=output_filters,
             kernel_size=1,
             strides=1,
             padding="same",
             use_bias=norm is None,
             kernel_initializer="he_normal",
-            kernel_regularizer=tf.keras.regularizers.L2(1e-3),
+            kernel_regularizer=keras.regularizers.L2(1e-3),
             name=f"{name}.project" if name else None,
         )(y)
 
         if add_residual:
             if dropout and dropout > 0:
-                y = tf.keras.layers.Dropout(
+                y = keras.layers.Dropout(
                     dropout,
                     noise_shape=(y.shape),
                     name=f"{name}.drop" if name else None,
                 )(y)
-            y = tf.keras.layers.Add(name=f"{name}.res" if name else None)([x, y])
+            y = keras.layers.Add(name=f"{name}.res" if name else None)([x, y])
         return y
 
     # END DEF
@@ -178,7 +178,7 @@ def unext_core(
     y = x
 
     #### ENCODER ####
-    skip_layers: list[tf.keras.layers.Layer | None] = []
+    skip_layers: list[keras.layers.Layer | None] = []
     for i, block in enumerate(params.blocks):
         name = f"ENC{i+1}"
         for d in range(block.depth):
@@ -196,23 +196,23 @@ def unext_core(
         skip_layers.append(y if block.skip else None)
 
         # Downsample using strided conv
-        y = tf.keras.layers.Conv2D(
+        y = keras.layers.Conv2D(
             filters=block.filters,
             kernel_size=block.pool,
             strides=block.strides,
             padding="same",
             use_bias=block.norm is None,
             kernel_initializer="he_normal",
-            kernel_regularizer=tf.keras.regularizers.L2(1e-3),
+            kernel_regularizer=keras.regularizers.L2(1e-3),
             name=f"{name}.pool",
         )(y)
         if block.norm == "batch":
-            y = tf.keras.layers.BatchNormalization(
+            y = keras.layers.BatchNormalization(
                 name=f"{name}.norm",
             )(y)
         elif block.norm == "layer":
             ln_axis = 2 if y.shape[1] == 1 else 1 if y.shape[2] == 1 else (1, 2)
-            y = tf.keras.layers.LayerNormalization(
+            y = keras.layers.LayerNormalization(
                 axis=ln_axis,
                 name=f"{name}.norm",
             )(y)
@@ -236,58 +236,58 @@ def unext_core(
         # END FOR
 
         # Upsample using transposed conv
-        # y = tf.keras.layers.Conv1DTranspose(
+        # y = keras.layers.Conv1DTranspose(
         #     filters=block.filters,
         #     kernel_size=block.pool,
         #     strides=block.strides,
         #     padding="same",
         #     kernel_initializer="he_normal",
-        #     kernel_regularizer=tf.keras.regularizers.L2(1e-3),
+        #     kernel_regularizer=keras.regularizers.L2(1e-3),
         #     name=f"{name}.unpool",
         # )(y)
 
-        y = tf.keras.layers.Conv2D(
+        y = keras.layers.Conv2D(
             filters=block.filters,
             kernel_size=block.pool,
             strides=1,
             padding="same",
             use_bias=block.norm is None,
             kernel_initializer="he_normal",
-            kernel_regularizer=tf.keras.regularizers.L2(1e-3),
+            kernel_regularizer=keras.regularizers.L2(1e-3),
             name=f"{name}.conv",
         )(y)
-        y = tf.keras.layers.UpSampling2D(size=block.strides, name=f"{name}.unpool")(y)
+        y = keras.layers.UpSampling2D(size=block.strides, name=f"{name}.unpool")(y)
 
         # Skip connection
         skip_layer = skip_layers.pop()
         if skip_layer is not None:
-            # y = tf.keras.layers.Concatenate(name=f"{name}.S1.cat")([y, skip_layer])
-            y = tf.keras.layers.Add(name=f"{name}.S1.cat")([y, skip_layer])
+            # y = keras.layers.Concatenate(name=f"{name}.S1.cat")([y, skip_layer])
+            y = keras.layers.Add(name=f"{name}.S1.cat")([y, skip_layer])
 
             # Use conv to reduce filters
-            y = tf.keras.layers.Conv2D(
+            y = keras.layers.Conv2D(
                 block.filters,
                 kernel_size=1,  # block.kernel,
                 padding="same",
                 kernel_initializer="he_normal",
-                kernel_regularizer=tf.keras.regularizers.L2(1e-3),
+                kernel_regularizer=keras.regularizers.L2(1e-3),
                 use_bias=block.norm is None,
                 name=f"{name}.S1.conv",
             )(y)
 
             if block.norm == "batch":
-                y = tf.keras.layers.BatchNormalization(
+                y = keras.layers.BatchNormalization(
                     name=f"{name}.S1.norm",
                 )(y)
             elif block.norm == "layer":
                 ln_axis = 2 if y.shape[1] == 1 else 1 if y.shape[2] == 1 else (1, 2)
-                y = tf.keras.layers.LayerNormalization(
+                y = keras.layers.LayerNormalization(
                     axis=ln_axis,
                     name=f"{name}.S1.norm",
                 )(y)
             # END IF
 
-            y = tf.keras.layers.Activation(
+            y = keras.layers.Activation(
                 tf.nn.relu6,
                 name=f"{name}.S1.relu" if name else None,
             )(y)
@@ -312,7 +312,7 @@ def UNext(
     x: tf.Tensor,
     params: UNextParams,
     num_classes: int,
-) -> tf.keras.Model:
+) -> keras.Model:
     """Create UNext TF functional model
 
     Args:
@@ -321,11 +321,11 @@ def UNext(
         num_classes (int, optional): # classes.
 
     Returns:
-        tf.keras.Model: Model
+        keras.Model: Model
     """
     requires_reshape = len(x.shape) == 3
     if requires_reshape:
-        y = tf.keras.layers.Reshape((1,) + x.shape[1:])(x)
+        y = keras.layers.Reshape((1,) + x.shape[1:])(x)
     else:
         y = x
 
@@ -333,23 +333,23 @@ def UNext(
 
     if params.include_top:
         # Add a per-point classification layer
-        y = tf.keras.layers.Conv2D(
+        y = keras.layers.Conv2D(
             num_classes,
             kernel_size=params.output_kernel_size,
             padding="same",
             kernel_initializer="he_normal",
-            kernel_regularizer=tf.keras.regularizers.L2(1e-3),
+            kernel_regularizer=keras.regularizers.L2(1e-3),
             name="NECK.conv",
             use_bias=True,
         )(y)
         if not params.use_logits:
-            y = tf.keras.layers.Softmax()(y)
+            y = keras.layers.Softmax()(y)
         # END IF
     # END IF
 
     if requires_reshape:
-        y = tf.keras.layers.Reshape(y.shape[2:])(y)
+        y = keras.layers.Reshape(y.shape[2:])(y)
 
     # Define the model
-    model = tf.keras.Model(x, y, name=params.model_name)
+    model = keras.Model(x, y, name=params.model_name)
     return model

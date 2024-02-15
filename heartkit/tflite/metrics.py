@@ -1,5 +1,6 @@
 import os
 
+import keras
 import tensorflow as tf
 
 # pylint: disable=no-name-in-module
@@ -9,15 +10,15 @@ from tensorflow.python.profiler.model_analyzer import profile
 from tensorflow.python.profiler.option_builder import ProfileOptionBuilder
 
 
-def get_flops(model: tf.keras.Model, batch_size: int | None = None, fpath: os.PathLike | None = None) -> float:
-    """Calculate FLOPS for tf.keras.Model or tf.keras.Sequential.
+def get_flops(model: keras.Model, batch_size: int | None = None, fpath: os.PathLike | None = None) -> float:
+    """Calculate FLOPS for keras.Model or keras.Sequential.
     Ignore operations used in only training mode such as Initialization.
     Use tf.profiler of tensorflow v2 api.
 
     Known Limitations: Does not support LSTM and GRU.
 
     Args:
-        model (tf.keras.Model|tf.keras.Sequential): Model
+        model (keras.Model|keras.Sequential): Model
         batch_size (int, optional): Batch size. Defaults to None.
         fpath (os.PathLike, optional): Output file path. Defaults to None.
 
@@ -34,7 +35,7 @@ def get_flops(model: tf.keras.Model, batch_size: int | None = None, fpath: os.Pa
     return float(graph_info.total_float_ops)
 
 
-class MultiF1Score(tf.keras.metrics.F1Score):
+class MultiF1Score(keras.metrics.F1Score):
     """Multi-class F1 score"""
 
     def update_state(self, y_true, y_pred, sample_weight=None):
