@@ -13,8 +13,10 @@
 }
 
 [data-termynal] {
-    width: 750px;
-    max-width: 100%;
+    /* width: 750px; */
+    margin: auto;
+    width: 90%;
+    max-width: 1440px;
     background: var(--color-bg);
     color: var(--color-text);
     /* font-size: 18px; */

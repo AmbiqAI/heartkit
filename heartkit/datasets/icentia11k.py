@@ -14,17 +14,18 @@ import h5py
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import physiokit as pk
 import sklearn.model_selection
 import sklearn.preprocessing
+import tensorflow as tf
 from botocore import UNSIGNED
 from botocore.client import Config
 from tqdm import tqdm
 
-from ..defines import HeartBeat, HeartRate, HeartRhythm, HeartTask
+from ..defines import HeartBeat, HeartRate, HeartRhythm, HeartSegment
 from ..utils import download_file
-from .dataset import HeartKitDataset
+from .dataset import HKDataset
 from .defines import PatientGenerator, SampleGenerator
-from .preprocess import resample_signal
 
 logger = logging.getLogger(__name__)
 
@@ -37,17 +38,6 @@ class IcentiaRhythm(IntEnum):
     afib = 2
     aflut = 3
     end = 4
-    unknown = 5
-
-    @classmethod
-    def hi_priority(cls) -> list[int]:
-        """High priority labels"""
-        return [cls.afib, cls.aflut]
-
-    @classmethod
-    def lo_priority(cls) -> list[int]:
-        """Low priority labels"""
-        return [cls.noise, cls.normal, cls.end, cls.unknown]
 
 
 class IcentiaBeat(IntEnum):
@@ -56,18 +46,8 @@ class IcentiaBeat(IntEnum):
     undefined = 0
     normal = 1
     pac = 2
-    # aberrated = 3
+    aberrated = 3
     pvc = 4
-
-    @classmethod
-    def hi_priority(cls) -> list[int]:
-        """High priority labels"""
-        return [cls.pac, cls.pvc]
-
-    @classmethod
-    def lo_priority(cls) -> list[int]:
-        """Low priority labels"""
-        return [cls.undefined, cls.normal]
 
 
 class IcentiaHeartRate(IntEnum):
@@ -79,36 +59,44 @@ class IcentiaHeartRate(IntEnum):
     noise = 3
 
 
-##
 # These map Icentia specific labels to common labels
-##
 HeartRhythmMap = {
     IcentiaRhythm.noise: HeartRhythm.noise,
     IcentiaRhythm.normal: HeartRhythm.normal,
     IcentiaRhythm.afib: HeartRhythm.afib,
-    IcentiaRhythm.aflut: HeartRhythm.afib,
+    IcentiaRhythm.aflut: HeartRhythm.aflut,
+    IcentiaRhythm.end: HeartRhythm.noise,
 }
 
 HeartBeatMap = {
     IcentiaBeat.undefined: HeartBeat.noise,
     IcentiaBeat.normal: HeartBeat.normal,
     IcentiaBeat.pac: HeartBeat.pac,
-    # IcentiaBeat.aberrated: HeartBeat.pac,
+    IcentiaBeat.aberrated: HeartBeat.pac,
     IcentiaBeat.pvc: HeartBeat.pvc,
 }
 
 
-class IcentiaDataset(HeartKitDataset):
+class IcentiaDataset(HKDataset):
     """Icentia dataset"""
 
     def __init__(
         self,
-        ds_path: str,
-        task: HeartTask = HeartTask.arrhythmia,
-        frame_size: int = 1250,
-        target_rate: int = 250,
+        ds_path: os.PathLike,
+        task: str,
+        frame_size: int,
+        target_rate: int,
+        spec: tuple[tf.TensorSpec, tf.TensorSpec],
+        class_map: dict[int, int] | None = None,
     ) -> None:
-        super().__init__(os.path.join(ds_path, "icentia11k"), task, frame_size, target_rate)
+        super().__init__(
+            ds_path=ds_path / "icentia11k",
+            task=task,
+            frame_size=frame_size,
+            target_rate=target_rate,
+            spec=spec,
+            class_map=class_map,
+        )
 
     @property
     def sampling_rate(self) -> int:
@@ -156,8 +144,10 @@ class IcentiaDataset(HeartKitDataset):
     @functools.cached_property
     def arr_rhythm_patients(self) -> npt.NDArray:
         """Find all patients with arrhythmia events. This takes roughly 10 secs.
+
         Returns:
             npt.NDArray: Patient ids
+
         """
         patient_ids = self.patient_ids.tolist()
         with Pool() as pool:
@@ -179,18 +169,18 @@ class IcentiaDataset(HeartKitDataset):
         Returns:
             SampleGenerator: Sample data generator
         """
-        if self.task == HeartTask.arrhythmia:
+        if self.task == "arrhythmia":
             return self.rhythm_data_generator(
                 patient_generator=patient_generator,
                 samples_per_patient=samples_per_patient,
             )
-        if self.task == HeartTask.beat:
+        if self.task == "beat":
             return self.beat_data_generator(
                 patient_generator=patient_generator,
                 samples_per_patient=samples_per_patient,
             )
-        if self.task == HeartTask.hrv:
-            return self.heart_rate_data_generator(
+        if self.task == "segmentation":
+            return self.segmentation_generator(
                 patient_generator=patient_generator,
                 samples_per_patient=samples_per_patient,
             )
@@ -208,7 +198,7 @@ class IcentiaDataset(HeartKitDataset):
             list[list[int]]: Train and test sets of patient ids
         """
         # Use stratified split for arrhythmia task
-        if self.task == HeartTask.arrhythmia:
+        if self.task == "arrhythmia":
             arr_pt_ids = np.intersect1d(self.arr_rhythm_patients, patient_ids)
             norm_pt_ids = np.setdiff1d(patient_ids, arr_pt_ids)
             (
@@ -225,6 +215,8 @@ class IcentiaDataset(HeartKitDataset):
             np.random.shuffle(val_pt_ids)
             return train_pt_ids, val_pt_ids
         # END IF
+
+        # Otherwise, use random split
         return sklearn.model_selection.train_test_split(patient_ids, test_size=test_size)
 
     def rhythm_data_generator(
@@ -232,7 +224,8 @@ class IcentiaDataset(HeartKitDataset):
         patient_generator: PatientGenerator,
         samples_per_patient: int | list[int] = 1,
     ) -> SampleGenerator:
-        """Generate frames and rhythm label using patient generator.
+        """Generate frames w/ rhythm labels (e.g. afib) using patient generator.
+
         Args:
             patient_generator (PatientGenerator): Patient Generator
             samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
@@ -243,19 +236,22 @@ class IcentiaDataset(HeartKitDataset):
         Yields:
             Iterator[SampleGenerator]
         """
+        # Target labels and mapping
+        tgt_labels = list(set(self.class_map.values()))
 
-        tgt_labels = (
-            IcentiaRhythm.normal,
-            IcentiaRhythm.afib,
-            IcentiaRhythm.aflut,
-        )
+        # Convert Icentia labels -> HK labels -> class map labels (-1 indicates not in class map)
+        tgt_map = {k: self.class_map.get(v, -1) for (k, v) in HeartRhythmMap.items()}
+        num_classes = len(tgt_labels)
+
+        # If samples_per_patient is a list, then it must be the same length as nclasses
         if isinstance(samples_per_patient, Iterable):
             samples_per_tgt = samples_per_patient
         else:
-            num_per_tgt = int(max(1, samples_per_patient / len(tgt_labels)))
-            samples_per_tgt = num_per_tgt * [len(tgt_labels)]
+            num_per_tgt = int(max(1, samples_per_patient / num_classes))
+            samples_per_tgt = num_per_tgt * [num_classes]
 
         input_size = int(np.round((self.sampling_rate / self.target_rate) * self.frame_size))
+
         # Group patient rhythms by type (segment, start, stop, delta)
         for _, segments in patient_generator:
             # This maps segment index to segment key
@@ -263,12 +259,23 @@ class IcentiaDataset(HeartKitDataset):
 
             pt_tgt_seg_map = [[] for _ in tgt_labels]
             for seg_idx, seg_key in enumerate(seg_map):
+                # Grab rhythm labels
                 rlabels = segments[seg_key]["rlabels"][:]
+
+                # Skip if no rhythm labels
                 if not rlabels.shape[0]:
                     continue
                 rlabels = rlabels[np.where(rlabels[:, 1] != IcentiaRhythm.noise.value)[0]]
+                if not rlabels.shape[0]:
+                    continue
 
+                # Unpack start, end, and label
                 xs, xe, xl = rlabels[0::2, 0], rlabels[1::2, 0], rlabels[0::2, 1]
+
+                # Map labels to target labels
+                xl = np.vectorize(tgt_map.get, otypes=[int])(xl)
+
+                # Capture segment, start, and end for each target label
                 for tgt_idx, tgt_class in enumerate(tgt_labels):
                     idxs = np.where((xe - xs >= input_size) & (xl == tgt_class))
                     seg_vals = np.vstack((seg_idx * np.ones_like(idxs), xs[idxs], xe[idxs])).T
@@ -292,17 +299,83 @@ class IcentiaDataset(HeartKitDataset):
                     seg_idx, rhy_start, rhy_end = tgt_segments[tgt_seg_idx]
                     frame_start = np.random.randint(rhy_start, rhy_end - input_size + 1)
                     frame_end = frame_start + input_size
-                    seg_samples.append((seg_idx, frame_start, frame_end, HeartRhythmMap[tgt_class]))
+                    seg_samples.append((seg_idx, frame_start, frame_end, tgt_class))
                 # END FOR
             # END FOR
 
             # Shuffle segments
             random.shuffle(seg_samples)
+
+            # Yield selected samples for patient
             for seg_idx, frame_start, frame_end, label in seg_samples:
                 x: npt.NDArray = segments[seg_map[seg_idx]]["data"][frame_start:frame_end].astype(np.float32)
                 if self.sampling_rate != self.target_rate:
-                    x = resample_signal(x, self.sampling_rate, self.target_rate)
+                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate, axis=0)
                 yield x, label
+            # END FOR
+        # END FOR
+
+    def segmentation_generator(
+        self,
+        patient_generator: PatientGenerator,
+        samples_per_patient: int | list[int] = 1,
+    ) -> SampleGenerator:
+        """Gnerate frames with annotated segments.
+
+        Args:
+            patient_generator (PatientGenerator): Patient generator
+            samples_per_patient (int | list[int], optional):
+
+        Returns:
+            SampleGenerator: Sample generator
+        """
+        assert not isinstance(samples_per_patient, Iterable)
+        input_size = int(np.round((self.sampling_rate / self.target_rate) * self.frame_size))
+
+        # For each patient
+        for _, segments in patient_generator:
+            for _ in range(samples_per_patient):
+                # Randomly pick a segment
+                seg_key = np.random.choice(list(segments.keys()))
+                # Randomly pick a frame
+                frame_start = np.random.randint(segments[seg_key]["data"].shape[0] - input_size)
+                frame_end = frame_start + input_size
+                # Get data and labels
+                data = segments[seg_key]["data"][frame_start:frame_end].squeeze()
+
+                if self.sampling_rate != self.target_rate:
+                    ds_ratio = self.target_rate / self.sampling_rate
+                    data = pk.signal.resample_signal(data, self.sampling_rate, self.target_rate, axis=0)
+                else:
+                    ds_ratio = 1
+
+                blabels = segments[seg_key]["blabels"]
+                blabels = blabels[(blabels[:, 0] >= frame_start) & (blabels[:, 0] < frame_end)]
+                # Create segment mask
+                mask = np.zeros_like(data, dtype=np.int32)
+                for i in range(blabels.shape[0]):
+                    bidx = int((blabels[i, 0] - frame_start) * ds_ratio)
+                    btype = blabels[i, 1]
+                    if btype == IcentiaBeat.undefined:
+                        continue
+
+                    # Extract QRS segment
+                    qrs = pk.signal.moving_gradient_filter(
+                        data, sample_rate=self.target_rate, sig_window=0.1, avg_window=1.0, sig_prom_weight=1.5
+                    )
+                    win_len = max(1, int(0.08 * self.target_rate))  # 80 ms
+                    b_left = max(0, bidx - win_len)
+                    b_right = min(data.shape[0], bidx + win_len)
+                    onset = np.where(np.flip(qrs[b_left:bidx]) < 0)[0]
+                    onset = onset[0] if onset.size else win_len
+                    offset = np.where(qrs[bidx + 1 : b_right] < 0)[0]
+                    offset = offset[0] if offset.size else win_len
+                    mask[bidx - onset : bidx + offset] = self.class_map.get(HeartSegment.qrs.value, 0)
+                    # Ignore P, T, and U waves for now
+                # END FOR
+                x = np.nan_to_num(data).astype(np.float32)
+                y = mask.astype(np.int32)
+                yield x, y
             # END FOR
         # END FOR
 
@@ -314,7 +387,7 @@ class IcentiaDataset(HeartKitDataset):
         """Generate frames and beat label using patient generator.
         There are over 2.5 billion normal and undefined while less than 40 million arrhythmia beats.
         The following routine sorts each patient's beats by type and then approx. uniformly samples them by amount requested.
-        We start with arrhythmia types followed by undefined and normal. For each beat we resplit remaining samples requested.
+
         Args:
             patient_generator (PatientGenerator): Patient generator
             samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
@@ -331,39 +404,55 @@ class IcentiaDataset(HeartKitDataset):
         rr_min_len = int(0.3 * self.sampling_rate)
         rr_max_len = int(2.0 * self.sampling_rate)
 
-        tgt_beat_labels = [
-            IcentiaBeat.normal,
-            IcentiaBeat.pac,
-            IcentiaBeat.pvc,
-            # IcentiaBeat.undefined,
-        ]
+        # Target labels and mapping
+        num_classes = len(set(self.class_map.values()))
+
+        # Convert Icentia labels -> HK labels -> class map labels (-1 indicates not in class map)
+        tgt_map = {k: self.class_map.get(v, -1) for (k, v) in HeartBeatMap.items()}
+
+        # If samples_per_patient is a list, then it must be the same length as nclasses
         if isinstance(samples_per_patient, Iterable):
             samples_per_tgt = samples_per_patient
         else:
-            num_per_tgt = int(max(1, samples_per_patient / len(tgt_beat_labels)))
-            samples_per_tgt = num_per_tgt * [len(tgt_beat_labels)]
+            num_per_tgt = int(max(1, samples_per_patient / num_classes))
+            samples_per_tgt = num_per_tgt * [num_classes]
 
         input_size = int(np.round((self.sampling_rate / self.target_rate) * self.frame_size))
+
         # For each patient
         for _, segments in patient_generator:
             # This maps segment index to segment key
             seg_map: list[str] = list(segments.keys())
 
             # Capture beat locations for each segment
-            pt_beat_map = [[] for _ in tgt_beat_labels]
+            pt_beat_map = [[] for _ in range(num_classes)]
             for seg_idx, seg_key in enumerate(seg_map):
+                # Get beat labels
                 blabels = segments[seg_key]["blabels"][:]
+
+                # If no beats, skip
                 num_blabels = blabels.shape[0]
                 if num_blabels <= 0:
                     continue
                 # END IF
+
+                # If too few normal beats, skip
                 num_nlabels = np.sum(blabels[:, 1] == IcentiaBeat.normal)
                 if num_nlabels / num_blabels < nlabel_threshold:
                     continue
 
                 # Capture all beat locations
-                for tgt_beat_idx, beat in enumerate(tgt_beat_labels):
+                # for tgt_beat_idx, beat in enumerate(tgt_labels):
+                for beat in IcentiaBeat:
+                    # Skip if not in class map
+                    beat_class = tgt_map.get(beat, -1)
+                    if beat_class < 0 or beat_class >= num_classes:
+                        continue
+
+                    # Get all beat type indices
                     beat_idxs = np.where(blabels[blabel_padding:-blabel_padding, 1] == beat.value)[0] + blabel_padding
+
+                    # Filter indices based on beat type
                     if beat == IcentiaBeat.normal:
                         filt_func = lambda i: blabels[i - 1, 1] == blabels[i + 1, 1] == IcentiaBeat.normal
                     elif beat in (IcentiaBeat.pac, IcentiaBeat.pvc):
@@ -375,19 +464,21 @@ class IcentiaDataset(HeartKitDataset):
                         filt_func = lambda i: blabels[i - 1, 1] == blabels[i + 1, 1] == IcentiaBeat.undefined
                     else:
                         filt_func = lambda _: True
+                    # END IF
+
+                    # Filter indices
                     beat_idxs = filter(filt_func, beat_idxs)
-                    pt_beat_map[tgt_beat_idx] += [(seg_idx, blabels[i, 0]) for i in beat_idxs]
+                    pt_beat_map[beat_class] += [(seg_idx, blabels[i, 0]) for i in beat_idxs]
                 # END FOR
             # END FOR
             pt_beat_map = [np.array(b) for b in pt_beat_map]
 
             # Randomly select N samples of each target beat
             pt_segs_beat_idxs: list[tuple[int, int, int]] = []
-            for tgt_beat_idx, beat in enumerate(tgt_beat_labels):
-                tgt_beats = pt_beat_map[tgt_beat_idx]
+            for tgt_beat_idx, tgt_beats in enumerate(pt_beat_map):
                 tgt_count = min(samples_per_tgt[tgt_beat_idx], len(tgt_beats))
                 tgt_idxs = np.random.choice(np.arange(len(tgt_beats)), size=tgt_count, replace=False)
-                pt_segs_beat_idxs += [(tgt_beats[i][0], tgt_beats[i][1], HeartBeatMap[beat]) for i in tgt_idxs]
+                pt_segs_beat_idxs += [(tgt_beats[i][0], tgt_beats[i][1], tgt_beat_idx) for i in tgt_idxs]
             # END FOR
 
             # Shuffle all
@@ -399,21 +490,22 @@ class IcentiaDataset(HeartKitDataset):
                 frame_end = frame_start + input_size
                 data = segments[seg_map[seg_idx]]["data"]
                 blabels = segments[seg_map[seg_idx]]["blabels"]
+
+                # Compute average RR interval
                 rr_xs = np.searchsorted(blabels[:, 0], max(0, frame_start - rr_win_len))
                 rr_xe = np.searchsorted(blabels[:, 0], frame_end + rr_win_len)
                 if rr_xe <= rr_xs:
                     continue
-                blabel_diffs = np.diff(blabels[rr_xs : rr_xe + 1, 0])
-                blabel_diffs = blabel_diffs[(blabel_diffs > rr_min_len) & (blabel_diffs < rr_max_len)]
-                if blabel_diffs.size <= 0:
+                rri = np.diff(blabels[rr_xs : rr_xe + 1, 0])
+                rri = rri[(rri > rr_min_len) & (rri < rr_max_len)]
+                if rri.size <= 0:
                     continue
-                avg_rr = int(np.mean(blabel_diffs))
-
-                # avg_rr = input_size
+                avg_rr = int(np.mean(rri))
 
                 if frame_start - avg_rr < 0 or frame_end + avg_rr >= data.shape[0]:
                     continue
 
+                # Combine previous, current, and next beat
                 x = np.hstack(
                     (
                         data[frame_start - avg_rr : frame_end - avg_rr],
@@ -423,7 +515,7 @@ class IcentiaDataset(HeartKitDataset):
                 )
                 x = np.nan_to_num(x).astype(np.float32)
                 if self.sampling_rate != self.target_rate:
-                    x = resample_signal(x, self.sampling_rate, self.target_rate)
+                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate, axis=0)
                 y = beat
                 yield x, y
             # END FOR
@@ -458,7 +550,7 @@ class IcentiaDataset(HeartKitDataset):
                 signal_frame_end = frame_center + self.frame_size // 2
                 x = segment["data"][signal_frame_start:signal_frame_end]
                 if self.sampling_rate != self.target_rate:
-                    x = resample_signal(x, self.sampling_rate, self.target_rate)
+                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate, axis=0)
                 label_frame_start = frame_center - label_frame_size // 2
                 label_frame_end = frame_center + label_frame_size // 2
                 beat_indices = segment["blabels"][:, 0]
@@ -469,13 +561,13 @@ class IcentiaDataset(HeartKitDataset):
         # END FOR
 
     def signal_generator(self, patient_generator: PatientGenerator, samples_per_patient: int = 1) -> SampleGenerator:
-        """
-        Generate frames using patient generator.
-        from the segments in patient data by placing a frame in a random location within one of the segments.
+        """Generate random frames using patient generator.
+
         Args:
             patient_generator (PatientGenerator): Generator that yields a tuple of patient id and patient data.
                     Patient data may contain only signals, since labels are not used.
             samples_per_patient (int): Samples per patient.
+
         Returns:
             SampleGenerator: Generator of input data of shape (frame_size, 1)
         """
@@ -486,10 +578,11 @@ class IcentiaDataset(HeartKitDataset):
                 segment_size = segment["data"].shape[0]
                 frame_start = np.random.randint(segment_size - input_size)
                 frame_end = frame_start + input_size
-                x = segment["data"][frame_start:frame_end]
+                x = segment["data"][frame_start:frame_end].squeeze()
                 x = np.nan_to_num(x).astype(np.float32)
                 if self.sampling_rate != self.target_rate:
-                    x = resample_signal(x, self.sampling_rate, self.target_rate)
+                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate, axis=0)
+                # END IF
                 yield x
             # END FOR
         # END FOR
@@ -519,12 +612,14 @@ class IcentiaDataset(HeartKitDataset):
                 np.random.shuffle(patient_ids)
             for patient_id in patient_ids:
                 pt_key = self._pt_key(patient_id)
-                with h5py.File(os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r") as h5:
+                with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
                     patient_data = h5[pt_key]
                     yield patient_id, patient_data
+                # END WITH
             # END FOR
             if not repeat:
                 break
+            # END IF
         # END WHILE
 
     def random_patient_generator(
@@ -547,9 +642,10 @@ class IcentiaDataset(HeartKitDataset):
         while True:
             for patient_id in np.random.choice(patient_ids, size=1024, p=patient_weights):
                 pt_key = self._pt_key(patient_id)
-                with h5py.File(os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r") as h5:
+                with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
                     patient_data = h5[pt_key]
                     yield patient_id, patient_data
+                # END WITH
             # END FOR
         # END WHILE
 
@@ -560,14 +656,15 @@ class IcentiaDataset(HeartKitDataset):
         start: int = 0,
         end: int | None = None,
     ) -> tuple[npt.NDArray, npt.NDArray]:
-        """
-        Find all complete beats within a frame i.e. start and end of the beat lie within the frame.
+        """Find all complete beats within a frame i.e. start and end of the beat lie within the frame.
         The indices are assumed to specify the end of a heartbeat.
+
         Args:
             indices (npt.NDArray): List of sorted beat indices.
             labels (npt.NDArray | None): List of beat labels. Defaults to None.
             start (int): Index of the first sample in the frame. Defaults to 0.
             end (int | None): Index of the last sample in the frame. Defaults to None.
+
         Returns:
             tuple[npt.NDArray, npt.NDArray]: (beat indices, beat labels)
         """
@@ -582,54 +679,6 @@ class IcentiaDataset(HeartKitDataset):
             return indices_slice
         label_slice = labels[start_index:end_index]
         return (indices_slice, label_slice)
-
-    def _get_rhythm_label(self, durations: npt.NDArray, labels: npt.NDArray):
-        """Determine rhythm label based on the longest rhythm among arrhythmias.
-        Args:
-            durations (npt.NDArray): Array of rhythm durations
-            labels (npt.NDArray): Array of rhythm labels
-        Returns:
-            Rhythm label as an integer
-        """
-        # sum up the durations of each rhythm
-        summed_durations = np.zeros(len(IcentiaRhythm))
-        for rhythm in IcentiaRhythm:
-            summed_durations[rhythm.value] = durations[labels == rhythm.value].sum()
-        longest_hp_rhythm = np.argmax(summed_durations[IcentiaRhythm.hi_priority()])
-        if summed_durations[IcentiaRhythm.hi_priority()][longest_hp_rhythm] > 0:
-            y = HeartRhythmMap[IcentiaRhythm.hi_priority()[longest_hp_rhythm]]
-        else:
-            longest_lp_rhythm = np.argmax(summed_durations[IcentiaRhythm.lo_priority()])
-            # handle the case of no detected rhythm
-            if summed_durations[IcentiaRhythm.lo_priority()][longest_lp_rhythm] > 0:
-                y = HeartRhythmMap[IcentiaRhythm.lo_priority()[longest_lp_rhythm]]
-            else:
-                y = HeartRhythmMap[IcentiaRhythm.noise]
-        return y
-
-    def _get_beat_label(self, labels: npt.NDArray):
-        """Determine beat label based on the occurrence of pac / abberated / pvc,
-            otherwise pick the most common beat type among the normal / undefined.
-
-        Args:
-            labels (npt.NDArray): Array of beat labels.
-
-        Returns:
-            int: Beat label as an integer.
-        """
-        # calculate the count of each beat type in the frame
-        beat_counts = np.bincount(labels, minlength=len(IcentiaBeat))
-        max_hp_idx = np.argmax(beat_counts[IcentiaBeat.hi_priority()])
-        if beat_counts[IcentiaBeat.hi_priority()][max_hp_idx] > 0:
-            y = HeartBeatMap[IcentiaBeat.hi_priority()[max_hp_idx]]
-        else:
-            max_lp_idx = np.argmax(beat_counts[IcentiaBeat.lo_priority()])
-            # handle the case of no detected beats
-            if beat_counts[IcentiaBeat.lo_priority()][max_lp_idx] > 0:
-                y = HeartBeatMap[IcentiaBeat.lo_priority()[max_lp_idx]]
-            else:
-                y = HeartBeatMap[IcentiaBeat.undefined]
-        return y
 
     def _get_heart_rate_label(self, qrs_indices, fs=None) -> int:
         """Determine the heart rate label based on an array of QRS indices (separating individual heartbeats).
@@ -659,7 +708,7 @@ class IcentiaDataset(HeartKitDataset):
 
     def _pt_has_rhythm_arrhythmia(self, patient_id: int):
         pt_key = self._pt_key(patient_id)
-        with h5py.File(os.path.join(self.ds_path, f"{pt_key}.h5"), mode="r") as h5:
+        with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
             for _, segment in h5[pt_key].items():
                 rlabels = segment["rlabels"][:]
                 if not rlabels.shape[0]:
@@ -732,6 +781,8 @@ class IcentiaDataset(HeartKitDataset):
     def download(self, num_workers: int | None = None, force: bool = False):
         """Download dataset
 
+        This will download preprocessed HDF5 files from S3.
+
         Args:
             num_workers (int | None, optional): # parallel workers. Defaults to None.
             force (bool, optional): Force redownload. Defaults to False.
@@ -739,7 +790,7 @@ class IcentiaDataset(HeartKitDataset):
 
         def download_s3_file(
             s3_file: str,
-            save_path: str,
+            save_path: os.PathLike,
             bucket: str,
             client: boto3.client,
             force: bool = False,
@@ -749,7 +800,7 @@ class IcentiaDataset(HeartKitDataset):
             client.download_file(
                 Bucket=bucket,
                 Key=s3_file,
-                Filename=save_path,
+                Filename=str(save_path),
             )
 
         s3_bucket = "ambiqai-ecg-icentia11k-dataset"
@@ -772,14 +823,14 @@ class IcentiaDataset(HeartKitDataset):
                     executor.submit(
                         func,
                         f"{s3_prefix}/{pt_key}.h5",
-                        os.path.join(self.ds_path, f"{pt_key}.h5"),
+                        self.ds_path / f"{pt_key}.h5",
                     )
                     for pt_key in pt_keys
                 )
                 for future in as_completed(futures):
                     err = future.exception()
                     if err:
-                        print("Failed on file", err)
+                        logger.exception("Failed on file")
                     pbar.update(1)
                 # END FOR
             # END WITH
@@ -788,6 +839,7 @@ class IcentiaDataset(HeartKitDataset):
     def download_raw_dataset(self, num_workers: int | None = None, force: bool = False):
         """Downloads full Icentia dataset zipfile and converts into individial patient HDF5 files.
         NOTE: This is a very long process (e.g. 24 hrs). Please use `icentia11k.download_dataset` instead.
+
         Args:
             force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
             num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
@@ -797,7 +849,7 @@ class IcentiaDataset(HeartKitDataset):
             "https://physionet.org/static/published-projects/icentia11k-continuous-ecg/"
             "icentia11k-single-lead-continuous-raw-electrocardiogram-dataset-1.0.zip"
         )
-        ds_zip_path = os.path.join(self.ds_path, "icentia11k.zip")
+        ds_zip_path = self.ds_path / "icentia11k.zip"
         os.makedirs(self.ds_path, exist_ok=True)
         if os.path.exists(ds_zip_path) and not force:
             logger.warning(
@@ -815,12 +867,12 @@ class IcentiaDataset(HeartKitDataset):
         )
         logger.info("Finished icentia11k patient data")
 
-    def _convert_dataset_pt_zip_to_hdf5(self, patient: int, zip_path: str, force: bool = False):
+    def _convert_dataset_pt_zip_to_hdf5(self, patient: int, zip_path: os.PathLike, force: bool = False):
         """Extract patient data from Icentia zipfile. Pulls out ECG data along with all labels.
 
         Args:
             patient (int): Patient id
-            zip_path (str): Zipfile path
+            zip_path (PathLike): Zipfile path
             force (bool, optional): Whether to override destination if it exists. Defaults to False.
         """
         import re  # pylint: disable=import-outside-toplevel
@@ -828,14 +880,26 @@ class IcentiaDataset(HeartKitDataset):
         import wfdb  # pylint: disable=import-outside-toplevel
 
         # These map Wfdb labels to icentia labels
-        WfdbRhythmMap = {"": 0, "(N": 1, "(AFIB": 2, "(AFL": 3, ")": 4}
-        WfdbBeatMap = {"Q": 0, "N": 1, "S": 2, "a": 3, "V": 4}
+        WfdbRhythmMap = {
+            "": IcentiaRhythm.noise.value,
+            "(N": IcentiaRhythm.normal.value,
+            "(AFIB": IcentiaRhythm.afib.value,
+            "(AFL": IcentiaRhythm.aflut.value,
+            ")": IcentiaRhythm.end.value,
+        }
+        WfdbBeatMap = {
+            "Q": IcentiaBeat.undefined.value,
+            "N": IcentiaBeat.normal.value,
+            "S": IcentiaBeat.pac.value,
+            "a": IcentiaBeat.aberrated.value,
+            "V": IcentiaBeat.pvc.value,
+        }
 
         logger.info(f"Processing patient {patient}")
         pt_id = self._pt_key(patient)
-        pt_path = os.path.join(self.ds_path, f"{pt_id}.h5")
+        pt_path = self.ds_path / f"{pt_id}.h5"
         if not force and os.path.exists(pt_path):
-            print("skipping patient")
+            logger.debug(f"Skipping patient {pt_id}")
             return
         zp = zipfile.ZipFile(zip_path, mode="r")  # pylint: disable=consider-using-with
         h5 = h5py.File(pt_path, mode="w")
@@ -885,13 +949,13 @@ class IcentiaDataset(HeartKitDataset):
                 h5.create_dataset(name=f"{pt_seg_path}/blabels", data=blabels)
                 h5.create_dataset(name=f"{pt_seg_path}/rlabels", data=rlabels)
             except Exception as err:  # pylint: disable=broad-except
-                print(f"Failed processing {zp_rec_name}", err)
+                logger.warning(f"Failed processing {zp_rec_name}", err)
                 continue
         h5.close()
 
     def _convert_dataset_zip_to_hdf5(
         self,
-        zip_path: str,
+        zip_path: os.PathLike,
         patient_ids: npt.NDArray | None = None,
         force: bool = False,
         num_workers: int | None = None,
@@ -899,7 +963,7 @@ class IcentiaDataset(HeartKitDataset):
         """Convert zipped Icentia dataset into individial patient HDF5 files.
 
         Args:
-            zip_path (str): Zipfile path
+            zip_path (PathLike): Zipfile path
             patient_ids (npt.NDArray | None, optional): List of patient IDs to extract. Defaults to all.
             force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
             num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().

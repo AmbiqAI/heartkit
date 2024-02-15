@@ -1,9 +1,12 @@
 """ EfficientNet https://arxiv.org/abs/2104.00298"""
+
+import keras
 import tensorflow as tf
 from pydantic import BaseModel, Field
 
-from .blocks import batch_norm, conv2d, make_divisible, mbconv_block, relu6
+from .blocks import batch_norm, conv2d, mbconv_block, relu6
 from .defines import KerasLayer, MBConvParams
+from .utils import make_divisible
 
 
 class EfficientNetParams(BaseModel):
@@ -53,6 +56,7 @@ def efficientnet_core(blocks: list[MBConvParams], drop_connect_rate: float = 0) 
         # END FOR
         return x
 
+    # END DEF
     return layer
 
 
@@ -60,7 +64,7 @@ def EfficientNetV2(
     x: tf.Tensor,
     params: EfficientNetParams,
     num_classes: int | None = None,
-):
+) -> keras.Model:
     """Create EfficientNet V2 TF functional model
 
     Args:
@@ -69,8 +73,17 @@ def EfficientNetV2(
         num_classes (int, optional): # classes.
 
     Returns:
-        tf.keras.Model: Model
+        keras.Model: Model
     """
+
+    # Force input to be 4D (add dummy dimension)
+    requires_reshape = len(x.shape) == 3
+    if requires_reshape:
+        y = keras.layers.Reshape((1,) + x.shape[1:])(x)
+    else:
+        y = x
+    # END IF
+
     # Stem
     if params.input_filters > 0:
         name = "stem"
@@ -80,11 +93,10 @@ def EfficientNetV2(
             kernel_size=params.input_kernel_size,
             strides=params.input_strides,
             name=name,
-        )(x)
+        )(y)
         y = batch_norm(name=name)(y)
         y = relu6(name=name)(y)
-    else:
-        y = x
+    # END IF
 
     y = efficientnet_core(blocks=params.blocks, drop_connect_rate=params.drop_connect_rate)(y)
 
@@ -97,9 +109,10 @@ def EfficientNetV2(
 
     if params.include_top:
         name = "top"
-        y = tf.keras.layers.GlobalAveragePooling2D(name=f"{name}.pool")(y)
+        y = keras.layers.GlobalAveragePooling2D(name=f"{name}.pool")(y)
         if 0 < params.dropout < 1:
-            y = tf.keras.layers.Dropout(params.dropout)(y)
-        y = tf.keras.layers.Dense(num_classes, name=name)(y)
-    model = tf.keras.Model(x, y, name=params.model_name)
+            y = keras.layers.Dropout(params.dropout)(y)
+        y = keras.layers.Dense(num_classes, name=name)(y)
+
+    model = keras.Model(x, y, name=params.model_name)
     return model

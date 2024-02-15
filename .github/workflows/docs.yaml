@@ -1,33 +1,62 @@
-name: Build Docs
+name: Deploy to GitHub Pages
+
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+    branches: [$default-branch]
+  workflow_dispatch:
+
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+# Default to bash
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  build-docs:
-    concurrency: ci-${{ github.ref }}
+  # Build job
+  build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout 🛎️
         uses: actions/checkout@v3
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v4
       - name: Install Poetry
-        run: pipx install poetry==1.3.2
+        run: pipx install poetry
       - name: Install Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
           cache: 'poetry'
-      - name: Build Docs
+      - name: Install and Build 🔧
+        env:
+          CI: ""
+          PUBLIC_URL: "${{ steps.pages.outputs.base_url }}/"
         run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          git config --global user.email "adam.page@ambiq.com"
-          git remote rm origin
-          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          poetry install --only docs
-          poetry run mkdocs gh-deploy --config-file "${GITHUB_WORKSPACE}/mkdocs.yml" --force
+          poetry install --no-root --only docs
+          poetry run mkdocs build
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./site
+
+  # Deployment job
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to Pages 🚀
+        id: deployment
+        uses: actions/deploy-pages@v4

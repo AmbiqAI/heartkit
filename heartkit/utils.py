@@ -3,6 +3,7 @@ import logging
 import os
 import pickle
 import random
+from typing import Any
 
 import numpy as np
 import requests
@@ -31,7 +32,7 @@ def set_random_seed(seed: int | None = None) -> int:
     return seed
 
 
-def load_pkl(file: str, compress: bool = True):
+def load_pkl(file: str, compress: bool = True) -> dict[str, Any]:
     """Load pickled file.
 
     Args:
@@ -39,7 +40,7 @@ def load_pkl(file: str, compress: bool = True):
         compress (bool, optional): If file is compressed. Defaults to True.
 
     Returns:
-        Any: Contents of pickle
+        dict[str, Any]: Dictionary of pickled objects
     """
     if compress:
         with gzip.open(file, "rb") as fh:
@@ -68,10 +69,10 @@ def setup_logger(log_name: str) -> logging.Logger:
     """Setup logger with Rich
 
     Args:
-        log_name (str): _description_
+        log_name (str): Logger name
 
     Returns:
-        logging.Logger: _description_
+        logging.Logger: Logger
     """
     logger = logging.getLogger(log_name)
     if logger.handlers:
@@ -90,11 +91,18 @@ def env_flag(env_var: str, default: bool = False) -> bool:
       These are the truthy values:
           - 1
           - true, yes, on
-    - When the variable is set to anything else, returns False.
+    - When the variable is set to the anything else, returns False.
        Example falsy values:
           - 0
           - no
     - Ignore case and leading/trailing whitespace.
+
+    Args:
+        env_var (str): Environment variable name
+        default (bool, optional): Default value. Defaults to False.
+
+    Returns:
+        bool: Value of environment variable
     """
     environ_string = os.environ.get(env_var, "").strip().lower()
     if not environ_string:
@@ -102,12 +110,12 @@ def env_flag(env_var: str, default: bool = False) -> bool:
     return environ_string in ["1", "true", "yes", "on"]
 
 
-def download_file(src: str, dst: str, progress: bool = True):
-    """Download file from supplied url to destination.
+def download_file(src: str, dst: os.PathLike, progress: bool = True, chunk_size: int = 8192):
+    """Download file from supplied url to destination streaming.
 
     Args:
         src (str): Source URL path
-        dst (str): Destination file path
+        dst (PathLike): Destination file path
         progress (bool, optional): Display progress bar. Defaults to True.
 
     """
@@ -116,7 +124,7 @@ def download_file(src: str, dst: str, progress: bool = True):
         req_len = int(r.headers.get("Content-length", 0))
         prog_bar = tqdm(total=req_len, unit="iB", unit_scale=True) if progress else None
         with open(dst, "wb") as f:
-            for chunk in r.iter_content(chunk_size=8192):
+            for chunk in r.iter_content(chunk_size=chunk_size):
                 f.write(chunk)
                 if prog_bar:
                     prog_bar.update(len(chunk))

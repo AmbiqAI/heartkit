@@ -10,9 +10,11 @@
         },
         "ghcr.io/devcontainers/features/nvidia-cuda:1": {
             "installCudnn": true,
+            "installCudnnDev": true,
             "installNvtx": true,
-            "cudaVersion": "11.8",
-            "cudnnVersion": "8.6.0.163"
+            "installToolkit": true,
+            "cudaVersion": "12.2",
+            "cudnnVersion": "8.9.5.29"
         },
         "ghcr.io/devcontainers-contrib/features/pipenv:2": {
             "version": "latest"

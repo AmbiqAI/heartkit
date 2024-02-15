@@ -1,4 +1,6 @@
 """ ResNet """
+
+import keras
 import tensorflow as tf
 from pydantic import BaseModel, Field
 
@@ -37,7 +39,6 @@ def generate_bottleneck_block(
     """Generate functional bottleneck block.
 
     Args:
-        x (tf.Tensor): Input
         filters (int): Filter size
         kernel_size (int | tuple[int, int], optional): Kernel size. Defaults to 3.
         strides (int | tuple[int, int], optional): Stride length. Defaults to 1.
@@ -65,7 +66,7 @@ def generate_bottleneck_block(
         if projection:
             x = conv2d(filters * expansion, 1, strides)(x)
             x = batch_norm()(x)
-        x = tf.keras.layers.Add()([bx, x])
+        x = keras.layers.Add()([bx, x])
         x = relu6()(x)
         return x
 
@@ -80,7 +81,6 @@ def generate_residual_block(
     """Generate functional residual block
 
     Args:
-        x (tf.Tensor): Input
         filters (int): Filter size
         kernel_size (int | tuple[int, int], optional): Kernel size. Defaults to 3.
         strides (int | tuple[int, int], optional): Stride length. Defaults to 1.
@@ -101,7 +101,7 @@ def generate_residual_block(
         if projection:
             x = conv2d(filters, 1, strides)(x)
             x = batch_norm()(x)
-        x = tf.keras.layers.Add()([bx, x])
+        x = keras.layers.Add()([bx, x])
         x = relu6()(x)
         return x
 
@@ -112,7 +112,7 @@ def ResNet(
     x: tf.Tensor,
     params: ResNetParams,
     num_classes: int | None = None,
-):
+) -> keras.Model:
     """Generate functional ResNet model.
     Args:
         x (tf.Tensor): Inputs
@@ -120,18 +120,25 @@ def ResNet(
         num_classes (int, optional): # class outputs. Defaults to None.
 
     Returns:
-        tf.keras.Model: Model
+        keras.Model: Model
     """
+
+    requires_reshape = len(x.shape) == 3
+    if requires_reshape:
+        y = keras.layers.Reshape((1,) + x.shape[1:])(x)
+    else:
+        y = x
+    # END IF
+
     if params.input_filters:
         y = conv2d(
             params.input_filters,
             kernel_size=params.input_kernel_size,
             strides=params.input_strides,
-        )(x)
+        )(y)
         y = batch_norm()(y)
         y = relu6()(y)
-    else:
-        y = x
+    # END IF
 
     for stage, block in enumerate(params.blocks):
         for d in range(block.depth):
@@ -145,8 +152,8 @@ def ResNet(
     # END FOR
 
     if params.include_top:
-        y = tf.keras.layers.GlobalAveragePooling2D()(y)
-        y = tf.keras.layers.Dense(num_classes)(y)
+        y = keras.layers.GlobalAveragePooling2D()(y)
+        y = keras.layers.Dense(num_classes)(y)
 
-    model = tf.keras.Model(x, y, name="model")
+    model = keras.Model(x, y, name="model")
     return model

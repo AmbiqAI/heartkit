@@ -1,4 +1,6 @@
 """MobileOne https://arxiv.org/abs/2206.04040"""
+
+import keras
 import tensorflow as tf
 from pydantic import BaseModel, Field
 
@@ -52,11 +54,9 @@ def mobileone_block(
 
     Args:
         output_filters (int): # output filter channels
-        expand_ratio (float, optional): Expansion ratio. Defaults to 1.
         kernel_size (int | tuple[int, int], optional): Kernel size. Defaults to 3.
         strides (int | tuple[int, int], optional): Stride length. Defaults to 1.
         se_ratio (float, optional): SE ratio. Defaults to 8.
-        droprate (float, optional): Drop rate. Defaults to 0.
         name (str|None, optional): Block name. Defaults to None.
 
     Returns:
@@ -72,7 +72,7 @@ def mobileone_block(
         has_skip_branch = output_filters == input_filters and stride_len == 1
 
         if inference_mode:
-            y = tf.keras.layers.ZeroPadding2D(padding=padding)(x)
+            y = keras.layers.ZeroPadding2D(padding=padding)(x)
             y = conv2d(
                 output_filters,
                 kernel_size=kernel_size,
@@ -106,7 +106,7 @@ def mobileone_block(
         if kernel_len > 1:
             name_scale = f"{name}.scale" if name else None
             if is_depthwise:
-                y_scale = tf.keras.layers.DepthwiseConv2D(
+                y_scale = keras.layers.DepthwiseConv2D(
                     kernel_size=(1, 1),
                     strides=(1, 1),  # strides,
                     padding="valid",
@@ -116,9 +116,9 @@ def mobileone_block(
                 )(x)
                 y_scale = batch_norm(name=name_scale)(y_scale)
                 if is_downsample:
-                    y_scale = tf.keras.layers.MaxPool2D(pool_size=strides, padding="same")(y_scale)
+                    y_scale = keras.layers.MaxPool2D(pool_size=strides, padding="same")(y_scale)
             else:
-                y_scale = tf.keras.layers.Conv2D(
+                y_scale = keras.layers.Conv2D(
                     output_filters,
                     kernel_size=(1, 1),
                     strides=strides,
@@ -133,11 +133,11 @@ def mobileone_block(
         # END IF
 
         # Other branches
-        yp = tf.keras.layers.ZeroPadding2D(padding=padding)(x)
+        yp = keras.layers.ZeroPadding2D(padding=padding)(x)
         for b in range(num_conv_branches):
             name_branch = f"{name}.branch{b+1}" if name else None
             if is_depthwise:
-                y_branch = tf.keras.layers.DepthwiseConv2D(
+                y_branch = keras.layers.DepthwiseConv2D(
                     kernel_size=kernel_size,
                     strides=(1, 1),
                     padding="valid",
@@ -147,9 +147,9 @@ def mobileone_block(
                 )(yp)
                 y_branch = batch_norm(name=name_branch)(y_branch)
                 if is_downsample:
-                    y_branch = tf.keras.layers.MaxPool2D(pool_size=strides, padding="same")(y_branch)
+                    y_branch = keras.layers.MaxPool2D(pool_size=strides, padding="same")(y_branch)
             else:
-                y_branch = tf.keras.layers.Conv2D(
+                y_branch = keras.layers.Conv2D(
                     output_filters,
                     kernel_size=kernel_size,
                     strides=strides,
@@ -164,7 +164,7 @@ def mobileone_block(
         # END FOR
 
         # Merge branches
-        y = tf.keras.layers.Add(name=f"{name}.add" if name else None)(branches)
+        y = keras.layers.Add(name=f"{name}.add" if name else None)(branches)
 
         # Squeeze-Excite block
         if se_ratio > 0:
@@ -174,6 +174,7 @@ def mobileone_block(
         y = relu6(name=name)(y)
         return y
 
+    # END DEF
     return layer
 
 
@@ -182,7 +183,7 @@ def MobileOne(
     params: MobileOneParams,
     num_classes: int | None = None,
     inference_mode: bool = False,
-):
+) -> keras.Model:
     """Create MobileOne TF functional model
 
     Args:
@@ -191,8 +192,15 @@ def MobileOne(
         num_classes (int, optional): # classes.
 
     Returns:
-        tf.keras.Model: Model
+        keras.Model: Model
     """
+
+    requires_reshape = len(x.shape) == 3
+    if requires_reshape:
+        y = keras.layers.Reshape((1,) + x.shape[1:])(x)
+    else:
+        y = x
+    # END IF
 
     y = mobileone_block(
         output_filters=params.input_filters,
@@ -202,7 +210,7 @@ def MobileOne(
         groups=1,
         inference_mode=inference_mode,
         name=f"M0.B{0}.D{0}.DW",
-    )(x)
+    )(y)
 
     for b, block in enumerate(params.blocks):
         for d in range(block.depth):
@@ -237,11 +245,13 @@ def MobileOne(
 
     if params.include_top:
         name = "top"
-        y = tf.keras.layers.GlobalAveragePooling2D(name=f"{name}.pool")(y)
+        y = keras.layers.GlobalAveragePooling2D(name=f"{name}.pool")(y)
         if 0 < params.dropout < 1:
-            y = tf.keras.layers.Dropout(params.dropout)(y)
-        y = tf.keras.layers.Dense(num_classes, name=name)(y)
-    model = tf.keras.Model(x, y, name=params.model_name)
+            y = keras.layers.Dropout(params.dropout)(y)
+        y = keras.layers.Dense(num_classes, name=name)(y)
+
+    model = keras.Model(x, y, name=params.model_name)
+
     return model
 
 

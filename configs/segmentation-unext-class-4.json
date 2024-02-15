@@ -1,0 +1,120 @@
+{
+    "job_dir": "./results/segmentation-unext-class-4",
+    "ds_path": "./datasets",
+    "datasets": [{
+        "name": "ludb",
+        "params": {}
+    }, {
+        "name": "synthetic",
+        "params": {
+            "num_pts": 1000
+        }
+    }],
+    "num_classes": 4,
+    "sampling_rate": 100,
+    "frame_size": 256,
+    "model_file": "./results/segmentation-unext-class-4/model.keras",
+    "samples_per_patient": 25,
+    "val_samples_per_patient": 25,
+    "val_patients": 0.10,
+    "test_samples_per_patient": 25,
+    "test_size": 10000,
+    "batch_size": 128,
+    "buffer_size": 20000,
+    "epochs": 125,
+    "steps_per_epoch": 50,
+    "val_metric": "loss",
+    "lr_rate": 1e-3,
+    "lr_cycles": 1,
+    "val_acc_threshold": 0.98,
+    "tflm_var_name": "g_segmentation_model",
+    "tflm_file": "./results/segmentation-unext-class-4/segmentation_model_buffer.h",
+    "backend": "pc",
+    "quantization": {
+        "enabled": true,
+        "qat": false,
+        "ptq": true,
+        "input_type": "int8",
+        "output_type": "int8",
+        "supported_ops": null
+    },
+    "model": {
+        "name": "unext",
+        "params": {
+            "blocks": [
+                {"filters": 8, "depth": 1, "ddepth": 1, "kernel": [1, 5], "pool": [1, 2], "strides": [1, 2], "skip": true, "expand_ratio": 1, "se_ratio": 1, "dropout": 0},
+                {"filters": 16, "depth": 2, "ddepth": 1, "kernel": [1, 5], "pool": [1, 2], "strides": [1, 2], "skip": true, "expand_ratio": 1, "se_ratio": 4, "dropout": 0},
+                {"filters": 24, "depth": 2, "ddepth": 1, "kernel": [1, 5], "pool": [1, 2], "strides": [1, 2], "skip": true, "expand_ratio": 1, "se_ratio": 4, "dropout": 0},
+                {"filters": 32, "depth": 1, "ddepth": 1, "kernel": [1, 5], "pool": [1, 2], "strides": [1, 2], "skip": true, "expand_ratio": 1, "se_ratio": 4, "dropout": 0},
+                {"filters": 40, "depth": 1, "ddepth": 1, "kernel": [1, 5], "pool": [1, 2], "strides": [1, 2], "skip": true, "expand_ratio": 1, "se_ratio": 4, "dropout": 0}
+            ],
+            "output_kernel_size": [1, 5],
+            "include_top": true,
+            "use_logits": true
+        }
+    },
+    "preprocesses": [
+        {
+            "name": "filter",
+            "params": {
+                "lowcut": 1.0,
+                "highcut": 30,
+                "order": 3,
+                "forward_backward": true,
+                "axis": 0
+            }
+        },
+        {
+            "name": "znorm",
+            "params": {
+                "eps": 0.01,
+                "axis": null
+            }
+        }
+    ],
+    "augmentations": [
+        {
+            "name": "baseline_wander",
+            "params": {
+                "amplitude": [0.0, 1.0],
+                "frequency": [0.5, 1.5]
+            }
+        },
+        {
+            "name": "motion_noise",
+            "params": {
+                "amplitude": [0.0, 1.0],
+                "frequency": [1.0, 2.0]
+            }
+        },
+        {
+            "name": "powerline_noise",
+            "params": {
+                "amplitude": [0.05, 0.15],
+                "frequency": [45, 50]
+            }
+        },
+        {
+            "name": "burst_noise",
+            "params": {
+                "burst_number": [0, 4],
+                "amplitude": [0.05, 0.25],
+                "frequency": [20, 49]
+            }
+        },
+        {
+            "name": "noise_sources",
+            "params": {
+                "num_sources": [0, 4],
+                "amplitude": [0.05, 0.25],
+                "frequency": [10, 40]
+            }
+        },
+        {
+            "name": "lead_noise",
+            "params": {
+                "scale": [1e-4, 1e-2]
+            }
+        }
+    ]
+}

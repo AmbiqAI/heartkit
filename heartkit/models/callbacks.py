@@ -1,15 +1,15 @@
 from typing import Callable
 
+import keras
 import numpy as np
 import numpy.typing as npt
-import tensorflow as tf
 
 from ..utils import setup_logger
 
 logger = setup_logger(__name__)
 
 
-class CustomCheckpoint(tf.keras.callbacks.Callback):
+class CustomCheckpoint(keras.callbacks.Callback):
     """Custom keras callback checkpoint"""
 
     def __init__(

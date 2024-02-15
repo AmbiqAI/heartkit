@@ -1,7 +1,8 @@
 # Datasets
 
-See [Datasets](../datasets.md) for information about available datasets.
+See [Datasets](../datasets/index.md) for information about available datasets.
 
+::: heartkit.datasets.factory
 
 ::: heartkit.datasets.defines
 
@@ -9,12 +10,12 @@ See [Datasets](../datasets.md) for information about available datasets.
 
 ::: heartkit.datasets.augmentation
 
-::: heartkit.datasets.preprocess
-
 ::: heartkit.datasets.icentia11k
 
 ::: heartkit.datasets.ludb
 
 ::: heartkit.datasets.qtdb
+
+::: heartkit.datasets.ptbxl
 
 ::: heartkit.datasets.synthetic

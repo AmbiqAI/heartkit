@@ -23,9 +23,6 @@ def compute_iou(
     Returns:
         float: IoU
     """
-    # intersect = np.logical_and(y_true, y_pred)
-    # union = np.logical_or(y_true, y_pred)
-    # return np.sum(intersect) / np.sum(union)
     return jaccard_score(y_true.flatten(), y_pred.flatten(), average=average)
 
 
@@ -69,6 +66,7 @@ def f_max(
 ) -> tuple[float, float]:
     """Compute F max
     source: https://github.com/helme/ecg_ptbxl_benchmarking
+
     Args:
         y_true (npt.NDArray): Y True
         y_prob (npt.NDArray): Y probs
@@ -89,7 +87,7 @@ def confusion_matrix_plot(
     y_true: npt.NDArray,
     y_pred: npt.NDArray,
     labels: list[str],
-    save_path: str | None = None,
+    save_path: os.PathLike | None = None,
     normalize: Literal["true", "pred", "all"] | None = False,
     **kwargs,
 ) -> tuple[plt.Figure, plt.Axes] | None:
@@ -100,6 +98,9 @@ def confusion_matrix_plot(
         y_pred (npt.NDArray): Predicted y labels
         labels (list[str]): Label names
         save_path (str | None): Path to save plot. Defaults to None.
+
+    Returns:
+        tuple[plt.Figure, plt.Axes] | None: Figure and axes
     """
 
     cm = confusion_matrix(y_true, y_pred)
@@ -126,15 +127,19 @@ def roc_auc_plot(
     y_true: npt.NDArray,
     y_prob: npt.NDArray,
     labels: list[str],
-    save_path: str | None = None,
+    save_path: os.PathLike | None = None,
     **kwargs,
-):
+) -> tuple[plt.Figure, plt.Axes] | None:
     """Generate ROC plot via matplotlib/seaborn
+
     Args:
         y_true (npt.NDArray): True y labels
         y_prob (npt.NDArray): Predicted y labels
         labels (list[str]): Label names
         save_path (str | None): Path to save plot. Defaults to None.
+
+    Returns:
+        tuple[plt.Figure, plt.Axes] | None: Figure and axes
     """
 
     fpr, tpr, _ = roc_curve(y_true, y_prob)
@@ -156,9 +161,20 @@ def roc_auc_plot(
     return fig, ax
 
 
-def macro_precision_recall(y_true: npt.NDArray, y_prob: npt.NDArray, thresholds: npt.NDArray):
-    """source: https://github.com/helme/ecg_ptbxl_benchmarking"""
-    # expand analysis to the number of thresholds
+def macro_precision_recall(
+    y_true: npt.NDArray, y_prob: npt.NDArray, thresholds: npt.NDArray
+) -> tuple[np.float_, np.float_]:
+    """Compute macro precision and recall
+    source: https://github.com/helme/ecg_ptbxl_benchmarking
+
+    Args:
+        y_true (npt.NDArray): True y labels
+        y_prob (npt.NDArray): Predicted y labels
+        thresholds (npt.NDArray): Thresholds
+
+    Returns:
+       tuple[np.float_, np.float_]: Precision and recall
+    """
     y_true = np.repeat(y_true[None, :, :], len(thresholds), axis=0)
     y_prob = np.repeat(y_prob[None, :, :], len(thresholds), axis=0)
     y_pred = y_prob >= thresholds[:, None, None]
@@ -182,35 +198,6 @@ def macro_precision_recall(y_true: npt.NDArray, y_prob: npt.NDArray, thresholds:
     return av_precision, av_recall
 
 
-def challenge2020_metrics(y_true, y_pred, beta_f=2, beta_g=2, class_weights=None, single=False):
-    """source: https://github.com/helme/ecg_ptbxl_benchmarking"""
-    num_samples, num_classes = y_true.shape
-    if single:  # if evaluating single class in case of threshold-optimization
-        sample_weights = np.ones(num_samples)
-    else:
-        sample_weights = y_true.sum(axis=1)
-    if class_weights is None:
-        class_weights = np.ones(num_classes)
-    f_beta = 0
-    g_beta = 0
-    for k, w_k in enumerate(class_weights):
-        tp, fp, tn, fn = 0.0, 0.0, 0.0, 0.0
-        for i in range(num_samples):
-            if y_true[i, k] == y_pred[i, k] == 1:
-                tp += 1.0 / sample_weights[i]
-            if y_pred[i, k] == 1 and y_true[i, k] != y_pred[i, k]:
-                fp += 1.0 / sample_weights[i]
-            if y_true[i, k] == y_pred[i, k] == 0:
-                tn += 1.0 / sample_weights[i]
-            if y_pred[i, k] == 0 and y_true[i, k] != y_pred[i, k]:
-                fn += 1.0 / sample_weights[i]
-        f_beta += w_k * ((1 + beta_f**2) * tp) / ((1 + beta_f**2) * tp + fp + beta_f**2 * fn)
-        g_beta += w_k * tp / (tp + fp + beta_g * fn)
-    f_beta /= class_weights.sum()
-    g_beta /= class_weights.sum()
-    return {"F_beta": f_beta, "G_beta": g_beta}
-
-
 def _one_hot(x: npt.NDArray, depth: int) -> npt.NDArray:
     """Generate one hot encoding
 
@@ -226,14 +213,14 @@ def _one_hot(x: npt.NDArray, depth: int) -> npt.NDArray:
     return x_one_hot
 
 
-def multi_f1(y_true: npt.NDArray, y_prob: npt.NDArray):
+def multi_f1(y_true: npt.NDArray, y_prob: npt.NDArray) -> npt.NDArray | float:
     """Compute multi-class F1
 
     Args:
-        y_true (npt.NDArray): _description_
-        y_prob (npt.NDArray): _description_
+        y_true (npt.NDArray): True y labels
+        y_prob (npt.NDArray): Predicted y labels
 
     Returns:
-        _type_: _description_
+        npt.NDArray|float: F1 score
     """
     return f1(y_true, y_prob, multiclass=True, threshold=0.5)

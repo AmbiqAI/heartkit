@@ -37,6 +37,10 @@ a.internal-link::after {
   box-shadow: 5px 5px 10px #999;
 }
 
+.md-grid {
+  max-width: 1440px;
+}
+
 /* Give space to lower icons so Gitter chat doesn't get on top of them */
 .md-footer-meta {
   padding-bottom: 2em;
@@ -188,4 +192,18 @@ th, td {
 /* dark mode alternating table bg colors */
 [data-md-color-scheme="slate"] .md-typeset__table tr:nth-child(2n) {
   background-color: hsla(var(--md-hue),25%,25%,1)
+}
+
+.sk-plotly-graph-div {
+  border-radius: 15px;
+  background-color: rgba(38,42,50,1.0);
+  padding: 10px;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.sk-h2-span {
+  color:rgb(201,48,198);
+  font-size: 24px;
+  font-weight: 300;
 }
