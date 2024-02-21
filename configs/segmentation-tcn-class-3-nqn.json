@@ -1,28 +1,29 @@
 {
-    "name": "segmentation-tcn-class-3",
-    "job_dir": "./results/segmentation-tcn-class-2",
+    "name": "segmentation-tcn-class-3-nqn",
+    "job_dir": "./results/segmentation-tcn-class-3-nqn",
     "ds_path": "./datasets",
     "datasets": [{
         "name": "icentia11k",
         "params": {}
     }],
-    "num_classes": 2,
+    "num_classes": 3,
     "class_map": {
         "0": 0,
         "1": 0,
         "2": 1,
         "3": 0,
-        "4": 0
+        "4": 0,
+        "5": 2
     },
     "class_names": [
-        "NONE", "QRS"
+        "NONE", "QRS", "NOISE"
     ],
     "sampling_rate": 100,
     "frame_size": 256,
     "model_file": "model.keras",
     "samples_per_patient": 10,
     "train_patients": 10000,
-    "val_file": "segmentation-class-2-10000pt-100fs-256.pkl",
+    "val_file": "segmentation-tcn-class-3-nqn-10000pt-100fs-256.pkl",
     "val_samples_per_patient": 20,
     "val_patients": 0.20,
     "val_size": 40000,
@@ -82,6 +83,16 @@
             "params": {
                 "eps": 0.01,
                 "axis": null
+            }
+        }
+    ],
+    "augmentations": [
+        {
+            "name": "whiteout",
+            "params": {
+                "probability": [0, 0.25],
+                "width": [0.1, 0.8],
+                "amplitude": [0.75, 2.5]
             }
         }
     ]

@@ -251,3 +251,21 @@ def UNet(
     # Define the model
     model = keras.Model(x, y, name=params.model_name)
     return model
+
+
+def unet_from_object(
+    x: tf.Tensor,
+    params: dict,
+    num_classes: int,
+) -> keras.Model:
+    """Create model from object
+
+    Args:
+        x (tf.Tensor): Input tensor
+        params (dict): Model parameters.
+        num_classes (int, optional): # classes.
+
+    Returns:
+        keras.Model: Model
+    """
+    return UNet(x=x, params=UNetParams(**params), num_classes=num_classes)

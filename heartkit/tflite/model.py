@@ -1,31 +1,34 @@
 import glob
 import itertools
+import os
 import tempfile
 
 import keras
 import tensorflow as tf
 
 
-def load_model(model_path: str) -> keras.Model:
+def load_model(model_path: os.PathLike) -> keras.Model:
     """Loads a TF model stored either remotely or locally.
     NOTE: Currently only WANDB and local files are supported.
 
     Args:
         model_path (str): Source path
-            WANDB: wandb://[[entity/]project/]collectionName:[alias]
-            FILE: file://path/to/model.tf
-            S3: S3://bucket/prefix/model.tf
+            WANDB: wandb:[[entity/]project/]collectionName:[alias]
+            FILE: file:/path/to/model.tf
+            S3: s3:bucket/prefix/model.tf
 
     Returns:
         keras.Model: Model
     """
+
+    model_path = str(model_path)
     # Stored as WANDB artifact (assumes user is authenticated)
-    if model_path.startswith("wandb://"):
+    if model_path.startswith("wandb:"):
         # pylint: disable=C0415
         import wandb  # lazy import wandb
 
         api = wandb.Api()
-        model_path = model_path.removeprefix("wandb://")
+        model_path = model_path.removeprefix("wandb:")
         artifact = api.artifact(model_path, type="model")
         with tempfile.TemporaryDirectory() as tmpdirname:
             artifact.download(tmpdirname)
@@ -37,10 +40,10 @@ def load_model(model_path: str) -> keras.Model:
                 model_path = file_paths[0]
             model = keras.models.load_model(model_path)
         return model
-    if model_path.startswith("s3://"):
+    if model_path.startswith("s3:"):
         raise NotImplementedError("S3 handler not implemented yet")
     # Local file
-    model_path = model_path.removeprefix("file://")
+    model_path = model_path.removeprefix("file:")
     return keras.models.load_model(model_path)
 
 

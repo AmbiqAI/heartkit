@@ -18,9 +18,10 @@ from ...defines import HKDemoParams, HKExportParams, HKTestParams, HKTrainParams
 from ...rpc.backends import EvbBackend, PcBackend
 from ...utils import env_flag, set_random_seed, setup_logger
 from ..task import HKTask
-from .defines import get_class_shape, get_feat_shape
 from .utils import (
     create_model,
+    get_class_shape,
+    get_feat_shape,
     load_datasets,
     load_test_datasets,
     load_train_datasets,
@@ -30,7 +31,7 @@ from .utils import (
 logger = setup_logger(__name__)
 
 
-class Denoise(HKTask):
+class DenoiseTask(HKTask):
     """HeartKit ECG Denoise Task"""
 
     @staticmethod
@@ -64,6 +65,7 @@ class Denoise(HKTask):
         # END IF
 
         num_classes = 1
+
         input_spec = (
             tf.TensorSpec(shape=get_feat_shape(params.frame_size), dtype=tf.float32),
             tf.TensorSpec(shape=get_class_shape(params.frame_size, num_classes), dtype=tf.float32),

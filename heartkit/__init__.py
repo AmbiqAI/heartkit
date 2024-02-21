@@ -6,14 +6,6 @@ from .datasets import DatasetFactory, HKDataset
 from .defines import (
     AugmentationParams,
     DatasetParams,
-    HeartBeat,
-    HeartBeatName,
-    HeartRate,
-    HeartRateName,
-    HeartRhythm,
-    HeartRhythmName,
-    HeartSegment,
-    HeartSegmentName,
     HKDemoParams,
     HKDownloadParams,
     HKExportParams,
@@ -23,7 +15,18 @@ from .defines import (
     PreprocessParams,
 )
 from .models import ModelFactory
-from .tasks import HKTask, TaskFactory
+from .tasks import (
+    HeartBeat,
+    HeartBeatName,
+    HeartRate,
+    HeartRateName,
+    HeartRhythm,
+    HeartRhythmName,
+    HeartSegment,
+    HeartSegmentName,
+    HKTask,
+    TaskFactory,
+)
 from .utils import setup_logger
 
 __version__ = version(__name__)

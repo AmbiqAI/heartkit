@@ -107,8 +107,7 @@ disable = [
     "logging-fstring-interpolation",
     "duplicate-code",
     "use-dict-literal",
-    "unnecessary-lambda-assignment",
-    "cell-var-from-loop"
+    "cyclic-import"
 ]
 
 [tool.pylint.format]

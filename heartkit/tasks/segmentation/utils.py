@@ -16,8 +16,34 @@ from ...defines import (
     PreprocessParams,
 )
 from ...models import ModelFactory, UNet, UNetBlockParams, UNetParams
+from .defines import HeartSegment
 
 console = Console()
+
+
+def get_feat_shape(frame_size: int) -> tuple[int, ...]:
+    """Get dataset feature shape.
+
+    Args:
+        frame_size (int): Frame size
+
+    Returns:
+        tuple[int, ...]: Feature shape
+    """
+    return (frame_size, 1)  # Time x Channels
+
+
+def get_class_shape(frame_size: int, nclasses: int) -> tuple[int, ...]:
+    """Get dataset class shape.
+
+    Args:
+        frame_size (int): Frame size
+        nclasses (int): Number of classes
+
+    Returns:
+        tuple[int, ...]: Class shape
+    """
+    return (frame_size, nclasses)  # Time x Classes
 
 
 def prepare(x: npt.NDArray, sample_rate: float, preprocesses: list[PreprocessParams]) -> npt.NDArray:
@@ -79,6 +105,66 @@ def load_datasets(
     return dsets
 
 
+def apply_augmentation_pipeline(
+    x: npt.NDArray,
+    y: npt.NDArray,
+    frame_size: int,
+    sample_rate: int,
+    class_map: dict[int, int],
+    augmentations: list[PreprocessParams],
+) -> tuple[npt.NDArray, npt.NDArray]:
+    """Task augmentation pipeline
+
+    Args:
+        x (npt.NDArray): Input signal
+        y (npt.NDArray): Target signal
+        augmentations (list[PreprocessParams]): Augmentations
+
+    Returns:
+        tuple[npt.NDArray, npt.NDArray]: Augmented input and target signals
+    """
+    feat_shape = get_feat_shape(frame_size)
+
+    x_mu, x_sd = np.nanmean(x), np.nanstd(x)
+    # Standard augmentations dont impact the label
+    x = augment_pipeline(x, augmentations=augmentations, sample_rate=sample_rate)
+
+    # Augmentations that impact the label
+    noise_label = class_map.get(HeartSegment.noise, None)
+    if noise_label:
+
+        cutout = next(filter(lambda a: a.name == "cutout", augmentations), None)
+        if cutout:
+            prob = cutout.params.get("probability", [0, 0.25])[1]
+            width = cutout.params.get("width", [0, 1])
+            if np.random.rand() < prob:
+                dur = int(np.random.uniform(width[0], width[1]) * feat_shape[0])
+                start = np.random.randint(0, feat_shape[0] - dur)
+                stop = start + dur
+                x[start:stop] = x_mu
+                y[start:stop] = noise_label
+            # END IF
+        # END IF
+
+        whiteout = next(filter(lambda a: a.name == "whiteout", augmentations), None)
+        if whiteout:
+            prob = whiteout.params.get("probability", [0, 0.25])[1]
+            amp = whiteout.params.get("amplitude", [0.5, 1.0])
+            width = whiteout.params.get("width", [0, 1])
+            if np.random.rand() < prob:
+                dur = int(np.random.uniform(width[0], width[1]) * feat_shape[0])
+                start = np.random.randint(0, feat_shape[0] - dur)
+                stop = start + dur
+                scale = np.random.uniform(amp[0], amp[1]) * x_sd
+                x[start:stop] += np.random.normal(0, scale, size=x[start:stop].shape)
+                y[start:stop] = noise_label
+            # END IF
+        # END IF
+    # END IF
+
+    return x, y
+
+
 def load_train_datasets(
     datasets: list[HKDataset],
     params: HKTrainParams,
@@ -93,12 +179,61 @@ def load_train_datasets(
         tuple[tf.data.Dataset, tf.data.Dataset]: ds, train and validation datasets
     """
 
-    def preprocess(x: npt.NDArray) -> npt.NDArray:
-        xx = x.copy().squeeze()
+    feat_shape = get_feat_shape(params.frame_size)
+
+    def preprocess(x_y: tuple[npt.NDArray, npt.NDArray]) -> tuple[npt.NDArray, npt.NDArray]:
+        xx = x_y[0].copy().squeeze()
+        yy = x_y[1].copy()
         if params.augmentations:
-            xx = augment_pipeline(xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
-        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
-        return xx
+            xx, yy = apply_augmentation_pipeline(
+                x=xx,
+                y=yy,
+                frame_size=params.frame_size,
+                sample_rate=params.sampling_rate,
+                class_map=params.class_map,
+                augmentations=params.augmentations,
+            )
+            # xx_mu, xx_sd = np.nanmean(xx), np.nanstd(xx)
+            # # Standard augmentations dont impact the label
+            # xx = augment_pipeline(xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
+
+            # # Augmentations that impact the label
+            # noise_label = params.class_map.get(HeartSegment.noise, None)
+            # if noise_label:
+
+            #     cutout = next(filter(lambda a: a.name == "cutout", params.augmentations), None)
+            #     if cutout:
+            #         prob = cutout.params.get("probability", [0, 0.25])[1]
+            #         width = cutout.params.get("width", [0, 1])
+            #         if np.random.rand() < prob:
+            #             dur = int(np.random.uniform(width[0], width[1])*feat_shape[0])
+            #             start = np.random.randint(0, feat_shape[0] - dur)
+            #             stop = start + dur
+            #             xx[start:stop] = xx_mu
+            #             yy[start:stop] = noise_label
+            #         # END IF
+            #     # END IF
+
+            #     whiteout = next(filter(lambda a: a.name == "whiteout", params.augmentations), None)
+            #     if whiteout:
+            #         prob = cutout.params.get("probability", [0, 0.25])[1]
+            #         amp = whiteout.params.get("amplitude", [0.5, 1.0])
+            #         width = cutout.params.get("width", [0, 1])
+            #         if np.random.rand() < prob:
+            #             dur = int(np.random.uniform(width[0], width[1])*feat_shape[0])
+            #             start = np.random.randint(0, feat_shape[0] - dur)
+            #             stop = start + dur
+            #             scale = np.random.uniform(amp[0], amp[1])*xx_sd
+            #             xx[start:stop] += np.random.normal(0, scale, size=xx[start:stop].shape)
+            #             yy[start:stop] = noise_label
+            #         # END IF
+            #     # END IF
+            # # END IF
+        # END IF
+
+        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
+        yy = tf.one_hot(yy, params.num_classes)
+        return xx, yy
 
     train_datasets = []
     val_datasets = []
@@ -158,10 +293,16 @@ def load_test_datasets(
         tuple[npt.NDArray, npt.NDArray]: Test data and labels
     """
 
-    def preprocess(x: npt.NDArray) -> npt.NDArray:
-        xx = x.copy().squeeze()
-        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
-        return xx
+    feat_shape = get_feat_shape(params.frame_size)
+
+    def preprocess(x_y: tuple[npt.NDArray, npt.NDArray]) -> tuple[npt.NDArray, npt.NDArray]:
+        xx = x_y[0].copy().squeeze()
+        yy = x_y[1].copy()
+        # if params.augmentations:
+        #     xx = augment_pipeline(xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
+        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
+        yy = tf.one_hot(yy, params.num_classes)
+        return xx, yy
 
     with console.status("[bold green] Loading test dataset..."):
         test_datasets = [

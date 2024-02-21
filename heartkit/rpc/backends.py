@@ -172,8 +172,9 @@ class PcBackend(DemoBackend):
         self._model = None
 
     def _is_tf_model(self) -> bool:
-        ext = self.params.model_file.split(".")[-1]
-        return ext in ["h5", "hdf5", "keras", "tf"]
+
+        ext = self.params.model_file.suffix
+        return ext in [".h5", ".hdf5", ".keras", ".tf"]
 
     def open(self):
         if self._is_tf_model():

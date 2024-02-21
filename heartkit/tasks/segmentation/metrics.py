@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 
-from ...defines import HeartSegment
+from .defines import HeartSegment
 
 
 def plot_segmentations(

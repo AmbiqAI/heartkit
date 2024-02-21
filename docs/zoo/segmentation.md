@@ -1,6 +1,14 @@
 # Pre-Trained Segmentation Models
 
-## <span class="sk-h2-span">Datasets Used</span>
+## <span class="sk-h2-span">Model Results</span>
+
+The following results are obtained from the pre-trained segmentation models when testing on 1,000 patients (not used during training).
+
+--8<-- "assets/segmentation-model-hw-table.md"
+
+---
+
+## <span class="sk-h2-span">Datasets</span>
 
 We leverage the following datasets for training the segmentation models:
 
@@ -19,7 +27,7 @@ The models are based on the [U-Net architecture](../models/unet.md). The U-Net a
 
 ## <span class="sk-h2-span"> Preprocessing</span>
 
-For ECG segmentation, the models are trained directly on single channel ECG data. No feature extraction is performed. However, the data is preprocessed by applying a band-pass filter to remove noise followed by down-sampling. The filtered ECG signals are normalized by subtracting the mean and dividing by the standard deviation. We also add a small epsilon value to the standard deviation to avoid division by zero.
+The models are trained directly on single channel ECG data. No feature extraction is performed. However, the data is preprocessed by applying a band-pass filter to remove noise followed by down-sampling. The filtered ECG signals are normalized by subtracting the mean and dividing by the standard deviation. We also add a small epsilon value to the standard deviation to avoid division by zero.
 
 ---
 
@@ -40,13 +48,39 @@ For each dataset, 10% of the data is held out for testing. From the remaining, 2
 
 ---
 
-## <span class="sk-h2-span">Model Results</span>
+## <span class="sk-h2-span">Class Mapping</span>
 
-The following results are obtained from the pre-trained segmentation models when testing on 1,000 patients (not used during training).
+Below outlines the class label mappings used to train segmentation models.
 
---8<-- "assets/segmentation-model-hw-table.md"
+=== "2-Class"
 
----
+    Only detect QRS complexes.
+
+    | CLASS    | LABELS                |
+    | -------- | --------------------- |
+    | 0        | None, P-wave, T-wave  |
+    | 1        | QRS                   |
+
+=== "3-Class"
+
+    Bucket the P-wave and T-wave into a single class.
+
+    | CLASS   | LABELS          |
+    | ------- | --------------- |
+    | 0       | None            |
+    | 1       | QRS             |
+    | 2       | P-wave, T-wave  |
+
+=== "4-Class"
+
+    Identify each of the P-wave, QRS complex, and T-wave.
+
+    | CLASS   | LABELS          |
+    | ------- | --------------- |
+    | 0       | None            |
+    | 1       | P-wave          |
+    | 2       | QRS             |
+    | 3       | T-wave          |
 
 ## <span class="sk-h2-span">Confusion Matrix</span>
 

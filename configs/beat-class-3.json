@@ -1,4 +1,5 @@
 {
+    "name": "beat-class-3",
     "job_dir": "./results/beat-class-3",
     "ds_path": "./datasets",
     "datasets": [{
@@ -6,9 +7,17 @@
         "params": {}
     }],
     "num_classes": 3,
+    "class_map": {
+        "0": 0,
+        "1": 1,
+        "2": 2
+    },
+    "class_names": [
+        "NONE", "PAC", "PVC"
+    ],
     "sampling_rate": 100,
     "frame_size": 80,
-    "model_file": "./results/beat-class-3/model.keras",
+    "model_file": "model.keras",
     "samples_per_patient": [25, 100, 100],
     "train_patients": 10000,
     "val_samples_per_patient": [25, 100, 100],
@@ -26,7 +35,7 @@
     "lr_cycles": 1,
     "val_acc_threshold": 0.98,
     "tflm_var_name": "g_beat_model",
-    "tflm_file": "./results/beat-class-3/beat_model_buffer.h",
+    "tflm_file": "beat_model_buffer.h",
     "backend": "pc",
     "quantization": {
         "enabled": true,

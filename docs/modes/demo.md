@@ -70,9 +70,19 @@ The following is an example of a task-level demo report for the segmentation tas
     task = hk.TaskFactory.get("segmentation")
     task.export(hk.HKDemoParams(
         job_dir=Path("./results/segmentation-class-2"),
-        ds_path=Path("./datasets"),
-        datasets=[{"name": "icentia11k", "params": {}}],
+        datasets=[{
+            "name": "icentia11k",
+            "params": {}
+        }],
         num_classes=2,
+        class_map={
+            0: 0,
+            1: 1,
+            2: 1
+        },
+        class_names=[
+            "NONE", "AFIB/AFL"
+        ],
         sampling_rate=100,
         frame_size=256,
         backend="pc",

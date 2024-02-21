@@ -7,7 +7,7 @@ import numpy.typing as npt
 import physiokit as pk
 import tensorflow as tf
 
-from ..defines import HeartSegment
+from ..tasks import HeartSegment
 from .dataset import HKDataset
 from .defines import PatientGenerator, SampleGenerator
 
@@ -236,10 +236,6 @@ class SyntheticDataset(HKDataset):
         for x in gen:
             x = x.reshape((self.frame_size, 1))
             y = x.copy()
-            y = pk.signal.filter_signal(
-                y, sample_rate=self.sampling_rate, lowcut=1.0, highcut=30, order=3, forward_backward=True, axis=0
-            )
-            y = pk.signal.normalize_signal(y, eps=0.01, axis=None)
             yield x, y
 
     def uniform_patient_generator(

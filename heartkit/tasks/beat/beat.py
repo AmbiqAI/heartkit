@@ -23,15 +23,10 @@ from ...models.utils import threshold_predictions
 from ...rpc.backends import EvbBackend, PcBackend
 from ...utils import env_flag, set_random_seed, setup_logger
 from ..task import HKTask
-from .defines import (
-    get_class_mapping,
-    get_class_names,
-    get_class_shape,
-    get_classes,
-    get_feat_shape,
-)
 from .utils import (
     create_model,
+    get_class_shape,
+    get_feat_shape,
     load_datasets,
     load_test_datasets,
     load_train_datasets,
@@ -42,7 +37,7 @@ console = Console()
 logger = setup_logger(__name__)
 
 
-class Beat(HKTask):
+class BeatTask(HKTask):
     """HeartKit Beat Task"""
 
     @staticmethod
@@ -74,9 +69,9 @@ class Beat(HKTask):
             wandb.config.update(params.model_dump())
         # END IF
 
-        classes = get_classes(params.num_classes)
-        class_names = get_class_names(params.num_classes)
-        class_map = get_class_mapping(params.num_classes)
+        classes = sorted(list(set(params.class_map.values())))
+        class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
+
         input_spec = (
             tf.TensorSpec(shape=get_feat_shape(params.frame_size), dtype=tf.float32),
             tf.TensorSpec(shape=get_class_shape(params.frame_size, params.num_classes), dtype=tf.int32),
@@ -87,7 +82,7 @@ class Beat(HKTask):
             frame_size=params.frame_size,
             sampling_rate=params.sampling_rate,
             spec=input_spec,
-            class_map=class_map,
+            class_map=params.class_map,
             datasets=params.datasets,
         )
         train_ds, val_ds = load_train_datasets(datasets=datasets, params=params)
@@ -226,8 +221,9 @@ class Beat(HKTask):
         handler.setLevel(logging.INFO)
         logger.addHandler(handler)
 
-        class_names = get_class_names(params.num_classes)
-        class_map = get_class_mapping(params.num_classes)
+        # classes = sorted(list(set(params.class_map.values())))
+        class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
+
         input_spec = (
             tf.TensorSpec(shape=get_feat_shape(params.frame_size), dtype=tf.float32),
             tf.TensorSpec(shape=get_class_shape(params.frame_size, params.num_classes), dtype=tf.int32),
@@ -238,7 +234,7 @@ class Beat(HKTask):
             frame_size=params.frame_size,
             sampling_rate=params.sampling_rate,
             spec=input_spec,
-            class_map=class_map,
+            class_map=params.class_map,
             datasets=params.datasets,
         )
         test_x, test_y = load_test_datasets(datasets=datasets, params=params)
@@ -300,7 +296,9 @@ class Beat(HKTask):
         tfl_model_path = params.job_dir / "model.tflite"
         tflm_model_path = params.job_dir / "model_buffer.h"
 
-        class_map = get_class_mapping(params.num_classes)
+        # classes = sorted(list(set(params.class_map.values())))
+        # class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
+
         input_spec = (
             tf.TensorSpec(shape=get_feat_shape(params.frame_size), dtype=tf.float32),
             tf.TensorSpec(shape=get_class_shape(params.frame_size, params.num_classes), dtype=tf.int32),
@@ -311,7 +309,7 @@ class Beat(HKTask):
             frame_size=params.frame_size,
             sampling_rate=params.sampling_rate,
             spec=input_spec,
-            class_map=class_map,
+            class_map=params.class_map,
             datasets=params.datasets,
         )
         test_x, test_y = load_test_datasets(datasets=datasets, params=params)
@@ -413,8 +411,9 @@ class Beat(HKTask):
         runner = BackendRunner(params=params)
 
         # Load data
-        class_names = get_class_names(params.num_classes)
-        class_map = get_class_mapping(params.num_classes)
+        # classes = sorted(list(set(params.class_map.values())))
+        class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
+
         input_spec = (
             tf.TensorSpec(shape=get_feat_shape(params.frame_size), dtype=tf.float32),
             tf.TensorSpec(shape=get_class_shape(params.frame_size, params.num_classes), dtype=tf.int32),
@@ -425,7 +424,7 @@ class Beat(HKTask):
             frame_size=20 * params.sampling_rate,
             sampling_rate=params.sampling_rate,
             spec=input_spec,
-            class_map=class_map,
+            class_map=params.class_map,
             datasets=params.datasets,
         )[0]
         x = next(

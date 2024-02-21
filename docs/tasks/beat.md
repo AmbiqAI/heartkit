@@ -1,4 +1,4 @@
-# Beat Classification
+# Beat Classification Task
 
 ## <span class="sk-h2-span">Overview</span>
 
@@ -28,23 +28,31 @@ The following table provides the latest performance and accuracy results for pre
 
 ---
 
-## <span class="sk-h2-span">Classes</span>
+## <span class="sk-h2-span">Target Classes</span>
 
-Below outlines the class labels used for beat classification.
+Below outlines the classes available for arrhythmia classification. When training a model, the number of classes, mapping, and names must be provided.
 
-=== "2-Stage"
+| CLASS   | LABELS          |
+| ------- | --------------- |
+| 0       | Normal          |
+| 1       | PAC             |
+| 2       | PVC             |
+| 3       | Noise           |
 
-    | CLASS    | LABELS           |
-    | -------- | ---------------- |
-    | 0        | NSR              |
-    | 1        | PAC/PVC          |
+!!! example "Class Mapping"
 
-=== "3-Stage"
+    Below is an example of a class mapping for a 3-class beat model. The class map keys are the original class labels and the values are the new class labels. Any class not included will be skipped.
 
-    | CLASS   | LABELS           |
-    | ------- | ---------------- |
-    | 0       | NSR              |
-    | 1       | PAC              |
-    | 2       | PVC              |
+    ```json
+    {
+        "num_classes": 3,
+        "class_names": ["QRS", "PAC", "PVC"],
+        "class_map": {
+            "0": 0,  // Map Normal to QRS
+            "1": 1,  // Map PAC to PAC
+            "2": 2,  // Map PVC to PVC
+        }
+    }
+    ```
 
 ---

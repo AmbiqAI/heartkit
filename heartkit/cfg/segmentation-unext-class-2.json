@@ -1,6 +1,6 @@
 {
-    "name": "segmentation-tcn-class-3",
-    "job_dir": "./results/segmentation-tcn-class-2",
+    "name": "segmentation-unext-class-2",
+    "job_dir": "./results/segmentation-unext-class-2",
     "ds_path": "./datasets",
     "datasets": [{
         "name": "icentia11k",
@@ -49,21 +49,18 @@
         "supported_ops": null
     },
     "architecture": {
-        "name": "tcn",
+        "name": "unext",
         "params": {
-            "input_kernel": [1, 3],
-            "input_norm": "batch",
             "blocks": [
-                {"depth": 1, "branch": 1, "filters": 8, "kernel": [1, 3], "dilation": [1, 1], "dropout": 0, "ex_ratio": 1, "se_ratio": 0, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 12, "kernel": [1, 3], "dilation": [1, 1], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 16, "kernel": [1, 3], "dilation": [1, 2], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 24, "kernel": [1, 3], "dilation": [1, 4], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 32, "kernel": [1, 3], "dilation": [1, 8], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"}
+                {"filters": 8, "depth": 1, "ddepth": 1, "kernel": [1, 3], "pool": [1, 3], "strides": [1, 2], "skip": true, "expand_ratio": 1, "se_ratio": 0, "dropout": 0},
+                {"filters": 12, "depth": 1, "ddepth": 1, "kernel": [1, 3], "pool": [1, 3], "strides": [1, 2], "skip": true, "expand_ratio": 1, "se_ratio": 2, "dropout": 0},
+                {"filters": 16, "depth": 1, "ddepth": 1, "kernel": [1, 3], "pool": [1, 3], "strides": [1, 2], "skip": true, "expand_ratio": 1, "se_ratio": 2, "dropout": 0},
+                {"filters": 24, "depth": 1, "ddepth": 1, "kernel": [1, 3], "pool": [1, 3], "strides": [1, 2], "skip": true, "expand_ratio": 1, "se_ratio": 2, "dropout": 0},
+                {"filters": 32, "depth": 1, "ddepth": 1, "kernel": [1, 3], "pool": [1, 3], "strides": [1, 2], "skip": true, "expand_ratio": 1, "se_ratio": 2, "dropout": 0}
             ],
-            "output_kernel": [1, 3],
+            "output_kernel_size": [1, 3],
             "include_top": true,
-            "use_logits": true,
-            "model_name": "tcn"
+            "use_logits": true
         }
     },
     "preprocesses": [

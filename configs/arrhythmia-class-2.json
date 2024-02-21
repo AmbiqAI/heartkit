@@ -1,21 +1,33 @@
 {
+    "name": "arrhythmia-class-2",
     "job_dir": "./results/arrhythmia-class-2",
     "ds_path": "./datasets",
     "datasets": [{
+        "name": "ptbxl",
+        "params": {}
+    }, {
         "name": "icentia11k",
         "params": {}
     }],
     "num_classes": 2,
+    "class_map": {
+        "0": 0,
+        "1": 1,
+        "2": 1
+    },
+    "class_names": [
+        "NONE", "AFIB/AFL"
+    ],
     "sampling_rate": 100,
     "frame_size": 400,
-    "model_file": "./results/arrhythmia-class-2/model.keras",
+    "model_file": "model.keras",
     "samples_per_patient": [25, 200],
     "train_patients": 10000,
-    "val_file": "./results/arrhythmia-class-2-10000pt-100fs-4s.pkl",
+    "val_file": "arrhythmia-class-2-$dataset-100fs-4s.pkl",
     "val_samples_per_patient": [25, 200],
     "val_patients": 0.20,
     "val_size": 100000,
-    "threshold": 0.75,
+    "threshold": 0.5,
     "test_samples_per_patient": [10, 100],
     "test_patients": 1000,
     "test_size": 20000,
@@ -28,7 +40,7 @@
     "lr_cycles": 1,
     "val_acc_threshold": 0.98,
     "tflm_var_name": "g_arrhythmia_model",
-    "tflm_file": "./results/arrhythmia-class-2/arrhythmia_model_buffer.h",
+    "tflm_file": "arrhythmia_model_buffer.h",
     "backend": "pc",
     "quantization": {
         "enabled": true,

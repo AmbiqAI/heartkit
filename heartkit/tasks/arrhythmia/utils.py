@@ -20,6 +20,31 @@ from ...models import EfficientNetParams, EfficientNetV2, MBConvParams, ModelFac
 console = Console()
 
 
+def get_feat_shape(frame_size: int) -> tuple[int, ...]:
+    """Get dataset feature shape.
+
+    Args:
+        frame_size (int): Frame size
+
+    Returns:
+        tuple[int, ...]: Feature shape
+    """
+    return (frame_size, 1)  # Time x Channels
+
+
+def get_class_shape(frame_size: int, nclasses: int) -> tuple[int, ...]:
+    """Get dataset class shape.
+
+    Args:
+        frame_size (int): Frame size
+        nclasses (int): Number of classes
+
+    Returns:
+        tuple[int, ...]: Class shape
+    """
+    return (nclasses,)  # One-hot encoded classes
+
+
 def prepare(x: npt.NDArray, sample_rate: float, preprocesses: list[PreprocessParams]) -> npt.NDArray:
     """Prepare dataset.
 
@@ -93,12 +118,15 @@ def load_train_datasets(
         tuple[tf.data.Dataset, tf.data.Dataset]: Train and validation datasets
     """
 
-    def preprocess(x: npt.NDArray) -> npt.NDArray:
-        xx = x.copy().squeeze()
+    feat_shape = get_feat_shape(params.frame_size)
+
+    def preprocess(x_y: tuple[npt.NDArray, npt.NDArray]) -> tuple[npt.NDArray, npt.NDArray]:
+        xx = x_y[0].copy().squeeze()
         if params.augmentations:
             xx = augment_pipeline(xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
-        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
-        return xx
+        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
+        yy = tf.one_hot(x_y[1], params.num_classes)
+        return xx, yy
 
     train_datasets = []
     val_datasets = []
@@ -158,10 +186,15 @@ def load_test_datasets(
         tuple[npt.NDArray, npt.NDArray]: Test data and labels
     """
 
-    def preprocess(x: npt.NDArray) -> npt.NDArray:
-        xx = x.copy().squeeze()
-        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
-        return xx
+    feat_shape = get_feat_shape(params.frame_size)
+
+    def preprocess(x_y: tuple[npt.NDArray, npt.NDArray]) -> tuple[npt.NDArray, npt.NDArray]:
+        xx = x_y[0].copy().squeeze()
+        # if params.augmentations:
+        #     xx = augment_pipeline(xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
+        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
+        yy = tf.one_hot(x_y[1], params.num_classes)
+        return xx, yy
 
     with console.status("[bold green] Loading test dataset..."):
         test_datasets = [

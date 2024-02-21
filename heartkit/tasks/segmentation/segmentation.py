@@ -15,26 +15,17 @@ from tqdm import tqdm
 from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
 
 from ... import tflite as tfa
-from ...defines import (
-    HeartSegment,
-    HKDemoParams,
-    HKExportParams,
-    HKTestParams,
-    HKTrainParams,
-)
+from ...defines import HKDemoParams, HKExportParams, HKTestParams, HKTrainParams
 from ...metrics import compute_iou, confusion_matrix_plot, f1_score
 from ...rpc.backends import EvbBackend, PcBackend
 from ...utils import env_flag, set_random_seed, setup_logger
 from ..task import HKTask
-from .defines import (
-    get_class_mapping,
-    get_class_names,
-    get_class_shape,
-    get_classes,
-    get_feat_shape,
-)
+from .defines import HeartSegment
 from .utils import (
+    apply_augmentation_pipeline,
     create_model,
+    get_class_shape,
+    get_feat_shape,
     load_datasets,
     load_test_datasets,
     load_train_datasets,
@@ -44,7 +35,7 @@ from .utils import (
 logger = setup_logger(__name__)
 
 
-class Segmentation(HKTask):
+class SegmentationTask(HKTask):
     """HeartKit Segmentation Task"""
 
     @staticmethod
@@ -78,9 +69,9 @@ class Segmentation(HKTask):
             wandb.config.update(params.model_dump())
         # END IF
 
-        classes = get_classes(params.num_classes)
-        class_names = get_class_names(params.num_classes)
-        class_map = get_class_mapping(params.num_classes)
+        classes = sorted(list(set(params.class_map.values())))
+        class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
+
         input_spec = (
             tf.TensorSpec(shape=get_feat_shape(params.frame_size), dtype=tf.float32),
             tf.TensorSpec(shape=get_class_shape(params.frame_size, params.num_classes), dtype=tf.int32),
@@ -91,7 +82,7 @@ class Segmentation(HKTask):
             frame_size=params.frame_size,
             sampling_rate=params.sampling_rate,
             spec=input_spec,
-            class_map=class_map,
+            class_map=params.class_map,
             datasets=params.datasets,
         )
         train_ds, val_ds = load_train_datasets(datasets=datasets, params=params)
@@ -254,8 +245,8 @@ class Segmentation(HKTask):
         handler.setLevel(logging.INFO)
         logger.addHandler(handler)
 
-        class_names = get_class_names(params.num_classes)
-        class_map = get_class_mapping(params.num_classes)
+        class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
+
         input_spec = (
             tf.TensorSpec(shape=get_feat_shape(params.frame_size), dtype=tf.float32),
             tf.TensorSpec(shape=get_class_shape(params.frame_size, params.num_classes), dtype=tf.int32),
@@ -266,7 +257,7 @@ class Segmentation(HKTask):
             frame_size=params.frame_size,
             sampling_rate=params.sampling_rate,
             spec=input_spec,
-            class_map=class_map,
+            class_map=params.class_map,
             datasets=params.datasets,
         )
         test_x, test_y = load_test_datasets(datasets=datasets, params=params)
@@ -318,7 +309,6 @@ class Segmentation(HKTask):
         tfl_model_path = params.job_dir / "model.tflite"
         tflm_model_path = params.job_dir / "model_buffer.h"
 
-        class_map = get_class_mapping(params.num_classes)
         input_spec = (
             tf.TensorSpec(shape=get_feat_shape(params.frame_size), dtype=tf.float32),
             tf.TensorSpec(shape=get_class_shape(params.frame_size, params.num_classes), dtype=tf.int32),
@@ -329,7 +319,7 @@ class Segmentation(HKTask):
             frame_size=params.frame_size,
             sampling_rate=params.sampling_rate,
             spec=input_spec,
-            class_map=class_map,
+            class_map=params.class_map,
             datasets=params.datasets,
         )
         test_x, test_y = load_test_datasets(datasets=datasets, params=params)
@@ -430,9 +420,9 @@ class Segmentation(HKTask):
         BackendRunner = EvbBackend if params.backend == "evb" else PcBackend
         runner = BackendRunner(params=params)
 
-        classes = get_classes(params.num_classes)
-        class_names = get_class_names(params.num_classes)
-        class_map = get_class_mapping(params.num_classes)
+        classes = sorted(list(set(params.class_map.values())))
+        class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
+
         input_spec = (
             tf.TensorSpec(shape=get_feat_shape(params.frame_size), dtype=tf.float32),
             tf.TensorSpec(shape=get_class_shape(params.frame_size, params.num_classes), dtype=tf.int32),
@@ -444,7 +434,7 @@ class Segmentation(HKTask):
             frame_size=10 * params.sampling_rate,
             sampling_rate=params.sampling_rate,
             spec=input_spec,
-            class_map=class_map,
+            class_map=params.class_map,
             datasets=params.datasets,
         )[0]
         x = next(ds.signal_generator(ds.uniform_patient_generator(patient_ids=ds.get_test_patient_ids(), repeat=False)))
@@ -458,7 +448,17 @@ class Segmentation(HKTask):
                 start, stop = x.size - params.frame_size, x.size
             else:
                 start, stop = i, i + params.frame_size
-            xx = prepare(x[start:stop], sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
+            xx = x[start:stop]
+            yy = np.zeros(shape=get_class_shape(params.frame_size, params.num_classes), dtype=np.int32)
+            xx, yy = apply_augmentation_pipeline(
+                xx,
+                yy,
+                frame_size=params.frame_size,
+                sample_rate=params.sampling_rate,
+                class_map=params.class_map,
+                augmentations=params.augmentations,
+            )
+            xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
             runner.set_inputs(xx)
             runner.perform_inference()
             yy = runner.get_outputs()
@@ -488,7 +488,7 @@ class Segmentation(HKTask):
         for i in range(1, len(pred_bounds)):
             start, stop = pred_bounds[i - 1], pred_bounds[i]
             duration = 1000 * (stop - start) / params.sampling_rate
-            if y_pred[start] == class_map.get(HeartSegment.qrs, -1) and (duration > 20):
+            if y_pred[start] == params.class_map.get(HeartSegment.qrs, -1) and (duration > 20):
                 peaks.append(start + np.argmax(np.abs(x[start:stop])))
         peaks = np.array(peaks)
 
@@ -642,6 +642,7 @@ class Segmentation(HKTask):
         )
 
         fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=False)
-        fig.show()
+        if env_flag("SHOW"):
+            fig.show()
 
         logger.info(f"Report saved to {params.job_dir / 'demo.html'}")

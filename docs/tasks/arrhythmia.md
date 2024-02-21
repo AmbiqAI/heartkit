@@ -1,4 +1,4 @@
-# Arrhythmia Classification
+# Arrhythmia Classification Task
 
 ## <span class="sk-h2-span">Overview</span>
 
@@ -12,7 +12,7 @@ The objective of arrhythmia classification is to detect and classify abnormal he
 
 ## <span class="sk-h2-span">Characteristics</span>
 
-There are a variety of heart arrhythmias that can be detected using ECG signals. In this task, we focus on detecting and classifying atrial fibrillation (AFIB) and atrial flutter (AFL). The following table summarizes the characteristics of AFIB and AFL:
+There are a variety of heart arrhythmias that can be detected using ECG signals. In this task, we focus on detecting rhythm-level arrhythmias such as atrial fibrillation (AFIB) and atrial flutter (AFL). The following table summarizes the characteristics of the included arrhythmias:
 
 === "AFIB"
 
@@ -46,33 +46,37 @@ The following table provides the latest performance and accuracy results for arr
 
 ---
 
-## <span class="sk-h2-span">Classes</span>
+## <span class="sk-h2-span">Target Classes</span>
 
-Below outlines the class labels used for arrhythmia classification.
+Below outlines the classes available for arrhythmia classification. When training a model, the number of classes, mapping, and names must be provided.
 
-=== "2-Class"
+| CLASS   | LABELS          |
+| ------- | --------------- |
+| 0       | Normal          |
+| 1       | AFIB            |
+| 2       | AFL             |
+| 3       | Noise           |
 
-    | CLASS    | LABELS           |
-    | -------- | ---------------- |
-    | 0        | NSR              |
-    | 1        | AFIB, AFL        |
 
-=== "3-Class"
+!!! example "Class Mapping"
 
-    | CLASS   | LABELS           |
-    | ------- | ---------------- |
-    | 0       | NSR              |
-    | 1       | AFIB             |
-    | 2       | AFL              |
+    Below is an example of a class mapping for a 2-class arrhythmia model. The class map keys are the original class labels and the values are the new class labels. Any class not included will be skipped.
+
+    ```json
+    {
+        "num_classes": 2,
+        "class_names": ["NSR", "AFIB"],
+        "class_map": {
+            "0": 0,  // Map None to None
+            "1": 1,  // Map AFIB to AFIB
+            // Skip remaining classes
+        }
+    }
+    ```
 
 ---
-
 
 ## <span class="sk-h2-span">References</span>
 
 * [ECG Heartbeat classification using deep transfer learning with Convolutional Neural Network and STFT technique](https://arxiv.org/abs/2206.14200)
 * [Classification of ECG based on Hybrid Features using CNNs for Wearable Applications](https://arxiv.org/pdf/2206.07648.pdf)
-* [ECG Heartbeat classification using deep transfer learning with Convolutional Neural Network and STFT technique](https://arxiv.org/pdf/2206.14200.pdf)
-* [U2-Net: Going Deeper with Nested U-Structure for Salient Object Detection](https://arxiv.org/abs/2005.09007)
-* [UNET 3+: A FULL-SCALE CONNECTED UNET FOR MEDICAL IMAGE SEGMENTATION](https://arxiv.org/pdf/2004.08790.pdf)
-* [ResUNet-a: a deep learning framework for semantic segmentation of remotely sensed data](https://arxiv.org/pdf/1904.00592.pdf)

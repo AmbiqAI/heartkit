@@ -9,6 +9,8 @@ The objective of ECG segmentation is to delineate key segments of the cardiac cy
 --8<-- "assets/pk_ecg_synthetic_nsr.html"
 </div>
 
+---
+
 ## <span class="sk-h2-span">Characteristics</span>
 
 
@@ -23,54 +25,47 @@ The objective of ECG segmentation is to delineate key segments of the cardiac cy
   <figcaption>Annotated ECG Signal</figcaption>
 </figure>
 
+---
+
 ## <span class="sk-h2-span">Pre-Trained Models</span>
 
 The following table provides the latest performance and accuracy results for ECG segmentation models. Additional result details can be found in [Model Zoo → Segmentation](../zoo/segmentation.md).
 
 --8<-- "assets/segmentation-model-zoo-table.md"
 
+---
+
+
 ## <span class="sk-h2-span">Target Classes</span>
 
-Below outlines the class labels available for ECG segmentation. When training a model, the number of classes can be specified based on the desired level of granularity.
+Below outlines the classes available for ECG segmentation. When training a model, the number of classes, mapping, and names must be provided. This allows for the most flexibility in the segmentation task.
 
-=== "2-Class"
+| CLASS   | LABELS          |
+| ------- | --------------- |
+| 0       | None            |
+| 1       | P-wave          |
+| 2       | QRS             |
+| 3       | T-wave          |
+| 4       | U-wave          |
+| 5       | Noise           |
 
-    Only detect QRS complexes.
+!!! example "Class Mapping"
 
-    | CLASS    | LABELS                |
-    | -------- | --------------------- |
-    | 0        | None, P-wave, T-wave  |
-    | 1        | QRS                   |
+    Below is an example of a class mapping for a 3-class segmentation model. The class map keys are the original class labels, and the values are the new class labels. Any class not included will be skipped.
 
-=== "3-Class"
+    ```json
+    {
+        "num_classes": 3,
+        "class_names": ["None", "QRS", "Noise"],
+        "class_map": {
+            "0": 0,  // Map None to None
+            "1": 0,  // Map P-wave to None
+            "2": 1,  // Map QRS to QRS
+            "3": 0,  // Map T-wave to None
+            "4": 0,  // Map U-wave to None
+            "5": 2   // Map Noise to Noise
+        }
+    }
+    ```
 
-    Bucket the P-wave and T-wave into a single class.
-
-    | CLASS   | LABELS          |
-    | ------- | --------------- |
-    | 0       | None            |
-    | 1       | QRS             |
-    | 2       | P-wave, T-wave  |
-
-=== "4-Class"
-
-    Identify each of the P-wave, QRS complex, and T-wave.
-
-    | CLASS   | LABELS          |
-    | ------- | --------------- |
-    | 0       | None            |
-    | 1       | P-wave          |
-    | 2       | QRS             |
-    | 3       | T-wave          |
-
-=== "5-Class"
-
-    Same as 4-Class, but also detect U-waves.
-
-    | CLASS   | LABELS          |
-    | ------- | --------------- |
-    | 0       | None            |
-    | 1       | P-wave          |
-    | 2       | QRS             |
-    | 3       | T-wave          |
-    | 4       | U-wave          |
+---

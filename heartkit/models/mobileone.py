@@ -310,3 +310,21 @@ def MobileOneU0(x, num_classes):
         num_classes=num_classes,
         inference_mode=False,
     )
+
+
+def mobileone_from_object(
+    x: tf.Tensor,
+    params: dict,
+    num_classes: int,
+) -> keras.Model:
+    """Create model from object
+
+    Args:
+        x (tf.Tensor): Input tensor
+        params (dict): Model parameters.
+        num_classes (int, optional): # classes.
+
+    Returns:
+        keras.Model: Model
+    """
+    return MobileOne(x=x, params=MobileOneParams(**params), num_classes=num_classes)

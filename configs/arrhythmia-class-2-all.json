@@ -1,33 +1,34 @@
 {
-    "name": "arrhythmia-class-3",
-    "job_dir": "./results/arrhythmia-class-3",
+    "name": "arrhythmia-class-2-all",
+    "job_dir": "./results/arrhythmia-class-2-all",
     "ds_path": "./datasets",
     "datasets": [{
+        "name": "ptbxl",
+        "params": {}
+    }, {
         "name": "icentia11k",
         "params": {}
     }],
-    "num_classes": 3,
+    "num_classes": 2,
     "class_map": {
         "0": 0,
         "1": 1,
-        "2": 2
+        "2": 1
     },
     "class_names": [
-        "NONE", "AFIB", "AFL"
+        "NONE", "AFIB/AFL"
     ],
     "sampling_rate": 100,
     "frame_size": 400,
     "model_file": "model.keras",
-    "samples_per_patient": [10, 100, 200],
-    "train_patients": 10000,
-    "val_file": "arrhythmia-class-3-$dataset-100fs-4s.pkl",
-    "val_samples_per_patient": [10, 100, 200],
+    "samples_per_patient": [5, 50],
+    "val_file": "$task-class-2-$dataset-100fs-4s.pkl",
+    "val_samples_per_patient": [5, 50],
     "val_patients": 0.20,
-    "val_size": 100000,
+    "val_size": 50000,
     "threshold": 0.75,
-    "test_samples_per_patient": [10, 100, 200],
-    "test_patients": 1000,
-    "test_size": 30000,
+    "test_samples_per_patient": [10, 50],
+    "test_size": 60000,
     "batch_size": 256,
     "buffer_size": 100000,
     "epochs": 125,
@@ -38,7 +39,7 @@
     "class_weights": "fixed",
     "val_acc_threshold": 0.98,
     "tflm_var_name": "g_arrhythmia_model",
-    "tflm_file": "./results/arrhythmia-class-3/arrhythmia_model_buffer.h",
+    "tflm_file": "arrhythmia_model_buffer.h",
     "backend": "pc",
     "quantization": {
         "enabled": true,

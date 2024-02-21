@@ -1,6 +1,6 @@
 import os
 import tempfile
-from enum import IntEnum, StrEnum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any, Literal
 
@@ -56,89 +56,6 @@ class HKMode(StrEnum):
     demo = "demo"
 
 
-class HeartSegment(IntEnum):
-    """Heart segment labels"""
-
-    normal = 0
-    pwave = 1
-    qrs = 2
-    twave = 3
-    uwave = 4  # Not used
-
-
-class HeartSegmentName(StrEnum):
-    """Heart segment names"""
-
-    normal = "normal"
-    pwave = "pwave"
-    qrs = "qrs"
-    twave = "twave"
-    uwave = "uwave"  # Not used
-
-
-class HeartRhythm(IntEnum):
-    """Heart rhythm labels"""
-
-    normal = 0
-    afib = 1
-    aflut = 2
-    noise = 3  # Not used
-
-
-class HeartRhythmName(StrEnum):
-    """Heart rhythm label names"""
-
-    normal = "normal"
-    afib = "afib"
-    aflut = "aflut"
-    noise = "noise"
-
-
-class HeartRate(IntEnum):
-    """Heart rate labels"""
-
-    normal = 0
-    tachycardia = 1
-    bradycardia = 2
-    noise = 3  # Not used
-
-    @classmethod
-    def from_bpm(cls, bpm: float):
-        """Assign rate based on supplied BPM."""
-        if bpm < 60:
-            return cls.bradycardia
-        if bpm > 100:
-            return cls.tachycardia
-        return cls.normal
-
-
-class HeartRateName(StrEnum):
-    """Heart rate label names"""
-
-    normal = "normal"
-    tachycardia = "tachy"
-    bradycardia = "brady"
-    noise = "noise"
-
-
-class HeartBeat(IntEnum):
-    """Heart beat labels"""
-
-    normal = 0
-    pac = 1
-    pvc = 2
-    noise = 3  # Not used
-
-
-class HeartBeatName(StrEnum):
-    """Heart beat label names"""
-
-    normal = "normal"
-    pac = "pac"
-    pvc = "pvc"
-    noise = "noise"
-
-
 class HKDownloadParams(BaseModel, extra="allow"):
     """Download command params"""
 
@@ -156,13 +73,16 @@ class HKDownloadParams(BaseModel, extra="allow"):
 class HKTrainParams(BaseModel, extra="allow"):
     """Train command params"""
 
-    job_dir: Path = Field(default_factory=tempfile.gettempdir, description="Job output directory")
+    name: str = Field("experiment", description="Experiment name")
+    job_dir: Path = Field(default_factory=lambda: Path(tempfile.gettempdir()), description="Job output directory")
     # Dataset arguments
-    ds_path: Path = Field(default_factory=Path, description="Dataset directory")
+    ds_path: Path = Field(default_factory=lambda: Path("./datasets"), description="Dataset directory")
     datasets: list[DatasetParams] = Field(default_factory=list, description="Datasets")
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
-    num_classes: int = Field(3, description="# of classes")
+    num_classes: int = Field(1, description="# of classes")
+    class_map: dict[int, int] = Field(default_factory=lambda: {1: 1}, description="Class/label mapping")
+    class_names: list[str] | None = Field(default=None, description="Class names")
     samples_per_patient: int | list[int] = Field(1000, description="# train samples per patient")
     val_samples_per_patient: int | list[int] = Field(1000, description="# validation samples per patient")
     train_patients: float | None = Field(None, description="# or proportion of patients for training")
@@ -172,7 +92,7 @@ class HKTrainParams(BaseModel, extra="allow"):
     # Model arguments
     resume: bool = Field(False, description="Resume training")
     architecture: ModelArchitecture | None = Field(default=None, description="Custom model architecture")
-    model_file: str | None = Field(None, description="Path to save model file (.keras)")
+    model_file: Path | None = Field(None, description="Path to save model file (.keras)")
 
     weights_file: Path | None = Field(None, description="Path to a checkpoint weights to load")
     quantization: QuantizationParams = Field(default_factory=QuantizationParams, description="Quantization parameters")
@@ -197,24 +117,38 @@ class HKTrainParams(BaseModel, extra="allow"):
     )
     model_config = ConfigDict(protected_namespaces=())
 
+    def model_post_init(self, __context: Any) -> None:
+        """Post init hook"""
+
+        if self.val_file and len(self.val_file.parts) == 1:
+            self.val_file = self.job_dir / self.val_file
+
+        if self.model_file and len(self.model_file.parts) == 1:
+            self.model_file = self.job_dir / self.model_file
+
+        if self.weights_file and len(self.weights_file.parts) == 1:
+            self.weights_file = self.job_dir / self.weights_file
+
 
 class HKTestParams(BaseModel, extra="allow"):
     """Test command params"""
 
-    job_dir: Path = Field(default_factory=tempfile.gettempdir, description="Job output directory")
+    job_dir: Path = Field(default_factory=lambda: Path(tempfile.gettempdir()), description="Job output directory")
     # Dataset arguments
-    ds_path: Path = Field(default_factory=Path, description="Dataset directory")
+    ds_path: Path = Field(default_factory=lambda: Path("./datasets"), description="Dataset directory")
     datasets: list[DatasetParams] = Field(default_factory=list, description="Datasets")
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
-    num_classes: int = Field(3, description="# of classes")
+    num_classes: int = Field(1, description="# of classes")
+    class_map: dict[int, int] = Field(default_factory=lambda: {1: 1}, description="Class/label mapping")
+    class_names: list[str] | None = Field(default=None, description="Class names")
     test_samples_per_patient: int | list[int] = Field(1000, description="# test samples per patient")
     test_patients: float | None = Field(None, description="# or proportion of patients for testing")
     test_size: int = Field(200_000, description="# samples for testing")
     preprocesses: list[PreprocessParams] = Field(default_factory=list, description="Preprocesses")
     augmentations: list[AugmentationParams] = Field(default_factory=list, description="Augmentations")
     # Model arguments
-    model_file: str | None = Field(None, description="Path to model file")
+    model_file: Path | None = Field(None, description="Path to save model file (.keras)")
     threshold: float | None = Field(None, description="Model output threshold")
     # Extra arguments
     seed: int | None = Field(None, description="Random state seed")
@@ -224,13 +158,19 @@ class HKTestParams(BaseModel, extra="allow"):
     )
     model_config = ConfigDict(protected_namespaces=())
 
+    def model_post_init(self, __context: Any) -> None:
+        """Post init hook"""
+
+        if self.model_file and len(self.model_file.parts) == 1:
+            self.model_file = self.job_dir / self.model_file
+
 
 class HKExportParams(BaseModel, extra="allow"):
     """Export command params"""
 
-    job_dir: Path = Field(default_factory=tempfile.gettempdir, description="Job output directory")
+    job_dir: Path = Field(default_factory=lambda: Path(tempfile.gettempdir()), description="Job output directory")
     # Dataset arguments
-    ds_path: Path = Field(default_factory=Path, description="Dataset directory")
+    ds_path: Path = Field(default_factory=lambda: Path("./datasets"), description="Dataset directory")
     datasets: list[DatasetParams] = Field(default_factory=list, description="Datasets")
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
@@ -240,7 +180,7 @@ class HKExportParams(BaseModel, extra="allow"):
     test_samples_per_patient: int | list[int] = Field(100, description="# test samples per patient")
     test_patients: float | None = Field(None, description="# or proportion of patients for testing")
     test_size: int = Field(100_000, description="# samples for testing")
-    model_file: str | None = Field(None, description="Path to model file")
+    model_file: Path | None = Field(None, description="Path to save model file (.keras)")
     threshold: float | None = Field(None, description="Model output threshold")
     val_acc_threshold: float | None = Field(0.98, description="Validation accuracy threshold")
     use_logits: bool = Field(True, description="Use logits output or softmax")
@@ -253,22 +193,39 @@ class HKExportParams(BaseModel, extra="allow"):
     )
     model_config = ConfigDict(protected_namespaces=())
 
+    def model_post_init(self, __context: Any) -> None:
+        """Post init hook"""
+
+        if self.model_file and len(self.model_file.parts) == 1:
+            self.model_file = self.job_dir / self.model_file
+
+        if self.tflm_file and len(self.tflm_file.parts) == 1:
+            self.tflm_file = self.job_dir / self.tflm_file
+
 
 class HKDemoParams(BaseModel, extra="allow"):
     """HK demo command params"""
 
-    job_dir: Path = Field(default_factory=tempfile.gettempdir, description="Job output directory")
+    job_dir: Path = Field(default_factory=lambda: Path(tempfile.gettempdir()), description="Job output directory")
     # Dataset arguments
-    ds_path: Path = Field(default_factory=Path, description="Dataset base directory")
+    ds_path: Path = Field(default_factory=lambda: Path("./datasets"), description="Dataset directory")
     datasets: list[DatasetParams] = Field(default_factory=list, description="Datasets")
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
-    num_classes: int = Field(3, description="# of classes")
+    num_classes: int = Field(1, description="# of classes")
+    class_map: dict[int, int] = Field(default_factory=lambda: {1: 1}, description="Class/label mapping")
+    class_names: list[str] | None = Field(default=None, description="Class names")
     preprocesses: list[PreprocessParams] = Field(default_factory=list, description="Preprocesses")
     augmentations: list[AugmentationParams] = Field(default_factory=list, description="Augmentations")
     # Model arguments
-    model_file: str | None = Field(None, description="Path to model file (.keras, .h5, or .tflite)")
+    model_file: Path | None = Field(None, description="Path to save model file (.keras)")
     backend: Literal["pc", "evb"] = Field("pc", description="Backend")
     # Extra arguments
     seed: int | None = Field(None, description="Random state seed")
     model_config = ConfigDict(protected_namespaces=())
+
+    def model_post_init(self, __context: Any) -> None:
+        """Post init hook"""
+
+        if self.model_file and len(self.model_file.parts) == 1:
+            self.model_file = self.job_dir / self.model_file

@@ -1,84 +1,63 @@
-from ...defines import HeartRhythm
+from enum import IntEnum, StrEnum
 
 
-def get_classes(nclasses: int = 2) -> list[str]:
-    """Get classes
+class HeartRhythm(IntEnum):
+    """Heart rhythm labels"""
 
-    Args:
-        nclasses (int): Number of classes
+    normal = 0
+    afib = 1  # Atrial fibrillation
+    aflut = 2  # Atrial flutter
+    sbrad = 3  # Sinus bradycardia
+    stach = 4  # Sinus tachycardia
+    sarrh = 5  # Sinus arrhythmia
+    svarr = 6  # Supraventricular arrhythmia
+    svt = 7  # Supraventricular tachycardia
 
-    Returns:
-        list[str]: List of class names
-    """
-    if 2 <= nclasses <= 3:
-        return list(range(nclasses))
-    raise ValueError(f"Invalid number of classes: {nclasses}")
-
-
-def get_class_mapping(nclasses: int = 2) -> dict[int, int]:
-    """Get class mapping
-
-    Args:
-        nclasses (int): Number of classes
-
-    Returns:
-        dict[int, int]: Class mapping
-    """
-    match nclasses:
-        case 2:
-            return {
-                HeartRhythm.normal: 0,
-                HeartRhythm.afib: 1,
-                HeartRhythm.aflut: 1,
-            }
-        case 3:
-            return {
-                HeartRhythm.normal: 0,
-                HeartRhythm.afib: 1,
-                HeartRhythm.aflut: 2,
-            }
-        case _:
-            raise ValueError(f"Invalid number of classes: {nclasses}")
+    bigu = 8  # Bigeminy (every other beat is PVC)
+    trigu = 9  # Trigeminy (every third beat is PVC)
+    pace = 10  # Paced rhythm
+    noise = 127  # Noise
 
 
-def get_class_names(nclasses: int = 2) -> list[str]:
-    """Get class names
+class HeartRhythmName(StrEnum):
+    """Heart rhythm label names"""
 
-    Args:
-        nclasses (int): Number of classes
-
-    Returns:
-        list[str]: List of class names
-    """
-    match nclasses:
-        case 2:
-            return ["NSR", "AFIB/AFL"]
-        case 3:
-            return ["NSR", "AFIB", "AFL"]
-        case _:
-            raise ValueError(f"Invalid number of classes: {nclasses}")
-
-
-def get_feat_shape(frame_size: int) -> tuple[int, ...]:
-    """Get dataset feature shape.
-
-    Args:
-        frame_size (int): Frame size
-
-    Returns:
-        tuple[int, ...]: Feature shape
-    """
-    return (frame_size, 1)  # Time x Channels
+    normal = "normal"
+    afib = "afib"
+    aflut = "aflut"
+    sbrad = "sbrad"
+    stach = "stach"
+    sarrh = "sarrh"
+    svarr = "svarr"
+    svt = "svt"
+    bigu = "bigu"
+    trigu = "trigu"
+    pace = "pace"
+    noise = "noise"
 
 
-def get_class_shape(frame_size: int, nclasses: int) -> tuple[int, ...]:
-    """Get dataset class shape.
+class HeartRate(IntEnum):
+    """Heart rate labels"""
 
-    Args:
-        frame_size (int): Frame size
-        nclasses (int): Number of classes
+    normal = 0
+    tachycardia = 1
+    bradycardia = 2
+    noise = 3  # Not used
 
-    Returns:
-        tuple[int, ...]: Class shape
-    """
-    return (nclasses,)  # One-hot encoded classes
+    @classmethod
+    def from_bpm(cls, bpm: float):
+        """Assign rate based on supplied BPM."""
+        if bpm < 60:
+            return cls.bradycardia
+        if bpm > 100:
+            return cls.tachycardia
+        return cls.normal
+
+
+class HeartRateName(StrEnum):
+    """Heart rate label names"""
+
+    normal = "normal"
+    tachycardia = "tachy"
+    bradycardia = "brady"
+    noise = "noise"

@@ -1,29 +1,30 @@
 import functools
 import logging
 import os
+from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
 import sklearn
 import tensorflow as tf
 
-from ..utils import load_pkl, save_pkl
+from ..utils import load_pkl, resolve_template_path, save_pkl
 from .defines import PatientGenerator, Preprocessor, SampleGenerator
 from .utils import create_dataset_from_data
 
 logger = logging.getLogger(__name__)
 
 
-def default_preprocess(x: npt.NDArray) -> npt.NDArray:
+def default_preprocess(x_y: tuple[npt.NDArray, npt.NDArray]) -> tuple[npt.NDArray, npt.NDArray]:
     """Default identity preprocessing."""
-    return x
+    return x_y
 
 
 class HKDataset:
     """HeartKit dataset base class"""
 
     target_rate: int
-    ds_path: os.PathLike
+    ds_path: Path
     task: str
     frame_size: int
     spec: tuple[tf.TensorSpec, tf.TensorSpec]
@@ -39,7 +40,7 @@ class HKDataset:
         class_map: dict[int, int] | None = None,
     ) -> None:
         """HeartKit dataset base class"""
-        self.ds_path = ds_path
+        self.ds_path = Path(ds_path)
         self.task = task
         self.frame_size = frame_size
         self.target_rate = target_rate
@@ -133,7 +134,7 @@ class HKDataset:
         train_pt_samples: int | list[int] | None = None,
         val_pt_samples: int | list[int] | None = None,
         val_size: int | None = None,
-        val_file: str | None = None,
+        val_file: os.PathLike | None = None,
         preprocess: Preprocessor | None = None,
         num_workers: int = 1,
     ) -> tuple[tf.data.Dataset, tf.data.Dataset]:
@@ -166,6 +167,17 @@ class HKDataset:
         if train_patients is not None:
             num_pts = int(train_patients) if train_patients > 1 else int(train_patients * len(train_patient_ids))
             train_patient_ids = train_patient_ids[:num_pts]
+        # END IF
+
+        # Resolve validation file path (allows for templating)
+        if val_file:
+            val_file = resolve_template_path(
+                fpath=val_file,
+                dataset=self.ds_path.stem,
+                task=self.task,
+                frame_size=str(int(self.frame_size)),
+                sample_rate=str(int(self.sampling_rate)),
+            )
         # END IF
 
         # Use existing validation data
@@ -260,6 +272,7 @@ class HKDataset:
         Args:
             patient_ids (npt.NDArray): List of patient IDs.
             samples_per_patient (int | list[int], optional): # Samples per patient and class. Defaults to 100.
+            preprocess (Preprocessor | None, optional): Preprocess function. Defaults to None.
             repeat (bool, optional): Should data generator repeat. Defaults to False.
             num_workers (int, optional): Number of parallel workers. Defaults to 1.
 
@@ -313,6 +326,7 @@ class HKDataset:
         Args:
             patient_ids (npt.NDArray): Patient IDs
             samples_per_patient (int | list[int], optional): Samples per patient. Defaults to 100.
+            preprocess (Preprocessor | None, optional): Preprocess function. Defaults to None.
             repeat (bool, optional): Repeat. Defaults to True.
 
         Returns:
@@ -342,6 +356,7 @@ class HKDataset:
             patient_ids (npt.NDArray): Patient IDs
             samples_per_patient (int | list[int], optional): Samples per patient. Defaults to 100.
             repeat (bool, optional): Repeat. Defaults to True.
+            preprocess (Preprocessor | None, optional): Preprocess function. Defaults to None.
 
         Returns:
             SampleGenerator: Task sample generator
@@ -351,16 +366,8 @@ class HKDataset:
             patient_generator,
             samples_per_patient=samples_per_patient,
         )
-        preprocess_fn = preprocess if preprocess else default_preprocess
-        num_classes = len(set(self.class_map.values()))
-        feat_shape = tuple(self.spec[0].shape)
 
-        data_generator = map(
-            lambda x_y: (
-                preprocess_fn(x_y[0]).reshape(feat_shape),
-                x_y[0] if num_classes <= 1 else tf.one_hot(x_y[1], num_classes),
-            ),
-            data_generator,
-        )
+        if preprocess:
+            data_generator = map(preprocess, data_generator)
 
         return data_generator

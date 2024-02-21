@@ -1,4 +1,5 @@
 {
+    "name": "segmentation-class-2",
     "job_dir": "./results/segmentation-class-2",
     "ds_path": "./datasets",
     "datasets": [{
@@ -6,11 +7,22 @@
         "params": {}
     }],
     "num_classes": 2,
+    "class_map": {
+        "0": 0,
+        "1": 0,
+        "2": 1,
+        "3": 0,
+        "4": 0
+    },
+    "class_names": [
+        "NONE", "QRS"
+    ],
     "sampling_rate": 100,
     "frame_size": 256,
-    "model_file": "./results/segmentation-class-2/model.keras",
+    "model_file": "model.keras",
     "samples_per_patient": 10,
     "train_patients": 10000,
+    "val_file": "segmentation-class-2-10000pt-100fs-256.pkl",
     "val_samples_per_patient": 20,
     "val_patients": 0.20,
     "val_size": 40000,
@@ -26,7 +38,7 @@
     "lr_cycles": 1,
     "val_acc_threshold": 0.98,
     "tflm_var_name": "g_segmentation_model",
-    "tflm_file": "./results/segmentation-class-2/segmentation_model_buffer.h",
+    "tflm_file": "segmentation_model_buffer.h",
     "backend": "pc",
     "quantization": {
         "enabled": true,
@@ -36,7 +48,7 @@
         "output_type": "int8",
         "supported_ops": null
     },
-    "model": {
+    "architecture": {
         "name": "unet",
         "params": {
             "blocks": [

@@ -99,14 +99,14 @@ __HeartKit__ provides a __model factory__ that allows you to easily create and t
 
 ## <span class="sk-h2-span">Dataset Factory</span>
 
-__HeartKit__ exposes several open-source datasets for training each of the HeartKit tasks via a __dataset factory__. For certain tasks, we also provide synthetic data provided by [PhysioKit](https://ambiqai.github.io/physiokit) to help improve model generalization. Each dataset has a corresponding Python class to aid in downloading and generating data for the given task. Additional datasets can be easily added to the HeartKit framework by creating a new dataset class and registering it to the dataset factory. Check out the [Datasets Guide](./datasets/index.md) to learn more about the datasets used along with their corresponding licenses and limitations.
+__HeartKit__ exposes several open-source datasets for training each of the HeartKit tasks via the __dataset factory__. For certain tasks, we also provide synthetic data provided by [PhysioKit](https://ambiqai.github.io/physiokit) to help improve model generalization. Each dataset has a corresponding Python class to aid in downloading and generating data for the given task. Additional datasets can be easily added to the HeartKit framework by creating a new dataset class and registering it to the dataset factory. Check out the [Dataset Factory Guide](./datasets/index.md) to learn more about the available datasets along with their corresponding licenses and limitations.
 
 
 * **[Icentia11k](./datasets/icentia11k.md)**: 11-lead ECG data collected from 11,000 subjects captured continously over two weeks.
 * **[LUDB](./datasets/ludb.md)**: 200 ten-second 12-lead ECG records w/ annotated P-wave, QRS, and T-wave boundaries.
 * **[QTDB](./datasets/qtdb.md)**: 100+ fifteen-minute two-lead ECG recordings w/ annotated P-wave, QRS, and T-wave boundaries.
 * **[PTB-XL](./datasets/ptbxl.md)**: 10-second, 12-lead ECG dataset collected from 18,885 subjects w/ 72 different diagnostic classes.
-* **[Synthetic](./datasets/synthetic.md)**: A synthetic dataset generator from [PhysioKit](https://ambiqai.github.io/physiokit).
+* **[Synthetic](./datasets/synthetic.md)**: A synthetic dataset generator provided by [PhysioKit](https://ambiqai.github.io/physiokit).
 * **[BYOD](./datasets/byod.md)**: Bring-Your-Own-Dataset (BYOD) to add additional datasets.
 
 ---

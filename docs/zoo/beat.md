@@ -1,22 +1,34 @@
 # Pre-Trained Beat Models
 
-## <span class="sk-h2-span">Methods & Materials</span>
+## <span class="sk-h2-span"> Model Results </span>
 
-### Datasets
+The following results are obtained from the pre-trained beat models when testing on 1,000 patients (not used during training).
 
-We leverage the following datasets for training the arrhythmia models:
+--8<-- "assets/beat-model-hw-table.md"
+
+---
+
+## <span class="sk-h2-span"> Datasets </span>
+
+We leverage the following datasets for training the beat models:
 
 - **[Icentia11k](../datasets/icentia11k.md)**
 
-### Model Architecture
+---
+
+## <span class="sk-h2-span"> Model Architectures </span>
 
 The beat model utilizes a 1-D CNN built using MBConv style blocks that incorporate expansion, inverted residuals, and squeeze and excitation layers. Furthermore, longer filter and stride lengths are utilized in the initial layers to capture more temporal dependencies.
 
-### Feature Sets
+---
+
+## <span class="sk-h2-span"> Preprocessing</span>
 
 The models are trained directly on single channel ECG data. No feature extraction is performed other than applying a band-pass filter to remove noise followed by down-sampling. The signal is then normalized by subtracting the mean and dividing by the standard deviation. We also add a small epsilon value to the standard deviation to avoid division by zero.
 
-### Training Procedure
+---
+
+## <span class="sk-h2-span"> Training Procedure </span>
 
 For training the models, we utilize the following setup:
 
@@ -25,22 +37,41 @@ For training the models, we utilize the following setup:
 - **[Cosine decay learning rate scheduler w/ restarts](https://arxiv.org/pdf/1608.03983.pdf)**
 - **Early stopping**
 
-### Evaluation Metrics
+
+---
+
+## <span class="sk-h2-span"> Evaluation Metrics </span>
 
 For each dataset, 10% of the data is held out for testing. From the remaining, 20% of the data is randomly selected for validation. There is no mixing of subjects between the training, validation, and test sets. Furthermore, the test set is held fixed while training and validation are randomly split during training. We evaluate the models performance using a variety of metrics including loss, accuracy, F1 score, average precision (AP).
 
 ---
 
-## <span class="sk-h2-span"> Results </span>
+## <span class="sk-h2-span">Class Mapping</span>
 
-### Overview
+Below outlines the class label mappings used to train segmentation models.
 
-The results of the pre-trained beat models when testing on 1,000 patients (not used during training) is summarized below.
+=== "2-Stage"
 
---8<-- "assets/beat-model-hw-table.md"
+    Classify PAC and PVC as a single class.
+
+    | Base Class    | Target Class | Label     |
+    | ------------- | ------------ | --------- |
+    | 0-NSR         | 0            | NSR       |
+    | 1-PAC, 2-PVC  | 1            | PAC|PVC   |
 
 
-### Confusion Matrices
+=== "3-Stage"
+
+    | Base Class    | Target Class | Label     |
+    | ------------- | ------------ | --------- |
+    | 0-NSR         | 0            | NSR       |
+    | 1-PAC         | 1            | PAC       |
+    | 2-PVC         | 2            | PVC       |
+
+---
+
+
+## <span class="sk-h2-span">Confusion Matrix</span>
 
 === "2-Class"
 
@@ -54,8 +85,17 @@ The results of the pre-trained beat models when testing on 1,000 patients (not u
 
     ![2-Stage Sleep Stage Confusion Matrix](../assets/beat-3-cm.png){ width="480" }
 
+---
 
-## <span class="sk-h2-span">Ablation</span>
+## <span class="sk-h2-span">EVB Performance</span>
+
+The following table provides the latest hardware performance results when running on Apollo4 Plus EVB.
+
+--8<-- "assets/beat-model-hw-table.md"
+
+---
+
+## <span class="sk-h2-span">Ablation Studies</span>
 
 ### Temporal vs Spatial Channels
 

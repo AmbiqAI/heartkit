@@ -100,13 +100,14 @@ def augment_pipeline(x: npt.NDArray, augmentations: list[AugmentationParams], sa
                     signal_sd=x_sd,
                 )
             case "lead_noise":
-                scale = args.get("scale", [1e-3, 1e-2])
+                scale = args.get("scale", [0.05, 0.25])
                 x = pk.signal.add_lead_noise(
                     x,
-                    scale=np.random.uniform(scale[0], scale[1]),
+                    scale=x_sd * np.random.uniform(scale[0], scale[1]),
                 )
             case _:
-                raise ValueError(f"Unknown augmentation '{augmentation.name}'")
+                pass
+                # raise ValueError(f"Unknown augmentation '{augmentation.name}'")
         # END MATCH
     # END FOR
     return x

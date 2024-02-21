@@ -68,9 +68,21 @@ The `train` command is used to train a HeartKit model for the specified `task` a
     task.train(hk.HKTrainParams(
         job_dir=Path("./results/arrhythmia-class-2"),
         ds_path=Path("./datasets"),
+        datasets=[{
+            "name": "icentia11k",
+            "params": {}
+        }],
+        num_classes=2,
+        class_map={
+            0: 0,
+            1: 1,
+            2: 1
+        },
+        class_names=[
+            "NONE", "AFIB/AFL"
+        ],
         sampling_rate=200,
         frame_size=800,
-        num_classes=2,
         samples_per_patient=[100, 800],
         val_samples_per_patient=[100, 800],
         train_patients=10000,
@@ -81,7 +93,6 @@ The `train` command is used to train a HeartKit model for the specified `task` a
         epochs=100,
         steps_per_epoch=20,
         val_metric="loss",
-        datasets=["icentia11k"]
     ))
     ```
 
@@ -104,9 +115,21 @@ The `evaluate` command will test the performance of the model on the reserved te
     task.evaluate(hk.HKTestParams(
         job_dir=Path("./results/arrhythmia-class-2"),
         ds_path=Path("./datasets"),
+        datasets=[{
+            "name": "icentia11k",
+            "params": {}
+        }],
+        num_classes=2,
+        class_map={
+            0: 0,
+            1: 1,
+            2: 1
+        },
+        class_names=[
+            "NONE", "AFIB/AFL"
+        ],
         sampling_rate=200,
         frame_size=800,
-        num_classes=2,
         test_samples_per_patient=[100, 800],
         test_patients=1000,
         test_size=100000,
@@ -133,12 +156,30 @@ The `export` command will convert the trained TensorFlow model into both TensorF
     task.export(hk.HKExportParams(
         job_dir=Path("./results/arrhythmia-class-2"),
         ds_path=Path("./datasets"),
+        datasets=[{
+            "name": "icentia11k",
+            "params": {}
+        }],
+        num_classes=2,
+        class_map={
+            0: 0,
+            1: 1,
+            2: 1
+        },
+        class_names=[
+            "NONE", "AFIB/AFL"
+        ],
         sampling_rate=200,
         frame_size=800,
-        num_classes=2,
         test_samples_per_patient=[100, 500, 100],
         model_file=Path("./results/arrhythmia-class-2/model.keras"),
-        quantization=true,
+        quantization={
+            enabled=True,
+            qat=False,
+            ptq=True,
+            input_type="int8",
+            output_type="int8",
+        },
         threshold=0.95,
         tflm_var_name="g_arrhythmia_model",
         tflm_file=Path("./results/arrhythmia-class-2/arrhythmia_model_buffer.h")
@@ -164,9 +205,21 @@ The `demo` command is used to run a task-level demonstration using either the PC
     task.demo(hk.HKDemoParams(
         job_dir=Path("./results/arrhythmia-class-2"),
         ds_path=Path("./datasets"),
+        datasets=[{
+            "name": "icentia11k",
+            "params": {}
+        }],
+        num_classes=2,
+        class_map={
+            0: 0,
+            1: 1,
+            2: 1
+        },
+        class_names=[
+            "NONE", "AFIB/AFL"
+        ],
         sampling_rate=200,
         frame_size=800,
-        num_classes=2,
         model_file=Path("./results/arrhythmia-class-2/model.tflite"),
         backend="pc"
     ))

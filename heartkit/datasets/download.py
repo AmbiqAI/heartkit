@@ -18,3 +18,5 @@ def download_datasets(params: HKDownloadParams):
                 num_workers=params.data_parallelism,
                 force=params.force,
             )
+        # END IF
+    # END FOR

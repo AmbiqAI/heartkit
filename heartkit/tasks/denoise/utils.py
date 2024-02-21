@@ -20,6 +20,31 @@ from ...models import ModelFactory  # , Tcn, TcnBlockParams, TcnParams
 console = Console()
 
 
+def get_feat_shape(frame_size: int) -> tuple[int, ...]:
+    """Get dataset feature shape.
+
+    Args:
+        frame_size (int): Frame size
+
+    Returns:
+        tuple[int, ...]: Feature shape
+    """
+    return (frame_size, 1)  # Time x Channels
+
+
+def get_class_shape(frame_size: int, nclasses: int) -> tuple[int, ...]:
+    """Get dataset class shape.
+
+    Args:
+        frame_size (int): Frame size
+        nclasses (int): Number of classes
+
+    Returns:
+        tuple[int, ...]: Class shape
+    """
+    return (frame_size, 1)  # Match feature shape
+
+
 def prepare(x: npt.NDArray, sample_rate: float, preprocesses: list[PreprocessParams]) -> npt.NDArray:
     """Prepare dataset
 
@@ -93,12 +118,16 @@ def load_train_datasets(
         tuple[tf.data.Dataset, tf.data.Dataset]: ds, train and validation datasets
     """
 
-    def preprocess(x: npt.NDArray) -> npt.NDArray:
-        xx = x.copy().squeeze()
+    feat_shape = get_feat_shape(params.frame_size)
+
+    def preprocess(x_y: tuple[npt.NDArray, npt.NDArray]) -> tuple[npt.NDArray, npt.NDArray]:
+        xx = x_y[0].copy().squeeze()
+        yy = x_y[1].copy().squeeze()
         if params.augmentations:
             xx = augment_pipeline(xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
-        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
-        return xx
+        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
+        yy = prepare(yy, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
+        return xx, yy
 
     train_datasets = []
     val_datasets = []
@@ -158,12 +187,16 @@ def load_test_datasets(
         tuple[npt.NDArray, npt.NDArray]: Test data and labels
     """
 
-    def preprocess(x: npt.NDArray) -> npt.NDArray:
-        xx = x.copy().squeeze()
+    feat_shape = get_feat_shape(params.frame_size)
+
+    def preprocess(x_y: tuple[npt.NDArray, npt.NDArray]) -> tuple[npt.NDArray, npt.NDArray]:
+        xx = x_y[0].copy().squeeze()
+        yy = x_y[1].copy().squeeze()
         if params.augmentations:
             xx = augment_pipeline(xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
-        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
-        return xx
+        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
+        yy = prepare(yy, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
+        return xx, yy
 
     with console.status("[bold green] Loading test dataset..."):
         test_datasets = [
@@ -223,13 +256,13 @@ def _default_model(
     y = inputs
     y = keras.layers.Reshape((1,) + y.shape[1:])(y)
 
-    y = keras.layers.Conv2D(filters=24, kernel_size=(1, 5), padding="same")(y)
+    y = keras.layers.Conv2D(filters=8, kernel_size=(1, 3), padding="same")(y)
     y = keras.layers.BatchNormalization()(y)
     y = keras.layers.Activation("tanh")(y)
 
     y = keras.layers.Reshape(y.shape[2:])(y)
 
-    y = keras.layers.Bidirectional(keras.layers.LSTM(units=48, return_sequences=True))(y)
+    y = keras.layers.Bidirectional(keras.layers.LSTM(units=16, return_sequences=True))(y)
     y = keras.layers.BatchNormalization()(y)
     y = keras.layers.Activation("tanh")(y)
 

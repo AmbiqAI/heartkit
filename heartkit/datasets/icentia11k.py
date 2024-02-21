@@ -22,7 +22,7 @@ from botocore import UNSIGNED
 from botocore.client import Config
 from tqdm import tqdm
 
-from ..defines import HeartBeat, HeartRate, HeartRhythm, HeartSegment
+from ..tasks import HeartBeat, HeartRate, HeartRhythm, HeartSegment
 from ..utils import download_file
 from .dataset import HKDataset
 from .defines import PatientGenerator, SampleGenerator
@@ -356,22 +356,36 @@ class IcentiaDataset(HKDataset):
                 for i in range(blabels.shape[0]):
                     bidx = int((blabels[i, 0] - frame_start) * ds_ratio)
                     btype = blabels[i, 1]
-                    if btype == IcentiaBeat.undefined:
-                        continue
 
-                    # Extract QRS segment
-                    qrs = pk.signal.moving_gradient_filter(
-                        data, sample_rate=self.target_rate, sig_window=0.1, avg_window=1.0, sig_prom_weight=1.5
-                    )
-                    win_len = max(1, int(0.08 * self.target_rate))  # 80 ms
-                    b_left = max(0, bidx - win_len)
-                    b_right = min(data.shape[0], bidx + win_len)
-                    onset = np.where(np.flip(qrs[b_left:bidx]) < 0)[0]
-                    onset = onset[0] if onset.size else win_len
-                    offset = np.where(qrs[bidx + 1 : b_right] < 0)[0]
-                    offset = offset[0] if offset.size else win_len
-                    mask[bidx - onset : bidx + offset] = self.class_map.get(HeartSegment.qrs.value, 0)
-                    # Ignore P, T, and U waves for now
+                    # Unclassifiable beat (treat as noise)
+                    if btype == IcentiaBeat.undefined:
+                        pass
+                        # noise_lbl = self.class_map.get(HeartSegment.noise.value, -1)
+                        # # Skip if not in class map
+                        # if noise_lbl == -1
+                        #     continue
+                        # # Mark region as noise
+                        # win_len = max(1, int(0.2 * self.target_rate))  # 200 ms
+                        # b_left = max(0, bidx - win_len)
+                        # b_right = min(data.shape[0], bidx + win_len)
+                        # mask[b_left:b_right] = noise_lbl
+
+                    # Normal, PAC, PVC beat
+                    else:
+                        # Extract QRS segment
+                        qrs = pk.signal.moving_gradient_filter(
+                            data, sample_rate=self.target_rate, sig_window=0.1, avg_window=1.0, sig_prom_weight=1.5
+                        )
+                        win_len = max(1, int(0.08 * self.target_rate))  # 80 ms
+                        b_left = max(0, bidx - win_len)
+                        b_right = min(data.shape[0], bidx + win_len)
+                        onset = np.where(np.flip(qrs[b_left:bidx]) < 0)[0]
+                        onset = onset[0] if onset.size else win_len
+                        offset = np.where(qrs[bidx + 1 : b_right] < 0)[0]
+                        offset = offset[0] if offset.size else win_len
+                        mask[bidx - onset : bidx + offset] = self.class_map.get(HeartSegment.qrs.value, 0)
+                        # Ignore P, T, and U waves for now
+                    # END IF
                 # END FOR
                 x = np.nan_to_num(data).astype(np.float32)
                 y = mask.astype(np.int32)
@@ -419,6 +433,24 @@ class IcentiaDataset(HKDataset):
 
         input_size = int(np.round((self.sampling_rate / self.target_rate) * self.frame_size))
 
+        # Filter beats based on neighboring beats
+        def filter_func(blabels: npt.NDArray, beat: IcentiaBeat, i: int):
+            match beat:
+                case IcentiaBeat.normal:
+                    return blabels[i - 1, 1] == blabels[i + 1, 1] == IcentiaBeat.normal
+                case IcentiaBeat.pac, IcentiaBeat.pvc:
+                    return IcentiaBeat.undefined not in (
+                        blabels[i - 1, 1],
+                        blabels[i + 1, 1],
+                    )
+                case IcentiaBeat.undefined:
+                    return blabels[i - 1, 1] == blabels[i + 1, 1] == IcentiaBeat.undefined
+                case _:
+                    return True
+            # END MATCH
+
+        # END DEF
+
         # For each patient
         for _, segments in patient_generator:
             # This maps segment index to segment key
@@ -442,7 +474,6 @@ class IcentiaDataset(HKDataset):
                     continue
 
                 # Capture all beat locations
-                # for tgt_beat_idx, beat in enumerate(tgt_labels):
                 for beat in IcentiaBeat:
                     # Skip if not in class map
                     beat_class = tgt_map.get(beat, -1)
@@ -452,22 +483,8 @@ class IcentiaDataset(HKDataset):
                     # Get all beat type indices
                     beat_idxs = np.where(blabels[blabel_padding:-blabel_padding, 1] == beat.value)[0] + blabel_padding
 
-                    # Filter indices based on beat type
-                    if beat == IcentiaBeat.normal:
-                        filt_func = lambda i: blabels[i - 1, 1] == blabels[i + 1, 1] == IcentiaBeat.normal
-                    elif beat in (IcentiaBeat.pac, IcentiaBeat.pvc):
-                        filt_func = lambda i: IcentiaBeat.undefined not in (
-                            blabels[i - 1, 1],
-                            blabels[i + 1, 1],
-                        )
-                    elif beat == IcentiaBeat.undefined:
-                        filt_func = lambda i: blabels[i - 1, 1] == blabels[i + 1, 1] == IcentiaBeat.undefined
-                    else:
-                        filt_func = lambda _: True
-                    # END IF
-
                     # Filter indices
-                    beat_idxs = filter(filt_func, beat_idxs)
+                    beat_idxs = filter(functools.partial(filter_func, blabels, beat), beat_idxs)
                     pt_beat_map[beat_class] += [(seg_idx, blabels[i, 0]) for i in beat_idxs]
                 # END FOR
             # END FOR
