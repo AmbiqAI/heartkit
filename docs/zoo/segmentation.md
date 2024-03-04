@@ -1,39 +1,64 @@
 # Pre-Trained Segmentation Models
 
-## <span class="sk-h2-span">Model Results</span>
+## <span class="sk-h2-span">Overview</span>
 
-The following results are obtained from the pre-trained segmentation models when testing on 1,000 patients (not used during training).
+The following table summarizes the high-level results of the segmentation models. The `config` provides the complete configuration JSON file used to train the models. Below we also provide details on the datasets, model architectures, preprocessing, and training procedures used to train the models.
 
---8<-- "assets/segmentation-model-hw-table.md"
+--8<-- "assets/segmentation-model-zoo-table.md"
 
 ---
 
 ## <span class="sk-h2-span">Datasets</span>
 
-We leverage the following datasets for training the segmentation models:
+The following datasets were used to train the segmentation models.
 
-- **[Icentia11k](../datasets/icentia11k.md)**
-- **[Lobachevsky University Electrocardiography dataset (LUDB)](../datasets/ludb.md)**
-- **[QT dataset (QTDB)](../datasets/qtdb.md)**
-- **[Synthetic via PhysioKit](../datasets/synthetic.md)**
+=== "2-Class"
+
+    - **[Icentia11k](../datasets/icentia11k.md)**
+    - **[PTB-XL](../datasets/ptbxl.md)**
+
+=== "3-Class"
+
+    - **[Lobachevsky University Electrocardiography dataset (LUDB)](../datasets/ludb.md)**
+    - **[QT dataset (QTDB)](../datasets/qtdb.md)**
+    - **[Synthetic via PhysioKit](../datasets/synthetic.md)**
+
+=== "4-Class"
+
+    - **[Lobachevsky University Electrocardiography dataset (LUDB)](../datasets/ludb.md)**
+    - **[QT dataset (QTDB)](../datasets/qtdb.md)**
+    - **[Synthetic via PhysioKit](../datasets/synthetic.md)**
 
 ---
 
 ## <span class="sk-h2-span">Model Architectures</span>
 
-The models are based on the [U-Net architecture](../models/unet.md). The U-Net architecture is a fully convolutional network that consists of an encoder and decoder useful for image segmentation. The network was adapted for 1D time series data by replacing the 2D convolutions with 1D convolutions.
+The following model architectures were used to train the segmentation models.
+
+=== "2-Class"
+
+    The model is based on a [TCN architecture](../models/tcn.md).
+
+=== "3-Class"
+
+    The model is based on a  [U-Net architecture](../models/unet.md)
+
+=== "4-Class"
+
+    The model is based on a  [U-Net architecture](../models/unet.md)
+
 
 ---
 
 ## <span class="sk-h2-span"> Preprocessing</span>
 
-The models are trained directly on single channel ECG data. No feature extraction is performed. However, the data is preprocessed by applying a band-pass filter to remove noise followed by down-sampling. The filtered ECG signals are normalized by subtracting the mean and dividing by the standard deviation. We also add a small epsilon value to the standard deviation to avoid division by zero.
+All models are trained on single channel ECG data. No feature extraction is performed. The data is preprocessed by applying a band-pass filter to remove noise followed by down-sampling. The filtered ECG signals are normalized by subtracting the mean and dividing by the standard deviation. We also add a small epsilon value to the standard deviation to avoid division by zero.
 
 ---
 
 ## <span class="sk-h2-span"> Training Procedure </span>
 
-For training the models, we utilize the following setup:
+All models are trained using the following setup:
 
 - **[Focal loss function](https://arxiv.org/pdf/1708.02002.pdf)**
 - **[Adam optimizer](https://arxiv.org/pdf/1412.6980.pdf)**
@@ -42,60 +67,65 @@ For training the models, we utilize the following setup:
 
 ---
 
-## <span class="sk-h2-span"> Evaluation Metrics </span>
+<!-- ## <span class="sk-h2-span"> Evaluation Metrics </span>
 
-For each dataset, 10% of the data is held out for testing. From the remaining, 20% of the data is randomly selected for validation. There is no mixing of subjects between the training, validation, and test sets. Furthermore, the test set is held fixed while training and validation are randomly split during training. We evaluate the models performance using a variety of metrics including loss, accuracy, F1 score, average precision (AP).
-
----
+For each dataset, 10% of the data is held out for testing. From the remaining, 20% of the data is randomly selected for validation. There is no mixing of subjects between the training, validation, and test sets. Furthermore, the test set is held fixed while training and validation are randomly split during training. We evaluate the models performance using a variety of metrics including loss, accuracy, F1 score, average precision (AP). -->
 
 ## <span class="sk-h2-span">Class Mapping</span>
 
-Below outlines the class label mappings used to train segmentation models.
+Below outlines the class label mappings for the segmentation models.
 
 === "2-Class"
 
-    Only detect QRS complexes.
+    Detect only QRS complexes
 
-    | CLASS    | LABELS                |
-    | -------- | --------------------- |
-    | 0        | None, P-wave, T-wave  |
-    | 1        | QRS                   |
+    | Base Class    | Target Class | Label     |
+    | ------------- | ------------ | --------- |
+    | 0-NONE        | 0            | NONE      |
+    | 2-QRS         | 1            | QRS       |
 
 === "3-Class"
 
     Bucket the P-wave and T-wave into a single class.
 
-    | CLASS   | LABELS          |
-    | ------- | --------------- |
-    | 0       | None            |
-    | 1       | QRS             |
-    | 2       | P-wave, T-wave  |
+    | Base Class       | Target Class | Label        |
+    | ---------------- | ------------ | ------------ |
+    | 0-NONE           | 0            | NONE         |
+    | 2-QRS            | 1            | QRS          |
+    | 1-PWAVE, 3-TWAVE | 2            | PWAVE, TWAVE |
 
 === "4-Class"
 
     Identify each of the P-wave, QRS complex, and T-wave.
 
-    | CLASS   | LABELS          |
-    | ------- | --------------- |
-    | 0       | None            |
-    | 1       | P-wave          |
-    | 2       | QRS             |
-    | 3       | T-wave          |
+    | Base Class       | Target Class | Label        |
+    | ---------------- | ------------ | ------------ |
+    | 0-NONE           | 0            | NONE         |
+    | 1-PWAVE          | 1            | PWAVE        |
+    | 2-QRS            | 2            | QRS          |
+    | 3-TWAVE          | 3            | TWAVE        |
+
+
 
 ## <span class="sk-h2-span">Confusion Matrix</span>
 
 === "2-Class"
 
-    ![2-Stage Sleep Stage Confusion Matrix](../assets/segmentation-2-cm.png){ width="480" }
+    ![2-Class Segmentation Confusion Matrix](../assets/segmentation-2-cm.png){ width="480" }
 
 === "3-Class"
 
-    ![3-Stage Sleep Stage Confusion Matrix](../assets/segmentation-3-cm.png){ width="480" }
+    ![3-Class Segmentation Confusion Matrixx](../assets/segmentation-3-cm.png){ width="480" }
 
 === "4-Class"
 
-    ![4-Stage Sleep Stage Confusion Matrix](../assets/segmentation-4-cm.png){ width="480" }
+    ![4-Class Segmentation Confusion Matrix](../assets/segmentation-4-cm.png){ width="480" }
+
 
 ---
 
-<!-- ## <span class="sk-h2-span">EVB Performance</span> -->
+## <span class="sk-h2-span">EVB Performance</span>
+
+The following table provides the latest hardware performance results when running on Apollo4 Plus EVB.
+
+--8<-- "assets/segmentation-model-hw-table.md"

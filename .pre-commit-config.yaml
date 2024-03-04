@@ -15,7 +15,7 @@ repos:
     rev: v4.4.0
     hooks:
       - id: check-added-large-files
-        args: ["--maxkb=4096"]
+        args: ["--maxkb=8096"]
       - id: check-toml
       - id: check-yaml
         args: [--unsafe]

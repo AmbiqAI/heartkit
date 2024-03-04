@@ -1,6 +1,5 @@
 import numpy as np
 import numpy.typing as npt
-import pandas as pd
 
 
 def make_divisible(v: int, divisor: int = 4, min_value: int | None = None) -> int:
@@ -69,85 +68,6 @@ def threshold_predictions(
     y_pred = y_pred[y_thresh_idx]
     y_true = y_true[y_thresh_idx]
     return y_prob, y_pred, y_true
-
-
-def create_predictions_frame(
-    y_prob: npt.NDArray,
-    y_true: npt.NDArray | None = None,
-    y_pred: npt.NDArray | None = None,
-    class_names: list[str] | None = None,
-    record_ids: list[str] | None = None,
-):
-    """Create predictions matrix.
-    Args:
-        y_prob (npt.NDArray): Array of class probabilities of shape (num_samples,) or (num_samples, num_classes).
-        y_true (npt.NDArray | None): Integer array with true labels of shape (num_samples,) or (num_samples, num_classes).
-        y_pred (npt.NDArray | None): Integer array with class predictions of shape (num_samples,) or (num_samples, num_classes).
-        class_names (list[str] | None): Array of class names of shape (num_classes,).
-        record_ids (list[str] | None): Array of record names of shape (num_samples,).
-    Returns:
-        pd.DataFrame: Predictions matrix.
-    """
-    y_prob = np.squeeze(y_prob)
-    if y_prob.ndim == 1:  # binary classification
-        y_prob = np.stack([1 - y_prob, y_prob], axis=1)
-    num_classes = y_prob.shape[1]
-    if class_names is None:
-        # use index of the label as a class name
-        class_names = np.arange(num_classes)
-    elif len(class_names) != num_classes:
-        raise ValueError("length of class_names does not match with the number of classes")
-    columns = [f"prob_{label}" for label in class_names]
-    data = {column: y_prob[:, i] for i, column in enumerate(columns)}
-    if y_pred is not None:
-        y_pred = np.squeeze(y_pred)
-        if y_pred.ndim == 1:
-            y_pred = np.stack([1 - y_pred, y_pred], axis=1)
-        if y_pred.shape != y_prob.shape:
-            raise ValueError("y_prob and y_pred shapes do not match")
-        y_pred_columns = [f"pred_{label}" for label in class_names]
-        y_pred_data = {column: y_pred[:, i] for i, column in enumerate(y_pred_columns)}
-        columns = columns + y_pred_columns
-        data = {**data, **y_pred_data}
-    if y_true is not None:
-        y_true = np.squeeze(y_true)
-        if y_true.ndim == 1:  # class indices
-            # search for true labels that do not correspond to any column in the predictions matrix
-            unknown_labels = np.setdiff1d(y_true, np.arange(num_classes))
-            if len(unknown_labels) > 0:
-                raise ValueError(f"Unknown labels encountered: {unknown_labels}")
-            y_true = np.eye(num_classes)[y_true]
-        if y_true.shape != y_prob.shape:
-            raise ValueError("y_prob and y_true shapes do not match")
-        y_true_columns = [f"true_{label}" for label in class_names]
-        y_true_data = {column: y_true[:, i] for i, column in enumerate(y_true_columns)}
-        columns = y_true_columns + columns
-        data = {**data, **y_true_data}
-    predictions_frame = pd.DataFrame(data=data, columns=columns)
-    if record_ids is not None:
-        predictions_frame.insert(0, "record_name", record_ids)
-    return predictions_frame
-
-
-def read_predictions(file: str) -> dict[str, any]:
-    """Read predictions matrix.
-
-    Args:
-        file (str): Path to the csv file with predictions.
-
-    Returns:
-        Dict[str, any]: Keys: `y_prob`, (optionally) `y_true`, (optionally) `y_pred`, and `classes`.
-    """
-    df = pd.read_csv(file)
-    classes = [label[5:] for label in df.columns if label.startswith("prob")]
-    predictions = {}
-    for prefix in ["true", "pred", "prob"]:
-        col_names = [f"{prefix}_{label}" for label in classes]
-        col_names = [name for name in col_names if name in df.columns]
-        if col_names:
-            predictions[f"y_{prefix}"] = df[col_names].values
-    predictions["classes"] = classes
-    return predictions
 
 
 def is_multiclass(labels: npt.NDArray) -> bool:

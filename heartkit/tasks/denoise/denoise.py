@@ -15,7 +15,7 @@ from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
 from ... import tflite as tfa
 from ...datasets import augment_pipeline
 from ...defines import HKDemoParams, HKExportParams, HKTestParams, HKTrainParams
-from ...rpc.backends import EvbBackend, PcBackend
+from ...rpc import BackendFactory
 from ...utils import env_flag, set_random_seed, setup_logger
 from ..task import HKTask
 from .utils import (
@@ -112,9 +112,11 @@ class DenoiseTask(HKTask):
 
             optimizer = keras.optimizers.Adam(scheduler)
             loss = keras.losses.MeanSquaredError()
+
             metrics = [
                 keras.metrics.MeanAbsoluteError(name="mae"),
                 keras.metrics.MeanSquaredError(name="mse"),
+                keras.metrics.CosineSimilarity(name="cosine"),
             ]
 
             if params.resume and params.weights_file:
@@ -146,7 +148,7 @@ class DenoiseTask(HKTask):
                     restore_best_weights=True,
                 ),
                 ModelCheckpoint(
-                    filepath=params.model_file,
+                    filepath=str(params.model_file),
                     monitor=f"val_{params.val_metric}",
                     save_best_only=True,
                     save_weights_only=False,
@@ -353,14 +355,15 @@ class DenoiseTask(HKTask):
         """
         bg_color = "rgba(38,42,50,1.0)"
         primary_color = "#11acd5"
-        secondary_color = "#ce6cff"
+        # secondary_color = "#ce6cff"
         tertiary_color = "rgb(234,52,36)"
-        # quaternary_color = "rgb(92,201,154)"
+        quaternary_color = "rgb(92,201,154)"
         plotly_template = "plotly_dark"
 
+        params.demo_size = params.demo_size or 10 * params.sampling_rate
+
         # Load backend inference engine
-        BackendRunner = EvbBackend if params.backend == "evb" else PcBackend
-        runner = BackendRunner(params=params)
+        runner = BackendFactory.create(params.backend, params=params)
 
         num_classes = 1
         input_spec = (
@@ -371,15 +374,16 @@ class DenoiseTask(HKTask):
         # Load data
         ds = load_datasets(
             ds_path=params.ds_path,
-            frame_size=10 * params.sampling_rate,
+            frame_size=params.demo_size,
             sampling_rate=params.sampling_rate,
             spec=input_spec,
             class_map=None,
             datasets=params.datasets,
         )[0]
-        x = next(ds.signal_generator(ds.uniform_patient_generator(patient_ids=ds.get_test_patient_ids(), repeat=False)))
+        x, y_act = next(
+            ds.task_data_generator(ds.uniform_patient_generator(patient_ids=ds.get_test_patient_ids(), repeat=False))
+        )
 
-        y_act = x.copy()
         if params.augmentations:
             x = augment_pipeline(x, augmentations=params.augmentations, sample_rate=params.sampling_rate)
         x = prepare(x, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
@@ -406,15 +410,17 @@ class DenoiseTask(HKTask):
         logger.info("Generating report")
         ts = np.arange(0, x.size) / params.sampling_rate
 
+        # Compute cosine similarity
+        cos_sim = np.dot(y_act, y_pred) / (np.linalg.norm(y_act) * np.linalg.norm(y_pred))
+        logger.info(f"Cosine Similarity: {cos_sim:.2%}")
+
         fig = make_subplots(
-            rows=1,
-            cols=3,
-            specs=[
-                [{"colspan": 3, "type": "xy", "secondary_y": True}, None, None],
-            ],
-            subplot_titles=("ECG Plot",),
+            rows=3,
+            cols=1,
+            shared_xaxes=True,
+            # subplot_titles=("ECG Plot",),
             horizontal_spacing=0.1,
-            vertical_spacing=0.2,
+            vertical_spacing=0.0,
         )
 
         fig.add_trace(
@@ -423,11 +429,10 @@ class DenoiseTask(HKTask):
                 y=x,
                 name="ECG raw",
                 mode="lines",
-                line=dict(color=primary_color, width=2),
+                line=dict(color=primary_color, width=3),
             ),
             row=1,
             col=1,
-            secondary_y=False,
         )
 
         fig.add_trace(
@@ -436,11 +441,10 @@ class DenoiseTask(HKTask):
                 y=y_pred,
                 name="ECG clean",
                 mode="lines",
-                line=dict(color=secondary_color, width=2),
+                line=dict(color=quaternary_color, width=3),
             ),
-            row=1,
+            row=2,
             col=1,
-            secondary_y=True,
         )
 
         fig.add_trace(
@@ -449,14 +453,13 @@ class DenoiseTask(HKTask):
                 y=y_act,
                 name="ECG ideal",
                 mode="lines",
-                line=dict(color=tertiary_color, width=2),
+                line=dict(color=tertiary_color, width=3),
             ),
-            row=1,
+            row=3,
             col=1,
-            secondary_y=False,
         )
 
-        fig.update_xaxes(title_text="Time (s)", row=1, col=1)
+        fig.update_xaxes(title_text="Time (s)", row=3, col=1)
         fig.update_yaxes(title_text="ECG", row=1, col=1)
 
         fig.update_layout(
@@ -470,6 +473,7 @@ class DenoiseTask(HKTask):
         )
 
         fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=False)
-        fig.show()
-
         logger.info(f"Report saved to {params.job_dir / 'demo.html'}")
+
+        if params.display_report:
+            fig.show()

@@ -152,7 +152,8 @@ def load_train_datasets(
         train_datasets.append(train_ds)
         val_datasets.append(val_ds)
     # END FOR
-    ds_weights = np.array([len(ds.get_train_patient_ids()) for ds in datasets])
+
+    ds_weights = np.array([d.weight for d in params.datasets])
     ds_weights = ds_weights / ds_weights.sum()
 
     train_ds = tf.data.Dataset.sample_from_datasets(train_datasets, weights=ds_weights)
@@ -210,7 +211,8 @@ def load_test_datasets(
             )
             for ds in datasets
         ]
-        ds_weights = np.array([len(ds.get_test_patient_ids()) for ds in datasets])
+
+        ds_weights = np.array([d.weight for d in params.datasets])
         ds_weights = ds_weights / ds_weights.sum()
 
         test_ds = tf.data.Dataset.sample_from_datasets(test_datasets, weights=ds_weights)

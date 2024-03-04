@@ -43,7 +43,8 @@ class DatasetParams(BaseModel, extra="allow"):
     """Dataset parameters"""
 
     name: str
-    params: dict[str, Any]
+    params: dict[str, Any] = Field(default_factory=dict, description="Dataset parameters")
+    weight: float = Field(1, description="Dataset weight")
 
 
 class HKMode(StrEnum):
@@ -145,6 +146,7 @@ class HKTestParams(BaseModel, extra="allow"):
     test_samples_per_patient: int | list[int] = Field(1000, description="# test samples per patient")
     test_patients: float | None = Field(None, description="# or proportion of patients for testing")
     test_size: int = Field(200_000, description="# samples for testing")
+    test_file: Path | None = Field(None, description="Path to load/store pickled test file")
     preprocesses: list[PreprocessParams] = Field(default_factory=list, description="Preprocesses")
     augmentations: list[AugmentationParams] = Field(default_factory=list, description="Augmentations")
     # Model arguments
@@ -161,6 +163,9 @@ class HKTestParams(BaseModel, extra="allow"):
     def model_post_init(self, __context: Any) -> None:
         """Post init hook"""
 
+        if self.test_file and len(self.test_file.parts) == 1:
+            self.test_file = self.job_dir / self.test_file
+
         if self.model_file and len(self.model_file.parts) == 1:
             self.model_file = self.job_dir / self.model_file
 
@@ -175,11 +180,14 @@ class HKExportParams(BaseModel, extra="allow"):
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
     num_classes: int = Field(3, description="# of classes")
-    preprocesses: list[PreprocessParams] = Field(default_factory=list, description="Preprocesses")
-    augmentations: list[AugmentationParams] = Field(default_factory=list, description="Augmentations")
+    class_map: dict[int, int] = Field(default_factory=lambda: {1: 1}, description="Class/label mapping")
+    class_names: list[str] | None = Field(default=None, description="Class names")
     test_samples_per_patient: int | list[int] = Field(100, description="# test samples per patient")
     test_patients: float | None = Field(None, description="# or proportion of patients for testing")
     test_size: int = Field(100_000, description="# samples for testing")
+    test_file: Path | None = Field(None, description="Path to load/store pickled test file")
+    preprocesses: list[PreprocessParams] = Field(default_factory=list, description="Preprocesses")
+    augmentations: list[AugmentationParams] = Field(default_factory=list, description="Augmentations")
     model_file: Path | None = Field(None, description="Path to save model file (.keras)")
     threshold: float | None = Field(None, description="Model output threshold")
     val_acc_threshold: float | None = Field(0.98, description="Validation accuracy threshold")
@@ -195,6 +203,9 @@ class HKExportParams(BaseModel, extra="allow"):
 
     def model_post_init(self, __context: Any) -> None:
         """Post init hook"""
+
+        if self.test_file and len(self.test_file.parts) == 1:
+            self.test_file = self.job_dir / self.test_file
 
         if self.model_file and len(self.model_file.parts) == 1:
             self.model_file = self.job_dir / self.model_file
@@ -220,6 +231,8 @@ class HKDemoParams(BaseModel, extra="allow"):
     # Model arguments
     model_file: Path | None = Field(None, description="Path to save model file (.keras)")
     backend: Literal["pc", "evb"] = Field("pc", description="Backend")
+    demo_size: int | None = Field(1000, description="# samples for demo")
+    display_report: bool = Field(True, description="Display report")
     # Extra arguments
     seed: int | None = Field(None, description="Random state seed")
     model_config = ConfigDict(protected_namespaces=())

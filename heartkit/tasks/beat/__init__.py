@@ -1,5 +1,5 @@
 from .beat import BeatTask
-from .defines import HeartBeat, HeartBeatName
+from .defines import HKBeat
 from .utils import (
     get_class_shape,
     get_feat_shape,

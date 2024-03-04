@@ -6,7 +6,7 @@
 $ heartkit --help
 
 HeartKit CLI Options:
-    --task [segmentation, arrhythmia, beat, denoise]
+    --task [segmentation, rhythm, beat, denoise]
     --mode [download, train, evaluate, export, demo]
     --config ["./path/to/config.json", or '{"raw: "json"}']
 ```
@@ -33,7 +33,7 @@ The HeartKit command line interface (CLI) makes it easy to run a variety of sing
         Where:
 
         * `MODE` is one of `download`, `train`, `evaluate`, `export`, or `demo`
-        * `TASK` is one of `segmentation`, `arrhythmia`, `beat`, or `denoise`
+        * `TASK` is one of `segmentation`, `rhythm`, `beat`, or `denoise`
         * `CONFIG` is configuration as JSON content or file path
 
     === "Download"
@@ -44,25 +44,30 @@ The HeartKit command line interface (CLI) makes it easy to run a variety of sing
         ```
 
     === "Train"
-        Train a 2-class arrhythmia model using the supplied configuration file.
+        Train a rhythm model using the supplied configuration file.
 
         ```bash
-        heartkit -m train -t arrhythmia -c ./configs/arrhythmia-class-2.json
+        heartkit -m train -t rhythm -c ./configs/rhythm-class-2.json
         ```
 
     === "Evaluate"
-        Evaluate the trained arrhythmia model using the supplied configuration file. Note that we are using the same configuration file as the training command- we can store all the parameters in the same file. Only needed parameters will be used for each command.
+        Evaluate the rhythm model using the supplied configuration file.
 
         ```bash
-        heartkit -m evaluate -t arrhythmia  -c ./configs/arrhythmia-class-2.json
+        heartkit -m evaluate -t rhythm  -c ./configs/rhythm-class-2.json
         ```
 
     === "Demo"
-        Run demo on trained arrhythmia model using the supplied configuration file.
+        Run demo on trained rhythm model using the supplied configuration file.
 
         ```bash
-        heartkit -m demo -t arrhythmia -c ./configs/arrhythmia-class-2.json
+        heartkit -m demo -t rhythm -c ./configs/rhythm-class-2.json
         ```
+
+
+!!! Note "Configuration File"
+
+    The configuration file is a JSON file that contains all the necessary parameters for the task. The configuration file can be passed as a file path or as a JSON string. In addition, a single configuration file can be used for all `modes`- only needed parameters will be extracted for the given `mode` running.  Please refer to the [Configuration](../usage/configuration.md) section for more details.
 
 ---
 
@@ -83,43 +88,42 @@ The `download` command is used to download all datasets specified in the configu
 
 ## [Train](../modes/train.md)
 
-The `train` command is used to train a HeartKit model for the specified `task` and `dataset`. Please refer to `heartkit/defines.py` to see supported options.
+The `train` command is used to train a HeartKit model for the specified `task` and `dataset`. Each task provides a reference routine for training the model. The routine can be customized via the configuration file. Please refer to `heartkit/defines.py` to see supported options.
 
 !!! Example "CLI"
 
-    The following command will train a 2-class arrhythmia model using the reference configuration:
+    The following command will train a rhythm model using the reference configuration:
 
     ```bash
-    heartkit --task arrhythmia --mode train --config ./configs/arrhythmia-class-2.json
+    heartkit --task rhythm --mode train --config ./configs/rhythm-class-2.json
     ```
 
 ---
 
 ## [Evaluate](../modes/evaluate.md)
 
-The `evaluate` command will test the performance of the model on the reserved test set for the specified `task`. For certain tasks, a confidence threshold can also be set such that a label is only assigned when the model's probability is greater than the threshold; otherwise, a label of inconclusive will be assigned. This is useful in noisy environments where the model may not be confident in its prediction.
+The `evaluate` command will test the performance of the model on the reserved test sets for the specified `task`. The routine can be customized via the configuration file. Please refer to `heartkit/defines.py` to see supported options.
 
 !!! example "CLI"
 
-    The following command will test the 2-class arrhythmia model using the reference configuration:
+    The following command will test the rhythm model using the reference configuration:
 
     ```bash
-    heartkit --task arrhythmia --mode evaluate --config ./configs/arrhythmia-class-2.json
+    heartkit --task rhythm --mode evaluate --config ./configs/rhythm-class-2.json
     ```
 
 ---
 
 ## [Export](../modes/export.md)
 
-The `export` command will convert the trained TensorFlow model into both TensorFlow Lite (TFL) and TensorFlow Lite for micro-controller (TFLM) variants. The command will also verify the models' outputs match. Post-training quantization (PTQ) can also be enabled by setting the `quantization` flag in the configuration. Once converted, the TFLM header file will be copied to location specified by `tflm_file`.
+The `export` command will convert the trained TensorFlow model into both TensorFlow Lite (TFL) and TensorFlow Lite for micro-controller (TFLM) variants. The command will also verify the models' outputs match. The activations and weights can be quantized by configuring the `quantization` section in the configuration file. Once converted, the TFLM header file will be copied to location specified by `tflm_file`.
 
 !!! example "CLI"
 
-    The following command will export the 2-class arrhythmia model to TF Lite and TFLM:
-
+    The following command will export the rhythm model to TF Lite and TFLM:
 
     ```bash
-    heartkit --task arrhythmia --mode export --config ./configs/arrhythmia-class-2.json
+    heartkit --task rhythm --mode export --config ./configs/rhythm-class-2.json
     ```
 
 ---
@@ -131,10 +135,10 @@ The `demo` command is used to run a task-level demonstration using either the PC
 
 !!! Example "CLI"
 
-    The following command will run a demo on the trained arrhythmia model using the same supplied configuration file.
+    The following command will run a demo on the trained rhythm model using the same supplied configuration file.
 
     ```bash
-    heartkit --task arrhythmia --mode demo --config ./configs/arrhythmia-class-2.json
+    heartkit --task rhythm --mode demo --config ./configs/rhythm-class-2.json
     ```
 
 ---

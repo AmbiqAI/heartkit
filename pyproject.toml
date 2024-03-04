@@ -12,7 +12,7 @@ packages = [
 
 include = [
     { path = "tests", format = "sdist" },
-    { path = "./heartkit/cfg/*.json"}
+    { path = "./heartkit/assets/**/*"},
 ]
 
 [tool.poetry.scripts]

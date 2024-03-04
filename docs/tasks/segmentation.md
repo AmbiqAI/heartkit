@@ -2,23 +2,21 @@
 
 ## <span class="sk-h2-span">Overview</span>
 
-The objective of ECG segmentation is to delineate key segments of the cardiac cycle, including the P-wave, QRS complex, and T-wave. These segments are used to compute a number of clinically relevant metrics, including heart rate, PR interval, QRS duration, QT interval, and QTc interval. They are also useful for a variety of upstream tasks, including arrhythmia classification and beat classification.
+The objective of ECG segmentation is to delineate key segments of the cardiac cycle, including the P-wave, QRS complex, and T-wave. These segments are used to compute a number of clinically relevant metrics, including heart rate, PR interval, QRS duration, QT interval, and QTc interval. They are also useful for a variety of downstream tasks, including rhythm classification and beat classification.
 
 
 <div class="sk-plotly-graph-div">
---8<-- "assets/pk_ecg_synthetic_nsr.html"
+--8<-- "assets/segmentation_example.html"
 </div>
 
 ---
 
 ## <span class="sk-h2-span">Characteristics</span>
 
-
 * __P-Wave__: Reflects atrial depolarization
 * __QRS Complex__: Reflects ventricular depolarization
 * __T-Wave__: Reflects ventricular repolarization
 * __U-Wave__: Reflects papillary muscle repolarization
-
 
 <figure markdown>
   ![Annotated ECG Signal](../assets/ecg-annotated.svg){ width="380" }
@@ -49,7 +47,7 @@ Below outlines the classes available for ECG segmentation. When training a model
 | 4       | U-wave          |
 | 5       | Noise           |
 
-!!! example "Class Mapping"
+!!! example "Class Mapping Example"
 
     Below is an example of a class mapping for a 3-class segmentation model. The class map keys are the original class labels, and the values are the new class labels. Any class not included will be skipped.
 

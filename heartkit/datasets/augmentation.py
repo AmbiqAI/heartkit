@@ -105,7 +105,7 @@ def augment_pipeline(x: npt.NDArray, augmentations: list[AugmentationParams], sa
                     x,
                     scale=x_sd * np.random.uniform(scale[0], scale[1]),
                 )
-            case _:
+            case _:  # default
                 pass
                 # raise ValueError(f"Unknown augmentation '{augmentation.name}'")
         # END MATCH

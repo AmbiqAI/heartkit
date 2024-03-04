@@ -77,6 +77,8 @@ class QtdbDataset(HKDataset):
         Returns:
             npt.NDArray: patient IDs
         """
+
+        # fmt: off
         return np.array(
             [
                 30,
@@ -182,6 +184,7 @@ class QtdbDataset(HKDataset):
                 17152,
                 17453,
             ]
+            # fmt: on
         )  # 104, 114, 116 have multiple recordings
 
     def get_train_patient_ids(self) -> npt.NDArray:
@@ -261,12 +264,12 @@ class QtdbDataset(HKDataset):
             stop_offset = max(0, data.shape[0] - segs[-1][SEG_END_IDX] + 100)
             for _ in range(samples_per_patient):
                 # Randomly pick an ECG lead
-                lead_idx = np.random.randint(data.shape[1])
+                lead = np.random.randint(data.shape[1])
                 # Randomly select frame within the segment
                 frame_start = np.random.randint(start_offset, data.shape[0] - self.frame_size - stop_offset)
                 frame_end = frame_start + self.frame_size
-                x = data[frame_start:frame_end, lead_idx].astype(np.float32).reshape((self.frame_size,))
-                y = labels[frame_start:frame_end, lead_idx].astype(np.int32)
+                x = data[frame_start:frame_end, lead].astype(np.float32).reshape((self.frame_size,))
+                y = labels[frame_start:frame_end, lead].astype(np.int32)
                 yield x, y
             # END FOR
         # END FOR

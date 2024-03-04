@@ -1,5 +1,0 @@
-{
-    "ds_path": "./datasets",
-    "datasets": ["icentia11k", "ludb", "qtdb", "ptbxl", "synthetic"],
-    "progress": true
-}

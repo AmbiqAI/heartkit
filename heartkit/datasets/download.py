@@ -1,15 +1,27 @@
+import logging
 import os
 
 from ..defines import HKDownloadParams
+from ..utils import setup_logger
 from .factory import DatasetFactory
+
+logger = setup_logger(__name__)
 
 
 def download_datasets(params: HKDownloadParams):
-    """Download all specified datasets.
+    """Download specified datasets.
 
     Args:
         params (HeartDownloadParams): Download parameters
+
     """
+    os.makedirs(params.job_dir, exist_ok=True)
+    logger.info(f"Creating working directory in {params.job_dir}")
+
+    handler = logging.FileHandler(params.job_dir / "download.log", mode="w")
+    handler.setLevel(logging.INFO)
+    logger.addHandler(handler)
+
     os.makedirs(params.ds_path, exist_ok=True)
 
     for dataset in params.datasets:

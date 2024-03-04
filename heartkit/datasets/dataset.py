@@ -1,5 +1,6 @@
 import functools
 import logging
+import math
 import os
 from pathlib import Path
 
@@ -13,11 +14,6 @@ from .defines import PatientGenerator, Preprocessor, SampleGenerator
 from .utils import create_dataset_from_data
 
 logger = logging.getLogger(__name__)
-
-
-def default_preprocess(x_y: tuple[npt.NDArray, npt.NDArray]) -> tuple[npt.NDArray, npt.NDArray]:
-    """Default identity preprocessing."""
-    return x_y
 
 
 class HKDataset:
@@ -162,6 +158,7 @@ class HKDataset:
 
         # Get train patients
         train_patient_ids = self.get_train_patient_ids()
+        train_patient_ids = self.filter_patients_for_task(train_patient_ids)
 
         # Use subset of training patients
         if train_patients is not None:
@@ -176,7 +173,7 @@ class HKDataset:
                 dataset=self.ds_path.stem,
                 task=self.task,
                 frame_size=str(int(self.frame_size)),
-                sample_rate=str(int(self.sampling_rate)),
+                sampling_rate=str(int(self.target_rate)),
             )
         # END IF
 
@@ -189,11 +186,12 @@ class HKDataset:
             train_patient_ids = np.setdiff1d(train_patient_ids, val_patient_ids)
         else:
             logger.info("Splitting patients into train and validation")
-            train_patient_ids, val_patient_ids = self._split_train_test_patients(
+            train_patient_ids, val_patient_ids = self.split_train_test_patients(
                 patient_ids=train_patient_ids, test_size=val_patients
             )
             if val_size is None:
-                val_size = val_pt_samples * (len(val_patient_ids) - 1)
+                num_samples = np.mean(val_pt_samples) if isinstance(val_pt_samples, list) else val_pt_samples
+                val_size = math.ceil(num_samples * len(val_patient_ids))
 
             logger.info(f"Collecting {val_size} validation samples")
             val_ds = self._parallelize_dataset(
@@ -228,6 +226,7 @@ class HKDataset:
         self,
         test_patients: float | None = None,
         test_pt_samples: int | list[int] | None = None,
+        test_file: os.PathLike | None = None,
         repeat: bool = True,
         preprocess: Preprocessor | None = None,
         num_workers: int = 1,
@@ -237,25 +236,47 @@ class HKDataset:
         Args:
             test_patients (float | None, optional): # or proportion of test patients. Defaults to None.
             test_pt_samples (int | None, optional): # samples per patient for testing. Defaults to None.
+            test_file (str | None, optional): Path to existing pickled test file. Defaults to None.
             repeat (bool, optional): Restart generator when dataset is exhausted. Defaults to True.
             num_workers (int, optional): # of parallel workers. Defaults to 1.
 
         Returns:
             tf.data.Dataset: Test dataset
         """
+
+        # Get test patients
         test_patient_ids = self.get_test_patient_ids()
+        test_patient_ids = self.filter_patients_for_task(test_patient_ids)
 
         if test_patients is not None:
             num_pts = int(test_patients) if test_patients > 1 else int(test_patients * len(test_patient_ids))
             test_patient_ids = test_patient_ids[:num_pts]
 
-        test_ds = self._parallelize_dataset(
-            patient_ids=test_patient_ids,
-            samples_per_patient=test_pt_samples,
-            preprocess=preprocess,
-            repeat=repeat,
-            num_workers=num_workers,
-        )
+        # Resolve validation file path (allows for templating)
+        if test_file:
+            test_file = resolve_template_path(
+                fpath=test_file,
+                dataset=self.ds_path.stem,
+                task=self.task,
+                frame_size=str(int(self.frame_size)),
+                sampling_rate=str(int(self.target_rate)),
+            )
+        # END IF
+
+        # Use existing validation data
+        if self.cachable and test_file and os.path.isfile(test_file):
+            logger.info(f"Loading test data from file {test_file}")
+            test = load_pkl(test_file)
+            test_ds = create_dataset_from_data(test["x"], test["y"], self.spec)
+            test_patient_ids = test["patient_ids"]
+        else:
+            test_ds = self._parallelize_dataset(
+                patient_ids=test_patient_ids,
+                samples_per_patient=test_pt_samples,
+                preprocess=preprocess,
+                repeat=repeat,
+                num_workers=num_workers,
+            )
         return test_ds
 
     @tf.function
@@ -301,7 +322,7 @@ class HKDataset:
             num_parallel_calls=tf.data.AUTOTUNE,
         )
 
-    def _split_train_test_patients(self, patient_ids: npt.NDArray, test_size: float) -> list[list[int]]:
+    def split_train_test_patients(self, patient_ids: npt.NDArray, test_size: float) -> list[list[int]]:
         """Perform train/test split on patients for given task.
         NOTE: We only perform inter-patient splits and not intra-patient.
 
@@ -313,6 +334,18 @@ class HKDataset:
             list[list[int]]: Train and test sets of patient ids
         """
         return sklearn.model_selection.train_test_split(patient_ids, test_size=test_size)
+
+    def filter_patients_for_task(self, patient_ids: npt.NDArray) -> npt.NDArray:
+        """Filter patients based on task.
+        Useful to remove patients w/o labels for task to speed up data loading.
+
+        Args:
+            patient_ids (npt.NDArray): Patient ids
+
+        Returns:
+            npt.NDArray: Filtered patient ids
+        """
+        return patient_ids
 
     def _create_dataset_from_generator(
         self,

@@ -20,7 +20,7 @@ from ... import tflite as tfa
 from ...defines import HKDemoParams, HKExportParams, HKTestParams, HKTrainParams
 from ...metrics import confusion_matrix_plot, f1_score, roc_auc_plot
 from ...models.utils import threshold_predictions
-from ...rpc.backends import EvbBackend, PcBackend
+from ...rpc import BackendFactory
 from ...utils import env_flag, set_random_seed, setup_logger
 from ..task import HKTask
 from .utils import (
@@ -154,7 +154,7 @@ class BeatTask(HKTask):
                     restore_best_weights=True,
                 ),
                 ModelCheckpoint(
-                    filepath=params.model_file,
+                    filepath=str(params.model_file),
                     monitor=f"val_{params.val_metric}",
                     save_best_only=True,
                     mode="max" if params.val_metric == "f1" else "auto",
@@ -406,9 +406,10 @@ class BeatTask(HKTask):
         secondary_color = "#ce6cff"
         plotly_template = "plotly_dark"
 
+        params.demo_size = params.demo_size or 20 * params.sampling_rate
+
         # Load backend inference engine
-        BackendRunner = EvbBackend if params.backend == "evb" else PcBackend
-        runner = BackendRunner(params=params)
+        runner = BackendFactory.create(params.backend, params=params)
 
         # Load data
         # classes = sorted(list(set(params.class_map.values())))
@@ -421,7 +422,7 @@ class BeatTask(HKTask):
 
         ds = load_datasets(
             ds_path=params.ds_path,
-            frame_size=20 * params.sampling_rate,
+            frame_size=params.demo_size,
             sampling_rate=params.sampling_rate,
             spec=input_spec,
             class_map=params.class_map,
@@ -556,6 +557,7 @@ class BeatTask(HKTask):
         )
 
         fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=True)
-        fig.show()
-
         logger.info(f"Report saved to {params.job_dir / 'demo.html'}")
+
+        if params.display_report:
+            fig.show()

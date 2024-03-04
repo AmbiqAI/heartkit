@@ -1,24 +1,30 @@
 # Pre-Trained Beat Models
 
-## <span class="sk-h2-span"> Model Results </span>
+## <span class="sk-h2-span">Overview</span>
 
-The following results are obtained from the pre-trained beat models when testing on 1,000 patients (not used during training).
+The following table summarizes the high-level results of the segmentation models. The `config` provides the complete configuration JSON file used to train the models. Below we also provide details on the datasets, model architectures, preprocessing, and training procedures used to train the models.
 
---8<-- "assets/beat-model-hw-table.md"
-
----
-
-## <span class="sk-h2-span"> Datasets </span>
-
-We leverage the following datasets for training the beat models:
-
-- **[Icentia11k](../datasets/icentia11k.md)**
+--8<-- "assets/beat-model-zoo-table.md"
 
 ---
 
-## <span class="sk-h2-span"> Model Architectures </span>
+## <span class="sk-h2-span">Datasets</span>
 
-The beat model utilizes a 1-D CNN built using MBConv style blocks that incorporate expansion, inverted residuals, and squeeze and excitation layers. Furthermore, longer filter and stride lengths are utilized in the initial layers to capture more temporal dependencies.
+The following datasets were used to train the beat models.
+
+=== "2-Class"
+
+    - **[Icentia11k](../datasets/icentia11k.md)**
+
+=== "3-Class"
+
+    - **[Icentia11k](../datasets/icentia11k.md)**
+
+---
+
+## <span class="sk-h2-span">Model Architectures</span>
+
+All models utilizes a variation of [EfficientNetV2](../models/efficientnet.md) that is adapted for 1-D time series data. The model is a 1-D CNN built using MBConv style blocks that incorporate expansion, inverted residuals, and squeeze and excitation layers. Furthermore, longer filter and stride lengths are utilized in the initial layers to capture more temporal dependencies.
 
 ---
 
@@ -30,7 +36,7 @@ The models are trained directly on single channel ECG data. No feature extractio
 
 ## <span class="sk-h2-span"> Training Procedure </span>
 
-For training the models, we utilize the following setup:
+All models are trained using the following setup:
 
 - **[Focal loss function](https://arxiv.org/pdf/1708.02002.pdf)**
 - **[Adam optimizer](https://arxiv.org/pdf/1412.6980.pdf)**
@@ -40,17 +46,12 @@ For training the models, we utilize the following setup:
 
 ---
 
-## <span class="sk-h2-span"> Evaluation Metrics </span>
-
-For each dataset, 10% of the data is held out for testing. From the remaining, 20% of the data is randomly selected for validation. There is no mixing of subjects between the training, validation, and test sets. Furthermore, the test set is held fixed while training and validation are randomly split during training. We evaluate the models performance using a variety of metrics including loss, accuracy, F1 score, average precision (AP).
-
----
 
 ## <span class="sk-h2-span">Class Mapping</span>
 
-Below outlines the class label mappings used to train segmentation models.
+Below outlines the class label mappings for the arrhtyhmia models.
 
-=== "2-Stage"
+=== "2-Class"
 
     Classify PAC and PVC as a single class.
 
@@ -60,7 +61,7 @@ Below outlines the class label mappings used to train segmentation models.
     | 1-PAC, 2-PVC  | 1            | PAC|PVC   |
 
 
-=== "3-Stage"
+=== "3-Class"
 
     | Base Class    | Target Class | Label     |
     | ------------- | ------------ | --------- |
@@ -77,13 +78,13 @@ Below outlines the class label mappings used to train segmentation models.
 
     The confusion matrix for the 2-class beat model is depicted below.
 
-    ![2-Stage Sleep Stage Confusion Matrix](../assets/beat-2-cm.png){ width="480" }
+    ![2-Class Beat Confusion Matrix](../assets/beat-2-cm.png){ width="480" }
 
 === "3-Class"
 
     The confusion matrix for the 3-class model is depicted below.
 
-    ![2-Stage Sleep Stage Confusion Matrix](../assets/beat-3-cm.png){ width="480" }
+    ![2-Stage Beat Confusion Matrix](../assets/beat-3-cm.png){ width="480" }
 
 ---
 

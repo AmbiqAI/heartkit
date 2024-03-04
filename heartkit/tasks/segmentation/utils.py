@@ -16,7 +16,7 @@ from ...defines import (
     PreprocessParams,
 )
 from ...models import ModelFactory, UNet, UNetBlockParams, UNetParams
-from .defines import HeartSegment
+from .defines import HKSegment
 
 console = Console()
 
@@ -130,7 +130,7 @@ def apply_augmentation_pipeline(
     x = augment_pipeline(x, augmentations=augmentations, sample_rate=sample_rate)
 
     # Augmentations that impact the label
-    noise_label = class_map.get(HeartSegment.noise, None)
+    noise_label = class_map.get(HKSegment.noise, None)
     if noise_label:
 
         cutout = next(filter(lambda a: a.name == "cutout", augmentations), None)
@@ -196,39 +196,6 @@ def load_train_datasets(
             # xx_mu, xx_sd = np.nanmean(xx), np.nanstd(xx)
             # # Standard augmentations dont impact the label
             # xx = augment_pipeline(xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
-
-            # # Augmentations that impact the label
-            # noise_label = params.class_map.get(HeartSegment.noise, None)
-            # if noise_label:
-
-            #     cutout = next(filter(lambda a: a.name == "cutout", params.augmentations), None)
-            #     if cutout:
-            #         prob = cutout.params.get("probability", [0, 0.25])[1]
-            #         width = cutout.params.get("width", [0, 1])
-            #         if np.random.rand() < prob:
-            #             dur = int(np.random.uniform(width[0], width[1])*feat_shape[0])
-            #             start = np.random.randint(0, feat_shape[0] - dur)
-            #             stop = start + dur
-            #             xx[start:stop] = xx_mu
-            #             yy[start:stop] = noise_label
-            #         # END IF
-            #     # END IF
-
-            #     whiteout = next(filter(lambda a: a.name == "whiteout", params.augmentations), None)
-            #     if whiteout:
-            #         prob = cutout.params.get("probability", [0, 0.25])[1]
-            #         amp = whiteout.params.get("amplitude", [0.5, 1.0])
-            #         width = cutout.params.get("width", [0, 1])
-            #         if np.random.rand() < prob:
-            #             dur = int(np.random.uniform(width[0], width[1])*feat_shape[0])
-            #             start = np.random.randint(0, feat_shape[0] - dur)
-            #             stop = start + dur
-            #             scale = np.random.uniform(amp[0], amp[1])*xx_sd
-            #             xx[start:stop] += np.random.normal(0, scale, size=xx[start:stop].shape)
-            #             yy[start:stop] = noise_label
-            #         # END IF
-            #     # END IF
-            # # END IF
         # END IF
 
         xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
@@ -252,7 +219,8 @@ def load_train_datasets(
         train_datasets.append(train_ds)
         val_datasets.append(val_ds)
     # END FOR
-    ds_weights = np.array([len(ds.get_train_patient_ids()) for ds in datasets])
+
+    ds_weights = np.array([d.weight for d in params.datasets])
     ds_weights = ds_weights / ds_weights.sum()
 
     train_ds = tf.data.Dataset.sample_from_datasets(train_datasets, weights=ds_weights)
@@ -308,12 +276,14 @@ def load_test_datasets(
         test_datasets = [
             ds.load_test_dataset(
                 test_pt_samples=params.test_samples_per_patient,
+                test_file=params.test_file,
                 preprocess=preprocess,
                 num_workers=params.data_parallelism,
             )
             for ds in datasets
         ]
-        ds_weights = np.array([len(ds.get_test_patient_ids()) for ds in datasets])
+
+        ds_weights = np.array([d.weight for d in params.datasets])
         ds_weights = ds_weights / ds_weights.sum()
 
         test_ds = tf.data.Dataset.sample_from_datasets(test_datasets, weights=ds_weights)

@@ -3,15 +3,17 @@ import os
 import random
 from collections.abc import Iterable
 from enum import IntEnum
+from multiprocessing import Pool
 
 import h5py
 import numpy as np
 import numpy.typing as npt
 import physiokit as pk
+import sklearn.model_selection
 import tensorflow as tf
 from tqdm import tqdm
 
-from ..tasks import HeartRhythm
+from ..tasks import HKDiagnostic, HKRhythm, HKSegment
 from ..utils import download_file
 from .dataset import HKDataset
 from .defines import PatientGenerator, SampleGenerator
@@ -19,39 +21,228 @@ from .defines import PatientGenerator, SampleGenerator
 logger = logging.getLogger(__name__)
 
 
-class PtbxlRhythm(IntEnum):
-    """PTBXL rhythm labels"""
+class PtbxlScpCode(IntEnum):
+    """PTBXL SCP codes"""
 
-    SR = 0  # Sinus rhythm (normal)
-    AFIB = 1  # Atrial fibrillation (irregular rhythm, no p-waves, rapid ventricular response)
-    STACH = 2  # Sinus tachycardia (fast normal rhythm)
-    SARRH = 3  # Sinus arrhythmia (RR variation > 0.12s, normal rhythm)
-    SBRAD = 4  # Sinus bradycardia (slow normal rhythm)
-    PACE = 5  # Paced rhythm (artificial pacemaker rhythm)
-    SVARR = 6  # Supraventricular arrhythmia (includes atrial flutter, atrial tachycardia, and atrial fibrillation)
-    BIGU = 7  # Bigeminy (every other beat is PVC)
-    AFLT = 8  # Atrial flutter (regular atrial rhythm at 250-350 bpm, sawtooth pattern)
-    SVTAC = 9  # Supraventricular tachycardia (fast atrial rhythm, 150-250 bpm)
-    PSVT = 10  # Paroxysmal supraventricular tachycardia (sudden onset of SVT)
-    TRIGU = 11  # Trigeminy (every third beat is PVC)
+    # Diagnostic codes
+    NDT = 0  # STTC, STTC
+    NST_ = 1  # STTC, NST_
+    DIG = 2  # STTC, STTC
+    LNGQT = 3  # STTC, STTC
+    NORM = 4  # NORM, NORM
+    IMI = 5  # MI, IMI
+    ASMI = 6  # MI, AMI
+    LVH = 7  # HYP, LVH
+    LAFB = 8  # CD, LAFB_LPFB
+    ISC_ = 9  # STTC, ISC_
+    IRBBB = 10  # CD, IRBBB
+    AVB1 = 11  # CD, _AVB
+    IVCD = 12  # CD, IVCD
+    ISCAL = 13  # STTC, ISCA
+    CRBBB = 14  # CD, CRBBB
+    CLBBB = 15  # CD, CLBBB
+    ILMI = 16  # MI, IMI
+    LAO_LAE = 17  # HYP, AO_LAE
+    AMI = 18  # MI, AMI
+    ALMI = 19  # MI, AMI
+    ISCIN = 20  # STTC, ISCI
+    INJAS = 21  # MI, AMI
+    LMI = 22  # MI, LMI
+    ISCIL = 23  # STTC, ISCI
+    LPFB = 24  # CD, LAFB_LPFB
+    ISCAS = 25  # STTC, ISCA
+    INJAL = 26  # MI, AMI
+    ISCLA = 27  # STTC, ISCA
+    RVH = 28  # HYP, RVH
+    ANEUR = 29  # STTC, STTC
+    RAO_RAE = 30  # HYP, RAO_RAE
+    EL = 31  # STTC, STTC
+    WPW = 32  # CD, WPW
+    ILBBB = 33  # CD, ILBBB
+    IPLMI = 34  # MI, IMI
+    ISCAN = 35  # STTC, ISCA
+    IPMI = 36  # MI, IMI
+    SEHYP = 37  # HYP, SEHYP
+    INJIN = 38  # MI, IMI
+    INJLA = 39  # MI, AMI
+    PMI = 40  # MI, PMI
+    AVB3 = 41  # CD, _AVB
+    INJIL = 42  # MI, IMI
+    AVB2 = 43  # CD, _AVB
+    # Form codes
+    ABQRS = 44
+    PVC = 45
+    STD_ = 46
+    VCLVH = 47
+    QWAVE = 48
+    LOWT = 49
+    NT_ = 50
+    PAC = 51
+    LPR = 52
+    INVT = 53
+    LVOLT = 54
+    HVOLT = 55
+    TAB_ = 56
+    STE_ = 57
+    PRC_S = 58
+    # Rhythm codes
+    SR = 59
+    AFIB = 60
+    STACH = 61
+    SARRH = 62
+    SBRAD = 63
+    PACE = 64
+    SVARR = 65
+    BIGU = 66
+    AFLT = 67
+    SVTAC = 68
+    PSVT = 69
+    TRIGU = 70
 
 
 ##
 # These map PTBXL specific labels to common labels
 ##
-HeartRhythmMap = {
-    PtbxlRhythm.SR: HeartRhythm.normal,
-    PtbxlRhythm.AFIB: HeartRhythm.afib,
-    PtbxlRhythm.AFLT: HeartRhythm.aflut,
-    PtbxlRhythm.STACH: HeartRhythm.stach,
-    PtbxlRhythm.SBRAD: HeartRhythm.sbrad,
-    PtbxlRhythm.SARRH: HeartRhythm.sarrh,
-    PtbxlRhythm.SVARR: HeartRhythm.svarr,
-    PtbxlRhythm.SVTAC: HeartRhythm.svt,
-    PtbxlRhythm.PSVT: HeartRhythm.svt,
-    PtbxlRhythm.BIGU: HeartRhythm.bigu,
-    PtbxlRhythm.TRIGU: HeartRhythm.trigu,
-    PtbxlRhythm.PACE: HeartRhythm.pace,
+
+PtbxlScpRawMap = {
+    "NDT": PtbxlScpCode.NDT,
+    "NST_": PtbxlScpCode.NST_,
+    "DIG": PtbxlScpCode.DIG,
+    "LNGQT": PtbxlScpCode.LNGQT,
+    "NORM": PtbxlScpCode.NORM,
+    "IMI": PtbxlScpCode.IMI,
+    "ASMI": PtbxlScpCode.ASMI,
+    "LVH": PtbxlScpCode.LVH,
+    "LAFB": PtbxlScpCode.LAFB,
+    "ISC_": PtbxlScpCode.ISC_,
+    "IRBBB": PtbxlScpCode.IRBBB,
+    "1AVB": PtbxlScpCode.AVB1,
+    "IVCD": PtbxlScpCode.IVCD,
+    "ISCAL": PtbxlScpCode.ISCAL,
+    "CRBBB": PtbxlScpCode.CRBBB,
+    "CLBBB": PtbxlScpCode.CLBBB,
+    "ILMI": PtbxlScpCode.ILMI,
+    "LAO/LAE": PtbxlScpCode.LAO_LAE,
+    "AMI": PtbxlScpCode.AMI,
+    "ALMI": PtbxlScpCode.ALMI,
+    "ISCIN": PtbxlScpCode.ISCIN,
+    "INJAS": PtbxlScpCode.INJAS,
+    "LMI": PtbxlScpCode.LMI,
+    "ISCIL": PtbxlScpCode.ISCIL,
+    "LPFB": PtbxlScpCode.LPFB,
+    "ISCAS": PtbxlScpCode.ISCAS,
+    "INJAL": PtbxlScpCode.INJAL,
+    "ISCLA": PtbxlScpCode.ISCLA,
+    "RVH": PtbxlScpCode.RVH,
+    "ANEUR": PtbxlScpCode.ANEUR,
+    "RAO/RAE": PtbxlScpCode.RAO_RAE,
+    "EL": PtbxlScpCode.EL,
+    "WPW": PtbxlScpCode.WPW,
+    "ILBBB": PtbxlScpCode.ILBBB,
+    "IPLMI": PtbxlScpCode.IPLMI,
+    "ISCAN": PtbxlScpCode.ISCAN,
+    "IPMI": PtbxlScpCode.IPMI,
+    "SEHYP": PtbxlScpCode.SEHYP,
+    "INJIN": PtbxlScpCode.INJIN,
+    "INJLA": PtbxlScpCode.INJLA,
+    "PMI": PtbxlScpCode.PMI,
+    "3AVB": PtbxlScpCode.AVB3,
+    "INJIL": PtbxlScpCode.INJIL,
+    "2AVB": PtbxlScpCode.AVB2,
+    "ABQRS": PtbxlScpCode.ABQRS,
+    "PVC": PtbxlScpCode.PVC,
+    "STD_": PtbxlScpCode.STD_,
+    "VCLVH": PtbxlScpCode.VCLVH,
+    "QWAVE": PtbxlScpCode.QWAVE,
+    "LOWT": PtbxlScpCode.LOWT,
+    "NT_": PtbxlScpCode.NT_,
+    "PAC": PtbxlScpCode.PAC,
+    "LPR": PtbxlScpCode.LPR,
+    "INVT": PtbxlScpCode.INVT,
+    "LVOLT": PtbxlScpCode.LVOLT,
+    "HVOLT": PtbxlScpCode.HVOLT,
+    "TAB_": PtbxlScpCode.TAB_,
+    "STE_": PtbxlScpCode.STE_,
+    "PRC(S)": PtbxlScpCode.PRC_S,
+    "SR": PtbxlScpCode.SR,
+    "AFIB": PtbxlScpCode.AFIB,
+    "STACH": PtbxlScpCode.STACH,
+    "SARRH": PtbxlScpCode.SARRH,
+    "SBRAD": PtbxlScpCode.SBRAD,
+    "PACE": PtbxlScpCode.PACE,
+    "SVARR": PtbxlScpCode.SVARR,
+    "BIGU": PtbxlScpCode.BIGU,
+    "AFLT": PtbxlScpCode.AFLT,
+    "SVTAC": PtbxlScpCode.SVTAC,
+    "PSVT": PtbxlScpCode.PSVT,
+    "TRIGU": PtbxlScpCode.TRIGU,
+}
+
+PtbxlRhythmMap = {
+    PtbxlScpCode.SR: HKRhythm.sr,
+    PtbxlScpCode.AFIB: HKRhythm.afib,
+    PtbxlScpCode.AFLT: HKRhythm.aflut,
+    PtbxlScpCode.STACH: HKRhythm.stach,
+    PtbxlScpCode.SBRAD: HKRhythm.sbrad,
+    PtbxlScpCode.SARRH: HKRhythm.sarrh,
+    PtbxlScpCode.SVARR: HKRhythm.svarr,
+    PtbxlScpCode.SVTAC: HKRhythm.svt,
+    PtbxlScpCode.PSVT: HKRhythm.svt,
+    PtbxlScpCode.BIGU: HKRhythm.bigu,
+    PtbxlScpCode.TRIGU: HKRhythm.trigu,
+    PtbxlScpCode.PACE: HKRhythm.pace,
+}
+
+PtbxlDiagnosticMap = {
+    # NORM
+    PtbxlScpCode.SR: HKDiagnostic.NORM,
+    # STTC
+    PtbxlScpCode.NDT: HKDiagnostic.STTC,
+    PtbxlScpCode.NST_: HKDiagnostic.STTC,
+    PtbxlScpCode.DIG: HKDiagnostic.STTC,
+    PtbxlScpCode.LNGQT: HKDiagnostic.STTC,
+    PtbxlScpCode.ISC_: HKDiagnostic.STTC,
+    PtbxlScpCode.ISCAL: HKDiagnostic.STTC,
+    PtbxlScpCode.ISCIN: HKDiagnostic.STTC,
+    PtbxlScpCode.ISCIL: HKDiagnostic.STTC,
+    PtbxlScpCode.ISCAS: HKDiagnostic.STTC,
+    PtbxlScpCode.ISCLA: HKDiagnostic.STTC,
+    PtbxlScpCode.ANEUR: HKDiagnostic.STTC,
+    PtbxlScpCode.EL: HKDiagnostic.STTC,
+    PtbxlScpCode.ISCAN: HKDiagnostic.STTC,
+    # MI
+    PtbxlScpCode.IMI: HKDiagnostic.MI,
+    PtbxlScpCode.ASMI: HKDiagnostic.MI,
+    PtbxlScpCode.ILMI: HKDiagnostic.MI,
+    PtbxlScpCode.AMI: HKDiagnostic.MI,
+    PtbxlScpCode.ALMI: HKDiagnostic.MI,
+    PtbxlScpCode.INJAS: HKDiagnostic.MI,
+    PtbxlScpCode.LMI: HKDiagnostic.MI,
+    PtbxlScpCode.INJAL: HKDiagnostic.MI,
+    PtbxlScpCode.IPLMI: HKDiagnostic.MI,
+    PtbxlScpCode.IPMI: HKDiagnostic.MI,
+    PtbxlScpCode.INJIN: HKDiagnostic.MI,
+    PtbxlScpCode.INJLA: HKDiagnostic.MI,
+    PtbxlScpCode.PMI: HKDiagnostic.MI,
+    PtbxlScpCode.INJIL: HKDiagnostic.MI,
+    # HYP
+    PtbxlScpCode.LVH: HKDiagnostic.HYP,
+    PtbxlScpCode.LAO_LAE: HKDiagnostic.HYP,
+    PtbxlScpCode.RVH: HKDiagnostic.HYP,
+    PtbxlScpCode.RAO_RAE: HKDiagnostic.HYP,
+    PtbxlScpCode.SEHYP: HKDiagnostic.HYP,
+    # CD
+    PtbxlScpCode.LAFB: HKDiagnostic.CD,
+    PtbxlScpCode.IRBBB: HKDiagnostic.CD,
+    PtbxlScpCode.AVB1: HKDiagnostic.CD,
+    PtbxlScpCode.IVCD: HKDiagnostic.CD,
+    PtbxlScpCode.CRBBB: HKDiagnostic.CD,
+    PtbxlScpCode.CLBBB: HKDiagnostic.CD,
+    PtbxlScpCode.LPFB: HKDiagnostic.CD,
+    PtbxlScpCode.WPW: HKDiagnostic.CD,
+    PtbxlScpCode.ILBBB: HKDiagnostic.CD,
+    PtbxlScpCode.AVB2: HKDiagnostic.CD,
+    PtbxlScpCode.AVB3: HKDiagnostic.CD,
 }
 
 PtbxlLeadsMap = {
@@ -81,6 +272,7 @@ class PtbxlDataset(HKDataset):
         target_rate: int,
         spec: tuple[tf.TensorSpec, tf.TensorSpec],
         class_map: dict[int, int] | None = None,
+        leads: list[int] | None = None,
     ) -> None:
         super().__init__(
             ds_path=ds_path / "ptbxl",
@@ -90,6 +282,7 @@ class PtbxlDataset(HKDataset):
             spec=spec,
             class_map=class_map,
         )
+        self.leads = leads or list(range(12))
 
     @property
     def sampling_rate(self) -> int:
@@ -191,11 +384,30 @@ class PtbxlDataset(HKDataset):
         Returns:
             SampleGenerator: Sample data generator
         """
-        if self.task == "arrhythmia":
+        if self.task == "rhythm":
             return self.rhythm_data_generator(
                 patient_generator=patient_generator,
                 samples_per_patient=samples_per_patient,
             )
+
+        if self.task == "diagnostic":
+            return self.diagnostic_data_generator(
+                patient_generator=patient_generator,
+                samples_per_patient=samples_per_patient,
+            )
+
+        if self.task == "denoise":
+            return self.denoising_generator(
+                patient_generator=patient_generator,
+                samples_per_patient=samples_per_patient,
+            )
+
+        if self.task == "segmentation":
+            return self.segmentation_generator(
+                patient_generator=patient_generator,
+                samples_per_patient=samples_per_patient,
+            )
+
         raise NotImplementedError()
 
     def uniform_patient_generator(
@@ -273,7 +485,7 @@ class PtbxlDataset(HKDataset):
         for _, segment in patient_generator:
             data = segment["data"][:]
             for _ in range(samples_per_patient):
-                lead = np.random.randint(0, data.shape[0])
+                lead = random.choice(self.leads)
                 start = np.random.randint(0, data.shape[1] - input_size)
                 x = data[lead, start : start + input_size].squeeze()
                 x = np.nan_to_num(x).astype(np.float32)
@@ -283,6 +495,17 @@ class PtbxlDataset(HKDataset):
                 yield x
             # END FOR
         # END FOR
+
+    def denoising_generator(
+        self,
+        patient_generator: PatientGenerator,
+        samples_per_patient: int | list[int] = 1,
+    ) -> SampleGenerator:
+        """Generate frames and noise frames."""
+        gen = self.signal_generator(patient_generator, samples_per_patient)
+        for x in gen:
+            y = x.copy()
+            yield x, y
 
     def rhythm_data_generator(
         self,
@@ -301,11 +524,59 @@ class PtbxlDataset(HKDataset):
         Yields:
             Iterator[SampleGenerator]
         """
+        return self._label_data_generator(
+            patient_generator=patient_generator,
+            local_map=PtbxlRhythmMap,
+            samples_per_patient=samples_per_patient,
+        )
+
+    def diagnostic_data_generator(
+        self,
+        patient_generator: PatientGenerator,
+        samples_per_patient: int | list[int] = 1,
+    ) -> SampleGenerator:
+        """Generate frames w/ diagnostic labels using patient generator.
+
+        Args:
+            patient_generator (PatientGenerator): Patient Generator
+            samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
+
+        Returns:
+            SampleGenerator: Sample generator
+
+        Yields:
+            Iterator[SampleGenerator]
+        """
+        return self._label_data_generator(
+            patient_generator=patient_generator,
+            local_map=PtbxlDiagnosticMap,
+            samples_per_patient=samples_per_patient,
+        )
+
+    def _label_data_generator(
+        self,
+        patient_generator: PatientGenerator,
+        local_map: dict[int, int],
+        samples_per_patient: int | list[int] = 1,
+    ) -> SampleGenerator:
+        """Generate frames w/ labels using patient generator.
+
+        Args:
+            patient_generator (PatientGenerator): Patient Generator
+            local_map (dict[int, int]): Local label map
+            samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
+
+        Returns:
+            SampleGenerator: Sample generator
+
+        Yields:
+            Iterator[SampleGenerator]
+        """
         # Target labels and mapping
         tgt_labels = list(set(self.class_map.values()))
 
         # Convert dataset labels -> HK labels -> class map labels (-1 indicates not in class map)
-        tgt_map = {k: self.class_map.get(v, -1) for (k, v) in HeartRhythmMap.items()}
+        tgt_map = {k: self.class_map.get(v, -1) for (k, v) in local_map.items()}
         num_classes = len(tgt_labels)
 
         # If samples_per_patient is a list, then it must be the same length as nclasses
@@ -313,29 +584,28 @@ class PtbxlDataset(HKDataset):
             samples_per_tgt = samples_per_patient
         else:
             num_per_tgt = int(max(1, samples_per_patient / num_classes))
-            samples_per_tgt = num_per_tgt * [num_classes]
+            samples_per_tgt = num_classes * [num_per_tgt]
 
         input_size = int(np.round((self.sampling_rate / self.target_rate) * self.frame_size))
 
         for _, seg in patient_generator:
-            # pt_info = {k:v for k,v in seg.attrs.items()}
-            # 1. Grab patient rhythm label (fixed for all samples)
-            rlabels = seg["rlabels"][:]
+            # 1. Grab patient scp labels (fixed for all samples)
+            slabels = seg["slabels"][:]
 
-            # 2. Map rhythm labels (skip patient if not in class map == -1)
+            # 2. Map scp labels (skip patient if not in class map == -1)
             pt_lbls = []
             pt_lbl_weights = []
-            for i in range(rlabels.shape[0]):
-                label = tgt_map.get(int(rlabels[i, 0]), -1)
+            for i in range(slabels.shape[0]):
+                label = tgt_map.get(int(slabels[i, 0]), -1)
                 if label == -1:
                     continue
                 # END IF
                 if label not in pt_lbls:
                     pt_lbls.append(label)
-                    pt_lbl_weights.append(1 + rlabels[i, 1])
+                    pt_lbl_weights.append(1 + slabels[i, 1])
                 else:
                     i = pt_lbls.index(label)
-                    pt_lbl_weights[i] += rlabels[i, 1]
+                    pt_lbl_weights[i] += slabels[i, 1]
                 # END IF
             # END FOR
 
@@ -352,13 +622,87 @@ class PtbxlDataset(HKDataset):
             data = seg["data"][:]
             for _ in range(num_samples):
                 # select random lead and start index
-                lead = np.random.randint(0, data.shape[0])
+                lead = random.choice(self.leads)
+                # lead = self.leads
                 start = np.random.randint(0, data.shape[1] - input_size)
                 # Extract frame
-                x = data[lead, start : start + input_size]
+                x = np.nan_to_num(data[lead, start : start + input_size], posinf=0, neginf=0).astype(np.float32)
                 # Resample if needed
                 if self.sampling_rate != self.target_rate:
                     x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate, axis=0)
+                yield x, y
+            # END FOR
+        # END FOR
+
+    def segmentation_generator(
+        self,
+        patient_generator: PatientGenerator,
+        samples_per_patient: int | list[int] = 1,
+    ) -> SampleGenerator:
+        """Gnerate frames with annotated segments.
+
+        Args:
+            patient_generator (PatientGenerator): Patient generator
+            samples_per_patient (int | list[int], optional):
+
+        Returns:
+            SampleGenerator: Sample generator
+        """
+        assert not isinstance(samples_per_patient, Iterable)
+        input_size = int(np.round((self.sampling_rate / self.target_rate) * self.frame_size))
+
+        # For each patient
+        for _, segment in patient_generator:
+            data = segment["data"][:]
+            blabels = segment["blabels"][:]
+
+            # NOTE: Multiply by 5 to convert from 100 Hz to 500 Hz
+            blabels[:, 0] = blabels[:, 0] * 5
+            for _ in range(samples_per_patient):
+                # Select random lead and start index
+                lead = random.choice(self.leads)
+                frame_start = np.random.randint(0, data.shape[1] - input_size)
+                frame_end = frame_start + input_size
+                frame_blabels = blabels[(blabels[:, 0] >= frame_start) & (blabels[:, 0] < frame_end)]
+                x = data[lead, frame_start:frame_end].copy()
+                if self.sampling_rate != self.target_rate:
+                    ds_ratio = self.target_rate / self.sampling_rate
+                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate, axis=0)
+                else:
+                    ds_ratio = 1
+                # Create segment mask
+                mask = np.zeros_like(x, dtype=np.int32)
+
+                # Check if pwave, twave, or uwave are in class_map- if so, add gradient filter to mask
+                non_qrs = [self.class_map.get(k, -1) for k in (HKSegment.pwave, HKSegment.twave, HKSegment.uwave)]
+                if any((v != -1 for v in non_qrs)):
+                    xc = pk.ecg.clean(x.copy(), sample_rate=self.target_rate, lowcut=0.5, highcut=40, order=3)
+                    grad = pk.signal.moving_gradient_filter(
+                        xc, sample_rate=self.target_rate, sig_window=0.1, avg_window=1.0, sig_prom_weight=0.15
+                    )
+                    mask[grad > 0] = -1
+                # END IF
+
+                for i in range(frame_blabels.shape[0]):
+                    bidx = int((frame_blabels[i, 0] - frame_start) * ds_ratio)
+                    # btype = frame_blabels[i, 1]
+
+                    # Extract QRS segment
+                    qrs = pk.signal.moving_gradient_filter(
+                        x, sample_rate=self.target_rate, sig_window=0.1, avg_window=1.0, sig_prom_weight=1.5
+                    )
+                    win_len = max(1, int(0.08 * self.target_rate))  # 80 ms
+                    b_left = max(0, bidx - win_len)
+                    b_right = min(x.shape[0], bidx + win_len)
+                    onset = np.where(np.flip(qrs[b_left:bidx]) < 0)[0]
+                    onset = onset[0] if onset.size else win_len
+                    offset = np.where(qrs[bidx + 1 : b_right] < 0)[0]
+                    offset = offset[0] if offset.size else win_len
+                    mask[bidx - onset : bidx + offset] = self.class_map.get(HKSegment.qrs.value, 0)
+                    # END IF
+                # END FOR
+                x = np.nan_to_num(x).astype(np.float32)
+                y = mask.astype(np.int32)
                 yield x, y
             # END FOR
         # END FOR
@@ -422,6 +766,7 @@ class PtbxlDataset(HKDataset):
 
         import ast  # pylint: disable=import-outside-toplevel
         import io  # pylint: disable=import-outside-toplevel
+        import re  # pylint: disable=import-outside-toplevel
         import tempfile  # pylint: disable=import-outside-toplevel
         import zipfile  # pylint: disable=import-outside-toplevel
 
@@ -433,7 +778,6 @@ class PtbxlDataset(HKDataset):
 
         zp = zipfile.ZipFile(zip_path, mode="r")  # pylint: disable=consider-using-with
 
-        rhythm_scp_keys = [r.name for r in PtbxlRhythm]
         zp_root = "ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.2"
 
         # scp_df = pd.read_csv(io.BytesIO(zp.read(os.path.join(zp_root, "scp_statements.csv"))))
@@ -457,16 +801,16 @@ class PtbxlDataset(HKDataset):
             pt_info = pt_info.iloc[0].to_dict()
 
             # Get r-peaks and scp codes
-            rpeaks = np.genfromtxt(io.StringIO(pt_info["r_peaks"].replace("\n", " ")), autostrip=True)
-            rpeaks = rpeaks[~np.isnan(rpeaks)].astype(np.int32)
+            rpeaks = np.array([int(x) for x in re.findall(r"\d+", pt_info["r_peaks"])])
             scp_codes = ast.literal_eval(pt_info["scp_codes"])
 
-            # Get rhythm labels
-            rlabels = []
+            # Get scp labels
+            slabels = []
             for k, v in scp_codes.items():
-                if k in rhythm_scp_keys:
-                    rlabels.append([PtbxlRhythm[k].value, v])
-            rlabels = np.array(rlabels, dtype=np.float32)
+                if k not in PtbxlScpRawMap:
+                    logger.warning(f"Unknown SCP code {k} for patient {patient}")
+                slabels.append([PtbxlScpRawMap[k], v])
+            slabels = np.array(slabels, dtype=np.float32)
 
             # Get beat labels
             blabels = np.array([[i, 1] for i in rpeaks])
@@ -492,9 +836,94 @@ class PtbxlDataset(HKDataset):
                     compression_opts=6,
                 )
                 h5.create_dataset(name="/blabels", data=blabels)
-                h5.create_dataset(name="/rlabels", data=rlabels)
+                h5.create_dataset(name="/slabels", data=slabels)
                 # Add patient info as attributes
                 for k, v in pt_info.items():
                     h5.attrs[k] = v
                 # END FOR
             # END WITH
+
+    def filter_patients_for_task(self, patient_ids: npt.NDArray) -> npt.NDArray:
+        """Filter patients based on task.
+        Useful to remove patients w/o labels for task to speed up data loading.
+
+        Args:
+            patient_ids (npt.NDArray): Patient ids
+
+        Returns:
+            npt.NDArray: Filtered patient ids
+        """
+        if self.task in ("rhythm", "diagnotic"):
+            label_mask = self._get_patient_labels(patient_ids)
+            neg_mask = label_mask == -1
+            num_neg = neg_mask.sum()
+            if num_neg > 0:
+                logger.warning(f"Removed {num_neg} of {patient_ids.size} patients w/ no target class")
+            return patient_ids[~neg_mask]
+        return patient_ids
+
+    def split_train_test_patients(self, patient_ids: npt.NDArray, test_size: float) -> list[list[int]]:
+        """Perform train/test split on patients for given task.
+        NOTE: We only perform inter-patient splits and not intra-patient.
+
+        Args:
+            patient_ids (npt.NDArray): Patient Ids
+            test_size (float): Test size
+
+        Returns:
+            list[list[int]]: Train and test sets of patient ids
+        """
+        stratify = None
+
+        # Use stratified split for rhythm task
+        if self.task in ("rhythm", "diagnostic"):
+            stratify = self._get_patient_labels(patient_ids)
+            neg_mask = stratify == -1
+            stratify = stratify[~neg_mask]
+            patient_ids = patient_ids[~neg_mask]
+            num_neg = neg_mask.sum()
+            if num_neg > 0:
+                logger.warning(f"Removed {num_neg} patients w/ no target class")
+
+        return sklearn.model_selection.train_test_split(
+            patient_ids,
+            test_size=test_size,
+            shuffle=True,
+            stratify=stratify,
+        )
+
+    def _get_patient_labels(self, patient_ids: npt.NDArray) -> npt.NDArray:
+        """Get scp labels for each patient
+
+        Args:
+            patient_ids (npt.NDArray): Patient ids
+
+        Returns:
+            npt.NDArray: Patient ids
+
+        """
+        ids = patient_ids.tolist()
+        with Pool() as pool:
+            pt_rhythms = list(pool.imap(self._get_patient_label, ids))
+        return np.array(pt_rhythms)
+
+    def _get_patient_label(self, patient_id: int) -> int:
+        """Get scp label for patient
+
+        Args:
+            patient_id (int): Patient id
+
+        Returns:
+            int: Target rhythm class
+        """
+        tgt_map = {k: self.class_map.get(v, -1) for (k, v) in PtbxlRhythmMap.items()}
+        pt_key = self._pt_key(patient_id)
+        with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
+            pt_rhythms: npt.NDArray[np.int64] = np.array(h5["slabels"][:])
+        if pt_rhythms.size == 0:
+            return -1
+        pt_rhythms = pt_rhythms[:, 0]
+        pt_classes: list[int] = [tgt_map[r] for r in pt_rhythms if tgt_map.get(r, -1) != -1]
+        if len(pt_classes) == 0:
+            return -1
+        return random.choice(pt_classes)

@@ -1,7 +1,7 @@
-from enum import IntEnum, StrEnum
+from enum import IntEnum
 
 
-class HeartSegment(IntEnum):
+class HKSegment(IntEnum):
     """Heart segment labels"""
 
     normal = 0
@@ -10,13 +10,3 @@ class HeartSegment(IntEnum):
     twave = 3
     uwave = 4  # Not used
     noise = 5
-
-
-class HeartSegmentName(StrEnum):
-    """Heart segment names"""
-
-    normal = "normal"
-    pwave = "pwave"
-    qrs = "qrs"
-    twave = "twave"
-    uwave = "uwave"  # Not used

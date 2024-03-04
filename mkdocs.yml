@@ -19,10 +19,10 @@ nav:
       - Demo: modes/demo.md
     - Tasks:
       - tasks/index.md
-      - Segmentation: tasks/segmentation.md
-      - Arrhythmia: tasks/arrhythmia.md
-      - Beat: tasks/beat.md
       - Denoise: tasks/denoise.md
+      - Segmentation: tasks/segmentation.md
+      - Rhythm: tasks/rhythm.md
+      - Beat: tasks/beat.md
     - Model Zoo:
       - zoo/index.md
     - Models:
@@ -50,18 +50,18 @@ nav:
 
   - Tasks:
     - tasks/index.md
-    - Segmentation: tasks/segmentation.md
-    - Arrhythmia: tasks/arrhythmia.md
-    - Beat: tasks/beat.md
     - Denoise: tasks/denoise.md
+    - Segmentation: tasks/segmentation.md
+    - Rhythm: tasks/rhythm.md
+    - Beat: tasks/beat.md
     - BYOT: tasks/byot.md
 
   - Model Zoo:
     - zoo/index.md
-    - Segmentation: zoo/segmentation.md
-    - Arrhythmia: zoo/arrhythmia.md
-    - Beat: zoo/beat.md
     - Denoise: zoo/denoise.md
+    - Segmentation: zoo/segmentation.md
+    - Rhythm: zoo/rhythm.md
+    - Beat: zoo/beat.md
 
   - Models:
     - models/index.md
@@ -78,6 +78,7 @@ nav:
     - Synthetic: datasets/synthetic.md
     - QTDB: datasets/qtdb.md
     - LUDB: datasets/ludb.md
+    - LSAD: datasets/lsad.md
     - PTB-XL: datasets/ptbxl.md
     - MIT-BIH: datasets/mitbih.md
     - BYOD: datasets/byod.md
@@ -87,8 +88,9 @@ nav:
 
   - Guides:
     - guides/index.md
+    - Quickstart: quickstart.md
     - EVB Setup: guides/evb-setup.md
-    - Arrhythmia Demo: guides/arrhythmia-demo.md
+    - Rhythm Demo: guides/rhythm-demo.md
     - HeartKit Demo: guides/heartkit-demo.md
 
   - Reference:

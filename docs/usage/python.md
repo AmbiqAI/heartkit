@@ -15,15 +15,15 @@ __HeartKit__ python package allows for more fine-grained control and customizati
     # Download datasets
     hk.datasets.download_datasets(ds_params)
 
-    task = hk.TaskFactory.get("arrhythmia")
+    task = hk.TaskFactory.get("rhythm")
 
-    # Train arrhythmia model
+    # Train rhythm model
     task.train(train_params)
 
-    # Evaluate arrhythmia model
+    # Evaluate rhythm model
     task.evaluate(test_params)
 
-    # Export arrhythmia model
+    # Export rhythm model
     task.export(export_params)
 
     ```
@@ -32,7 +32,7 @@ __HeartKit__ python package allows for more fine-grained control and customizati
 
 ## [Download](../modes/train.md)
 
-The `download` command is used to download all datasets specified. Please refer to [Datasets](../datasets/index.md) for details on the available datasets. Additional datasets can be added by creating a new dataset class and registering it with __HeartKit__ dataset factory.
+The `download` command is used to download all datasets specified. Please refer to [Datasets](../datasets/index.md) for details on the available datasets. Additional datasets can be added by creating a new dataset class and registering it with __HeartKit dataset factory__.
 
 !!! example "Python"
 
@@ -53,20 +53,20 @@ The `download` command is used to download all datasets specified. Please refer 
 
 ## [Train](../modes/train.md)
 
-The `train` command is used to train a HeartKit model for the specified `task` and `dataset`. Each task provides a reference routine for training the model. The routine can be customized by providing a configuration file or by setting the parameters directly in the code.
+The `train` command is used to train a HeartKit model for the specified `task` and `dataset`. Each task provides a reference routine for training the model. The routine can be customized via the `hk.HKTrainParams` configuration. If further customization is needed, the task's routine can be overriden.
 
 !!! example "Python"
 
-    The following snippet will train a 2-class arrhythmia model using the reference configuration:
+    The following snippet will train a rhythm model using the supplied parameters:
 
     ```python
     from pathlib import Path
     import heartkit as hk
 
-    task = hk.TaskFactory.get("arrhythmia")
+    task = hk.TaskFactory.get("rhythm")
 
     task.train(hk.HKTrainParams(
-        job_dir=Path("./results/arrhythmia-class-2"),
+        job_dir=Path("./results/rhythm-class-2"),
         ds_path=Path("./datasets"),
         datasets=[{
             "name": "icentia11k",
@@ -100,20 +100,20 @@ The `train` command is used to train a HeartKit model for the specified `task` a
 
 ## [Evaluate](../modes/evaluate.md)
 
-The `evaluate` command will test the performance of the model on the reserved test set for the specified `task`. For certain tasks, a confidence threshold can also be set such that a label is only assigned when the model's probability is greater than the threshold; otherwise, a label of inconclusive will be assigned. This is useful in noisy environments where the model may not be confident in its prediction.
+The `evaluate` command will test the performance of the model on the reserved test set for the specified `task`. The routine can be customized via the `hk.HKTestParams` configuration. A number of results and metrics will be generated and saved to the `job_dir`.
 
 !!! Example "Python"
 
-    The following command will test the 2-class arrhythmia model using the reference configuration:
+    The following command will test the rhythm model using the supplied parameters:
 
     ```python
     from pathlib import Path
     import heartkit as hk
 
-    task = hk.TaskFactory.get("arrhythmia")
+    task = hk.TaskFactory.get("rhythm")
 
     task.evaluate(hk.HKTestParams(
-        job_dir=Path("./results/arrhythmia-class-2"),
+        job_dir=Path("./results/rhythm-class-2"),
         ds_path=Path("./datasets"),
         datasets=[{
             "name": "icentia11k",
@@ -133,7 +133,7 @@ The `evaluate` command will test the performance of the model on the reserved te
         test_samples_per_patient=[100, 800],
         test_patients=1000,
         test_size=100000,
-        model_file=Path("./results/arrhythmia-class-2/model.keras"),
+        model_file=Path("./results/rhythm-class-2/model.keras"),
         threshold=0.75
     ))
     ```
@@ -142,19 +142,19 @@ The `evaluate` command will test the performance of the model on the reserved te
 
 ## [Export](../modes/export.md)
 
-The `export` command will convert the trained TensorFlow model into both TensorFlow Lite (TFL) and TensorFlow Lite for micro-controller (TFLM) variants. The command will also verify the models' outputs match. Post-training quantization (PTQ) can also be enabled by setting the `quantization` flag in the configuration. Once converted, the TFLM header file will be copied to location specified by `tflm_file`.
+The `export` command will convert the trained TensorFlow model into both TensorFlow Lite (TFL) and TensorFlow Lite for micro-controller (TFLM) variants. The command will also verify the models' outputs match. The activations and weights can be quantized by configuring the `quantization` section in the configuration file. Once converted, the TFLM header file will be copied to location specified by `tflm_file`.
 
 !!! Example "Python"
 
-    The following command will export the 2-class arrhythmia model to TF Lite and TFLM:
+    The following command will export the rhythm model to TF Lite and TFLM:
 
     ```python
     from pathlib import Path
     import heartkit as hk
 
-    task = hk.TaskFactory.get("arrhythmia")
+    task = hk.TaskFactory.get("rhythm")
     task.export(hk.HKExportParams(
-        job_dir=Path("./results/arrhythmia-class-2"),
+        job_dir=Path("./results/rhythm-class-2"),
         ds_path=Path("./datasets"),
         datasets=[{
             "name": "icentia11k",
@@ -172,7 +172,7 @@ The `export` command will convert the trained TensorFlow model into both TensorF
         sampling_rate=200,
         frame_size=800,
         test_samples_per_patient=[100, 500, 100],
-        model_file=Path("./results/arrhythmia-class-2/model.keras"),
+        model_file=Path("./results/rhythm-class-2/model.keras"),
         quantization={
             enabled=True,
             qat=False,
@@ -182,7 +182,7 @@ The `export` command will convert the trained TensorFlow model into both TensorF
         },
         threshold=0.95,
         tflm_var_name="g_arrhythmia_model",
-        tflm_file=Path("./results/arrhythmia-class-2/arrhythmia_model_buffer.h")
+        tflm_file=Path("./results/rhythm-class-2/arrhythmia_model_buffer.h")
     ))
     ```
 
@@ -190,7 +190,7 @@ The `export` command will convert the trained TensorFlow model into both TensorF
 
 ## [Demo](../modes/demo.md)
 
-The `demo` command is used to run a task-level demonstration using either the PC or EVB as backend inference engine.
+The `demo` command is used to run a task-level demonstration using the designated backend inference engine (e.g. PC or EVB). The routine can be customized via the `hk.HKDemoParams` configuration. If running on the EVB, additional setup is required to flash and connect the EVB to the PC.
 
 !!! Example "Python"
 
@@ -200,10 +200,10 @@ The `demo` command is used to run a task-level demonstration using either the PC
     from pathlib import Path
     import heartkit as hk
 
-    task = hk.TaskFactory.get("arrhythmia")
+    task = hk.TaskFactory.get("rhythm")
 
     task.demo(hk.HKDemoParams(
-        job_dir=Path("./results/arrhythmia-class-2"),
+        job_dir=Path("./results/rhythm-class-2"),
         ds_path=Path("./datasets"),
         datasets=[{
             "name": "icentia11k",
@@ -220,7 +220,7 @@ The `demo` command is used to run a task-level demonstration using either the PC
         ],
         sampling_rate=200,
         frame_size=800,
-        model_file=Path("./results/arrhythmia-class-2/model.tflite"),
+        model_file=Path("./results/rhythm-class-2/model.tflite"),
         backend="pc"
     ))
     ```

@@ -6,16 +6,19 @@ ResNet is a type of convolutional neural network (CNN) that is commonly used for
 
 For more info, refer to the original paper [Deep Residual Learning for Image Recognition](https://doi.org/10.1109/CVPR.2016.90).
 
+---
+
 ### Additions
 
 * Enable 1D and 2D variants.
 
+---
 
 ## <span class="sk-h2-span">Arguments</span>
 
 The following arguments can be passed to the `ResNet` class:
 
-`ResnetParams`:
+### ResnetParams
 
 | Argument | Type | Description | Default |
 | --- | --- | --- | --- |
@@ -27,7 +30,7 @@ The following arguments can be passed to the `ResNet` class:
 | dropout | float | Dropout rate | 0.2 |
 | model_name | str | Model name | "ResNet" |
 
-`ResNetBlockParams`:
+### ResNetBlockParams
 
 | Argument | Type | Description | Default |
 | --- | --- | --- | --- |
@@ -36,3 +39,5 @@ The following arguments can be passed to the `ResNet` class:
 | kernel_size | int, tuple[int, int] | Kernel size | 3 |
 | strides | int, tuple[int, int] | Stride size | 1 |
 | bottleneck | bool | Use bottleneck blocks | False |
+
+---

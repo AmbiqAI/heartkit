@@ -18,8 +18,10 @@ class EfficientNetParams(BaseModel):
     input_strides: int | tuple[int, int] = Field(default=2, description="Input stride")
     output_filters: int = Field(default=0, description="Output filters")
     include_top: bool = Field(default=True, description="Include top")
-    dropout: float = Field(default=0.2, description="Dropout rate")
-    drop_connect_rate: float = Field(default=0.2, description="Drop connect rate")
+    dropout: float = Field(default=0, description="Dropout rate")
+    drop_connect_rate: float = Field(default=0, description="Drop connect rate")
+    use_logits: bool = Field(default=True, description="Use logits")
+    activation: str = Field(default="relu6", description="Activation function")
     model_name: str = Field(default="EfficientNetV2", description="Model name")
 
 
@@ -113,7 +115,8 @@ def EfficientNetV2(
         if 0 < params.dropout < 1:
             y = keras.layers.Dropout(params.dropout)(y)
         y = keras.layers.Dense(num_classes, name=name)(y)
-
+        if not params.use_logits:
+            y = keras.layers.Softmax()(y)
     model = keras.Model(x, y, name=params.model_name)
     return model
 

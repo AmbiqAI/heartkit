@@ -22,7 +22,7 @@ from botocore import UNSIGNED
 from botocore.client import Config
 from tqdm import tqdm
 
-from ..tasks import HeartBeat, HeartRate, HeartRhythm, HeartSegment
+from ..tasks import HeartRate, HKBeat, HKRhythm, HKSegment
 from ..utils import download_file
 from .dataset import HKDataset
 from .defines import PatientGenerator, SampleGenerator
@@ -50,30 +50,25 @@ class IcentiaBeat(IntEnum):
     pvc = 4
 
 
-class IcentiaHeartRate(IntEnum):
-    """Icentia heart rate labels"""
-
-    tachycardia = 0
-    bradycardia = 1
-    normal = 2
-    noise = 3
-
-
 # These map Icentia specific labels to common labels
-HeartRhythmMap = {
-    IcentiaRhythm.noise: HeartRhythm.noise,
-    IcentiaRhythm.normal: HeartRhythm.normal,
-    IcentiaRhythm.afib: HeartRhythm.afib,
-    IcentiaRhythm.aflut: HeartRhythm.aflut,
-    IcentiaRhythm.end: HeartRhythm.noise,
+IcentiaRhythmMap = {
+    IcentiaRhythm.noise: HKRhythm.noise,
+    IcentiaRhythm.normal: HKRhythm.sr,
+    IcentiaRhythm.afib: HKRhythm.afib,
+    IcentiaRhythm.aflut: HKRhythm.aflut,
+    IcentiaRhythm.end: HKRhythm.noise,
 }
 
-HeartBeatMap = {
-    IcentiaBeat.undefined: HeartBeat.noise,
-    IcentiaBeat.normal: HeartBeat.normal,
-    IcentiaBeat.pac: HeartBeat.pac,
-    IcentiaBeat.aberrated: HeartBeat.pac,
-    IcentiaBeat.pvc: HeartBeat.pvc,
+IcentiaBeatMap = {
+    IcentiaBeat.undefined: HKBeat.noise,
+    IcentiaBeat.normal: HKBeat.normal,
+    IcentiaBeat.pac: HKBeat.pac,
+    IcentiaBeat.aberrated: HKBeat.pac,
+    IcentiaBeat.pvc: HKBeat.pvc,
+}
+
+IcentiaLeadsMap = {
+    "i": 0,  # Modified lead I
 }
 
 
@@ -141,20 +136,6 @@ class IcentiaDataset(HKDataset):
     def _pt_key(self, patient_id: int):
         return f"p{patient_id:05d}"
 
-    @functools.cached_property
-    def arr_rhythm_patients(self) -> npt.NDArray:
-        """Find all patients with arrhythmia events. This takes roughly 10 secs.
-
-        Returns:
-            npt.NDArray: Patient ids
-
-        """
-        patient_ids = self.patient_ids.tolist()
-        with Pool() as pool:
-            arr_pts_bool = list(pool.imap(self._pt_has_rhythm_arrhythmia, patient_ids))
-        patient_ids = np.where(arr_pts_bool)[0]
-        return patient_ids
-
     def task_data_generator(
         self,
         patient_generator: PatientGenerator,
@@ -169,7 +150,7 @@ class IcentiaDataset(HKDataset):
         Returns:
             SampleGenerator: Sample data generator
         """
-        if self.task == "arrhythmia":
+        if self.task == "rhythm":
             return self.rhythm_data_generator(
                 patient_generator=patient_generator,
                 samples_per_patient=samples_per_patient,
@@ -185,39 +166,6 @@ class IcentiaDataset(HKDataset):
                 samples_per_patient=samples_per_patient,
             )
         raise NotImplementedError()
-
-    def _split_train_test_patients(self, patient_ids: npt.NDArray, test_size: float) -> list[list[int]]:
-        """Perform train/test split on patients for given task.
-        NOTE: We only perform inter-patient splits and not intra-patient.
-
-        Args:
-            patient_ids (npt.NDArray): Patient Ids
-            test_size (float): Test size
-
-        Returns:
-            list[list[int]]: Train and test sets of patient ids
-        """
-        # Use stratified split for arrhythmia task
-        if self.task == "arrhythmia":
-            arr_pt_ids = np.intersect1d(self.arr_rhythm_patients, patient_ids)
-            norm_pt_ids = np.setdiff1d(patient_ids, arr_pt_ids)
-            (
-                norm_train_pt_ids,
-                norm_val_pt_ids,
-            ) = sklearn.model_selection.train_test_split(norm_pt_ids, test_size=test_size)
-            (
-                arr_train_pt_ids,
-                afib_val_pt_ids,
-            ) = sklearn.model_selection.train_test_split(arr_pt_ids, test_size=test_size)
-            train_pt_ids = np.concatenate((norm_train_pt_ids, arr_train_pt_ids))
-            val_pt_ids = np.concatenate((norm_val_pt_ids, afib_val_pt_ids))
-            np.random.shuffle(train_pt_ids)
-            np.random.shuffle(val_pt_ids)
-            return train_pt_ids, val_pt_ids
-        # END IF
-
-        # Otherwise, use random split
-        return sklearn.model_selection.train_test_split(patient_ids, test_size=test_size)
 
     def rhythm_data_generator(
         self,
@@ -239,11 +187,11 @@ class IcentiaDataset(HKDataset):
         # Target labels and mapping
         tgt_labels = list(set(self.class_map.values()))
 
-        # Convert Icentia labels -> HK labels -> class map labels (-1 indicates not in class map)
-        tgt_map = {k: self.class_map.get(v, -1) for (k, v) in HeartRhythmMap.items()}
+        # Convert local labels -> HK labels -> class map labels (-1 indicates not in class map)
+        tgt_map = {k: self.class_map.get(v, -1) for (k, v) in IcentiaRhythmMap.items()}
         num_classes = len(tgt_labels)
 
-        # If samples_per_patient is a list, then it must be the same length as nclasses
+        # If samples_per_patient is a list, then it must be the same length as num_classes
         if isinstance(samples_per_patient, Iterable):
             samples_per_tgt = samples_per_patient
         else:
@@ -320,7 +268,7 @@ class IcentiaDataset(HKDataset):
         patient_generator: PatientGenerator,
         samples_per_patient: int | list[int] = 1,
     ) -> SampleGenerator:
-        """Gnerate frames with annotated segments.
+        """Generate frames with annotated segments.
 
         Args:
             patient_generator (PatientGenerator): Patient generator
@@ -353,11 +301,22 @@ class IcentiaDataset(HKDataset):
                 blabels = blabels[(blabels[:, 0] >= frame_start) & (blabels[:, 0] < frame_end)]
                 # Create segment mask
                 mask = np.zeros_like(data, dtype=np.int32)
+
+                # Check if pwave, twave, or uwave are in class_map- if so, add gradient filter to mask
+                non_qrs = [self.class_map.get(k, -1) for k in (HKSegment.pwave, HKSegment.twave, HKSegment.uwave)]
+                if any((v != -1 for v in non_qrs)):
+                    xc = pk.ecg.clean(data.copy(), sample_rate=self.target_rate, lowcut=0.5, highcut=40, order=3)
+                    grad = pk.signal.moving_gradient_filter(
+                        xc, sample_rate=self.target_rate, sig_window=0.1, avg_window=1.0, sig_prom_weight=0.15
+                    )
+                    mask[grad > 0] = -1
+                # END IF
+
                 for i in range(blabels.shape[0]):
                     bidx = int((blabels[i, 0] - frame_start) * ds_ratio)
                     btype = blabels[i, 1]
 
-                    # Unclassifiable beat (treat as noise)
+                    # Unclassifiable beat (treat as noise?)
                     if btype == IcentiaBeat.undefined:
                         pass
                         # noise_lbl = self.class_map.get(HeartSegment.noise.value, -1)
@@ -372,19 +331,21 @@ class IcentiaDataset(HKDataset):
 
                     # Normal, PAC, PVC beat
                     else:
+                        qrs_width = int(0.08 * self.target_rate)  # 80 ms
                         # Extract QRS segment
                         qrs = pk.signal.moving_gradient_filter(
                             data, sample_rate=self.target_rate, sig_window=0.1, avg_window=1.0, sig_prom_weight=1.5
                         )
-                        win_len = max(1, int(0.08 * self.target_rate))  # 80 ms
+                        win_len = max(1, qrs_width)
                         b_left = max(0, bidx - win_len)
                         b_right = min(data.shape[0], bidx + win_len)
                         onset = np.where(np.flip(qrs[b_left:bidx]) < 0)[0]
                         onset = onset[0] if onset.size else win_len
                         offset = np.where(qrs[bidx + 1 : b_right] < 0)[0]
                         offset = offset[0] if offset.size else win_len
-                        mask[bidx - onset : bidx + offset] = self.class_map.get(HeartSegment.qrs.value, 0)
-                        # Ignore P, T, and U waves for now
+                        qrs_onset = bidx - onset
+                        qrs_offset = bidx + offset
+                        mask[qrs_onset:qrs_offset] = self.class_map.get(HKSegment.qrs.value, 0)
                     # END IF
                 # END FOR
                 x = np.nan_to_num(data).astype(np.float32)
@@ -399,8 +360,6 @@ class IcentiaDataset(HKDataset):
         samples_per_patient: int | list[int] = 1,
     ) -> SampleGenerator:
         """Generate frames and beat label using patient generator.
-        There are over 2.5 billion normal and undefined while less than 40 million arrhythmia beats.
-        The following routine sorts each patient's beats by type and then approx. uniformly samples them by amount requested.
 
         Args:
             patient_generator (PatientGenerator): Patient generator
@@ -422,7 +381,7 @@ class IcentiaDataset(HKDataset):
         num_classes = len(set(self.class_map.values()))
 
         # Convert Icentia labels -> HK labels -> class map labels (-1 indicates not in class map)
-        tgt_map = {k: self.class_map.get(v, -1) for (k, v) in HeartBeatMap.items()}
+        tgt_map = {k: self.class_map.get(v, -1) for (k, v) in IcentiaBeatMap.items()}
 
         # If samples_per_patient is a list, then it must be the same length as nclasses
         if isinstance(samples_per_patient, Iterable):
@@ -720,20 +679,8 @@ class IcentiaDataset(HKDataset):
         if bpm < 60:
             return HeartRate.bradycardia.value
         if bpm <= 100:
-            return HeartRate.normal.value
+            return HeartRate.sinus.value
         return HeartRate.tachycardia.value
-
-    def _pt_has_rhythm_arrhythmia(self, patient_id: int):
-        pt_key = self._pt_key(patient_id)
-        with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
-            for _, segment in h5[pt_key].items():
-                rlabels = segment["rlabels"][:]
-                if not rlabels.shape[0]:
-                    continue
-                rlabels = rlabels[:, 1]
-                if len(np.where((rlabels == IcentiaRhythm.afib) | (rlabels == IcentiaRhythm.aflut))[0]):
-                    return True
-            return False
 
     def get_rhythm_statistics(
         self,
@@ -990,3 +937,62 @@ class IcentiaDataset(HKDataset):
         f = functools.partial(self._convert_dataset_pt_zip_to_hdf5, zip_path=zip_path, force=force)
         with Pool(processes=num_workers) as pool:
             _ = list(tqdm(pool.imap(f, patient_ids), total=len(patient_ids)))
+
+    def split_train_test_patients(self, patient_ids: npt.NDArray, test_size: float) -> list[list[int]]:
+        """Perform train/test split on patients for given task.
+        NOTE: We only perform inter-patient splits and not intra-patient.
+
+        Args:
+            patient_ids (npt.NDArray): Patient Ids
+            test_size (float): Test size
+
+        Returns:
+            list[list[int]]: Train and test sets of patient ids
+        """
+        # Use stratified split for rhythm task
+        if self.task == "rhythm":
+            arr_pt_ids = np.intersect1d(self.arr_rhythm_patients, patient_ids)
+            norm_pt_ids = np.setdiff1d(patient_ids, arr_pt_ids)
+            (
+                norm_train_pt_ids,
+                norm_val_pt_ids,
+            ) = sklearn.model_selection.train_test_split(norm_pt_ids, test_size=test_size)
+            (
+                arr_train_pt_ids,
+                afib_val_pt_ids,
+            ) = sklearn.model_selection.train_test_split(arr_pt_ids, test_size=test_size)
+            train_pt_ids = np.concatenate((norm_train_pt_ids, arr_train_pt_ids))
+            val_pt_ids = np.concatenate((norm_val_pt_ids, afib_val_pt_ids))
+            np.random.shuffle(train_pt_ids)
+            np.random.shuffle(val_pt_ids)
+            return train_pt_ids, val_pt_ids
+        # END IF
+
+        # Otherwise, use random split
+        return sklearn.model_selection.train_test_split(patient_ids, test_size=test_size)
+
+    @functools.cached_property
+    def arr_rhythm_patients(self) -> npt.NDArray:
+        """Find all patients with rhythm events. This takes roughly 10 secs.
+
+        Returns:
+            npt.NDArray: Patient ids
+
+        """
+        patient_ids = self.patient_ids.tolist()
+        with Pool() as pool:
+            arr_pts_bool = list(pool.imap(self._pt_has_rhythm_arrhythmia, patient_ids))
+        patient_ids = np.where(arr_pts_bool)[0]
+        return patient_ids
+
+    def _pt_has_rhythm_arrhythmia(self, patient_id: int):
+        pt_key = self._pt_key(patient_id)
+        with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
+            for _, segment in h5[pt_key].items():
+                rlabels = segment["rlabels"][:]
+                if not rlabels.shape[0]:
+                    continue
+                rlabels = rlabels[:, 1]
+                if len(np.where((rlabels == IcentiaRhythm.afib) | (rlabels == IcentiaRhythm.aflut))[0]):
+                    return True
+            return False

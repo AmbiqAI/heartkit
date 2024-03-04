@@ -15,7 +15,7 @@ from ...defines import (
     ModelArchitecture,
     PreprocessParams,
 )
-from ...models import ModelFactory  # , Tcn, TcnBlockParams, TcnParams
+from ...models import ModelFactory, Tcn, TcnBlockParams, TcnParams
 
 console = Console()
 
@@ -146,7 +146,8 @@ def load_train_datasets(
         train_datasets.append(train_ds)
         val_datasets.append(val_ds)
     # END FOR
-    ds_weights = np.array([len(ds.get_train_patient_ids()) for ds in datasets])
+
+    ds_weights = np.array([d.weight for d in params.datasets])
     ds_weights = ds_weights / ds_weights.sum()
 
     train_ds = tf.data.Dataset.sample_from_datasets(train_datasets, weights=ds_weights)
@@ -207,7 +208,8 @@ def load_test_datasets(
             )
             for ds in datasets
         ]
-        ds_weights = np.array([len(ds.get_test_patient_ids()) for ds in datasets])
+
+        ds_weights = np.array([d.weight for d in params.datasets])
         ds_weights = ds_weights / ds_weights.sum()
 
         test_ds = tf.data.Dataset.sample_from_datasets(test_datasets, weights=ds_weights)
@@ -253,46 +255,24 @@ def _default_model(
     """
     # Default model
 
-    y = inputs
-    y = keras.layers.Reshape((1,) + y.shape[1:])(y)
+    blocks = [
+        TcnBlockParams(filters=8, kernel=(1, 7), dilation=(1, 1), dropout=0.1, ex_ratio=1, se_ratio=0, norm="batch"),
+        TcnBlockParams(filters=12, kernel=(1, 7), dilation=(1, 1), dropout=0.1, ex_ratio=1, se_ratio=2, norm="batch"),
+        TcnBlockParams(filters=16, kernel=(1, 7), dilation=(1, 2), dropout=0.1, ex_ratio=1, se_ratio=2, norm="batch"),
+        TcnBlockParams(filters=24, kernel=(1, 7), dilation=(1, 4), dropout=0.1, ex_ratio=1, se_ratio=2, norm="batch"),
+        TcnBlockParams(filters=32, kernel=(1, 7), dilation=(1, 8), dropout=0.1, ex_ratio=1, se_ratio=2, norm="batch"),
+    ]
 
-    y = keras.layers.Conv2D(filters=8, kernel_size=(1, 3), padding="same")(y)
-    y = keras.layers.BatchNormalization()(y)
-    y = keras.layers.Activation("tanh")(y)
-
-    y = keras.layers.Reshape(y.shape[2:])(y)
-
-    y = keras.layers.Bidirectional(keras.layers.LSTM(units=16, return_sequences=True))(y)
-    y = keras.layers.BatchNormalization()(y)
-    y = keras.layers.Activation("tanh")(y)
-
-    # y = keras.layers.TimeDistributed(keras.layers.Dense(64))(y)
-    # y = keras.layers.LayerNormalization(axis=[1])(y)
-    # y = keras.layers.Activation("tanh")(y)
-
-    y = keras.layers.TimeDistributed(keras.layers.Dense(num_classes))(y)
-    y = keras.layers.Activation("tanh")(y)
-
-    model = keras.models.Model(inputs, y)
-    return model
-
-    # blocks = [
-    #     TcnBlockParams(filters=8, kernel=(1, 3), dilation=(1, 1), dropout=0.1, ex_ratio=1, se_ratio=0, norm="batch"),
-    #     TcnBlockParams(filters=16, kernel=(1, 3), dilation=(1, 2), dropout=0.1, ex_ratio=1, se_ratio=0, norm="batch"),
-    #     TcnBlockParams(filters=24, kernel=(1, 3), dilation=(1, 4), dropout=0.1, ex_ratio=1, se_ratio=4, norm="batch"),
-    #     TcnBlockParams(filters=32, kernel=(1, 3), dilation=(1, 8), dropout=0.1, ex_ratio=1, se_ratio=4, norm="batch"),
-    # ]
-
-    # return Tcn(
-    #     x=inputs,
-    #     params=TcnParams(
-    #         input_kernel=(1, 3),
-    #         input_norm="batch",
-    #         blocks=blocks,
-    #         output_kernel=(1, 3),
-    #         include_top=True,
-    #         use_logits=True,
-    #         model_name="tcn",
-    #     ),
-    #     num_classes=num_classes,
-    # )
+    return Tcn(
+        x=inputs,
+        params=TcnParams(
+            input_kernel=(1, 7),
+            input_norm="batch",
+            blocks=blocks,
+            output_kernel=(1, 7),
+            include_top=True,
+            use_logits=True,
+            model_name="tcn",
+        ),
+        num_classes=num_classes,
+    )

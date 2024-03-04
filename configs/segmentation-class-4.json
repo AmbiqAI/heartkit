@@ -1,6 +1,6 @@
 {
     "name": "segmentation-class-4",
-    "job_dir": "./results/segmentation-class-4",
+    "job_dir": "./results/segmentation-class-4-syn-tcn-k7",
     "ds_path": "./datasets",
     "datasets": [{
         "name": "ludb",
@@ -8,7 +8,8 @@
     }, {
         "name": "synthetic",
         "params": {
-            "num_pts": 1000
+            "num_pts": 1000,
+            "noise_level": 0.3
         }
     }],
     "num_classes": 4,
@@ -42,6 +43,7 @@
     "tflm_var_name": "g_segmentation_model",
     "tflm_file": "segmentation_model_buffer.h",
     "backend": "pc",
+    "demo_size": 900,
     "quantization": {
         "enabled": true,
         "qat": false,
@@ -51,17 +53,21 @@
         "supported_ops": null
     },
     "architecture": {
-        "name": "unet",
+        "name": "tcn",
         "params": {
+            "input_kernel": [1, 7],
+            "input_norm": "batch",
             "blocks": [
-                {"filters": 12, "depth": 2, "ddepth": 1, "kernel": [1, 3], "pool": [1, 3], "strides": [1, 2], "skip": true, "seperable": true},
-                {"filters": 24, "depth": 2, "ddepth": 1, "kernel": [1, 3], "pool": [1, 3], "strides": [1, 2], "skip": true, "seperable": true},
-                {"filters": 32, "depth": 2, "ddepth": 1, "kernel": [1, 3], "pool": [1, 3], "strides": [1, 2], "skip": true, "seperable": true},
-                {"filters": 48, "depth": 2, "ddepth": 1, "kernel": [1, 3], "pool": [1, 3], "strides": [1, 2], "skip": true, "seperable": true}
+                {"depth": 1, "branch": 1, "filters": 12, "kernel": [1, 7], "dilation": [1, 1], "dropout": 0, "ex_ratio": 1, "se_ratio": 0, "norm": "batch"},
+                {"depth": 1, "branch": 1, "filters": 24, "kernel": [1, 7], "dilation": [1, 1], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
+                {"depth": 1, "branch": 1, "filters": 32, "kernel": [1, 7], "dilation": [1, 2], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
+                {"depth": 1, "branch": 1, "filters": 48, "kernel": [1, 7], "dilation": [1, 4], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
+                {"depth": 1, "branch": 1, "filters": 64, "kernel": [1, 7], "dilation": [1, 8], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"}
             ],
-            "output_kernel_size": [1, 3],
+            "output_kernel": [1, 7],
             "include_top": true,
-            "use_logits": true
+            "use_logits": true,
+            "model_name": "tcn"
         }
     },
     "preprocesses": [
@@ -87,21 +93,21 @@
         {
             "name": "baseline_wander",
             "params": {
-                "amplitude": [0.0, 1.0],
+                "amplitude": [0.0, 0.5],
                 "frequency": [0.5, 1.5]
             }
         },
         {
             "name": "motion_noise",
             "params": {
-                "amplitude": [0.0, 1.0],
+                "amplitude": [0.0, 0.5],
                 "frequency": [1.0, 2.0]
             }
         },
         {
             "name": "powerline_noise",
             "params": {
-                "amplitude": [0.05, 0.15],
+                "amplitude": [0.05, 0.1],
                 "frequency": [45, 50]
             }
         },
@@ -109,7 +115,7 @@
             "name": "burst_noise",
             "params": {
                 "burst_number": [0, 4],
-                "amplitude": [0.05, 0.25],
+                "amplitude": [0.05, 0.1],
                 "frequency": [20, 49]
             }
         },
@@ -117,14 +123,14 @@
             "name": "noise_sources",
             "params": {
                 "num_sources": [0, 4],
-                "amplitude": [0.05, 0.25],
+                "amplitude": [0.05, 0.1],
                 "frequency": [10, 40]
             }
         },
         {
             "name": "lead_noise",
             "params": {
-                "scale": [1e-4, 1e-3]
+                "scale": [1e-5, 1e-3]
             }
         }
     ]

@@ -4,6 +4,8 @@
 
 U-NeXt is a modification of U-Net that utilizes techniques from ResNeXt and EfficientNetV2. During the encoding phase, mbconv blocks are used to efficiently process the input.
 
+---
+
 ### Additions
 
 The U-NeXt architecture has been modified to allow the following:
@@ -44,6 +46,7 @@ The following arguments can be passed to the `U-NeXt` class:
 | dropout | float | Dropout rate | None |
 | norm | Literal["batch", "layer"] | Normalization type | "layer" |
 
+---
 
 ## <span class="sk-h2-span">References</span>
 

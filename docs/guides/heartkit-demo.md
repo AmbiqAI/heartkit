@@ -4,7 +4,7 @@
 
 HeartKit demo highlights a number of key features of the HeartKit library including.  By leveraging a modern multi-head network architecture coupled with Ambiq's ultra low-power SoC, the demo is designed to be **efficient**, **explainable**, and **extensible**.
 
-The architecture consists of an **ECG segmentation** model followed by three upstream heads: **HRV head**, **arrhythmia head**, and **beat head**. The ECG segmentation model serves as the backbone and is used to annotate every sample as either P-wave, QRS, T-wave, or none. The arrhythmia head is used to detect the presence of Atrial Fibrillation (AFIB) or Atrial Flutter (AFL). The HRV head is used to calculate heart rate, rhythm (e.g., bradycardia), and heart rate variability from the R peaks. Lastly, the beat head is used to identify individual irregular beats (PAC, PVC).
+The architecture consists of an **ECG segmentation** model followed by three upstream heads: **HRV head**, **rhythm head**, and **beat head**. The ECG segmentation model serves as the backbone and is used to annotate every sample as either P-wave, QRS, T-wave, or none. The rhythm head is used to detect the presence of Atrial Fibrillation (AFIB) or Atrial Flutter (AFL). The HRV head is used to calculate heart rate, rhythm (e.g., bradycardia), and heart rate variability from the R peaks. Lastly, the beat head is used to identify individual irregular beats (PAC, PVC).
 
 This tutorial shows running the full HeartKit demonstrator on the Apollo 4 EVB. The basic flow chart is depicted below.
 
@@ -15,11 +15,11 @@ flowchart LR
     subgraph Models
     SEG[3. Segmentation] --> HRV[4. HRV]
     SEG[3. Segmentation] --> BEAT[4. BEAT]
-    SEG[3. Segmentation] --> ARR[4. Arrhythmia]
+    SEG[3. Segmentation] --> ARR[4. Rhythm]
     end
     HRV[4. HRV] --> DISP[5. Display]
     BEAT[4. BEAT] --> DISP
-    ARR[4. Arrhythmia] --> DISP
+    ARR[4. Rhythm] --> DISP
 ```
 
 In the first stage, 10 seconds of sensor data is collected- either directly from the MAX86150 sensor or test data from the PC. In stage 2, the data is preprocessed by bandpass filtering and standardizing. The data is then fed into the HeartKit models to perform inference. Finally, in stage 4, the ECG data and classification results will be displayed in the front-end UI.
@@ -32,7 +32,7 @@ HeartKit demo leverages a multi-head network- a backbone segmentation model foll
 
 * __Segmentation backbone__ utilizes a custom 1-D UNET architecture to perform ECG segmentation.
 * __HRV head__ utilizes segmentation results to derive a number of useful metrics including heart rate, rhythm and RR interval.
-* __Arrhythmia head__ utilizes a 1-D MBConv CNN to detect arrhythmias include AFIB and AFL.
+* __Rhythm head__ utilizes a 1-D MBConv CNN to detect arrhythmias include AFIB and AFL.
 * __Beat-level head__ utilizes a 1-D MBConv CNN to detect irregular individual beats (PAC, PVC).
 
 ![HeartKit Architecture](../assets/heartkit-architecture.svg)
@@ -45,9 +45,9 @@ The ECG segmentation model serves as the backbone and is used to annotate every 
 
 The HRV head uses only DSP and statistics (i.e. no neural network is used). Using a combination of segmentation results and QRS filter, the HRV head detects R peak candidates. RR intervals are extracted and filtered, and then used to derive a variety of HRV metrics including heart rate, rhythm, SDNN, SDRR, SDANN, etc. All of the identified R peaks are further fed to the beat classifier head. Note that if segmentation model is not enabled, HRV head falls back to identifying R peaks purely on gradient of QRS signal.
 
-### Arrhythmia Head
+### Rhythm Head
 
-The arrhythmia head is used to detect the presence of Atrial Fibrillation (AFIB) or Atrial Flutter (AFL). Note that if heart arrhythmia is detected, the remaining heads are skipped. The arrhythmia model utilizes a 1-D CNN built using MBConv style blocks that incorporate expansion, inverted residuals, and squeeze and excitation layers. Furthermore, longer filter and stide lengths are utilized in the initial layers to capture more temporal dependencies.
+The rhythm head is used to detect the presence of Atrial Fibrillation (AFIB) or Atrial Flutter (AFL). Note that if heart rhythm is detected, the remaining heads are skipped. The rhythm model utilizes a 1-D CNN built using MBConv style blocks that incorporate expansion, inverted residuals, and squeeze and excitation layers. Furthermore, longer filter and stide lengths are utilized in the initial layers to capture more temporal dependencies.
 
 ### Beat Head
 
@@ -80,13 +80,13 @@ heartkit \
 !!! note
     The second train command uses quantization-aware training to reduce accuracy drop when exporting to 8-bit.
 
-1.2 Train the arrhythmia model:
+1.2 Train the rhythm model:
 
 ```bash
 heartkit \
-    --task arrhythmia \
+    --task rhythm \
     --mode train \
-    --config ./configs/train-arrhythmia-model.json
+    --config ./configs/train-rhythm-model.json
 ```
 
 1.3 Train the beat model:
@@ -111,13 +111,13 @@ heartkit \
     --config ./configs/evaluate-segmentation-model.json
 ```
 
-2.2 Evaluate the arrhythmia model performance:
+2.2 Evaluate the rhythm model performance:
 
 ```bash
 heartkit \
-    --task arrhythmia \
+    --task rhythm \
     --mode evaluate \
-    --config ./configs/evaluate-arrhythmia-model.json
+    --config ./configs/evaluate-rhythm-model.json
 ```
 
 2.3 Evaluate the beat model performance:
@@ -140,13 +140,13 @@ heartkit \
     --config ./configs/export-segmentation-model.json
 ```
 
-3.2 Export the arrhythmia model to `./evb/src/arrhythmia_model_buffer.h`
+3.2 Export the rhythm model to `./evb/src/arrhythmia_model_buffer.h`
 
 ```bash
 heartkit \
-    --task arrhythmia \
+    --task rhythm \
     --mode export \
-    --config ./configs/export-arrhythmia-model.json
+    --config ./configs/export-rhythm-model.json
 ```
 
 3.3 Export the beat model to `./evb/src/beat_model_buffer.h`

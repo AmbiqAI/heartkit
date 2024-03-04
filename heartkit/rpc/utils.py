@@ -43,7 +43,7 @@ def _find_serial_device(
 def get_serial_transport(
     vid_pid: Optional[str] = None, baudrate: Optional[int] = None, timeout: float = 10
 ) -> SerialTransport:
-    """Create serial transport to EVB. Scans looking for port matching criteria.
+    """Create serial transport. Scans looking for port matching criteria.
 
     Args:
         vid_pid (Optional[str], optional): VID & PID. Defaults to None.
@@ -62,6 +62,6 @@ def get_serial_transport(
         if not port:
             time.sleep(0.5)
     if port is None:
-        raise TimeoutError("Unable to locate EVB serial port. Please verify connection")
+        raise TimeoutError("Unable to locate serial port. Please verify connection")
     logger.info(f"Found serial device @ {port.device}")
     return SerialTransport(port.device, baudrate=baudrate)

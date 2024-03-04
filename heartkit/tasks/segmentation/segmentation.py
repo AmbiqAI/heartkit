@@ -1,5 +1,6 @@
 import logging
 import os
+import random
 import shutil
 
 import keras
@@ -17,10 +18,10 @@ from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
 from ... import tflite as tfa
 from ...defines import HKDemoParams, HKExportParams, HKTestParams, HKTrainParams
 from ...metrics import compute_iou, confusion_matrix_plot, f1_score
-from ...rpc.backends import EvbBackend, PcBackend
+from ...rpc import BackendFactory
 from ...utils import env_flag, set_random_seed, setup_logger
 from ..task import HKTask
-from .defines import HeartSegment
+from .defines import HKSegment
 from .utils import (
     apply_augmentation_pipeline,
     create_model,
@@ -88,7 +89,10 @@ class SegmentationTask(HKTask):
         train_ds, val_ds = load_train_datasets(datasets=datasets, params=params)
 
         test_labels = [y.numpy() for _, y in val_ds]
+        # Where test_labels is all zeros, we assume it is a dummy label and should be ignored
+        y_mask = np.any(test_labels, axis=-1).flatten()
         y_true = np.argmax(np.concatenate(test_labels).squeeze(), axis=-1).flatten()
+        print(y_true.shape, y_mask.shape)
 
         class_weights = 0.25
         if params.class_weights == "balanced":
@@ -176,7 +180,7 @@ class SegmentationTask(HKTask):
                     restore_best_weights=True,
                 ),
                 ModelCheckpoint(
-                    filepath=params.model_file,
+                    filepath=str(params.model_file),
                     monitor=f"val_{params.val_metric}",
                     save_best_only=True,
                     save_weights_only=False,
@@ -212,7 +216,11 @@ class SegmentationTask(HKTask):
             # Get full validation results
             keras.models.load_model(params.model_file)
             logger.info("Performing full validation")
-            y_pred = np.argmax(model.predict(val_ds).squeeze(), axis=-1).flatten()
+            y_pred = np.argmax(model.predict(val_ds), axis=-1).flatten()
+
+            # Keep only valid labels
+            y_true = y_true[y_mask]
+            y_pred = y_pred[y_mask]
 
             cm_path = params.job_dir / "confusion_matrix.png"
             confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
@@ -262,6 +270,9 @@ class SegmentationTask(HKTask):
         )
         test_x, test_y = load_test_datasets(datasets=datasets, params=params)
 
+        y_mask = np.any(test_y, axis=-1)
+        print(test_y.shape, y_mask.shape)
+
         with tfmot.quantization.keras.quantize_scope():
             logger.info("Loading model")
             model = tfa.load_model(params.model_file)
@@ -272,8 +283,7 @@ class SegmentationTask(HKTask):
 
             logger.info("Performing inference")
             y_true = np.argmax(test_y, axis=-1)
-            y_prob = tf.nn.softmax(model.predict(test_x)).numpy()
-            y_pred = np.argmax(y_prob, axis=-1)
+            y_pred = np.argmax(model.predict(test_x), axis=-1)
         # END WITH
 
         # Summarize results
@@ -416,9 +426,10 @@ class SegmentationTask(HKTask):
         quaternary_color = "rgb(92,201,154)"
         plotly_template = "plotly_dark"
 
+        params.demo_size = params.demo_size or params.frame_size
+
         # Load backend inference engine
-        BackendRunner = EvbBackend if params.backend == "evb" else PcBackend
-        runner = BackendRunner(params=params)
+        runner = BackendFactory.create(params.backend, params=params)
 
         classes = sorted(list(set(params.class_map.values())))
         class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
@@ -431,12 +442,13 @@ class SegmentationTask(HKTask):
         # Load data
         ds = load_datasets(
             ds_path=params.ds_path,
-            frame_size=10 * params.sampling_rate,
+            frame_size=params.demo_size,
             sampling_rate=params.sampling_rate,
             spec=input_spec,
             class_map=params.class_map,
             datasets=params.datasets,
-        )[0]
+        )
+        ds = random.choice(ds)
         x = next(ds.signal_generator(ds.uniform_patient_generator(patient_ids=ds.get_test_patient_ids(), repeat=False)))
 
         # Run inference
@@ -488,7 +500,7 @@ class SegmentationTask(HKTask):
         for i in range(1, len(pred_bounds)):
             start, stop = pred_bounds[i - 1], pred_bounds[i]
             duration = 1000 * (stop - start) / params.sampling_rate
-            if y_pred[start] == params.class_map.get(HeartSegment.qrs, -1) and (duration > 20):
+            if y_pred[start] == params.class_map.get(HKSegment.qrs, -1) and (duration > 20):
                 peaks.append(start + np.argmax(np.abs(x[start:stop])))
         peaks = np.array(peaks)
 
@@ -578,6 +590,8 @@ class SegmentationTask(HKTask):
                 mode="markers",
                 marker_size=10,
                 showlegend=False,
+                customdata=np.arange(1, rri_ms.size),
+                hovertemplate="RRn: %{x:.1f} ms<br>RRn+1: %{y:.1f} ms<br>n: %{customdata}",
                 marker_color=secondary_color,
             ),
             row=2,
@@ -642,7 +656,7 @@ class SegmentationTask(HKTask):
         )
 
         fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=False)
-        if env_flag("SHOW"):
-            fig.show()
-
         logger.info(f"Report saved to {params.job_dir / 'demo.html'}")
+
+        if params.display_report:
+            fig.show()

@@ -8,15 +8,16 @@ More info available on [PhysioNet website](https://physionet.org/content/icentia
 
 ## <span class="sk-h2-span">Funding</span>
 
-This work is partially funded by a grant from Icentia, Fonds de Recherche en Santé du Québec, and the Institut de valorisation des donnees (IVADO).
+This work is partially funded by a grant from Icentia, Fonds de Recherche en Santé du Québec, and the Institute of Data Valorization (IVADO).
 
 ## <span class="sk-h2-span">Licensing</span>
 
 The Icentia11k dataset is available for non-commercial use only.
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
 
 ## <span class="sk-h2-span">Supported Tasks</span>
 
-* [Arrhythmia](../tasks/arrhythmia.md)
+* [Rhythm](../tasks/rhythm.md)
 * [Beat](../tasks/beat.md)
 * [2-Class Segmentation](../tasks/segmentation.md)
 
