@@ -23,6 +23,8 @@ nav:
       - Segmentation: tasks/segmentation.md
       - Rhythm: tasks/rhythm.md
       - Beat: tasks/beat.md
+      - Diagnostic: tasks/diagnostic.md
+      - BYOT: tasks/byot.md
     - Model Zoo:
       - zoo/index.md
     - Models:
@@ -54,6 +56,7 @@ nav:
     - Segmentation: tasks/segmentation.md
     - Rhythm: tasks/rhythm.md
     - Beat: tasks/beat.md
+    - Diagnostic: tasks/diagnostic.md
     - BYOT: tasks/byot.md
 
   - Model Zoo:
@@ -62,6 +65,7 @@ nav:
     - Segmentation: zoo/segmentation.md
     - Rhythm: zoo/rhythm.md
     - Beat: zoo/beat.md
+    - Diagnostic: zoo/diagnostic.md
 
   - Models:
     - models/index.md
@@ -88,7 +92,6 @@ nav:
 
   - Guides:
     - guides/index.md
-    - Quickstart: quickstart.md
     - EVB Setup: guides/evb-setup.md
     - Rhythm Demo: guides/rhythm-demo.md
     - HeartKit Demo: guides/heartkit-demo.md

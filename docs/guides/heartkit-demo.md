@@ -35,7 +35,7 @@ HeartKit demo leverages a multi-head network- a backbone segmentation model foll
 * __Rhythm head__ utilizes a 1-D MBConv CNN to detect arrhythmias include AFIB and AFL.
 * __Beat-level head__ utilizes a 1-D MBConv CNN to detect irregular individual beats (PAC, PVC).
 
-![HeartKit Architecture](../assets/heartkit-architecture.svg)
+![HeartKit Architecture](../assets/guides/heartkit-architecture.svg)
 
 ### ECG Segmentation
 
@@ -201,7 +201,7 @@ Upon start, the client will scan and connect to the EVB serial port. If no port 
 
 Now that the EVB client, PC client, and PC REST server are running, press either __Button 1 (BTN1)__ or __Button 2 (BTN2)__ on the EVB to start the demo. Pressing Button 1 will use live sensor data whereas Button 2 will use test dataset supplied by the PC. In __EVB Terminal__, the EVB should be printing the stage it's in (e.g `INFERENCE STAGE`) and any results. In __PC Terminal__, the PC should be plotting the data along with classification results. Once finished, Button 1 or Button 2 can be pressed to stop capturing.
 
-![evb-demo-plot](../assets/heartkit-demo.png)
+![evb-demo-plot](../assets/guides/heartkit-demo.png)
 
 To shutdown the PC client, a keyboard interrupt can be used (e.g `[CTRL]+C`) in __PC Terminal__.
 Likewise, a keyboard interrupt can be used (e.g `[CTRL]+C`) to stop the PC REST server in __REST Terminal__.

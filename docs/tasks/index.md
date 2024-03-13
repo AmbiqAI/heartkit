@@ -22,6 +22,10 @@ Rhythm classification is the process of identifying abnormal heart rhythms, also
 
 Beat classification is the process of identifying and classifying individual heart beats such as normal, premature, and escape beats. By identifying abnormal heart beats, it is possible to detect and monitor various heart conditions.
 
+### <span class="sk-h2-span">[Diagnostic](./diagnostic.md)</span>
+
+Multi-label diagnostic classification is the process of assigning diagnostic labels to an ECG signal. The diagnostic labels are structured in a hierarchical organization in terms of 5 coarse superclasses and 24 subclasses.
+
 ### <span class="sk-h2-span">[Bring-Your-Own-Task (BYOT)](./byot.md)</span>
 
 Bring-Your-Own-Task (BYOT) is a feature that allows users to create custom tasks by extending the `HKTask` base class and registering it with the task factory. This feature is useful for addressing specific use cases that are not covered by the built-in tasks.
@@ -58,5 +62,12 @@ Bring-Your-Own-Task (BYOT) is a feature that allows users to create custom tasks
 
         Identify premature and escape beats. <br>
         Refer to [Beat Task](./beat.md) for more details.
+
+    === "Diagnostic"
+
+        ### Diagnostic Classification
+
+        Assign diagnostic labels to an ECG signal. <br>
+        Refer to [Diagnostic Task](./diagnostic.md) for more details.
 
 ---

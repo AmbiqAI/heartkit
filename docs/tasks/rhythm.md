@@ -5,7 +5,7 @@
 The objective of rhythm classification is to detect and classify abnormal heart rhythms, also known as arrhythmias, directly from ECG signals.
 
 <div class="sk-plotly-graph-div">
---8<-- "assets/pk_ecg_synthetic_afib.html"
+--8<-- "assets/tasks/rhythm/rhythm-example.html"
 </div>
 
 ---
@@ -71,7 +71,7 @@ There are a variety of heart rhythms that can be detected using ECG signals. In 
 The following table provides the latest performance and accuracy results for rhythm models. Additional result details can be found in [Model Zoo → Rhythm](../zoo/rhythm.md).
 
 
---8<-- "assets/rhythm-model-zoo-table.md"
+--8<-- "assets/zoo/rhythm/rhythm-model-zoo-table.md"
 
 ---
 
@@ -79,23 +79,7 @@ The following table provides the latest performance and accuracy results for rhy
 
 Below outlines the classes available for rhythm classification. When training a model, the number of classes, mapping, and names must be provided.
 
-| CLASS   | LABEL | DESCRIPTION |
-| ------- | ----- | ----------- |
-| NSR     | 0     | Normal sinus rhythm |
-| SBRAD   | 1     | Sinus bradycardia |
-| STACH   | 2     | Sinus tachycardia |
-| SARRH   | 3     | Sinus arrhythmia |
-| SVARR   | 4     | Supraventricular arrhythmia |
-| SVT     | 5     | Supraventricular tachycardia |
-| VTACH   | 6     | Ventricular tachycardia |
-| AFIB    | 7     | Atrial fibrillation |
-| AFLUT   | 8     | Atrial flutter |
-| VFIB    | 9     | Ventricular fibrillation |
-| VFLUT   | 10    | Ventricular flutter |
-| BIGU    | 11    | Bigeminy (every other beat is PVC) |
-| TRIGU   | 12    | Trigeminy (every third beat is PVC) |
-| PACE    | 13    | Paced rhythm |
-| NOISE   | 127   | Noise |
+--8<-- "assets/tasks/rhythm/rhythm-classes.md"
 
 
 !!! example "Class Mapping"

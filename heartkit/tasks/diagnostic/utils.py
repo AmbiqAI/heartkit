@@ -42,7 +42,7 @@ def get_class_shape(frame_size: int, nclasses: int) -> tuple[int, ...]:
     Returns:
         tuple[int, ...]: Class shape
     """
-    return (nclasses,)  # One-hot encoded classes
+    return nclasses  # multi-hot encoded classes
 
 
 def prepare(x: npt.NDArray, sample_rate: float, preprocesses: list[PreprocessParams]) -> npt.NDArray:
@@ -125,7 +125,8 @@ def load_train_datasets(
         if params.augmentations:
             xx = augment_pipeline(xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
         xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
-        yy = tf.one_hot(x_y[1], params.num_classes)
+        # Dataset will provide multi-hot encoded classes already
+        yy = x_y[1]  # yy = tf.one_hot(x_y[1], params.num_classes)
         return xx, yy
 
     train_datasets = []
@@ -194,13 +195,15 @@ def load_test_datasets(
         # if params.augmentations:
         #     xx = augment_pipeline(xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
         xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
-        yy = tf.one_hot(x_y[1], params.num_classes)
+        # Dataset will provide multi-hot encoded classes already
+        yy = x_y[1]  # yy = tf.one_hot(x_y[1], params.num_classes)
         return xx, yy
 
     with console.status("[bold green] Loading test dataset..."):
         test_datasets = [
             ds.load_test_dataset(
                 test_pt_samples=params.test_samples_per_patient,
+                test_file=params.test_file,
                 preprocess=preprocess,
                 num_workers=params.data_parallelism,
             )

@@ -1,36 +1,33 @@
 {
-    "name": "rhythm-class-2",
-    "job_dir": "./results/rhythm-class-2-k9",
+    "name": "diagnostic-class-2-lsad",
+    "job_dir": "./results/diagnostic-class-2-lsad",
     "ds_path": "./datasets",
     "datasets": [{
-        "name": "icentia11k",
-        "params": {}
-    }, {
-        "name": "ptbxl",
-        "params": {}
-    }, {
         "name": "lsad",
         "params": {}
     }],
     "num_classes": 2,
     "class_map": {
         "0": 0,
-        "7": 1,
-        "8": 1
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1
     },
     "class_names": [
-        "NONE", "AFIB/AFL"
+        "NORM", "DIAG"
     ],
     "sampling_rate": 100,
-    "frame_size": 400,
+    "frame_size": 900,
     "model_file": "model.keras",
-    "samples_per_patient": [10, 20],
+    "samples_per_patient": [10, 10],
     "val_file": "./results/${task}-class-2-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
     "test_file": "./results/${task}-class-2-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
-    "val_samples_per_patient": [10, 20],
+    "val_samples_per_patient": [10, 10],
     "val_patients": 0.20,
-    "threshold": 0.75,
-    "test_samples_per_patient": [5, 50],
+    "val_size": 40000,
+    "threshold": 0.5,
+    "test_samples_per_patient": [10, 10],
     "test_size": 40000,
     "batch_size": 256,
     "buffer_size": 100000,
@@ -39,10 +36,11 @@
     "val_metric": "loss",
     "lr_rate": 1e-3,
     "lr_cycles": 1,
-    "class_weights": "fixed",
+    "class_weights": "balanced",
+    "label_smoothing": 0.1,
     "val_acc_threshold": 0.98,
-    "tflm_var_name": "g_rhythm_model",
-    "tflm_file": "rhythm_model_buffer.h",
+    "tflm_var_name": "g_diagnostic_model",
+    "tflm_file": "diagnostic_model_buffer.h",
     "backend": "pc",
     "quantization": {
         "enabled": true,
@@ -74,16 +72,17 @@
     "architecture": {
         "name": "efficientnetv2",
         "params": {
-            "input_filters": 16,
+            "input_filters": 32,
             "input_kernel_size": [1, 9],
             "input_strides": [1, 2],
             "blocks": [
-                {"filters": 24, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
-                {"filters": 32, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
-                {"filters": 40, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
-                {"filters": 48, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2}
+                {"filters": 48,  "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 2},
+                {"filters": 64,  "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4},
+                {"filters": 96, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4},
+                {"filters": 128, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4}
             ],
             "output_filters": 0,
+            "output_activation": "sigmoid",
             "include_top": true,
             "use_logits": true
         }

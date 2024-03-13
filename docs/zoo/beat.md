@@ -4,7 +4,7 @@
 
 The following table summarizes the high-level results of the segmentation models. The `config` provides the complete configuration JSON file used to train the models. Below we also provide details on the datasets, model architectures, preprocessing, and training procedures used to train the models.
 
---8<-- "assets/beat-model-zoo-table.md"
+--8<-- "assets/zoo/beat/beat-model-zoo-table.md"
 
 ---
 
@@ -78,13 +78,13 @@ Below outlines the class label mappings for the arrhtyhmia models.
 
     The confusion matrix for the 2-class beat model is depicted below.
 
-    ![2-Class Beat Confusion Matrix](../assets/beat-2-cm.png){ width="480" }
+    ![2-Class Beat Confusion Matrix](../assets/zoo/beat/beat-2-cm.png){ width="480" }
 
 === "3-Class"
 
     The confusion matrix for the 3-class model is depicted below.
 
-    ![2-Stage Beat Confusion Matrix](../assets/beat-3-cm.png){ width="480" }
+    ![2-Stage Beat Confusion Matrix](../assets/zoo/beat/beat-3-cm.png){ width="480" }
 
 ---
 
@@ -92,7 +92,7 @@ Below outlines the class label mappings for the arrhtyhmia models.
 
 The following table provides the latest hardware performance results when running on Apollo4 Plus EVB.
 
---8<-- "assets/beat-model-hw-table.md"
+--8<-- "assets/zoo/beat/beat-model-hw-table.md"
 
 ---
 

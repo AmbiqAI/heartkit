@@ -5,7 +5,7 @@
 In beat classification, we classify individual beats as either normal or abnormal. Abnormal beats can be further classified as being either premature or escape beats as well as originating from the atria, junction, or ventricles. The objective of beat classification is to detect and classify these abnormal heart beats directly from ECG signals.
 
 <div class="sk-plotly-graph-div">
---8<-- "assets/pk_ecg_synthetic_afib.html"
+--8<-- "assets/tasks/beat/beat-example.html"
 </div>
 
 ---
@@ -24,20 +24,15 @@ In beat classification, we classify individual beats as either normal or abnorma
 The following table provides the latest performance and accuracy results for pre-trained beat models. Additional result details can be found in [Model Zoo → Beat](../zoo/beat.md).
 
 
---8<-- "assets/beat-model-zoo-table.md"
+--8<-- "assets/zoo/beat/beat-model-zoo-table.md"
 
 ---
 
 ## <span class="sk-h2-span">Target Classes</span>
 
-Below outlines the classes available for rhythm classification. When training a model, the number of classes, mapping, and names must be provided.
+Below outlines the classes available for beat classification. When training a model, the number of classes, mapping, and names must be provided.
 
-| CLASS   | LABELS          |
-| ------- | --------------- |
-| 0       | Normal          |
-| 1       | PAC             |
-| 2       | PVC             |
-| 3       | Noise           |
+--8<-- "assets/tasks/beat/beat-classes.md"
 
 !!! example "Class Mapping"
 

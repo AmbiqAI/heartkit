@@ -4,7 +4,7 @@
 
 The following table summarizes the high-level results of the segmentation models. The `config` provides the complete configuration JSON file used to train the models. Below we also provide details on the datasets, model architectures, preprocessing, and training procedures used to train the models.
 
---8<-- "assets/segmentation-model-zoo-table.md"
+--8<-- "assets/zoo/segmentation/segmentation-model-zoo-table.md"
 
 ---
 
@@ -111,15 +111,15 @@ Below outlines the class label mappings for the segmentation models.
 
 === "2-Class"
 
-    ![2-Class Segmentation Confusion Matrix](../assets/segmentation-2-cm.png){ width="480" }
+    ![2-Class Segmentation Confusion Matrix](../assets/zoo/segmentation/segmentation-2-cm.png){ width="480" }
 
 === "3-Class"
 
-    ![3-Class Segmentation Confusion Matrixx](../assets/segmentation-3-cm.png){ width="480" }
+    ![3-Class Segmentation Confusion Matrixx](../assets/zoo/segmentation/segmentation-3-cm.png){ width="480" }
 
 === "4-Class"
 
-    ![4-Class Segmentation Confusion Matrix](../assets/segmentation-4-cm.png){ width="480" }
+    ![4-Class Segmentation Confusion Matrix](../assets/zoo/segmentation/segmentation-4-cm.png){ width="480" }
 
 
 ---
@@ -128,4 +128,4 @@ Below outlines the class label mappings for the segmentation models.
 
 The following table provides the latest hardware performance results when running on Apollo4 Plus EVB.
 
---8<-- "assets/segmentation-model-hw-table.md"
+--8<-- "assets/zoo/segmentation/segmentation-model-hw-table.md"

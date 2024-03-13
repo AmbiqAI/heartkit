@@ -6,7 +6,6 @@ Rather than offering a handful of static models, HeartKit provides a complete fr
 
 ---
 
-
 ## Available Modes
 
 - **[Download](./download.md)**: Download specified datasets

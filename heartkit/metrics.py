@@ -6,7 +6,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import seaborn as sns
-from sklearn.metrics import auc, confusion_matrix, f1_score, jaccard_score, roc_curve
+from sklearn.metrics import (
+    auc,
+    confusion_matrix,
+    f1_score,
+    jaccard_score,
+    multilabel_confusion_matrix,
+    roc_curve,
+)
 
 
 def compute_iou(
@@ -83,6 +90,75 @@ def f_max(
     return f1s[i], thresholds[i]
 
 
+def multilabel_confusion_matrix_plot(
+    y_true: npt.NDArray,
+    y_pred: npt.NDArray,
+    labels: list[str],
+    save_path: os.PathLike | None = None,
+    normalize: Literal["true", "pred", "all"] | None = False,
+    max_cols: int = 5,
+    **kwargs,
+) -> tuple[plt.Figure, plt.Axes] | None:
+    """Generate multilabel confusion matrix plot via matplotlib/seaborn
+
+    Args:
+        y_true (npt.NDArray): True y labels
+        y_pred (npt.NDArray): Predicted y labels
+        labels (list[str]): Label names
+        save_path (str | None): Path to save plot. Defaults to None.
+        normalize (Literal["true", "pred", "all"] | None): Normalize. Defaults to False.
+        max_cols (int): Max columns. Defaults to 5.
+
+    Returns:
+        tuple[plt.Figure, plt.Axes] | None: Figure and axes
+    """
+    cms = multilabel_confusion_matrix(y_true, y_pred)
+    ncols = min(len(labels), max_cols)
+    nrows = len(labels) // ncols + (len(labels) % ncols > 0)
+    width = 10
+    hdim = width / ncols
+    fig, ax = plt.subplots(figsize=kwargs.get("figsize", (width, hdim * nrows)), nrows=nrows, ncols=ncols)
+    for i, label in enumerate(labels):
+        r = i // ncols
+        c = i % ncols
+        ann, fmt = True, "g"
+        cm = cms[i]  # cm will be 2x2
+        cmn = cm
+        if normalize == "true":
+            cmn = cmn / cmn.sum(axis=1, keepdims=True)
+        elif normalize == "pred":
+            cmn = cmn / cmn.sum(axis=0, keepdims=True)
+        elif normalize == "all":
+            cmn = cmn / cmn.sum()
+        cmn = np.nan_to_num(cmn)
+        if normalize:
+            ann = np.asarray([f"{c:g}{os.linesep}{nc:.2%}" for c, nc in zip(cm.flatten(), cmn.flatten())]).reshape(
+                cm.shape
+            )
+            fmt = ""
+        # END IF
+        cm_ax = ax[c] if nrows <= 1 else ax[r][c]
+        sns.heatmap(cmn, xticklabels=False, yticklabels=False, annot=ann, fmt=fmt, ax=cm_ax)
+        cm_ax.set_title(label)
+    # END FOR
+    # Remove unused subplots
+    for i in range(len(labels), nrows * ncols):
+        r = i // ncols
+        c = i % ncols
+        cm_ax = ax[c] if nrows <= 1 else ax[r][c]
+        fig.delaxes(cm_ax)
+    # END FOR
+    fig.text(0.5, 0.04, "Prediction", ha="center")
+    fig.text(0, 0.5, "Label", va="center", rotation="vertical")
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path, bbox_inches="tight")
+        plt.close(fig)
+        return None
+    # END IF
+    return fig, ax
+
+
 def confusion_matrix_plot(
     y_true: npt.NDArray,
     y_pred: npt.NDArray,
@@ -120,6 +196,7 @@ def confusion_matrix_plot(
         fig.savefig(save_path, bbox_inches="tight")
         plt.close(fig)
         return None
+    # END IF
     return fig, ax
 
 

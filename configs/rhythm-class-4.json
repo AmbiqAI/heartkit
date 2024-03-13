@@ -1,6 +1,6 @@
 {
     "name": "rhythm-class-4",
-    "job_dir": "./results/rhythm-class-4-k9-xs-lsad",
+    "job_dir": "./results/rhythm-class-4-k9-xl-lsad",
     "ds_path": "./datasets",
     "datasets": [{
         "name": "lsad",
@@ -27,7 +27,7 @@
     "test_file": "./results/${task}-class-4-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
     "val_samples_per_patient": [5, 5, 5, 10],
     "val_patients": 0.20,
-    "threshold": 0.25,
+    "threshold": 0.5,
     "test_samples_per_patient": [5, 5, 5, 10],
     "test_size": 20000,
     "batch_size": 128,
@@ -72,14 +72,14 @@
     "architecture": {
         "name": "efficientnetv2",
         "params": {
-            "input_filters": 16,
+            "input_filters": 24,
             "input_kernel_size": [1, 9],
-            "input_stride": [1, 2],
+            "input_strides": [1, 2],
             "blocks": [
-                {"filters": 24, "depth": 1, "kernel_size": [1, 9], "stride": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
-                {"filters": 32, "depth": 1, "kernel_size": [1, 9], "stride": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
-                {"filters": 48, "depth": 1, "kernel_size": [1, 9], "stride": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
-                {"filters": 64, "depth": 1, "kernel_size": [1, 9], "stride": [1, 2], "ex_ratio": 1,  "se_ratio": 2}
+                {"filters": 32, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
+                {"filters": 48, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
+                {"filters": 64, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
+                {"filters": 72, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2}
             ],
             "output_filters": 0,
             "include_top": true,

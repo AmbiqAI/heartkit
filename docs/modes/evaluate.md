@@ -65,7 +65,7 @@ Evaluate mode is used to test the performance of the model on the reserved test 
 
 The following tables lists the arguments that can be used with the `evaluate` command.
 
-### `HKTestParams`
+### HKTestParams
 
 | Argument | Type | Opt/Req | Default | Description |
 | --- | --- | --- | --- | --- |

@@ -22,7 +22,7 @@ class ModelArchitecture(BaseModel, extra="allow"):
     """Model architecture parameters"""
 
     name: str
-    params: dict[str, Any]
+    params: dict[str, Any] = Field(default_factory=dict, description="Parameters")
 
 
 class PreprocessParams(BaseModel, extra="allow"):
@@ -43,7 +43,7 @@ class DatasetParams(BaseModel, extra="allow"):
     """Dataset parameters"""
 
     name: str
-    params: dict[str, Any] = Field(default_factory=dict, description="Dataset parameters")
+    params: dict[str, Any] = Field(default_factory=dict, description="Parameters")
     weight: float = Field(1, description="Dataset weight")
 
 
@@ -94,6 +94,7 @@ class HKTrainParams(BaseModel, extra="allow"):
     resume: bool = Field(False, description="Resume training")
     architecture: ModelArchitecture | None = Field(default=None, description="Custom model architecture")
     model_file: Path | None = Field(None, description="Path to save model file (.keras)")
+    threshold: float | None = Field(None, description="Model output threshold")
 
     weights_file: Path | None = Field(None, description="Path to a checkpoint weights to load")
     quantization: QuantizationParams = Field(default_factory=QuantizationParams, description="Quantization parameters")
@@ -102,6 +103,7 @@ class HKTrainParams(BaseModel, extra="allow"):
     lr_cycles: int = Field(3, description="Number of learning rate cycles")
     lr_decay: float = Field(0.9, description="Learning rate decay")
     class_weights: Literal["balanced", "fixed"] = Field("fixed", description="Class weights")
+    label_smoothing: float = Field(0, description="Label smoothing")
     batch_size: int = Field(32, description="Batch size")
     buffer_size: int = Field(100, description="Buffer size")
     epochs: int = Field(50, description="Number of epochs")
@@ -230,7 +232,7 @@ class HKDemoParams(BaseModel, extra="allow"):
     augmentations: list[AugmentationParams] = Field(default_factory=list, description="Augmentations")
     # Model arguments
     model_file: Path | None = Field(None, description="Path to save model file (.keras)")
-    backend: Literal["pc", "evb"] = Field("pc", description="Backend")
+    backend: str = Field("pc", description="Backend")
     demo_size: int | None = Field(1000, description="# samples for demo")
     display_report: bool = Field(True, description="Display report")
     # Extra arguments

@@ -195,7 +195,7 @@ PtbxlRhythmMap = {
 
 PtbxlDiagnosticMap = {
     # NORM
-    PtbxlScpCode.SR: HKDiagnostic.NORM,
+    PtbxlScpCode.NORM: HKDiagnostic.NORM,
     # STTC
     PtbxlScpCode.NDT: HKDiagnostic.STTC,
     PtbxlScpCode.NST_: HKDiagnostic.STTC,
@@ -551,6 +551,7 @@ class PtbxlDataset(HKDataset):
             patient_generator=patient_generator,
             local_map=PtbxlDiagnosticMap,
             samples_per_patient=samples_per_patient,
+            label_format="multi_hot",
         )
 
     def _label_data_generator(
@@ -558,6 +559,7 @@ class PtbxlDataset(HKDataset):
         patient_generator: PatientGenerator,
         local_map: dict[int, int],
         samples_per_patient: int | list[int] = 1,
+        label_format: str | None = None,
     ) -> SampleGenerator:
         """Generate frames w/ labels using patient generator.
 
@@ -565,6 +567,7 @@ class PtbxlDataset(HKDataset):
             patient_generator (PatientGenerator): Patient Generator
             local_map (dict[int, int]): Local label map
             samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
+            label_format (str, optional): Label format. Defaults to None.
 
         Returns:
             SampleGenerator: Sample generator
@@ -608,17 +611,27 @@ class PtbxlDataset(HKDataset):
                     pt_lbl_weights[i] += slabels[i, 1]
                 # END IF
             # END FOR
+            pt_lbls = np.array(pt_lbls, dtype=np.int32)
 
-            if len(pt_lbls) == 0:
+            if pt_lbls.size == 0:
                 continue
             # END IF
 
-            # Its possible to have multiple labels, we assign based on weights
-            y = random.choices(pt_lbls, pt_lbl_weights, k=1)[0]
+            if label_format == "multi_hot":
+                y = np.zeros(num_classes, dtype=np.int32)
+                y[pt_lbls] = 1
+                # y = np.expand_dims(y, axis=0)
+                num_samples = sum((samples_per_tgt[tgt_labels.index(i)] for i in pt_lbls))
+            elif label_format == "one_hot":
+                raise NotImplementedError()
+            elif label_format is None:
+                # Its possible to have multiple labels, we assign based on weights
+                y = random.choices(pt_lbls, pt_lbl_weights, k=1)[0]
+                num_samples = samples_per_tgt[tgt_labels.index(y)]
+            else:
+                raise ValueError(f"Invalid label_format: {label_format}")
 
             # 3. Generate samples based on samples_per_tgt
-            label_index = tgt_labels.index(y)
-            num_samples = samples_per_tgt[label_index]
             data = seg["data"][:]
             for _ in range(num_samples):
                 # select random lead and start index

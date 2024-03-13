@@ -92,7 +92,6 @@ class SegmentationTask(HKTask):
         # Where test_labels is all zeros, we assume it is a dummy label and should be ignored
         y_mask = np.any(test_labels, axis=-1).flatten()
         y_true = np.argmax(np.concatenate(test_labels).squeeze(), axis=-1).flatten()
-        print(y_true.shape, y_mask.shape)
 
         class_weights = 0.25
         if params.class_weights == "balanced":
@@ -270,8 +269,7 @@ class SegmentationTask(HKTask):
         )
         test_x, test_y = load_test_datasets(datasets=datasets, params=params)
 
-        y_mask = np.any(test_y, axis=-1)
-        print(test_y.shape, y_mask.shape)
+        # y_mask = np.any(test_y, axis=-1)
 
         with tfmot.quantization.keras.quantize_scope():
             logger.info("Loading model")

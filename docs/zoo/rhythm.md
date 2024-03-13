@@ -4,7 +4,7 @@
 
 The following table summarizes the high-level results of the rhythm models. The `config` provides the complete configuration JSON file used to train the models. Below we also provide details on the datasets, model architectures, preprocessing, and training procedures used to train the models.
 
---8<-- "assets/rhythm-model-zoo-table.md"
+--8<-- "assets/zoo/rhythm/rhythm-model-zoo-table.md"
 
 ---
 
@@ -81,20 +81,20 @@ Below outlines the class label mappings for the arrhtyhmia models.
 
     The confusion matrix for the 75% confidence model is depicted below.
 
-    ![2-Class Rhythm Confusion Matrix](../assets/rhythm-2-cm.png){ width="480" }
+    ![2-Class Rhythm Confusion Matrix](../assets/zoo/rhythm/rhythm-2-cm.png){ width="480" }
 
 === "4-Class"
 
     The confusion matrix for the 75% confidence model is depicted below.
 
-    ![4-Class Rhythm Confusion Matrix](../assets/rhythm-4-cm.png){ width="480" }
+    ![4-Class Rhythm Confusion Matrix](../assets/zoo/rhythm/rhythm-4-cm.png){ width="480" }
 
 
 ## <span class="sk-h2-span">EVB Performance</span>
 
 The following table provides the latest hardware performance results when running on Apollo4 Plus EVB.
 
---8<-- "assets/rhythm-model-hw-table.md"
+--8<-- "assets/zoo/rhythm/rhythm-model-hw-table.md"
 
 ---
 

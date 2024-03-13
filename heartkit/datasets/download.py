@@ -24,9 +24,11 @@ def download_datasets(params: HKDownloadParams):
 
     os.makedirs(params.ds_path, exist_ok=True)
 
-    for dataset in params.datasets:
-        if DatasetFactory.has(dataset):
-            DatasetFactory.get(dataset).download(
+    for ds_name in params.datasets:
+        if DatasetFactory.has(ds_name):
+            Dataset = DatasetFactory.get(ds_name)
+            ds = Dataset(ds_path=params.ds_path, task="", frame_size=1, target_rate=1, spec=((), ()))
+            ds.download(
                 num_workers=params.data_parallelism,
                 force=params.force,
             )

@@ -35,7 +35,7 @@ We provide several installation methods including pip, poetry, and Docker. Insta
         Clone the repository if you are interested in contributing to the development or wish to experiment with the latest source code. After cloning, navigate into the directory and install the package. In this mode, Poetry is recommended.
 
         ```bash
-        # Clone the ultralytics repository
+        # Clone the repository
         git clone https://github.com/AmbiqAI/heartkit.git
 
         # Navigate to the cloned directory

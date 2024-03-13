@@ -4,7 +4,7 @@
 
 The following table summarizes the high-level results of the denoising models. The `config` provides the complete configuration JSON file used to train the models. Below we also provide details on the datasets, model architectures, preprocessing, and training procedures used to train the models.
 
---8<-- "assets/denoise-model-zoo-table.md"
+--8<-- "assets/zoo/denoise/denoise-model-zoo-table.md"
 
 ---
 
@@ -54,7 +54,7 @@ All models are trained using the following setup:
 
 The following table provides the latest hardware performance results when running on Apollo4 Plus EVB.
 
---8<-- "assets/denoise-model-hw-table.md"
+--8<-- "assets/zoo/denoise/denoise-model-hw-table.md"
 
 ---
 

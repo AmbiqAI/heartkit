@@ -1,13 +1,15 @@
+from typing import Type
+
 from .dataset import HKDataset
 
-_datasets: dict[str, HKDataset] = {}
+_datasets: dict[str, Type[HKDataset]] = {}
 
 
 class DatasetFactory:
     """Dataset factory enables registering, creating, and listing datasets. It is a singleton class."""
 
     @staticmethod
-    def register(name: str, dataset: HKDataset) -> None:
+    def register(name: str, dataset: Type[HKDataset]) -> None:
         """Register a dataset
 
         Args:
@@ -38,7 +40,7 @@ class DatasetFactory:
         return list(_datasets.keys())
 
     @staticmethod
-    def get(name: str) -> HKDataset:
+    def get(name: str) -> Type[HKDataset]:
         """Get a dataset
 
         Args:

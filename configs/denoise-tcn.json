@@ -1,6 +1,6 @@
 {
-    "name": "denoising-class-1-batch",
-    "job_dir": "./results/denoising-class-1-batch",
+    "name": "denoise-tcn",
+    "job_dir": "./results/denoise-tcn",
     "ds_path": "./datasets",
     "datasets": [{
         "name": "synthetic",
@@ -47,10 +47,9 @@
             "input_norm": "batch",
             "blocks": [
                 {"depth": 1, "branch": 1, "filters": 8, "kernel": [1, 7], "dilation": [1, 1], "dropout": 0, "ex_ratio": 1, "se_ratio": 0, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 12, "kernel": [1, 7], "dilation": [1, 1], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 16, "kernel": [1, 7], "dilation": [1, 2], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 24, "kernel": [1, 7], "dilation": [1, 4], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 32, "kernel": [1, 7], "dilation": [1, 8], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"}
+                {"depth": 1, "branch": 1, "filters": 16, "kernel": [1, 7], "dilation": [1, 1], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
+                {"depth": 1, "branch": 1, "filters": 24, "kernel": [1, 7], "dilation": [1, 2], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
+                {"depth": 1, "branch": 1, "filters": 32, "kernel": [1, 7], "dilation": [1, 4], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"}
             ],
             "output_kernel": [1, 7],
             "include_top": true,
@@ -77,7 +76,7 @@
             }
         }
     ],
-    "augmentations-dis": [
+    "augmentations": [
         {
             "name": "baseline_wander",
             "params": {
@@ -118,7 +117,7 @@
         {
             "name": "lead_noise",
             "params": {
-                "scale": [0.20, 0.5]
+                "scale": [0.15, 0.20]
             }
         }
     ]

@@ -143,7 +143,7 @@ class LsadScpCode(IntEnum):
     # 61277005  # Accelerated idioventricular rhythm
     # 10370003  # Rhythm from artificial pacemaker
     # 61721007  # Counterclockwise vectorcardiographic loop
-    # 50799005  # Atrioventricular dissociation
+    AVD = 50799005  # Atrioventricular dissociation
     # 106068003  # Atrial rhythm
     # 29320008  # Ectopic rhythm
     # 426664006  # Accelerated junctional rhythm
@@ -159,25 +159,41 @@ LsadDiagnosticMap = {
     # NORM
     LsadScpCode.SR: HKDiagnostic.NORM,
     # STTC
-    LsadScpCode.STTC: HKDiagnostic.STTC,
     LsadScpCode.QTIE: HKDiagnostic.STTC,
+    # LsadScpCode.STDD: HKDiagnostic.STTC,  # ?
+    # LsadScpCode.STE: HKDiagnostic.STTC,  # ?
+    LsadScpCode.STTC: HKDiagnostic.STTC,
+    LsadScpCode.STTU: HKDiagnostic.STTC,
     # MI
     LsadScpCode.MI: HKDiagnostic.MI,
+    LsadScpCode.AMI: HKDiagnostic.MI,
+    LsadScpCode.AAMI: HKDiagnostic.MI,
     # HYP
-    LsadScpCode.RVH: HKDiagnostic.HYP,
-    LsadScpCode.RAH: HKDiagnostic.HYP,
     LsadScpCode.LVH: HKDiagnostic.HYP,
+    LsadScpCode.LVH2: HKDiagnostic.HYP,
+    LsadScpCode.RAH: HKDiagnostic.HYP,
+    LsadScpCode.RVH: HKDiagnostic.HYP,
+    LsadScpCode.LAH: HKDiagnostic.HYP,
     # CD
-    LsadScpCode.LBBB: HKDiagnostic.CD,
-    LsadScpCode.RBBB: HKDiagnostic.CD,
     LsadScpCode.AVB: HKDiagnostic.CD,
     LsadScpCode.AVB11: HKDiagnostic.CD,
     LsadScpCode.AVB2: HKDiagnostic.CD,
     LsadScpCode.AVB21: HKDiagnostic.CD,
     LsadScpCode.AVB22: HKDiagnostic.CD,
     LsadScpCode.AVB3: HKDiagnostic.CD,
+    LsadScpCode.AVB221: HKDiagnostic.CD,
+    LsadScpCode.BBB: HKDiagnostic.CD,
+    LsadScpCode.LBBB: HKDiagnostic.CD,
+    LsadScpCode.RBBB: HKDiagnostic.CD,
+    LsadScpCode.ILBBB: HKDiagnostic.CD,
+    LsadScpCode.CRBBB: HKDiagnostic.CD,
+    LsadScpCode.CLBBB: HKDiagnostic.CD,
+    LsadScpCode.IRBBB: HKDiagnostic.CD,
     LsadScpCode.IDC: HKDiagnostic.CD,
+    LsadScpCode.AVD: HKDiagnostic.CD,
     LsadScpCode.WPW: HKDiagnostic.CD,
+    LsadScpCode.LAFB: HKDiagnostic.CD,
+    LsadScpCode.LPFB: HKDiagnostic.CD,
 }
 
 LsadRhythmMap = {
@@ -468,6 +484,7 @@ class LsadDataset(HKDataset):
             patient_generator=patient_generator,
             local_map=LsadDiagnosticMap,
             samples_per_patient=samples_per_patient,
+            label_format="multi_hot",
         )
 
     def _label_data_generator(
@@ -475,6 +492,7 @@ class LsadDataset(HKDataset):
         patient_generator: PatientGenerator,
         local_map: dict[int, int],
         samples_per_patient: int | list[int] = 1,
+        label_format: str | None = None,
     ) -> SampleGenerator:
         """Generate frames w/ labels using patient generator.
 
@@ -482,6 +500,7 @@ class LsadDataset(HKDataset):
             patient_generator (PatientGenerator): Patient Generator
             local_map (dict[int, int]): Local label map
             samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
+            label_format (str, optional): Label format. Defaults to None.
 
         Returns:
             SampleGenerator: Sample generator
@@ -527,17 +546,27 @@ class LsadDataset(HKDataset):
                     pt_lbl_weights[i] += slabels[i, 1]
                 # END IF
             # END FOR
+            pt_lbls = np.array(pt_lbls, dtype=np.int32)
 
-            if len(pt_lbls) == 0:
+            if pt_lbls.size == 0:
                 continue
             # END IF
 
-            # Its possible to have multiple labels, we assign based on weights
-            y = random.choices(pt_lbls, pt_lbl_weights, k=1)[0]
+            if label_format == "multi_hot":
+                y = np.zeros(num_classes, dtype=np.int32)
+                y[pt_lbls] = 1
+                # y = np.expand_dims(y, axis=0)
+                num_samples = sum((samples_per_tgt[tgt_labels.index(i)] for i in pt_lbls))
+            elif label_format == "one_hot":
+                raise NotImplementedError()
+            elif label_format is None:
+                # Its possible to have multiple labels, we assign based on weights
+                y = random.choices(pt_lbls, pt_lbl_weights, k=1)[0]
+                num_samples = samples_per_tgt[tgt_labels.index(y)]
+            else:
+                raise ValueError(f"Invalid label_format: {label_format}")
 
             # 3. Generate samples based on samples_per_tgt
-            label_index = tgt_labels.index(y)
-            num_samples = samples_per_tgt[label_index]
             data = seg["data"][:]
             # print(f'{pt} creating {num_samples} samples')
             for _ in range(num_samples):
@@ -552,7 +581,6 @@ class LsadDataset(HKDataset):
                     x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate, axis=0)
                 yield x, y
             # END FOR
-            # print(f'{pt} created {num_samples} samples')
         # END FOR
 
     def download(self, num_workers: int | None = None, force: bool = False):
@@ -713,7 +741,7 @@ class LsadDataset(HKDataset):
         stratify = None
 
         # Use stratified split for rhythm task
-        if self.task in ("rhythm", "diagnotic"):
+        if self.task in ("rhythm", "diagnostic"):
             stratify = self._get_patient_labels(patient_ids)
             neg_mask = stratify == -1
             stratify = stratify[~neg_mask]

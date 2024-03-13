@@ -98,8 +98,6 @@ The two primary sensing modalities to monitor cardiac cycles are electrocardiogr
 
 ---
 
-## <span class="sk-h2-span">Datasets</span>
-
 ## <span class="sk-h2-span">Dataset Factory</span>
 
 __HeartKit__ exposes several open-source datasets for training each of the HeartKit tasks via a __dataset factory__. For certain tasks, we also provide synthetic data provided by [PhysioKit](https://ambiqai.github.io/physiokit) to help improve model generalization. Each dataset has a corresponding Python class to aid in downloading and generating data for the given task. Additional datasets can be easily added to the HeartKit framework by creating a new dataset class and registering it to the dataset factory.

@@ -122,7 +122,7 @@ The following is an example of a task-level demo report for the segmentation tas
     ```
 
 <div class="sk-plotly-graph-div">
---8<-- "assets/segmentation-demo.html"
+--8<-- "assets/tasks/segmentation/segmentation-demo.html"
 </div>
 
 ---

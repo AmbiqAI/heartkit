@@ -6,20 +6,19 @@ import shutil
 
 import keras
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
-import sklearn.utils
 import tensorflow as tf
 import tensorflow_model_optimization as tfmot
 import wandb
 from plotly.subplots import make_subplots
-from sklearn.metrics import f1_score
+from sklearn.metrics import classification_report, f1_score
 from tqdm import tqdm
 from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
 
 from ... import tflite as tfa
 from ...defines import HKDemoParams, HKExportParams, HKTestParams, HKTrainParams
-from ...metrics import confusion_matrix_plot, roc_auc_plot
-from ...models.utils import threshold_predictions
+from ...metrics import multilabel_confusion_matrix_plot
 from ...rpc import BackendFactory
 from ...utils import env_flag, set_random_seed, setup_logger
 from ..task import HKTask
@@ -46,6 +45,8 @@ class DiagnosticTask(HKTask):
         Args:
             params (HKTrainParams): Training parameters
         """
+        params.threshold = params.threshold or 0.5
+
         params.seed = set_random_seed(params.seed)
         logger.info(f"Random seed {params.seed}")
 
@@ -68,7 +69,7 @@ class DiagnosticTask(HKTask):
             wandb.config.update(params.model_dump())
         # END IF
 
-        classes = sorted(list(set(params.class_map.values())))
+        # classes = sorted(list(set(params.class_map.values())))
         class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
 
         input_spec = (
@@ -86,13 +87,15 @@ class DiagnosticTask(HKTask):
         )
         train_ds, val_ds = load_train_datasets(datasets=datasets, params=params)
 
-        test_labels = [label.numpy() for _, label in val_ds]
-        y_true = np.argmax(np.concatenate(test_labels), axis=-1)
+        test_labels = np.array([label.numpy() for _, label in val_ds])
+        y_true = np.concatenate(test_labels)
 
         class_weights = 0.25
         if params.class_weights == "balanced":
-            class_weights = sklearn.utils.compute_class_weight("balanced", classes=np.array(classes), y=y_true)
-
+            n_samples = np.sum(y_true)
+            class_weights = n_samples / np.sum(y_true, axis=0)
+            # class_weights = (class_weights + class_weights.mean()) / 2  # Smooth out
+        logger.info(f"Class weights: {class_weights}")
         with tfa.get_strategy().scope():
             inputs = keras.Input(shape=input_spec[0].shape, batch_size=None, name="input", dtype=input_spec[0].dtype)
             if params.resume and params.model_file:
@@ -122,9 +125,11 @@ class DiagnosticTask(HKTask):
                 )
             # END IF
             optimizer = keras.optimizers.Adam(scheduler)
-            loss = keras.losses.CategoricalFocalCrossentropy(from_logits=True, alpha=class_weights)
+            loss = keras.losses.BinaryFocalCrossentropy(
+                alpha=class_weights, from_logits=True, label_smoothing=params.label_smoothing
+            )
             metrics = [
-                keras.metrics.CategoricalAccuracy(name="acc"),
+                keras.metrics.BinaryAccuracy(name="acc"),
                 tfa.MultiF1Score(name="f1", average="weighted"),
             ]
 
@@ -192,17 +197,19 @@ class DiagnosticTask(HKTask):
             # Get full validation results
             keras.models.load_model(params.model_file)
             logger.info("Performing full validation")
-            y_pred = np.argmax(model.predict(val_ds), axis=-1)
-
+            y_pred = model.predict(val_ds)
+            y_pred = y_pred >= params.threshold
             cm_path = params.job_dir / "confusion_matrix.png"
-            confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
-            if env_flag("WANDB"):
-                conf_mat = wandb.plot.confusion_matrix(preds=y_pred, y_true=y_true, class_names=class_names)
-                wandb.log({"conf_mat": conf_mat})
-            # END IF
+
+            multilabel_confusion_matrix_plot(
+                y_true=y_true, y_pred=y_pred, labels=class_names, save_path=cm_path, normalize="true", max_cols=3
+            )
 
             # Summarize results
-            test_acc = np.sum(y_pred == y_true) / len(y_true)
+            report = classification_report(y_true, y_pred, target_names=class_names, output_dict=True)
+            df_report = pd.DataFrame(report).transpose()
+            df_report.to_csv(params.job_dir / "classification_report.csv")
+            test_acc = np.sum(y_pred == y_true) / y_true.size
             test_f1 = f1_score(y_true, y_pred, average="weighted")
             logger.info(f"[VAL SET] ACC={test_acc:.2%}, F1={test_f1:.2%}")
         # END WITH
@@ -214,6 +221,8 @@ class DiagnosticTask(HKTask):
         Args:
             params (HKTestParams): Evaluation parameters
         """
+        params.threshold = params.threshold or 0.5
+
         params.seed = set_random_seed(params.seed)
         logger.info(f"Random seed {params.seed}")
 
@@ -251,35 +260,23 @@ class DiagnosticTask(HKTask):
             logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
             logger.info("Performing inference")
-            y_true = np.argmax(test_y, axis=-1)
-            y_prob = tf.nn.softmax(model.predict(test_x)).numpy()
-            y_pred = np.argmax(y_prob, axis=-1)
+            y_true = test_y
+            y_prob = model.predict(test_x)
+            y_pred = y_prob >= params.threshold
         # END WITH
 
+        cm_path = params.job_dir / "confusion_matrix_test.png"
+        multilabel_confusion_matrix_plot(
+            y_true=y_true, y_pred=y_pred, labels=class_names, save_path=cm_path, normalize="true", max_cols=3
+        )
+
         # Summarize results
-        logger.info("Testing Results")
-        test_acc = np.sum(y_pred == y_true) / len(y_true)
+        report = classification_report(y_true, y_pred, target_names=class_names, output_dict=True)
+        df_report = pd.DataFrame(report).transpose()
+        df_report.to_csv(params.job_dir / "classification_report_test.csv")
+        test_acc = np.sum(y_pred == y_true) / y_true.size
         test_f1 = f1_score(y_true, y_pred, average="weighted")
         logger.info(f"[TEST SET] ACC={test_acc:.2%}, F1={test_f1:.2%}")
-
-        if params.num_classes == 2:
-            roc_path = params.job_dir / "roc_auc_test.png"
-            roc_auc_plot(y_true, y_prob[:, 1], labels=class_names, save_path=roc_path)
-        # END IF
-
-        # If threshold given, only count predictions above threshold
-        if params.threshold:
-            prev_numel = len(y_true)
-            y_prob, y_pred, y_true = threshold_predictions(y_prob, y_pred, y_true, params.threshold)
-            drop_perc = 1 - len(y_true) / prev_numel
-            test_acc = np.sum(y_pred == y_true) / len(y_true)
-            test_f1 = f1_score(y_true, y_pred, average="weighted")
-            logger.info(f"[TEST SET] THRESH={params.threshold:0.2%}, DROP={drop_perc:.2%}")
-            logger.info(f"[TEST SET] ACC={test_acc:.2%}, F1={test_f1:.2%}")
-        # END IF
-
-        cm_path = params.job_dir / "confusion_matrix_test.png"
-        confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
 
     @staticmethod
     def export(params: HKExportParams):
@@ -288,6 +285,7 @@ class DiagnosticTask(HKTask):
         Args:
             params (HKExportParams): Deployment parameters
         """
+        params.threshold = params.threshold or 0.5
 
         os.makedirs(params.job_dir, exist_ok=True)
         logger.info(f"Creating working directory in {params.job_dir}")
@@ -323,13 +321,7 @@ class DiagnosticTask(HKTask):
             model = tfa.load_model(params.model_file)
 
         inputs = keras.Input(shape=input_spec[0].shape, batch_size=1, name="input", dtype=input_spec[0].dtype)
-        outputs = model(inputs)
-
-        if not params.use_logits and not isinstance(model.layers[-1], keras.layers.Softmax):
-            outputs = keras.layers.Softmax()(outputs)
-            model = keras.Model(inputs, outputs, name=model.name)
-            outputs = model(inputs)
-        # END IF
+        model(inputs)
 
         flops = tfa.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
         model.summary(print_fn=logger.info)
@@ -373,9 +365,9 @@ class DiagnosticTask(HKTask):
 
         # Verify TFLite results match TF results
         logger.info("Validating model results")
-        y_true = np.argmax(test_y, axis=-1)
-        y_pred_tf = np.argmax(model.predict(test_x), axis=-1)
-        y_pred_tfl = np.argmax(tfa.predict_tflite(model_content=tflite_model, test_x=test_x), axis=-1)
+        y_true = test_y
+        y_pred_tf = model.predict(test_x) >= params.threshold
+        y_pred_tfl = tfa.predict_tflite(model_content=tflite_model, test_x=test_x) >= params.threshold
 
         tf_acc = np.sum(y_true == y_pred_tf) / y_true.size
         tf_f1 = f1_score(y_true, y_pred_tf, average="weighted")
@@ -414,7 +406,7 @@ class DiagnosticTask(HKTask):
         # Load backend inference engine
         runner = BackendFactory.create(params.backend, params=params)
 
-        # Load data
+        # classes = sorted(list(set(params.class_map.values())))
         class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
 
         input_spec = (
@@ -422,6 +414,7 @@ class DiagnosticTask(HKTask):
             tf.TensorSpec(shape=get_class_shape(params.frame_size, params.num_classes), dtype=tf.int32),
         )
 
+        # Load data
         ds = load_datasets(
             ds_path=params.ds_path,
             frame_size=params.demo_size,

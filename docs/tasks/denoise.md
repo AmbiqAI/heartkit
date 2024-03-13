@@ -5,7 +5,7 @@
 The objective of ECG denoising is to remove noise and artifacts from ECG signals while preserving the underlying cardiac information. The dominant noise sources include baseline wander (BW), muscle noise (EMG), electrode movement artifacts (EM), and powerline interference (PLI). While traditional signal processing techniques such as filtering and wavelet denoising have been used to remove noise, deep learning models have shown great promise in enhanced ECG denoising.
 
 <div class="sk-plotly-graph-div">
---8<-- "assets/denoise_example.html"
+--8<-- "assets/tasks/denoise/denoise-example.html"
 </div>
 
 ---
@@ -28,7 +28,7 @@ The following table summarizes the characteristics of common noise sources in EC
 The following table provides the latest performance and accuracy results of denoising models. Additional result details can be found in [Model Zoo → Denoise](../zoo/denoise.md).
 
 
---8<-- "assets/denoise-model-zoo-table.md"
+--8<-- "assets/zoo/denoise/denoise-model-zoo-table.md"
 
 ---
 

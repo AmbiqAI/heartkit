@@ -6,7 +6,7 @@ The objective of ECG segmentation is to delineate key segments of the cardiac cy
 
 
 <div class="sk-plotly-graph-div">
---8<-- "assets/segmentation_example.html"
+--8<-- "assets/tasks/segmentation/segmentation-example.html"
 </div>
 
 ---
@@ -19,7 +19,7 @@ The objective of ECG segmentation is to delineate key segments of the cardiac cy
 * __U-Wave__: Reflects papillary muscle repolarization
 
 <figure markdown>
-  ![Annotated ECG Signal](../assets/ecg-annotated.svg){ width="380" }
+  ![Annotated ECG Signal](../assets/tasks/segmentation/ecg-annotated.svg){ width="380" }
   <figcaption>Annotated ECG Signal</figcaption>
 </figure>
 
@@ -29,23 +29,15 @@ The objective of ECG segmentation is to delineate key segments of the cardiac cy
 
 The following table provides the latest performance and accuracy results for ECG segmentation models. Additional result details can be found in [Model Zoo → Segmentation](../zoo/segmentation.md).
 
---8<-- "assets/segmentation-model-zoo-table.md"
+--8<-- "assets/zoo/segmentation/segmentation-model-zoo-table.md"
 
 ---
-
 
 ## <span class="sk-h2-span">Target Classes</span>
 
 Below outlines the classes available for ECG segmentation. When training a model, the number of classes, mapping, and names must be provided. This allows for the most flexibility in the segmentation task.
 
-| CLASS   | LABELS          |
-| ------- | --------------- |
-| 0       | None            |
-| 1       | P-wave          |
-| 2       | QRS             |
-| 3       | T-wave          |
-| 4       | U-wave          |
-| 5       | Noise           |
+--8<-- "assets/tasks/segmentation/segmentation-classes.md"
 
 !!! example "Class Mapping Example"
 
