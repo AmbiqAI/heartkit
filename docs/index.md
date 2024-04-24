@@ -87,7 +87,7 @@ __HeartKit__ includes a number of built-in [tasks](./tasks/index.md). Each task 
 - **[Segmentation](./tasks/segmentation.md)**: Perform ECG based segmentation (P-Wave, QRS, T-Wave)
 - **[Rhythm](./tasks/rhythm.md)**: Heart rhythm classification (AFIB, AFL)
 - **[Beat](./tasks/beat.md)**: Beat-level classification (NORM, PAC, PVC, NOISE)
-- **[Diagnostic](./tasks/diagnostics.md)**: Diagnostic classification (MI, STTC, LVH)
+<!-- - **[Diagnostic](./tasks/diagnostics.md)**: Diagnostic classification (MI, STTC, LVH) -->
 - **[BYOT](./tasks/byot.md)**: Bring-Your-Own-Task (BYOT) to create custom tasks
 
 ---

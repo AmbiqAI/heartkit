@@ -1,6 +1,6 @@
 from .convert import (
     array_dump,
-    convert_tflite,
+    create_tflite_converter,
     debug_quant_tflite,
     evaluate_tflite,
     predict_tflite,

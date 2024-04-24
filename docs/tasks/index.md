@@ -22,9 +22,9 @@ Rhythm classification is the process of identifying abnormal heart rhythms, also
 
 Beat classification is the process of identifying and classifying individual heart beats such as normal, premature, and escape beats. By identifying abnormal heart beats, it is possible to detect and monitor various heart conditions.
 
-### <span class="sk-h2-span">[Diagnostic](./diagnostic.md)</span>
+<!-- ### <span class="sk-h2-span">[Diagnostic](./diagnostic.md)</span>
 
-Multi-label diagnostic classification is the process of assigning diagnostic labels to an ECG signal. The diagnostic labels are structured in a hierarchical organization in terms of 5 coarse superclasses and 24 subclasses.
+Multi-label diagnostic classification is the process of assigning diagnostic labels to an ECG signal. The diagnostic labels are structured in a hierarchical organization in terms of 5 coarse superclasses and 24 subclasses. -->
 
 ### <span class="sk-h2-span">[Bring-Your-Own-Task (BYOT)](./byot.md)</span>
 

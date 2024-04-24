@@ -7,6 +7,7 @@ import tensorflow as tf
 from rich.console import Console
 
 from ...datasets import DatasetFactory, HKDataset, augment_pipeline, preprocess_pipeline
+from ...datasets.nstdb import NstdbNoise
 from ...defines import (
     DatasetParams,
     HKExportParams,
@@ -58,7 +59,7 @@ def prepare(x: npt.NDArray, sample_rate: float, preprocesses: list[PreprocessPar
     """
     if not preprocesses:
         preprocesses = [
-            dict(name="filter", args=dict(axis=0, lowcut=0.5, highcut=30, order=3, sample_rate=sample_rate)),
+            # dict(name="filter", args=dict(axis=0, lowcut=0.5, highcut=30, order=3, sample_rate=sample_rate)),
             dict(name="znorm", args=dict(axis=None, eps=0.1)),
         ]
     return preprocess_pipeline(x, preprocesses=preprocesses, sample_rate=sample_rate)
@@ -120,11 +121,18 @@ def load_train_datasets(
 
     feat_shape = get_feat_shape(params.frame_size)
 
+    nstdb_noise_gen = NstdbNoise(ds_path=params.ds_path, target_rate=params.sampling_rate)
+
     def preprocess(x_y: tuple[npt.NDArray, npt.NDArray]) -> tuple[npt.NDArray, npt.NDArray]:
         xx = x_y[0].copy().squeeze()
         yy = x_y[1].copy().squeeze()
         if params.augmentations:
-            xx = augment_pipeline(xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
+            xx = augment_pipeline(x=xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
+            nstdb_aug = next(filter(lambda a: a.name == "nstdb", params.augmentations), None)
+            if nstdb_aug:
+                noise_range = nstdb_aug.params.get("noise_level", [0.1, 0.1])
+                noise_level = np.random.uniform(noise_range[0], noise_range[1])
+                xx = nstdb_noise_gen.apply_noise(xx, noise_level)
         xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
         yy = prepare(yy, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
         return xx, yy
@@ -194,7 +202,7 @@ def load_test_datasets(
         xx = x_y[0].copy().squeeze()
         yy = x_y[1].copy().squeeze()
         if params.augmentations:
-            xx = augment_pipeline(xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
+            xx = augment_pipeline(x=xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
         xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
         yy = prepare(yy, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
         return xx, yy

@@ -23,7 +23,7 @@ nav:
       - Segmentation: tasks/segmentation.md
       - Rhythm: tasks/rhythm.md
       - Beat: tasks/beat.md
-      - Diagnostic: tasks/diagnostic.md
+      # - Diagnostic: tasks/diagnostic.md
       - BYOT: tasks/byot.md
     - Model Zoo:
       - zoo/index.md
@@ -56,7 +56,7 @@ nav:
     - Segmentation: tasks/segmentation.md
     - Rhythm: tasks/rhythm.md
     - Beat: tasks/beat.md
-    - Diagnostic: tasks/diagnostic.md
+    # - Diagnostic: tasks/diagnostic.md
     - BYOT: tasks/byot.md
 
   - Model Zoo:
@@ -65,7 +65,7 @@ nav:
     - Segmentation: zoo/segmentation.md
     - Rhythm: zoo/rhythm.md
     - Beat: zoo/beat.md
-    - Diagnostic: zoo/diagnostic.md
+    # - Diagnostic: zoo/diagnostic.md
 
   - Models:
     - models/index.md

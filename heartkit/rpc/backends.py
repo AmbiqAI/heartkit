@@ -2,7 +2,6 @@ import abc
 import time
 from enum import IntEnum
 
-import erpc
 import numpy as np
 import numpy.typing as npt
 import tensorflow as tf
@@ -11,6 +10,7 @@ from .. import tflite
 from ..defines import HKDemoParams
 from ..utils import setup_logger
 from . import GenericDataOperations_PcToEvb as pc2evb
+from . import erpc
 from .utils import get_serial_transport
 
 logger = setup_logger(__name__)

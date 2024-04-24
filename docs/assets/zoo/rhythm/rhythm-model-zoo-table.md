@@ -1,4 +1,4 @@
-| # Classes | Model          | Dataset            | Fs     | Params | FLOPs | Accuracy  | Config       |
-| --------- | -------------- | ------------------ | ------ | ------ | ----- | --------- | ------------ |
-| 2         | EfficientNetV2 | Icentia11K, PTB-XL, LSAD | 100Hz  | 10K    | 2.1M  | 98.5% F1  | [config](https://github.com/AmbiqAI/heartkit/blob/main/configs/rhythm-class-2.json) |
-| 4         | EfficientNetV2 | LSAD               | 100Hz  | 28K    | 14.5M  | 90.1% F1  | [config](https://github.com/AmbiqAI/heartkit/blob/main/configs/rhythm-class-3.json) |
+| NAME             | DATASET                  | FS    | DURATION | # CLASSES | MODEL          | PARAMS | FLOPS   | METRIC   |
+| ---------------- | ------------------------ | ----- | -------- | --------- | -------------- | ------ | ------- | -------- |
+| __ARR-2-EFF-SM__ | Icentia11K, PTB-XL, LSAD | 100Hz | 5s       | 2         | EfficientNetV2 | 18K    |  1.2M   | 99.5% F1 |
+| __ARR-4-EFF-SM__ | LSAD                     | 100Hz | 5s       | 4         | EfficientNetV2 | 39K    |  2.2M   | 95.3% F1 |

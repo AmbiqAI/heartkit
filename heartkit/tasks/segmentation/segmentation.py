@@ -17,13 +17,18 @@ from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
 
 from ... import tflite as tfa
 from ...defines import HKDemoParams, HKExportParams, HKTestParams, HKTrainParams
-from ...metrics import compute_iou, confusion_matrix_plot, f1_score
+from ...metrics import (
+    compute_iou,
+    confusion_matrix_plot,
+    f1_score,
+    px_plot_confusion_matrix,
+)
 from ...rpc import BackendFactory
 from ...utils import env_flag, set_random_seed, setup_logger
 from ..task import HKTask
 from .defines import HKSegment
 from .utils import (
-    apply_augmentation_pipeline,
+    augment_pipeline,
     create_model,
     get_class_shape,
     get_feat_shape,
@@ -88,14 +93,18 @@ class SegmentationTask(HKTask):
         )
         train_ds, val_ds = load_train_datasets(datasets=datasets, params=params)
 
-        test_labels = [y.numpy() for _, y in val_ds]
+        test_labels = [label.numpy() for _, label in val_ds]
         # Where test_labels is all zeros, we assume it is a dummy label and should be ignored
         y_mask = np.any(test_labels, axis=-1).flatten()
         y_true = np.argmax(np.concatenate(test_labels).squeeze(), axis=-1).flatten()
 
         class_weights = 0.25
         if params.class_weights == "balanced":
+            print("HERE", y_true.shape)
             class_weights = sklearn.utils.compute_class_weight("balanced", classes=np.array(classes), y=y_true)
+            class_weights = (class_weights + class_weights.mean()) / 2  # Smooth out
+        # END IF
+        logger.info(f"Class weights: {class_weights}")
 
         with tfa.get_strategy().scope():
             inputs = keras.Input(shape=input_spec[0].shape, batch_size=None, name="input", dtype=input_spec[0].dtype)
@@ -143,6 +152,7 @@ class SegmentationTask(HKTask):
             )
             metrics = [
                 keras.metrics.CategoricalAccuracy(name="acc"),
+                tfa.MultiF1Score(name="f1", average="weighted"),
                 keras.metrics.OneHotIoU(
                     num_classes=params.num_classes,
                     target_class_ids=classes,
@@ -289,14 +299,12 @@ class SegmentationTask(HKTask):
         test_acc = np.sum(y_pred == y_true) / y_true.size
         test_iou = compute_iou(y_true, y_pred, average="weighted")
         logger.info(f"[TEST SET] ACC={test_acc:.2%}, IoU={test_iou:.2%}")
-
+        y_true = y_true.flatten()
+        y_pred = y_pred.flatten()
         cm_path = params.job_dir / "confusion_matrix_test.png"
-        confusion_matrix_plot(
-            y_true.flatten(),
-            y_pred.flatten(),
-            labels=class_names,
-            save_path=cm_path,
-            normalize="true",
+        confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
+        px_plot_confusion_matrix(
+            y_true, y_pred, labels=class_names, save_path=cm_path.with_suffix(".html"), normalize="true"
         )
 
     @staticmethod
@@ -351,24 +359,25 @@ class SegmentationTask(HKTask):
         logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
         logger.info(f"Converting model to TFLite (quantization={params.quantization.enabled})")
-        if params.quantization.enabled:
-            _, quant_df = tfa.debug_quant_tflite(
-                model=model,
-                test_x=test_x,
-                input_type=params.quantization.input_type,
-                output_type=params.quantization.output_type,
-                supported_ops=params.quantization.supported_ops,
-            )
-            quant_df.to_csv(params.job_dir / "quant.csv")
 
-        tflite_model = tfa.convert_tflite(
+        converter = tfa.create_tflite_converter(
             model=model,
             quantize=params.quantization.enabled,
             test_x=test_x,
             input_type=params.quantization.input_type,
             output_type=params.quantization.output_type,
             supported_ops=params.quantization.supported_ops,
+            use_concrete=True,
+            feat_shape=get_feat_shape(params.frame_size),
         )
+        tflite_model = converter.convert()
+
+        # if params.quantization.enabled:
+        #     _, quant_df = tfa.debug_quant_tflite(
+        #        converter=converter
+        #     )
+        #     quant_df.to_csv(params.job_dir / "quant.csv")
+        # # END IF
 
         # Save TFLite model
         logger.info(f"Saving TFLite model to {tfl_model_path}")
@@ -460,14 +469,7 @@ class SegmentationTask(HKTask):
                 start, stop = i, i + params.frame_size
             xx = x[start:stop]
             yy = np.zeros(shape=get_class_shape(params.frame_size, params.num_classes), dtype=np.int32)
-            xx, yy = apply_augmentation_pipeline(
-                xx,
-                yy,
-                frame_size=params.frame_size,
-                sample_rate=params.sampling_rate,
-                class_map=params.class_map,
-                augmentations=params.augmentations,
-            )
+            xx = augment_pipeline(x=xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
             xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
             runner.set_inputs(xx)
             runner.perform_inference()

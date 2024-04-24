@@ -1,4 +1,4 @@
-| # Classes | Model          | Dataset | Fs     | Params | FLOPs | Accuracy  | Config      |
-| --------- | -------------- | ------- | ------ | ------ | ----- | --------- | ----------- |
-| 2         | EfficientNetV2 | Icentia | 100Hz | 71K    | 1.0M  | 97.0% F1  | [config](https://github.com/AmbiqAI/heartkit/blob/main/configs/beat-class-2.json) |
-| 3         | EfficientNetV2 | Icentia | 100Hz | 71K    | 1.0M  | 91.0% F1  | [config](https://github.com/AmbiqAI/heartkit/blob/main/configs/beat-class-3.json) |
+| NAME            | DATASET    | FS    | DURATION | # CLASSES | MODEL          | PARAMS | FLOPS   | METRIC   |
+| --------------- | ---------- | ----- | -------- | --------- | -------------- | ------ | ------- | -------- |
+| __BC-2-EFF-SM__ | Icentia11k | 100Hz | 5s       | 2         | EfficientNetV2 | 28K    | 1.8M    | 97.5% F1 |
+| __BC-3-EFF-SM__ | Icentia11k | 100Hz | 5s       | 3         | EfficientNetV2 | 28K    | 1.8M    | 94.0% F1 |

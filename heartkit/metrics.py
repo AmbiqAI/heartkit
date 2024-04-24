@@ -5,6 +5,8 @@ from typing import Literal
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
+import plotly.express as px
 import seaborn as sns
 from sklearn.metrics import (
     auc,
@@ -198,6 +200,66 @@ def confusion_matrix_plot(
         return None
     # END IF
     return fig, ax
+
+
+def px_plot_confusion_matrix(
+    y_true: npt.NDArray,
+    y_pred: npt.NDArray,
+    labels: list[str],
+    normalize: Literal["true", "pred", "all"] | None = False,
+    save_path: os.PathLike | None = None,
+    title: str | None = None,
+    width: int | None = None,
+    height: int | None = 400,
+    bg_color: str = "rgba(38,42,50,1.0)",
+):
+    """Generate confusion matrix plot via plotly
+
+    Args:
+        y_true (npt.NDArray): True y labels
+        y_pred (npt.NDArray): Predicted y labels
+        labels (list[str]): Label names
+        normalize (Literal["true", "pred", "all"] | None): Normalize. Defaults to False.
+        save_path (os.PathLike | None): Path to save plot. Defaults to None.
+        title (str | None): Title. Defaults to None.
+        width (int | None): Width. Defaults to None.
+        height (int | None): Height. Defaults to 400.
+        bg_color (str): Background color. Defaults to "rgba(38,42,50,1.0)".
+
+    Returns:
+        plotly.graph_objs.Figure: Plotly figure
+    """
+
+    cm = confusion_matrix(y_true, y_pred)
+    cmn = cm
+    ann = None
+    if normalize:
+        cmn = confusion_matrix(y_true, y_pred, normalize=normalize)
+        ann = np.asarray([f"{c:g}<br>{nc:.2%}" for c, nc in zip(cm.flatten(), cmn.flatten())]).reshape(cm.shape)
+
+    cmn = pd.DataFrame(cmn, index=labels, columns=labels)
+    fig = px.imshow(
+        cmn,
+        labels=dict(x="Predicted", y="Actual", color="Count", text_auto=True),
+        title=title,
+        template="plotly_dark",
+        color_continuous_scale="Plotly3",
+    )
+    if ann is not None:
+        fig.update_traces(text=ann, texttemplate="%{text}")
+
+    fig.update_layout(
+        plot_bgcolor=bg_color,
+        paper_bgcolor=bg_color,
+        margin=dict(l=20, r=5, t=40, b=20),
+        height=height,
+        width=width,
+        title=title,
+    )
+    if save_path is not None:
+        fig.write_html(save_path, include_plotlyjs="cdn", full_html=False)
+
+    return fig
 
 
 def roc_auc_plot(

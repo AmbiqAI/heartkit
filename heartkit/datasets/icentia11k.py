@@ -72,6 +72,27 @@ IcentiaLeadsMap = {
 }
 
 
+# Filter beats based on neighboring beats
+def beat_filter_func(i: int, blabels: npt.NDArray, beat: IcentiaBeat):
+    """Filter beats based on neighboring beats"""
+    match beat:
+        case IcentiaBeat.normal:
+            return blabels[i - 1, 1] == blabels[i + 1, 1] == IcentiaBeat.normal
+        case IcentiaBeat.pac, IcentiaBeat.pvc:
+            return IcentiaBeat.undefined not in (
+                blabels[i - 1, 1],
+                blabels[i + 1, 1],
+            )
+        case IcentiaBeat.undefined:
+            return blabels[i - 1, 1] == blabels[i + 1, 1] == IcentiaBeat.undefined
+        case _:
+            return True
+    # END MATCH
+
+
+# END DEF
+
+
 class IcentiaDataset(HKDataset):
     """Icentia dataset"""
 
@@ -302,20 +323,19 @@ class IcentiaDataset(HKDataset):
                 # Create segment mask
                 mask = np.zeros_like(data, dtype=np.int32)
 
-                # Check if pwave, twave, or uwave are in class_map- if so, add gradient filter to mask
-                non_qrs = [self.class_map.get(k, -1) for k in (HKSegment.pwave, HKSegment.twave, HKSegment.uwave)]
-                if any((v != -1 for v in non_qrs)):
-                    xc = pk.ecg.clean(data.copy(), sample_rate=self.target_rate, lowcut=0.5, highcut=40, order=3)
-                    grad = pk.signal.moving_gradient_filter(
-                        xc, sample_rate=self.target_rate, sig_window=0.1, avg_window=1.0, sig_prom_weight=0.15
-                    )
-                    mask[grad > 0] = -1
-                # END IF
+                # # Check if pwave, twave, or uwave are in class_map- if so, add gradient filter to mask
+                # non_qrs = [self.class_map.get(k, -1) for k in (HKSegment.pwave, HKSegment.twave, HKSegment.uwave)]
+                # if any((v != -1 for v in non_qrs)):
+                #     xc = pk.ecg.clean(data.copy(), sample_rate=self.target_rate, lowcut=0.5, highcut=40, order=3)
+                #     grad = pk.signal.moving_gradient_filter(
+                #         xc, sample_rate=self.target_rate, sig_window=0.1, avg_window=1.0, sig_prom_weight=0.15
+                #     )
+                #     mask[grad > 0] = -1
+                # # END IF
 
                 for i in range(blabels.shape[0]):
                     bidx = int((blabels[i, 0] - frame_start) * ds_ratio)
                     btype = blabels[i, 1]
-
                     # Unclassifiable beat (treat as noise?)
                     if btype == IcentiaBeat.undefined:
                         pass
@@ -373,9 +393,6 @@ class IcentiaDataset(HKDataset):
         """
         nlabel_threshold = 0.25
         blabel_padding = 20
-        rr_win_len = int(10 * self.sampling_rate)
-        rr_min_len = int(0.3 * self.sampling_rate)
-        rr_max_len = int(2.0 * self.sampling_rate)
 
         # Target labels and mapping
         num_classes = len(set(self.class_map.values()))
@@ -391,24 +408,6 @@ class IcentiaDataset(HKDataset):
             samples_per_tgt = num_per_tgt * [num_classes]
 
         input_size = int(np.round((self.sampling_rate / self.target_rate) * self.frame_size))
-
-        # Filter beats based on neighboring beats
-        def filter_func(blabels: npt.NDArray, beat: IcentiaBeat, i: int):
-            match beat:
-                case IcentiaBeat.normal:
-                    return blabels[i - 1, 1] == blabels[i + 1, 1] == IcentiaBeat.normal
-                case IcentiaBeat.pac, IcentiaBeat.pvc:
-                    return IcentiaBeat.undefined not in (
-                        blabels[i - 1, 1],
-                        blabels[i + 1, 1],
-                    )
-                case IcentiaBeat.undefined:
-                    return blabels[i - 1, 1] == blabels[i + 1, 1] == IcentiaBeat.undefined
-                case _:
-                    return True
-            # END MATCH
-
-        # END DEF
 
         # For each patient
         for _, segments in patient_generator:
@@ -443,7 +442,8 @@ class IcentiaDataset(HKDataset):
                     beat_idxs = np.where(blabels[blabel_padding:-blabel_padding, 1] == beat.value)[0] + blabel_padding
 
                     # Filter indices
-                    beat_idxs = filter(functools.partial(filter_func, blabels, beat), beat_idxs)
+                    # fn = functools.partial(beat_filter_func, blabels=blabels, beat=beat)
+                    # beat_idxs = filter(fn, beat_idxs)
                     pt_beat_map[beat_class] += [(seg_idx, blabels[i, 0]) for i in beat_idxs]
                 # END FOR
             # END FOR
@@ -465,31 +465,7 @@ class IcentiaDataset(HKDataset):
                 frame_start = max(0, beat_idx - int(random.uniform(0.4722, 0.5278) * input_size))
                 frame_end = frame_start + input_size
                 data = segments[seg_map[seg_idx]]["data"]
-                blabels = segments[seg_map[seg_idx]]["blabels"]
-
-                # Compute average RR interval
-                rr_xs = np.searchsorted(blabels[:, 0], max(0, frame_start - rr_win_len))
-                rr_xe = np.searchsorted(blabels[:, 0], frame_end + rr_win_len)
-                if rr_xe <= rr_xs:
-                    continue
-                rri = np.diff(blabels[rr_xs : rr_xe + 1, 0])
-                rri = rri[(rri > rr_min_len) & (rri < rr_max_len)]
-                if rri.size <= 0:
-                    continue
-                avg_rr = int(np.mean(rri))
-
-                if frame_start - avg_rr < 0 or frame_end + avg_rr >= data.shape[0]:
-                    continue
-
-                # Combine previous, current, and next beat
-                x = np.hstack(
-                    (
-                        data[frame_start - avg_rr : frame_end - avg_rr],
-                        data[frame_start:frame_end],
-                        data[frame_start + avg_rr : frame_end + avg_rr],
-                    )
-                )
-                x = np.nan_to_num(x).astype(np.float32)
+                x = np.nan_to_num(data[frame_start:frame_end]).astype(np.float32)
                 if self.sampling_rate != self.target_rate:
                     x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate, axis=0)
                 y = beat

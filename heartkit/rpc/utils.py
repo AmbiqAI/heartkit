@@ -2,9 +2,10 @@ import logging
 import time
 from typing import Optional
 
-from erpc.transport import SerialTransport
 from serial.tools.list_ports import comports as list_ports
 from serial.tools.list_ports_common import ListPortInfo
+
+from .erpc.transport import SerialTransport
 
 logger = logging.getLogger(__name__)
 

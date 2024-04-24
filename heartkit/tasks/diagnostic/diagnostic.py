@@ -93,9 +93,11 @@ class DiagnosticTask(HKTask):
         class_weights = 0.25
         if params.class_weights == "balanced":
             n_samples = np.sum(y_true)
-            class_weights = n_samples / np.sum(y_true, axis=0)
-            # class_weights = (class_weights + class_weights.mean()) / 2  # Smooth out
+            class_weights = n_samples / (params.num_classes * np.sum(y_true, axis=0))
+            class_weights = (class_weights + class_weights.mean()) / 2  # Smooth out
+        # END IF
         logger.info(f"Class weights: {class_weights}")
+
         with tfa.get_strategy().scope():
             inputs = keras.Input(shape=input_spec[0].shape, batch_size=None, name="input", dtype=input_spec[0].dtype)
             if params.resume and params.model_file:
@@ -126,7 +128,10 @@ class DiagnosticTask(HKTask):
             # END IF
             optimizer = keras.optimizers.Adam(scheduler)
             loss = keras.losses.BinaryFocalCrossentropy(
-                alpha=class_weights, from_logits=True, label_smoothing=params.label_smoothing
+                apply_class_balancing=True,
+                alpha=class_weights,
+                from_logits=True,
+                label_smoothing=params.label_smoothing,
             )
             metrics = [
                 keras.metrics.BinaryAccuracy(name="acc"),
@@ -328,25 +333,25 @@ class DiagnosticTask(HKTask):
         logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
         logger.info(f"Converting model to TFLite (quantization={params.quantization.enabled})")
-        if params.quantization.enabled:
-            _, quant_df = tfa.debug_quant_tflite(
-                model=model,
-                test_x=test_x,
-                input_type=params.quantization.input_type,
-                output_type=params.quantization.output_type,
-                supported_ops=params.quantization.supported_ops,
-            )
-            quant_df.to_csv(params.job_dir / "quant.csv")
-        # END IF
 
-        tflite_model = tfa.convert_tflite(
+        converter = tfa.create_tflite_converter(
             model=model,
             quantize=params.quantization.enabled,
             test_x=test_x,
             input_type=params.quantization.input_type,
             output_type=params.quantization.output_type,
             supported_ops=params.quantization.supported_ops,
+            use_concrete=True,
+            feat_shape=get_feat_shape(params.frame_size),
         )
+        tflite_model = converter.convert()
+
+        # if params.quantization.enabled:
+        #     _, quant_df = tfa.debug_quant_tflite(
+        #        converter=converter
+        #     )
+        #     quant_df.to_csv(params.job_dir / "quant.csv")
+        # # END IF
 
         # Save TFLite model
         logger.info(f"Saving TFLite model to {tfl_model_path}")

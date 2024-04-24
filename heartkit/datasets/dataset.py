@@ -309,8 +309,7 @@ class HKDataset:
                 preprocess=preprocess,
             )
 
-        if num_workers > len(patient_ids):
-            num_workers = len(patient_ids)
+        num_workers = min(num_workers, len(patient_ids))
         split = len(patient_ids) // num_workers
         datasets = [_make_train_dataset(i, split) for i in range(num_workers)]
         if num_workers <= 1:

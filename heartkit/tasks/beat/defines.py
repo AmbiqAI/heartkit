@@ -7,4 +7,4 @@ class HKBeat(IntEnum):
     normal = 0
     pac = 1
     pvc = 2
-    noise = 3  # Not used
+    noise = 3

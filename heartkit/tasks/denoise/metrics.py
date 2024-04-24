@@ -2,6 +2,22 @@ import numpy as np
 import numpy.typing as npt
 
 
+def cossim(y_true: npt.NDArray, y_pred: npt.NDArray, axis: int = -1) -> npt.NDArray:
+    """Cosine similarity averaged over the batch
+
+    Args:
+        y_true (npt.NDArray): True values
+        y_pred (npt.NDArray): Predicted values
+        axis (int, optional): Axis to sum. Defaults to 1.
+
+    Returns:
+        npt.NDArray: Cosine similarity
+    """
+    return np.mean(
+        np.sum(y_true * y_pred, axis=axis) / (np.linalg.norm(y_true, axis=axis) * np.linalg.norm(y_pred, axis=axis))
+    )
+
+
 def ssd(y_true: npt.NDArray, y_pred: npt.NDArray, axis: int = 1) -> npt.NDArray:
     """Sum of squared distance
 

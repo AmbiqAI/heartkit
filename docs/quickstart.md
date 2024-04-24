@@ -7,29 +7,6 @@ We provide several installation methods including pip, poetry, and Docker. Insta
 
 !!! install
 
-    === "Pip/Poetry install"
-
-        Install the HeartKit package using pip or Poetry.
-        Visit the Python Package Index (PyPI) for more details on the package: [https://pypi.org/project/heartkit/](https://pypi.org/project/heartkit/)
-
-        ```bash
-        # Install with pip
-        pip install heartkit
-        ```
-
-        Or, if you prefer to use Poetry, you can install the package with the following command:
-
-        ```bash
-        # Install with poetry
-        poetry add heartkit
-        ```
-
-        Alternatively, you can install the latest development version directly from the GitHub repository. Make sure to have the Git command-line tool installed on your system. The @main command installs the main branch and may be modified to another branch, i.e. @release.
-
-        ```bash
-        pip install git+https://github.com/AmbiqAI/heartkit.git@main
-        ```
-
     === "Git clone"
 
         Clone the repository if you are interested in contributing to the development or wish to experiment with the latest source code. After cloning, navigate into the directory and install the package. In this mode, Poetry is recommended.
@@ -44,6 +21,33 @@ We provide several installation methods including pip, poetry, and Docker. Insta
         # Install the package in editable mode for development
         poetry install
         ```
+
+        When using editable mode via Poetry, be sure to activate the python environment: `poetry shell`. <br>
+        On Windows using Powershell, use `.venv\Scripts\activate.ps1`.
+
+    === "Pip/Poetry install"
+
+        Install the HeartKit package using pip or Poetry.
+        Visit the Python Package Index (PyPI) for more details on the package: [https://pypi.org/project/heartkit/](https://pypi.org/project/heartkit/)
+
+
+        ```bash
+        # Install with poetry
+        poetry add heartkit
+        ```
+
+        Or, if you prefer to use Pip, you can install the package with the following command:
+
+        ```bash
+        # Install with pip
+        pip install heartkit
+        ```
+        Alternatively, you can install the latest development version directly from the GitHub repository. Make sure to have the Git command-line tool installed on your system. The @main command installs the main branch and may be modified to another branch, i.e. @release.
+
+        ```bash
+        poetry add git+https://github.com/AmbiqAI/heartkit.git@main
+        ```
+
 
 ## <span class="sk-h2-span">Requirements</span>
 
@@ -123,7 +127,12 @@ For example, you can create a custom model, train it, evaluate its performance o
     ```python
     import heartkit as hk
 
-    ds_params = hk.HKDownloadParams.parse_file("download-datasets.json")
+    ds_params = hk.HKDownloadParams(
+        ds_path="./datasets",
+        datasets=["ludb", "synthetic"],
+        progress=True
+    )
+
 
     with open("configuration.json", "r", encoding="utf-8") as file:
         config = json.load(file)
@@ -147,8 +156,5 @@ For example, you can create a custom model, train it, evaluate its performance o
     task.export(export_params)
 
     ```
-
-!!! note
-    If using editable mode via Poetry, be sure to activate the python environment: `poetry shell`. On Windows using Powershell, use `.venv\Scripts\activate.ps1`.
 
 ---

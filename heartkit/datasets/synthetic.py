@@ -6,6 +6,7 @@ import numpy as np
 import numpy.typing as npt
 import physiokit as pk
 import tensorflow as tf
+from pydantic import BaseModel, Field
 
 from ..tasks import HKSegment
 from .dataset import HKDataset
@@ -13,6 +14,33 @@ from .defines import PatientGenerator, SampleGenerator
 from .nstdb import NstdbNoise
 
 logger = logging.getLogger(__name__)
+
+
+class SyntheticParams(BaseModel, extra="allow"):
+    """Synthetic parameters"""
+
+    presets: list[pk.ecg.EcgPreset] = Field(
+        default_factory=lambda: [
+            pk.ecg.EcgPreset.SR,
+            pk.ecg.EcgPreset.AFIB,
+            pk.ecg.EcgPreset.LAHB,
+            pk.ecg.EcgPreset.LPHB,
+            pk.ecg.EcgPreset.LBBB,
+            pk.ecg.EcgPreset.ant_STEMI,
+            pk.ecg.EcgPreset.random_morphology,
+            pk.ecg.EcgPreset.high_take_off,
+        ],
+        description="ECG presets",
+    )
+    preset_weights: list[int] = Field(
+        default_factory=lambda: [14, 1, 1, 1, 1, 1, 1, 1], description="ECG preset weights"
+    )
+    heart_rate: tuple[float, float] = Field((40, 120), description="Heart rate range")
+    impedance: tuple[float, float] = Field((1.0, 2.0), description="Impedance range")
+    p_multiplier: tuple[float, float] = Field((0.80, 1.2), description="P wave width multiplier range")
+    t_multiplier: tuple[float, float] = Field((0.80, 1.2), description="T wave width multiplier range")
+    noise_multiplier: tuple[float, float] = Field((0, 0), description="Noise multiplier range")
+    voltage_factor: tuple[float, float] = Field((800, 1000), description="Voltage factor range")
 
 
 class SyntheticDataset(HKDataset):
@@ -29,6 +57,7 @@ class SyntheticDataset(HKDataset):
         num_pts: int = 250,
         noise_level: float = 0.0,
         leads: list[int] | None = None,
+        params: dict | None = None,
     ) -> None:
         super().__init__(
             ds_path=ds_path / "synthetic",
@@ -42,22 +71,12 @@ class SyntheticDataset(HKDataset):
         self._num_pts = num_pts
         self.noise_level = noise_level
         self.leads = leads or list(range(12))
-        self.presets = (
-            pk.ecg.EcgPreset.SR,
-            pk.ecg.EcgPreset.AFIB,
-            pk.ecg.EcgPreset.LAHB,
-            pk.ecg.EcgPreset.LPHB,
-            pk.ecg.EcgPreset.LBBB,
-            pk.ecg.EcgPreset.ant_STEMI,
-            pk.ecg.EcgPreset.random_morphology,
-            pk.ecg.EcgPreset.high_take_off,
-        )
-        self.preset_weights = (14, 1, 1, 1, 1, 1, 1, 1)
+        self.params = SyntheticParams(**params or {})
 
     @property
     def cachable(self) -> bool:
         """If dataset supports file caching."""
-        return False
+        return True
 
     @property
     def sampling_rate(self) -> int:
@@ -136,17 +155,24 @@ class SyntheticDataset(HKDataset):
         Returns:
             tuple[npt.NDArray, npt.NDArray, npt.NDArray]: signal, segments, fiducials
         """
+        heart_rate = np.random.uniform(self.params.heart_rate[0], self.params.heart_rate[1])
+        preset = random.choices(self.params.presets, self.params.preset_weights, k=1)[0].value
+        impedance = np.random.uniform(self.params.impedance[0], self.params.impedance[1])
+        p_multiplier = np.random.uniform(self.params.p_multiplier[0], self.params.p_multiplier[1])
+        t_multiplier = np.random.uniform(self.params.t_multiplier[0], self.params.t_multiplier[1])
+        voltage_factor = np.random.uniform(self.params.voltage_factor[0], self.params.voltage_factor[1])
+
         ecg, segs, fids = pk.ecg.synthesize(
             signal_length=signal_length,
             sample_rate=self.sampling_rate,
             leads=12,  # Use all 12 leads
-            heart_rate=np.random.uniform(40, 120),
-            preset=random.choices(self.presets, self.preset_weights, k=1)[0].value,
-            impedance=np.random.uniform(1.0, 2.0),
-            p_multiplier=np.random.uniform(0.80, 1.2),
-            t_multiplier=np.random.uniform(0.80, 1.2),
+            heart_rate=heart_rate,
+            preset=preset,
+            impedance=impedance,
+            p_multiplier=p_multiplier,
+            t_multiplier=t_multiplier,
             noise_multiplier=0,
-            voltage_factor=np.random.uniform(800, 1000),
+            voltage_factor=voltage_factor,
         )
         return ecg, segs, fids
 
@@ -169,8 +195,7 @@ class SyntheticDataset(HKDataset):
                 frame_start = np.random.randint(0, syn_ecg.shape[1] - self.frame_size)
                 frame_end = frame_start + self.frame_size
                 x = syn_ecg[lead, frame_start:frame_end].astype(np.float32).reshape((self.frame_size,))
-                if self.noise_level > 0:
-                    x = self._add_noise(x)
+                x = self._add_noise(x)
                 yield x
             # END FOR
         # END FOR
@@ -210,8 +235,7 @@ class SyntheticDataset(HKDataset):
                 frame_start = np.random.randint(start_offset, syn_ecg.shape[1] - self.frame_size)
                 frame_end = frame_start + self.frame_size
                 x = syn_ecg[lead, frame_start:frame_end].astype(np.float32)
-                if self.noise_level > 0:
-                    x = self._add_noise(x)
+                x = self._add_noise(x)
                 y = syn_segs[lead, frame_start:frame_end].astype(np.int32)
                 y = np.vectorize(self.class_map.get, otypes=[int])(y)
                 yield x, y
@@ -233,8 +257,7 @@ class SyntheticDataset(HKDataset):
                 frame_end = frame_start + self.frame_size
                 x = syn_ecg[lead, frame_start:frame_end].astype(np.float32).reshape((self.frame_size,))
                 y = x.copy()
-                if self.noise_level > 0:
-                    x = self._add_noise(x)
+                x = self._add_noise(x)
                 yield x, y
             # END FOR
         # END FOR
@@ -280,8 +303,13 @@ class SyntheticDataset(HKDataset):
 
     def _add_noise(self, ecg: npt.NDArray):
         """Add noise to ECG signal."""
+        noise_range = self.params.noise_multiplier
+        if noise_range[0] == 0 and noise_range[1] == 0:
+            return ecg
+        noise_level = np.random.uniform(noise_range[0], noise_range[1])
+
         if self._noise_gen is None:
             self._noise_gen = NstdbNoise(ds_path=self.ds_path.parent, target_rate=self.target_rate)
         # END IF
-        self._noise_gen.apply_noise(ecg, self.noise_level)
+        self._noise_gen.apply_noise(ecg, noise_level)
         return ecg

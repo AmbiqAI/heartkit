@@ -1,4 +1,4 @@
-| # Classes | Model          | Dataset | Fs     | Params | FLOPs | Accuracy  | Cycles | Time | Arena | NVM  | RAM  |
-| --------- | -------------- | ------- | ------ | ------ | ----- | --------- | ------ | ---- | ----- | ---- | ---- |
-| 2         | EfficientNetV2 | Icentia | 100Hz  | 71K    | 1.0M  | 97.0% F1  | 5.5M   | 29ms | 31K   | 358K | 60K  |
-| 3         | EfficientNetV2 | Icentia | 100Hz  | 71K    | 1.0M  | 91.0% F1  | 5.5M   | 29ms | 31K   | 358K | 60K  |
+| NAME            | FS    | DURATION | PARAMS | FLOPS | METRIC   | TIME | ARENA | ENERGY  |
+| --------------- | ----- | -------- | ------ | ----- | -------- | ---- | ----- | ------- |
+| __BC-2-EFF-SM__ | 100Hz | 5s       | 28K    | 1.8M  | 97.5% F1 | 8ms  | 1.5K  |   XX    |
+| __BC-3-EFF-SM__ | 100Hz | 5s       | 28K    | 1.8M  | 93.9% F1 | 8ms  | 1.5K  |   XX    |

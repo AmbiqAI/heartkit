@@ -4,29 +4,7 @@ __HeartKit__ python package allows for more fine-grained control and customizati
 
 !!! Example
 
-    ```python
-    import heartkit as hk
-
-    ds_params = hk.HKDownloadParams.parse_file("download-datasets.json")
-    train_params = hk.HKTrainParams.parse_file("train.json")
-    test_params = hk.HKTestParams.parse_file("evaluate.json")
-    export_params = hk.HKExportParams.parse_file("export.json")
-
-    # Download datasets
-    hk.datasets.download_datasets(ds_params)
-
-    task = hk.TaskFactory.get("rhythm")
-
-    # Train rhythm model
-    task.train(train_params)
-
-    # Evaluate rhythm model
-    task.evaluate(test_params)
-
-    # Export rhythm model
-    task.export(export_params)
-
-    ```
+    --8<-- "assets/usage/python-full-snippet.md"
 
 ---
 
@@ -38,16 +16,7 @@ The `download` command is used to download all datasets specified. Please refer 
 
     The following snippet will download and prepare four datasets.
 
-    ```python
-    from pathlib import Path
-    import heartkit as hk
-
-    hk.datasets.download_datasets(hk.HKDownloadParams(
-        ds_path=Path("./datasets"),
-        datasets=["icentia11k", "ludb", "qtdb", "synthetic"],
-        progress=True
-    ))
-    ```
+     --8<-- "assets/usage/python-download-snippet.md"
 
 ---
 
@@ -59,42 +28,8 @@ The `train` command is used to train a HeartKit model for the specified `task` a
 
     The following snippet will train a rhythm model using the supplied parameters:
 
-    ```python
-    from pathlib import Path
-    import heartkit as hk
+    --8<-- "assets/usage/python-train-snippet.md"
 
-    task = hk.TaskFactory.get("rhythm")
-
-    task.train(hk.HKTrainParams(
-        job_dir=Path("./results/rhythm-class-2"),
-        ds_path=Path("./datasets"),
-        datasets=[{
-            "name": "icentia11k",
-            "params": {}
-        }],
-        num_classes=2,
-        class_map={
-            0: 0,
-            1: 1,
-            2: 1
-        },
-        class_names=[
-            "NONE", "AFIB/AFL"
-        ],
-        sampling_rate=200,
-        frame_size=800,
-        samples_per_patient=[100, 800],
-        val_samples_per_patient=[100, 800],
-        train_patients=10000,
-        val_patients=0.10,
-        val_size=200000,
-        batch_size=256,
-        buffer_size=100000,
-        epochs=100,
-        steps_per_epoch=20,
-        val_metric="loss",
-    ))
-    ```
 
 ---
 
@@ -106,37 +41,7 @@ The `evaluate` command will test the performance of the model on the reserved te
 
     The following command will test the rhythm model using the supplied parameters:
 
-    ```python
-    from pathlib import Path
-    import heartkit as hk
-
-    task = hk.TaskFactory.get("rhythm")
-
-    task.evaluate(hk.HKTestParams(
-        job_dir=Path("./results/rhythm-class-2"),
-        ds_path=Path("./datasets"),
-        datasets=[{
-            "name": "icentia11k",
-            "params": {}
-        }],
-        num_classes=2,
-        class_map={
-            0: 0,
-            1: 1,
-            2: 1
-        },
-        class_names=[
-            "NONE", "AFIB/AFL"
-        ],
-        sampling_rate=200,
-        frame_size=800,
-        test_samples_per_patient=[100, 800],
-        test_patients=1000,
-        test_size=100000,
-        model_file=Path("./results/rhythm-class-2/model.keras"),
-        threshold=0.75
-    ))
-    ```
+    --8<-- "assets/usage/python-evaluate-snippet.md"
 
 ---
 
@@ -148,43 +53,7 @@ The `export` command will convert the trained TensorFlow model into both TensorF
 
     The following command will export the rhythm model to TF Lite and TFLM:
 
-    ```python
-    from pathlib import Path
-    import heartkit as hk
-
-    task = hk.TaskFactory.get("rhythm")
-    task.export(hk.HKExportParams(
-        job_dir=Path("./results/rhythm-class-2"),
-        ds_path=Path("./datasets"),
-        datasets=[{
-            "name": "icentia11k",
-            "params": {}
-        }],
-        num_classes=2,
-        class_map={
-            0: 0,
-            1: 1,
-            2: 1
-        },
-        class_names=[
-            "NONE", "AFIB/AFL"
-        ],
-        sampling_rate=200,
-        frame_size=800,
-        test_samples_per_patient=[100, 500, 100],
-        model_file=Path("./results/rhythm-class-2/model.keras"),
-        quantization={
-            enabled=True,
-            qat=False,
-            ptq=True,
-            input_type="int8",
-            output_type="int8",
-        },
-        threshold=0.95,
-        tflm_var_name="g_arrhythmia_model",
-        tflm_file=Path("./results/rhythm-class-2/arrhythmia_model_buffer.h")
-    ))
-    ```
+    --8<-- "assets/usage/python-export-snippet.md"
 
 ---
 
@@ -196,33 +65,6 @@ The `demo` command is used to run a task-level demonstration using the designate
 
     The following snippet will run a task-level demo using the PC as the backend inference engine:
 
-    ```python
-    from pathlib import Path
-    import heartkit as hk
-
-    task = hk.TaskFactory.get("rhythm")
-
-    task.demo(hk.HKDemoParams(
-        job_dir=Path("./results/rhythm-class-2"),
-        ds_path=Path("./datasets"),
-        datasets=[{
-            "name": "icentia11k",
-            "params": {}
-        }],
-        num_classes=2,
-        class_map={
-            0: 0,
-            1: 1,
-            2: 1
-        },
-        class_names=[
-            "NONE", "AFIB/AFL"
-        ],
-        sampling_rate=200,
-        frame_size=800,
-        model_file=Path("./results/rhythm-class-2/model.tflite"),
-        backend="pc"
-    ))
-    ```
+    --8<-- "assets/usage/python-demo-snippet.md"
 
 ---

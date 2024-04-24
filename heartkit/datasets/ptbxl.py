@@ -686,15 +686,15 @@ class PtbxlDataset(HKDataset):
                 # Create segment mask
                 mask = np.zeros_like(x, dtype=np.int32)
 
-                # Check if pwave, twave, or uwave are in class_map- if so, add gradient filter to mask
-                non_qrs = [self.class_map.get(k, -1) for k in (HKSegment.pwave, HKSegment.twave, HKSegment.uwave)]
-                if any((v != -1 for v in non_qrs)):
-                    xc = pk.ecg.clean(x.copy(), sample_rate=self.target_rate, lowcut=0.5, highcut=40, order=3)
-                    grad = pk.signal.moving_gradient_filter(
-                        xc, sample_rate=self.target_rate, sig_window=0.1, avg_window=1.0, sig_prom_weight=0.15
-                    )
-                    mask[grad > 0] = -1
-                # END IF
+                # # Check if pwave, twave, or uwave are in class_map- if so, add gradient filter to mask
+                # non_qrs = [self.class_map.get(k, -1) for k in (HKSegment.pwave, HKSegment.twave, HKSegment.uwave)]
+                # if any((v != -1 for v in non_qrs)):
+                #     xc = pk.ecg.clean(x.copy(), sample_rate=self.target_rate, lowcut=0.5, highcut=40, order=3)
+                #     grad = pk.signal.moving_gradient_filter(
+                #         xc, sample_rate=self.target_rate, sig_window=0.1, avg_window=1.0, sig_prom_weight=0.15
+                #     )
+                #     mask[grad > 0] = -1
+                # # END IF
 
                 for i in range(frame_blabels.shape[0]):
                     bidx = int((frame_blabels[i, 0] - frame_start) * ds_ratio)

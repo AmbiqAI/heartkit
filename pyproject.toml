@@ -37,12 +37,11 @@ filterwarnings = [
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
-tensorflow-macos = {version = "^2.15.0", platform = "darwin"}
-tensorflow = {version = "^2.15.0", markers = "sys_platform != 'darwin'"}
+tensorflow = {version = "~2.15.1"}
+tensorflow-metal = {version = "^1.1.0", markers = "sys_platform == 'darwin'"}
 numpy = "^1.26.4"
 scikit-learn = "^1.4.0"
 wfdb = "^4.1.2"
-tensorflow-metal = {version = "^1.1.0", platform = "darwin"}
 fastparquet = "^2023.10.1"
 plotly = "^5.18.0"
 tqdm = "^4.66.1"
@@ -50,7 +49,6 @@ seaborn = "^0.13.2"
 matplotlib = "3.8.2"
 tensorflow-model-optimization = "^0.7.5"
 pydantic = "^2.5.3"
-erpc = {git = "https://github.com/AmbiqAI/erpc.git", rev = "develop", subdirectory = "erpc_python"}
 pyserial = "^3.5"
 rich = "^13.7.0"
 wandb = "^0.16.3"
@@ -70,6 +68,7 @@ taskipy = "^1.12.0"
 pre-commit = "^3.6.0"
 notebook = "^7.0.2"
 tensorboard-plugin-profile = "^2.14.0"
+pydot = "^2.0.0"
 
 [tool.poetry.group.docs]
 optional = true
@@ -94,7 +93,8 @@ line-length = 120
 [tool.pylint.master]
 ignore-paths = [
     "heartkit/rpc/GenericDataOperations_EvbToPc",
-    "heartkit/rpc/GenericDataOperations_PcToEvb"
+    "heartkit/rpc/GenericDataOperations_PcToEvb",
+    "heartkit/rpc/erpc"
 ]
 extension-pkg-whitelist = "pydantic"
 
@@ -107,7 +107,8 @@ disable = [
     "logging-fstring-interpolation",
     "duplicate-code",
     "use-dict-literal",
-    "cyclic-import"
+    "cyclic-import",
+    "unsubscriptable-object"
 ]
 
 [tool.pylint.format]

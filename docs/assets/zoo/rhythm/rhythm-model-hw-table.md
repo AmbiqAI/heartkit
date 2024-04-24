@@ -1,4 +1,4 @@
-| # Classes | Model          | Dataset                  | Fs     | Params | FLOPs  | Accuracy | Cycles | Time | Arena | NVM  | RAM  |
-| --------- | -------------- | ------------------------ | ------ | ------ | ------ | -------- | ------ | ---- | ----- | ---- | ---- |
-| 2         | EfficientNetV2 | Icentia11K, PTB-XL, LSAD | 100Hz  | 10K    | 2.1M   | 98.5% F1 | 8M/inf | 42ms | 25K   | 270K | 54K  |
-| 4         | EfficientNetV2 | LSAD                     | 100Hz  | 28K    | 14.5M  | 90.1% F1 |        |      |       |      |      |
+| NAME             | FS    | DURATION | PARAMS | FLOPS | METRIC   | TIME | ARENA | ENERGY  |
+| ---------------- | ----- | -------- | ------ | ----- | -------- | ---- | ----- | ------- |
+| __ARR-2-EFF-SM__ | 100Hz | 5s       | 18K    |  1.2M | 99.5% F1 | XXms  | XXK  |   XX    |
+| __ARR-4-EFF-SM__ | 100Hz | 5s       | 39K    |  2.2M | 95.3% F1 | XXms  | XXK  |   XX    |

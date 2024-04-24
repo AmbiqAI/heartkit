@@ -18,7 +18,12 @@ from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
 
 from ... import tflite as tfa
 from ...defines import HKDemoParams, HKExportParams, HKTestParams, HKTrainParams
-from ...metrics import confusion_matrix_plot, f1_score, roc_auc_plot
+from ...metrics import (
+    confusion_matrix_plot,
+    f1_score,
+    px_plot_confusion_matrix,
+    roc_auc_plot,
+)
 from ...models.utils import threshold_predictions
 from ...rpc import BackendFactory
 from ...utils import env_flag, set_random_seed, setup_logger
@@ -88,11 +93,14 @@ class BeatTask(HKTask):
         train_ds, val_ds = load_train_datasets(datasets=datasets, params=params)
 
         test_labels = [label.numpy() for _, label in val_ds]
-        y_true = np.argmax(np.concatenate(test_labels), axis=-1)
+        y_true = np.argmax(np.concatenate(test_labels), axis=-1).flatten()
 
         class_weights = 0.25
         if params.class_weights == "balanced":
             class_weights = sklearn.utils.compute_class_weight("balanced", classes=np.array(classes), y=y_true)
+            class_weights = (class_weights + class_weights.mean()) / 2  # Smooth out
+        # END IF
+        logger.info(f"Class weights: {class_weights}")
 
         with tfa.get_strategy().scope():
             inputs = keras.Input(shape=input_spec[0].shape, batch_size=None, name="input", dtype=input_spec[0].dtype)
@@ -124,7 +132,10 @@ class BeatTask(HKTask):
             # END IF
             optimizer = keras.optimizers.Adam(scheduler)
             loss = keras.losses.CategoricalFocalCrossentropy(from_logits=True, alpha=class_weights)
-            metrics = [keras.metrics.CategoricalAccuracy(name="acc")]
+            metrics = [
+                keras.metrics.CategoricalAccuracy(name="acc"),
+                tfa.MultiF1Score(name="f1", average="weighted"),
+            ]
 
             if params.resume and params.weights_file:
                 logger.info(f"Hydrating model weights from file {params.weights_file}")
@@ -189,7 +200,7 @@ class BeatTask(HKTask):
             # Get full validation results
             keras.models.load_model(params.model_file)
             logger.info("Performing full validation")
-            y_pred = np.argmax(model.predict(val_ds), axis=-1)
+            y_pred = np.argmax(model.predict(val_ds), axis=-1).flatten()
 
             cm_path = params.job_dir / "confusion_matrix.png"
             confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
@@ -248,10 +259,11 @@ class BeatTask(HKTask):
             logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
             logger.info("Performing inference")
-            y_true = np.argmax(test_y, axis=-1)
+            y_true = np.argmax(test_y, axis=-1).flatten()
             y_prob = tf.nn.softmax(model.predict(test_x)).numpy()
-            y_pred = np.argmax(y_prob, axis=-1)
+            y_pred = np.argmax(y_prob, axis=-1).flatten()
 
+            print("IDDQD", y_true.shape, y_pred.shape, y_prob.shape)
             # Summarize results
             logger.info("Testing Results")
             test_acc = np.sum(y_pred == y_true) / len(y_true)
@@ -276,6 +288,9 @@ class BeatTask(HKTask):
 
             cm_path = params.job_dir / "confusion_matrix_test.png"
             confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
+            px_plot_confusion_matrix(
+                y_true, y_pred, labels=class_names, save_path=cm_path.with_suffix(".html"), normalize="true"
+            )
         # END WITH
 
     @staticmethod
@@ -333,25 +348,25 @@ class BeatTask(HKTask):
         logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
         logger.info(f"Converting model to TFLite (quantization={params.quantization.enabled})")
-        if params.quantization.enabled:
-            _, quant_df = tfa.debug_quant_tflite(
-                model=model,
-                test_x=test_x,
-                input_type=params.quantization.input_type,
-                output_type=params.quantization.output_type,
-                supported_ops=params.quantization.supported_ops,
-            )
-            quant_df.to_csv(params.job_dir / "quant.csv")
-        # END IF
 
-        tflite_model = tfa.convert_tflite(
+        converter = tfa.create_tflite_converter(
             model=model,
             quantize=params.quantization.enabled,
             test_x=test_x,
             input_type=params.quantization.input_type,
             output_type=params.quantization.output_type,
             supported_ops=params.quantization.supported_ops,
+            use_concrete=True,
+            feat_shape=get_feat_shape(params.frame_size),
         )
+        tflite_model = converter.convert()
+
+        # if params.quantization.enabled:
+        #     _, quant_df = tfa.debug_quant_tflite(
+        #        converter=converter
+        #     )
+        #     quant_df.to_csv(params.job_dir / "quant.csv")
+        # # END IF
 
         # Save TFLite model
         logger.info(f"Saving TFLite model to {tfl_model_path}")
@@ -451,13 +466,14 @@ class BeatTask(HKTask):
             stop = start + params.frame_size
             if start - avg_rr < 0 or stop + avg_rr > x.size:
                 continue
-            xx = np.vstack(
-                (
-                    x[start - avg_rr : stop - avg_rr],
-                    x[start:stop],
-                    x[start + avg_rr : stop + avg_rr],
-                )
-            ).T
+            # xx = np.vstack(
+            #     (
+            #         x[start - avg_rr : stop - avg_rr],
+            #         x[start:stop],
+            #         x[start + avg_rr : stop + avg_rr],
+            #     )
+            # ).T
+            xx = x[start:stop]
             xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
             runner.set_inputs(xx)
             runner.perform_inference()
