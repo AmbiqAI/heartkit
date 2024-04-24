@@ -1,10 +1,6 @@
-from .arrhythmia import Arrhythmia
-from .beat import Beat
-from .denoise import Denoise
-from .segmentation import Segmentation
 from .task import HKTask
 
-_tasks: dict[str, HKTask] = {"arrhythmia": Arrhythmia, "beat": Beat, "segmentation": Segmentation, "denoise": Denoise}
+_tasks: dict[str, HKTask] = {}
 
 
 class TaskFactory:

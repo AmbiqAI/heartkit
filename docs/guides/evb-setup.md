@@ -22,7 +22,7 @@ The following items are needed to flash firmware and run demos.
 
 In order to connect the MAX86150 breakout board to the Apollo 4 EVB, we must first solder the 5-pin header on to the MAX86150 board.
 
-![max86150-5pin-header](../assets/max86150-5pin-header.webp)
+![max86150-5pin-header](../assets/guides/max86150-5pin-header.webp)
 
 Once soldered, connect the breakout board to the EVB using 5 jumper wires as follows:
 
@@ -34,7 +34,7 @@ Once soldered, connect the breakout board to the EVB using 5 jumper wires as fol
 | INT         | Not used          |
 | GND         | J17 pin 4 (GND)   |
 
-![max86150-5pin-header](../assets/evb-breakout-conn.webp)
+![max86150-5pin-header](../assets/guides/evb-breakout-conn.webp)
 
 !!! note
     Alternatively, the Qwiic connector on the breakout board can be used. This will require a Qwiic breakout cable. For 3V3, J3 pin 5 (3.3V) can be leveraged on the EVB.

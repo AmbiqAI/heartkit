@@ -1,11 +1,11 @@
-# Beat Classification
+# Beat Classification Task
 
 ## <span class="sk-h2-span">Overview</span>
 
-In beat classification, we classify individual beats as either normal, premature atrial contraction (PAC), or premature ventricular contraction (PVC).
+In beat classification, we classify individual beats as either normal or abnormal. Abnormal beats can be further classified as being either premature or escape beats as well as originating from the atria, junction, or ventricles. The objective of beat classification is to detect and classify these abnormal heart beats directly from ECG signals.
 
 <div class="sk-plotly-graph-div">
---8<-- "assets/pk_ecg_synthetic_afib.html"
+--8<-- "assets/tasks/beat/beat-example.html"
 </div>
 
 ---
@@ -24,27 +24,30 @@ In beat classification, we classify individual beats as either normal, premature
 The following table provides the latest performance and accuracy results for pre-trained beat models. Additional result details can be found in [Model Zoo → Beat](../zoo/beat.md).
 
 
---8<-- "assets/beat-model-zoo-table.md"
+--8<-- "assets/zoo/beat/beat-model-zoo-table.md"
 
 ---
 
-## <span class="sk-h2-span">Classes</span>
+## <span class="sk-h2-span">Target Classes</span>
 
-Below outlines the class labels used for beat classification.
+Below outlines the classes available for beat classification. When training a model, the number of classes, mapping, and names must be provided.
 
-=== "2-Stage"
+--8<-- "assets/tasks/beat/beat-classes.md"
 
-    | CLASS    | LABELS           |
-    | -------- | ---------------- |
-    | 0        | NSR              |
-    | 1        | PAC/PVC          |
+!!! example "Class Mapping"
 
-=== "3-Stage"
+    Below is an example of a class mapping for a 3-class beat model. The class map keys are the original class labels and the values are the new class labels. Any class not included will be skipped.
 
-    | CLASS   | LABELS           |
-    | ------- | ---------------- |
-    | 0       | NSR              |
-    | 1       | PAC              |
-    | 2       | PVC              |
+    ```json
+    {
+        "num_classes": 3,
+        "class_names": ["QRS", "PAC", "PVC"],
+        "class_map": {
+            "0": 0,  // Map Normal to QRS
+            "1": 1,  // Map PAC to PAC
+            "2": 2,  // Map PVC to PVC
+        }
+    }
+    ```
 
 ---

@@ -1,10 +1,10 @@
 # Bring-Your-Own-Dataset (BYOD)
 
-The Bring-Your-Own-Dataset (BYOD) feature allows users to add custom datasets for training, evaluating, and deploying heart-related AI models.
+The Bring-Your-Own-Dataset (BYOD) feature allows users to add custom datasets for training and evaluating models. This feature is useful when working with proprietary or custom datasets that are not available in the HeartKit library.
 
 ## How it Works
 
-1. **Create a Dataset**: Define a new dataset by creating a new Python file. The file should contain a class that inherits from the `Dataset` base class and implements the required methods.
+1. **Create a Dataset**: Define a new dataset by creating a new Python file. The file should contain a class that inherits from the `HKDataset` base class and implements the required methods.
 
     ```python
     import heartkit as hk

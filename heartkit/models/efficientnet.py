@@ -17,9 +17,12 @@ class EfficientNetParams(BaseModel):
     input_kernel_size: int | tuple[int, int] = Field(default=3, description="Input kernel size")
     input_strides: int | tuple[int, int] = Field(default=2, description="Input stride")
     output_filters: int = Field(default=0, description="Output filters")
+    output_activation: str | None = Field(default=None, description="Output activation")
     include_top: bool = Field(default=True, description="Include top")
-    dropout: float = Field(default=0.2, description="Dropout rate")
-    drop_connect_rate: float = Field(default=0.2, description="Drop connect rate")
+    dropout: float = Field(default=0, description="Dropout rate")
+    drop_connect_rate: float = Field(default=0, description="Drop connect rate")
+    use_logits: bool = Field(default=True, description="Use logits")
+    activation: str = Field(default="relu6", description="Activation function")
     model_name: str = Field(default="EfficientNetV2", description="Model name")
 
 
@@ -113,6 +116,27 @@ def EfficientNetV2(
         if 0 < params.dropout < 1:
             y = keras.layers.Dropout(params.dropout)(y)
         y = keras.layers.Dense(num_classes, name=name)(y)
-
+        if params.output_activation:
+            y = keras.layers.Activation(params.output_activation)(y)
+        # if not params.use_logits:
+        #     y = keras.layers.Softmax()(y)
     model = keras.Model(x, y, name=params.model_name)
     return model
+
+
+def efficientnetv2_from_object(
+    x: tf.Tensor,
+    params: dict,
+    num_classes: int,
+) -> keras.Model:
+    """Create model from object
+
+    Args:
+        x (tf.Tensor): Input tensor
+        params (dict): Model parameters.
+        num_classes (int, optional): # classes.
+
+    Returns:
+        keras.Model: Model
+    """
+    return EfficientNetV2(x=x, params=EfficientNetParams(**params), num_classes=num_classes)

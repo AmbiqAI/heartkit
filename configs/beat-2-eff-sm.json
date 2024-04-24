@@ -1,0 +1,86 @@
+{
+    "name": "bc-2-eff-sm",
+    "job_dir": "./results/bc-2-eff-sm",
+    "ds_path": "./datasets",
+    "datasets": [{
+        "name": "icentia11k",
+        "params": {}
+    }],
+    "num_classes": 2,
+    "class_map": {
+        "0": 0,
+        "1": 1,
+        "2": 1
+    },
+    "class_names": [
+        "NONE", "PAC/PVC"
+    ],
+    "sampling_rate": 100,
+    "frame_size": 512,
+    "model_file": "model.keras",
+    "samples_per_patient": [40, 40],
+    "val_samples_per_patient": [40, 40],
+    "val_file": "./results/${task}-class-2-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
+    "test_file": "./results/${task}-class-2-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
+    "val_patients": 0.20,
+    "val_size": 24000,
+    "test_samples_per_patient": [40, 40],
+    "test_size": 30000,
+    "batch_size": 256,
+    "buffer_size": 100000,
+    "epochs": 150,
+    "steps_per_epoch": 50,
+    "val_metric": "loss",
+    "lr_rate": 1e-3,
+    "lr_cycles": 1,
+    "class_weights": "balanced",
+    "threshold": 0.60,
+    "val_acc_threshold": 0.98,
+    "tflm_var_name": "g_beat_model",
+    "tflm_file": "beat_model_buffer.h",
+    "backend": "pc",
+    "quantization": {
+        "enabled": true,
+        "qat": false,
+        "ptq": true,
+        "input_type": "int8",
+        "output_type": "int8",
+        "supported_ops": null
+    },
+    "preprocesses": [
+        {
+            "name": "filter",
+            "params": {
+                "lowcut": 1.0,
+                "highcut": 30,
+                "order": 3,
+                "forward_backward": true,
+                "axis": 0
+            }
+        },
+        {
+            "name": "znorm",
+            "params": {
+                "eps": 0.01,
+                "axis": null
+            }
+        }
+    ],
+    "architecture": {
+        "name": "efficientnetv2",
+        "params": {
+            "input_filters": 24,
+            "input_kernel_size": [1, 9],
+            "input_strides": [1, 2],
+            "blocks": [
+                {"filters": 32, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
+                {"filters": 40, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
+                {"filters": 48, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
+                {"filters": 64, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2}
+            ],
+            "output_filters": 0,
+            "include_top": true,
+            "use_logits": true
+        }
+    }
+}

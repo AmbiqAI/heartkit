@@ -1,209 +1,112 @@
-# :octicons-heart-fill-24:{ .heart } HeartKit Tutorial
+# :octicons-heart-fill-24:{ .heart } HeartKit: AI Heart Analysis Demo
 
-## Overview
+## <span class="sk-h2-span">Overview</span>
 
-HeartKit demo highlights a number of key features of the HeartKit library including.  By leveraging a modern multi-head network architecture coupled with Ambiq's ultra low-power SoC, the demo is designed to be **efficient**, **explainable**, and **extensible**.
+The HeartKit: AI Heart Analysis demo is a real-time, ECG-based heart analysis demonstrator that showcases several AI models trained using Ambiq's open-source HeartKit AI Development Kit. By leveraging a modern multi-head network architecture coupled with Ambiq's ultra low-power SoC, the demo is designed to be **efficient**, **explainable**, and **extensible**.
 
-The architecture consists of an **ECG segmentation** model followed by three upstream heads: **HRV head**, **arrhythmia head**, and **beat head**. The ECG segmentation model serves as the backbone and is used to annotate every sample as either P-wave, QRS, T-wave, or none. The arrhythmia head is used to detect the presence of Atrial Fibrillation (AFIB) or Atrial Flutter (AFL). The HRV head is used to calculate heart rate, rhythm (e.g., bradycardia), and heart rate variability from the R peaks. Lastly, the beat head is used to identify individual irregular beats (PAC, PVC).
-
-This tutorial shows running the full HeartKit demonstrator on the Apollo 4 EVB. The basic flow chart is depicted below.
+The architecture consists of 1-lead ECG data collected in real-time from a MAX86150 sensor. The data is preprocessed using an AI based denoising model followed by an ECG segmentation model. The segmentation model is used to annotate every sample as either P-wave, QRS, T-wave, or none. The resulting ECG data and segmentation mask is then fed into upstream “heads” to perform inference. The upstream heads include a HRV head, a rhythm head, and a beat head. The HRV head is used to calculate heart rate, rhythm, and heart rate variability from the segmented peaks. The rhythm head is used to detect the presence of arrhythmias including Atrial Fibrillation (AFIB) and Atrial Flutter (AFL). The beat model is used to classify individual irregular beats as either normal or ectopic.
 
 ```mermaid
 flowchart LR
-    COLL[1. Collect] --> PRE[2. Preprocess]
-    PRE[2. Preprocess] --> SEG[3. Segmentation]
+    COLL[1. Collect/Prepocess] --> DEN
     subgraph Models
-    SEG[3. Segmentation] --> HRV[4. HRV]
-    SEG[3. Segmentation] --> BEAT[4. BEAT]
-    SEG[3. Segmentation] --> ARR[4. Arrhythmia]
+    DEN[2. Denoise] --> SEG
+    SEG[3. Segmentation] --> HRV
+    SEG[3. Segmentation] --> BEAT
+    SEG[3. Segmentation] --> ARR
     end
-    HRV[4. HRV] --> DISP[5. Display]
-    BEAT[4. BEAT] --> DISP
-    ARR[4. Arrhythmia] --> DISP
+    HRV[4. HRV] --> BLE
+    BEAT[4. BEAT] --> BLE
+    ARR[4. Rhythm] --> BLE
+    BLE[5. BLE] --> APP
+    APP[6. Tileio App]
 ```
 
-In the first stage, 10 seconds of sensor data is collected- either directly from the MAX86150 sensor or test data from the PC. In stage 2, the data is preprocessed by bandpass filtering and standardizing. The data is then fed into the HeartKit models to perform inference. Finally, in stage 4, the ECG data and classification results will be displayed in the front-end UI.
+In the first stage, 5 seconds of sensor data is collected- either from stored subject data or directly from the MAX86150 sensor. In stage 2, the ECG data is denoised and in stage 3 is segmented. In stage 4, the cleaned, segmented data is fed into the upstream HeartKit models to perform inference. Finally, in stage 5, the ECG data and metrics are streamed over BLE to Tileio App to be displayed in a dashboard.
 
 ---
 
-## Architecture
+## <span class="sk-h2-span">Architecture</span>
 
-HeartKit demo leverages a multi-head network- a backbone segmentation model followed by 3 upstream heads:
+The HeartKit demo leverages a multi-head network- a backbone denoising and segmentation model followed by 3 upstream heads:
 
-* __Segmentation backbone__ utilizes a custom 1-D UNET architecture to perform ECG segmentation.
-* __HRV head__ utilizes segmentation results to derive a number of useful metrics including heart rate, rhythm and RR interval.
-* __Arrhythmia head__ utilizes a 1-D MBConv CNN to detect arrhythmias include AFIB and AFL.
-* __Beat-level head__ utilizes a 1-D MBConv CNN to detect irregular individual beats (PAC, PVC).
+* [__Denoising model__](../tasks/denoise.md) utilizes a small 1-D TCN architecture to remove noise from the ECG signal.
+* [__Segmentation model__](../tasks/segmentation.md) utilizes a small 1-D TCN architecture to perform ECG segmentation.
+* [__Rhythm head__](../tasks/rhythm.md) utilizes a 1-D MBConv CNN to detect arrhythmias include AFIB and AFL.
+* [__Beat-level head__](../tasks/beat.md) utilizes a 1-D MBConv CNN to detect irregular individual beats (PAC, PVC).
+* __HRV head__ utilizes segmentation results to derive a number of useful metrics including heart rate and heart rate variability (HRV).
 
-![HeartKit Architecture](../assets/heartkit-architecture.svg)
-
-### ECG Segmentation
-
-The ECG segmentation model serves as the backbone and is used to annotate every sample as either P-wave, QRS, T-wave, or none. The resulting ECG data and segmentation mask is then fed into upstream “heads”. This model utilizes a custom 1-D UNET architecture w/ additional skip connections between encoder and decoder blocks. The encoder blocks are convolutional based and include both expansion and inverted residuals layers. The only preprocessing performed is band-pass filtering and standardization on the window of ECG data.
-
-### HRV Head
-
-The HRV head uses only DSP and statistics (i.e. no neural network is used). Using a combination of segmentation results and QRS filter, the HRV head detects R peak candidates. RR intervals are extracted and filtered, and then used to derive a variety of HRV metrics including heart rate, rhythm, SDNN, SDRR, SDANN, etc. All of the identified R peaks are further fed to the beat classifier head. Note that if segmentation model is not enabled, HRV head falls back to identifying R peaks purely on gradient of QRS signal.
-
-### Arrhythmia Head
-
-The arrhythmia head is used to detect the presence of Atrial Fibrillation (AFIB) or Atrial Flutter (AFL). Note that if heart arrhythmia is detected, the remaining heads are skipped. The arrhythmia model utilizes a 1-D CNN built using MBConv style blocks that incorporate expansion, inverted residuals, and squeeze and excitation layers. Furthermore, longer filter and stide lengths are utilized in the initial layers to capture more temporal dependencies.
-
-### Beat Head
-
-The beat head is used to extract individual beats and classify them as either normal, premature/ectopic atrial contraction (PAC), premature/ectopic ventricular contraction (PVC), or noise. In addition to the target beat, the surrounding beats are also fed into the network as context. The “neighboring” beats are determined based on the average RR interval and not the actual R peak. The beat head also utilizes a 1-D CNN built using MBConv style blocks.
+<!-- ![HeartKit Architecture](../assets/guides/heartkit-architecture.svg) -->
 
 ---
 
-## Demo Setup
+## <span class="sk-h2-span">Demo Setup</span>
 
-Please follow [EVB Setup Guide](./evb-setup.md) to prepare EVB and connect to PC. To use the pre-trained models, please skip to [Run Demo Section](#run-demo).
+### Contents
 
-### 1. Train all the models
+The following items are needed to run the HeartKit demo:
 
-1.1 Train and fine-tune the segmentation model:
-
-```bash
-heartkit \
-    --task segmentation \
-    --mode train \
-    --config ./configs/pretrain-segmentation-model.json
-```
-
-```bash
-heartkit \
-    --task segmentation \
-    --mode train \
-    --config ./configs/train-segmentation-model.json
-```
+* 1x Apollo4 Blue Plus EVB
+* 1x MAX86150 Breakout Board
+* 1x iPad or laptop w/ Chrome Browser
+* 1x USB-C battery pack for EVB
+* 2x USB-C cables
+* 1x Qwiic cable
 
 !!! note
-    The second train command uses quantization-aware training to reduce accuracy drop when exporting to 8-bit.
+    Please be sure to run the EVB from battery when using live sensor data. In addition, be sure to minimize sorrounding EMI/RFI noise as the exposed sensor board's ECG pads are highly sensitive.
 
-1.2 Train the arrhythmia model:
+### Flash Firmware
 
-```bash
-heartkit \
-    --task arrhythmia \
-    --mode train \
-    --config ./configs/train-arrhythmia-model.json
-```
+If using a fresh Apollo 4 EVB, the EVB will need to be flashed with the HeartKit firmware. The firmware can be found in the `./evb` directory. The firmware is compiled using the Arm GNU Toolchain and flashed using the Segger J-Link.
 
-1.3 Train the beat model:
+### Hardware Setup
 
-```bash
-heartkit \
-    --task beat \
-    --mode train \
-    --config ./configs/train-beat-model.json
-```
+In order to connect the MAX86150 breakout board to the EVB, we leverage the Qwiic connector on the breakout board. This will require a Qwiic breakout cable. For 3V3, use a jumper to connect Vext to 3V3 power rail. Then connect the cable as follows:
 
----
+| Qwiic Cable  | EVB Board         |
+| ------------ | ----------------- |
+| Power (RED)  | VCC   (J17 pin 1) |
+| GND (BLACK)  | GND   (J11 pin 3) |
+| SCL (YELLOW) | GPIO8 (J11 pin 3) |
+| SDA (BLUE)   | GPIO9 (J11 pin 1) |
 
-### 2. Evaluate all the models
 
-2.1 Evaluate the segmentation model performance:
+<figure markdown>
+  ![max86150-5pin-header](../assets/guides/max86150-5pin-header.webp){ width="480" }
+  <figcaption>MAX86150 Sensor Board</figcaption>
+</figure>
 
-```bash
-heartkit \
-    --task segmentation \
-    --mode evaluate \
-    --config ./configs/evaluate-segmentation-model.json
-```
-
-2.2 Evaluate the arrhythmia model performance:
-
-```bash
-heartkit \
-    --task arrhythmia \
-    --mode evaluate \
-    --config ./configs/evaluate-arrhythmia-model.json
-```
-
-2.3 Evaluate the beat model performance:
-
-```bash
-heartkit \
-    --task beat \
-    --mode evaluate \
-    --config ./configs/evaluate-beat-model.json
-```
-
-### 3. Export all the models
-
-3.1 Export the segmentation model to `./evb/src/segmentation_model_buffer.h`
-
-```bash
-heartkit \
-    --task segmentation \
-    --mode export \
-    --config ./configs/export-segmentation-model.json
-```
-
-3.2 Export the arrhythmia model to `./evb/src/arrhythmia_model_buffer.h`
-
-```bash
-heartkit \
-    --task arrhythmia \
-    --mode export \
-    --config ./configs/export-arrhythmia-model.json
-```
-
-3.3 Export the beat model to `./evb/src/beat_model_buffer.h`
-
-```bash
-heartkit \
-    --task beat \
-    --mode export \
-    --config ./configs/export-beat-model.json
-```
-
-!!! note
-    Review `./evb/src/constants.h` and ensure settings match configuration file.
 
 ---
 
-## Run Demo
+## <span class="sk-h2-span">Run Demo</span>
 
-Please open three terminals to ease running the demo. We shall refer to these as __EVB Terminal__, __REST Terminal__ and __PC Terminal__.
+1. Connect the MAX86150 breakout board to the EVB using the Qwiic cable.
 
-### 1. Run client on EVB
+2. Power on the EVB using the USB-C battery pack.
 
-Run the following commands in the __EVB Terminal__. This will compile the EVB binary and flash it to the EVB. The binary will be located in `./evb/build`.
+3. Launch Tileio app on your iPad or go to [Tileio Web](https://ambiqai.github.io/tileio) using a Desktop Chrome browser.
 
-```bash
-make -C ./evb
-make -C ./evb deploy
-make -C ./evb view
-```
+4. If this is a new device, click on the "+" icon on the top right corner to add a new device.
 
-Now press the __reset button__ on the EVB. This will allow SWO output to be captured.
+    1. Scan and select device.
+    2. Configure device manually or upload [configuration file]().
+    3. Review and select "ADD" to add device.
 
-### 2. Run REST server on host PC
+5. On “Devices view”, scan for devices. The device should turn opaque and say "ONLINE".
 
-In __REST Terminal__, start the REST server on the PC.
+6. Tap on the target device Tile to display the device dashboard.
 
-```bash
-uvicorn heartkit.demo.server:app --host 0.0.0.0 --port 8000
-```
+7. In the device dashboard, tap the BLE( :material-bluetooth: ) icon to connect to the device.
 
-### 3. Run client and UI on host PC
+8. If this is a new device, go to the "Settings" and configure the dashboard Tiles.
 
-In __PC Terminal__, start the PC client (console UI).
+9. After 5 seconds, live data should start streaming to the Tileio app.
 
-```bash
-heartkit --mode demo --config ./configs/heartkit-demo.json
-```
+10. Use the "Input Select" to switch subject ECG input and "Noise Input" slider to inject additional noise.
 
-Upon start, the client will scan and connect to the EVB serial port. If no port is detected after 30 seconds, the client will exit. If successful, the client should discover the USB port and start updating UI.
+![evb-demo-plot](../assets/guides/hk-dashboard.jpeg)
 
-### 4. Trigger start
-
-Now that the EVB client, PC client, and PC REST server are running, press either __Button 1 (BTN1)__ or __Button 2 (BTN2)__ on the EVB to start the demo. Pressing Button 1 will use live sensor data whereas Button 2 will use test dataset supplied by the PC. In __EVB Terminal__, the EVB should be printing the stage it's in (e.g `INFERENCE STAGE`) and any results. In __PC Terminal__, the PC should be plotting the data along with classification results. Once finished, Button 1 or Button 2 can be pressed to stop capturing.
-
-![evb-demo-plot](../assets/heartkit-demo.png)
-
-To shutdown the PC client, a keyboard interrupt can be used (e.g `[CTRL]+C`) in __PC Terminal__.
-Likewise, a keyboard interrupt can be used (e.g `[CTRL]+C`) to stop the PC REST server in __REST Terminal__.
 
 ---

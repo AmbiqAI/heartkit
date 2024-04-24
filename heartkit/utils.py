@@ -3,6 +3,8 @@ import logging
 import os
 import pickle
 import random
+from pathlib import Path
+from string import Template
 from typing import Any
 
 import numpy as np
@@ -131,3 +133,16 @@ def download_file(src: str, dst: os.PathLike, progress: bool = True, chunk_size:
             # END FOR
         # END WITH
     # END WITH
+
+
+def resolve_template_path(fpath: Path, **kwargs: Any) -> Path:
+    """Resolve templated path w/ supplied substitutions.
+
+    Args:
+        fpath (Path): File path
+        **kwargs (Any): Template arguments
+
+    Returns:
+        Path: Resolved file path
+    """
+    return Path(Template(str(fpath)).safe_substitute(**kwargs))

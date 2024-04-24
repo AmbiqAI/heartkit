@@ -18,20 +18,20 @@ from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
 
 from ... import tflite as tfa
 from ...defines import HKDemoParams, HKExportParams, HKTestParams, HKTrainParams
-from ...metrics import confusion_matrix_plot, f1_score, roc_auc_plot
+from ...metrics import (
+    confusion_matrix_plot,
+    f1_score,
+    px_plot_confusion_matrix,
+    roc_auc_plot,
+)
 from ...models.utils import threshold_predictions
-from ...rpc.backends import EvbBackend, PcBackend
+from ...rpc import BackendFactory
 from ...utils import env_flag, set_random_seed, setup_logger
 from ..task import HKTask
-from .defines import (
-    get_class_mapping,
-    get_class_names,
-    get_class_shape,
-    get_classes,
-    get_feat_shape,
-)
 from .utils import (
     create_model,
+    get_class_shape,
+    get_feat_shape,
     load_datasets,
     load_test_datasets,
     load_train_datasets,
@@ -42,7 +42,7 @@ console = Console()
 logger = setup_logger(__name__)
 
 
-class Beat(HKTask):
+class BeatTask(HKTask):
     """HeartKit Beat Task"""
 
     @staticmethod
@@ -74,9 +74,9 @@ class Beat(HKTask):
             wandb.config.update(params.model_dump())
         # END IF
 
-        classes = get_classes(params.num_classes)
-        class_names = get_class_names(params.num_classes)
-        class_map = get_class_mapping(params.num_classes)
+        classes = sorted(list(set(params.class_map.values())))
+        class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
+
         input_spec = (
             tf.TensorSpec(shape=get_feat_shape(params.frame_size), dtype=tf.float32),
             tf.TensorSpec(shape=get_class_shape(params.frame_size, params.num_classes), dtype=tf.int32),
@@ -87,17 +87,20 @@ class Beat(HKTask):
             frame_size=params.frame_size,
             sampling_rate=params.sampling_rate,
             spec=input_spec,
-            class_map=class_map,
+            class_map=params.class_map,
             datasets=params.datasets,
         )
         train_ds, val_ds = load_train_datasets(datasets=datasets, params=params)
 
         test_labels = [label.numpy() for _, label in val_ds]
-        y_true = np.argmax(np.concatenate(test_labels), axis=-1)
+        y_true = np.argmax(np.concatenate(test_labels), axis=-1).flatten()
 
         class_weights = 0.25
         if params.class_weights == "balanced":
             class_weights = sklearn.utils.compute_class_weight("balanced", classes=np.array(classes), y=y_true)
+            class_weights = (class_weights + class_weights.mean()) / 2  # Smooth out
+        # END IF
+        logger.info(f"Class weights: {class_weights}")
 
         with tfa.get_strategy().scope():
             inputs = keras.Input(shape=input_spec[0].shape, batch_size=None, name="input", dtype=input_spec[0].dtype)
@@ -129,7 +132,10 @@ class Beat(HKTask):
             # END IF
             optimizer = keras.optimizers.Adam(scheduler)
             loss = keras.losses.CategoricalFocalCrossentropy(from_logits=True, alpha=class_weights)
-            metrics = [keras.metrics.CategoricalAccuracy(name="acc")]
+            metrics = [
+                keras.metrics.CategoricalAccuracy(name="acc"),
+                tfa.MultiF1Score(name="f1", average="weighted"),
+            ]
 
             if params.resume and params.weights_file:
                 logger.info(f"Hydrating model weights from file {params.weights_file}")
@@ -159,7 +165,7 @@ class Beat(HKTask):
                     restore_best_weights=True,
                 ),
                 ModelCheckpoint(
-                    filepath=params.model_file,
+                    filepath=str(params.model_file),
                     monitor=f"val_{params.val_metric}",
                     save_best_only=True,
                     mode="max" if params.val_metric == "f1" else "auto",
@@ -194,7 +200,7 @@ class Beat(HKTask):
             # Get full validation results
             keras.models.load_model(params.model_file)
             logger.info("Performing full validation")
-            y_pred = np.argmax(model.predict(val_ds), axis=-1)
+            y_pred = np.argmax(model.predict(val_ds), axis=-1).flatten()
 
             cm_path = params.job_dir / "confusion_matrix.png"
             confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
@@ -226,8 +232,9 @@ class Beat(HKTask):
         handler.setLevel(logging.INFO)
         logger.addHandler(handler)
 
-        class_names = get_class_names(params.num_classes)
-        class_map = get_class_mapping(params.num_classes)
+        # classes = sorted(list(set(params.class_map.values())))
+        class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
+
         input_spec = (
             tf.TensorSpec(shape=get_feat_shape(params.frame_size), dtype=tf.float32),
             tf.TensorSpec(shape=get_class_shape(params.frame_size, params.num_classes), dtype=tf.int32),
@@ -238,7 +245,7 @@ class Beat(HKTask):
             frame_size=params.frame_size,
             sampling_rate=params.sampling_rate,
             spec=input_spec,
-            class_map=class_map,
+            class_map=params.class_map,
             datasets=params.datasets,
         )
         test_x, test_y = load_test_datasets(datasets=datasets, params=params)
@@ -252,10 +259,11 @@ class Beat(HKTask):
             logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
             logger.info("Performing inference")
-            y_true = np.argmax(test_y, axis=-1)
+            y_true = np.argmax(test_y, axis=-1).flatten()
             y_prob = tf.nn.softmax(model.predict(test_x)).numpy()
-            y_pred = np.argmax(y_prob, axis=-1)
+            y_pred = np.argmax(y_prob, axis=-1).flatten()
 
+            print("IDDQD", y_true.shape, y_pred.shape, y_prob.shape)
             # Summarize results
             logger.info("Testing Results")
             test_acc = np.sum(y_pred == y_true) / len(y_true)
@@ -280,6 +288,9 @@ class Beat(HKTask):
 
             cm_path = params.job_dir / "confusion_matrix_test.png"
             confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
+            px_plot_confusion_matrix(
+                y_true, y_pred, labels=class_names, save_path=cm_path.with_suffix(".html"), normalize="true"
+            )
         # END WITH
 
     @staticmethod
@@ -300,7 +311,9 @@ class Beat(HKTask):
         tfl_model_path = params.job_dir / "model.tflite"
         tflm_model_path = params.job_dir / "model_buffer.h"
 
-        class_map = get_class_mapping(params.num_classes)
+        # classes = sorted(list(set(params.class_map.values())))
+        # class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
+
         input_spec = (
             tf.TensorSpec(shape=get_feat_shape(params.frame_size), dtype=tf.float32),
             tf.TensorSpec(shape=get_class_shape(params.frame_size, params.num_classes), dtype=tf.int32),
@@ -311,7 +324,7 @@ class Beat(HKTask):
             frame_size=params.frame_size,
             sampling_rate=params.sampling_rate,
             spec=input_spec,
-            class_map=class_map,
+            class_map=params.class_map,
             datasets=params.datasets,
         )
         test_x, test_y = load_test_datasets(datasets=datasets, params=params)
@@ -335,25 +348,25 @@ class Beat(HKTask):
         logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
         logger.info(f"Converting model to TFLite (quantization={params.quantization.enabled})")
-        if params.quantization.enabled:
-            _, quant_df = tfa.debug_quant_tflite(
-                model=model,
-                test_x=test_x,
-                input_type=params.quantization.input_type,
-                output_type=params.quantization.output_type,
-                supported_ops=params.quantization.supported_ops,
-            )
-            quant_df.to_csv(params.job_dir / "quant.csv")
-        # END IF
 
-        tflite_model = tfa.convert_tflite(
+        converter = tfa.create_tflite_converter(
             model=model,
             quantize=params.quantization.enabled,
             test_x=test_x,
             input_type=params.quantization.input_type,
             output_type=params.quantization.output_type,
             supported_ops=params.quantization.supported_ops,
+            use_concrete=True,
+            feat_shape=get_feat_shape(params.frame_size),
         )
+        tflite_model = converter.convert()
+
+        # if params.quantization.enabled:
+        #     _, quant_df = tfa.debug_quant_tflite(
+        #        converter=converter
+        #     )
+        #     quant_df.to_csv(params.job_dir / "quant.csv")
+        # # END IF
 
         # Save TFLite model
         logger.info(f"Saving TFLite model to {tfl_model_path}")
@@ -408,13 +421,15 @@ class Beat(HKTask):
         secondary_color = "#ce6cff"
         plotly_template = "plotly_dark"
 
+        params.demo_size = params.demo_size or 20 * params.sampling_rate
+
         # Load backend inference engine
-        BackendRunner = EvbBackend if params.backend == "evb" else PcBackend
-        runner = BackendRunner(params=params)
+        runner = BackendFactory.create(params.backend, params=params)
 
         # Load data
-        class_names = get_class_names(params.num_classes)
-        class_map = get_class_mapping(params.num_classes)
+        # classes = sorted(list(set(params.class_map.values())))
+        class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
+
         input_spec = (
             tf.TensorSpec(shape=get_feat_shape(params.frame_size), dtype=tf.float32),
             tf.TensorSpec(shape=get_class_shape(params.frame_size, params.num_classes), dtype=tf.int32),
@@ -422,10 +437,10 @@ class Beat(HKTask):
 
         ds = load_datasets(
             ds_path=params.ds_path,
-            frame_size=20 * params.sampling_rate,
+            frame_size=params.demo_size,
             sampling_rate=params.sampling_rate,
             spec=input_spec,
-            class_map=class_map,
+            class_map=params.class_map,
             datasets=params.datasets,
         )[0]
         x = next(
@@ -451,13 +466,14 @@ class Beat(HKTask):
             stop = start + params.frame_size
             if start - avg_rr < 0 or stop + avg_rr > x.size:
                 continue
-            xx = np.vstack(
-                (
-                    x[start - avg_rr : stop - avg_rr],
-                    x[start:stop],
-                    x[start + avg_rr : stop + avg_rr],
-                )
-            ).T
+            # xx = np.vstack(
+            #     (
+            #         x[start - avg_rr : stop - avg_rr],
+            #         x[start:stop],
+            #         x[start + avg_rr : stop + avg_rr],
+            #     )
+            # ).T
+            xx = x[start:stop]
             xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
             runner.set_inputs(xx)
             runner.perform_inference()
@@ -557,6 +573,7 @@ class Beat(HKTask):
         )
 
         fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=True)
-        fig.show()
-
         logger.info(f"Report saved to {params.job_dir / 'demo.html'}")
+
+        if params.display_report:
+            fig.show()

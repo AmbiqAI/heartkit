@@ -1,6 +1,0 @@
-extern/SEGGER_RTT/R7.70a/RTT/SEGGER_RTT.o: \
- extern/SEGGER_RTT/R7.70a/RTT/SEGGER_RTT.c \
- extern/SEGGER_RTT/R7.70a/RTT/SEGGER_RTT.h \
- extern/SEGGER_RTT/R7.70a/RTT/../Config/SEGGER_RTT_Conf.h
-extern/SEGGER_RTT/R7.70a/RTT/SEGGER_RTT.h:
-extern/SEGGER_RTT/R7.70a/RTT/../Config/SEGGER_RTT_Conf.h:

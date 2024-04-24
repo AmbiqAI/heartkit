@@ -1,5 +1,6 @@
 import logging
 import os
+import random
 import shutil
 
 import keras
@@ -14,13 +15,15 @@ from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
 
 from ... import tflite as tfa
 from ...datasets import augment_pipeline
+from ...datasets.nstdb import NstdbNoise
 from ...defines import HKDemoParams, HKExportParams, HKTestParams, HKTrainParams
-from ...rpc.backends import EvbBackend, PcBackend
+from ...rpc import BackendFactory
 from ...utils import env_flag, set_random_seed, setup_logger
 from ..task import HKTask
-from .defines import get_class_shape, get_feat_shape
 from .utils import (
     create_model,
+    get_class_shape,
+    get_feat_shape,
     load_datasets,
     load_test_datasets,
     load_train_datasets,
@@ -30,7 +33,7 @@ from .utils import (
 logger = setup_logger(__name__)
 
 
-class Denoise(HKTask):
+class DenoiseTask(HKTask):
     """HeartKit ECG Denoise Task"""
 
     @staticmethod
@@ -64,6 +67,7 @@ class Denoise(HKTask):
         # END IF
 
         num_classes = 1
+
         input_spec = (
             tf.TensorSpec(shape=get_feat_shape(params.frame_size), dtype=tf.float32),
             tf.TensorSpec(shape=get_class_shape(params.frame_size, num_classes), dtype=tf.float32),
@@ -110,9 +114,11 @@ class Denoise(HKTask):
 
             optimizer = keras.optimizers.Adam(scheduler)
             loss = keras.losses.MeanSquaredError()
+
             metrics = [
                 keras.metrics.MeanAbsoluteError(name="mae"),
                 keras.metrics.MeanSquaredError(name="mse"),
+                keras.metrics.CosineSimilarity(name="cosine"),
             ]
 
             if params.resume and params.weights_file:
@@ -144,7 +150,7 @@ class Denoise(HKTask):
                     restore_best_weights=True,
                 ),
                 ModelCheckpoint(
-                    filepath=params.model_file,
+                    filepath=str(params.model_file),
                     monitor=f"val_{params.val_metric}",
                     save_best_only=True,
                     save_weights_only=False,
@@ -225,16 +231,24 @@ class Denoise(HKTask):
             logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
             logger.info("Performing inference")
-            y_true = test_y
+            y_true = test_y.squeeze()
             y_prob = model.predict(test_x)
-            y_pred = y_prob
+            y_pred = y_prob.squeeze()
         # END WITH
 
         # Summarize results
+        cossim = keras.metrics.CosineSimilarity()
+        cossim.update_state(y_true, y_pred)  # pylint: disable=E1102
+        test_cossim = cossim.result().numpy()  # pylint: disable=E1102
         logger.info("Testing Results")
-        test_mae = np.mean(np.abs(y_true - y_pred))
-        test_rmse = np.sqrt(np.mean(np.square(y_true - y_pred)))
-        logger.info(f"[TEST SET] MAE={test_mae:.2%}, RMSE={test_rmse:.2%}")
+        mae = keras.metrics.MeanAbsoluteError()
+        mae.update_state(y_true, y_pred)  # pylint: disable=E1102
+        test_mae = mae.result().numpy()  # pylint: disable=E1102
+        mse = keras.metrics.MeanSquaredError()
+        mse.update_state(y_true, y_pred)  # pylint: disable=E1102
+        test_mse = mse.result().numpy()  # pylint: disable=E1102
+        np.sqrt(np.mean(np.square(y_true - y_pred)))
+        logger.info(f"[TEST SET] MAE={test_mae:.2%}, MSE={test_mse:.2%}, COSSIM={test_cossim:.2%}")
 
     @staticmethod
     def export(params: HKExportParams):
@@ -283,24 +297,56 @@ class Denoise(HKTask):
         logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
         logger.info(f"Converting model to TFLite (quantization={params.quantization.enabled})")
-        if params.quantization.enabled:
-            _, quant_df = tfa.debug_quant_tflite(
-                model=model,
-                test_x=test_x,
-                input_type=params.quantization.input_type,
-                output_type=params.quantization.output_type,
-                supported_ops=params.quantization.supported_ops,
-            )
-            quant_df.to_csv(params.job_dir / "quant.csv")
+        # if params.quantization.enabled:
+        #     _, quant_df = tfa.debug_quant_tflite(
+        #         model=model,
+        #         test_x=test_x,
+        #         input_type=params.quantization.input_type,
+        #         output_type=params.quantization.output_type,
+        #         supported_ops=params.quantization.supported_ops,
+        #     )
+        #     quant_df.to_csv(params.job_dir / "quant.csv")
+        # # END IF
+        # tflite_model = tfa.convert_tflite(
+        #     model=model,
+        #     quantize=params.quantization.enabled,
+        #     test_x=test_x,
+        #     input_type=params.quantization.input_type,
+        #     output_type=params.quantization.output_type,
+        #     supported_ops=params.quantization.supported_ops,
+        # )
 
-        tflite_model = tfa.convert_tflite(
-            model=model,
-            quantize=params.quantization.enabled,
-            test_x=test_x,
-            input_type=params.quantization.input_type,
-            output_type=params.quantization.output_type,
-            supported_ops=params.quantization.supported_ops,
+        # Following is a workaround for bug (https://github.com/tensorflow/tflite-micro/issues/2319)
+        # Default TFLiteConverter generates equivalent graph w/ SpaceToBatchND operations but losses dilation_rate factor.
+        # Using concrete function instead of model object to avoid this issue.
+        model_func = tf.function(func=model)
+        model_cf = model_func.get_concrete_function(
+            tf.TensorSpec(shape=(1,) + get_feat_shape(params.frame_size), dtype=tf.float32)
         )
+        converter = tf.lite.TFLiteConverter.from_concrete_functions([model_cf], model)
+
+        if params.quantization.enabled:
+            converter.optimizations = [tf.lite.Optimize.DEFAULT]
+            if test_x is not None:
+                input_type = (
+                    tf.dtypes.as_dtype(params.quantization.input_type) if params.quantization.input_type else None
+                )
+                output_type = (
+                    tf.dtypes.as_dtype(params.quantization.output_type) if params.quantization.output_type else None
+                )
+                converter.target_spec.supported_ops = params.quantization.supported_ops or [
+                    tf.lite.OpsSet.TFLITE_BUILTINS_INT8
+                ]
+                converter.inference_input_type = input_type
+                converter.inference_output_type = output_type
+
+                def rep_dataset():
+                    for i in range(test_x.shape[0]):
+                        yield [test_x[i : i + 1]]
+
+                converter.representative_dataset = rep_dataset
+            # END IF
+        tflite_model = converter.convert()
 
         # Save TFLite model
         logger.info(f"Saving TFLite model to {tfl_model_path}")
@@ -351,14 +397,15 @@ class Denoise(HKTask):
         """
         bg_color = "rgba(38,42,50,1.0)"
         primary_color = "#11acd5"
-        secondary_color = "#ce6cff"
+        # secondary_color = "#ce6cff"
         tertiary_color = "rgb(234,52,36)"
-        # quaternary_color = "rgb(92,201,154)"
+        quaternary_color = "rgb(92,201,154)"
         plotly_template = "plotly_dark"
 
+        params.demo_size = params.demo_size or 10 * params.sampling_rate
+
         # Load backend inference engine
-        BackendRunner = EvbBackend if params.backend == "evb" else PcBackend
-        runner = BackendRunner(params=params)
+        runner = BackendFactory.create(params.backend, params=params)
 
         num_classes = 1
         input_spec = (
@@ -367,19 +414,30 @@ class Denoise(HKTask):
         )
 
         # Load data
-        ds = load_datasets(
+        dsets = load_datasets(
             ds_path=params.ds_path,
-            frame_size=10 * params.sampling_rate,
+            frame_size=params.demo_size,
             sampling_rate=params.sampling_rate,
             spec=input_spec,
             class_map=None,
             datasets=params.datasets,
-        )[0]
-        x = next(ds.signal_generator(ds.uniform_patient_generator(patient_ids=ds.get_test_patient_ids(), repeat=False)))
+        )
+        # Randomly choose a dataset
+        ds = random.choice(dsets)
+        x, y_act = next(
+            ds.task_data_generator(ds.uniform_patient_generator(patient_ids=ds.get_test_patient_ids(), repeat=False))
+        )
 
-        y_act = x.copy()
         if params.augmentations:
-            x = augment_pipeline(x, augmentations=params.augmentations, sample_rate=params.sampling_rate)
+            x = augment_pipeline(x=x, augmentations=params.augmentations, sample_rate=params.sampling_rate)
+            nstdb_aug = next(filter(lambda a: a.name == "nstdb", params.augmentations), None)
+            if nstdb_aug:
+                nstdb_noise_gen = NstdbNoise(ds_path=params.ds_path, target_rate=params.sampling_rate)
+                noise_range = nstdb_aug.params.get("noise_level", [0.1, 0.1])
+                noise_level = np.random.uniform(noise_range[0], noise_range[1])
+                print(noise_level)
+                x = nstdb_noise_gen.apply_noise(x, noise_level)
+
         x = prepare(x, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
         y_act = prepare(y_act, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
 
@@ -387,32 +445,51 @@ class Denoise(HKTask):
         runner.open()
         logger.info("Running inference")
         y_pred = np.zeros(x.size, dtype=np.float32)
-        for i in tqdm(range(0, x.size, params.frame_size), desc="Inference"):
-            if i + params.frame_size > x.size:
-                start, stop = x.size - params.frame_size, x.size
-            else:
-                start, stop = i, i + params.frame_size
-            xx = x[start:stop]
-            runner.set_inputs(xx)
-            runner.perform_inference()
-            yy = runner.get_outputs()
-            y_pred[start:stop] = yy.flatten()
+
+        cos_sim_diff = 0
+        prev_cos_sim = 0
+
+        x_input = x.copy()
+        for trial in range(8):
+
+            for i in tqdm(range(0, x.size, params.frame_size), desc="Inference"):
+                if i + params.frame_size > x.size:
+                    start, stop = x.size - params.frame_size, x.size
+                else:
+                    start, stop = i, i + params.frame_size
+                xx = x_input[start:stop]
+                runner.set_inputs(xx)
+                runner.perform_inference()
+                yy = runner.get_outputs()
+                y_pred[start:stop] = yy.flatten()
+            # END FOR
+            x_input = y_pred.copy()
+            cos_sim = np.dot(y_act, y_pred) / (np.linalg.norm(y_act) * np.linalg.norm(y_pred))
+            cos_sim_diff = cos_sim - prev_cos_sim
+            prev_cos_sim = cos_sim
+            logger.info(f"Trial {trial+1}: Cosine Similarity: {cos_sim:.2%} (diff: {cos_sim_diff:.2%})")
+            if cos_sim_diff < 1e-3:
+                break
+
         # END FOR
         runner.close()
-
         # Report
         logger.info("Generating report")
         ts = np.arange(0, x.size) / params.sampling_rate
 
+        # Compute cosine similarity
+        cos_sim_orig = np.dot(y_act, x) / (np.linalg.norm(y_act) * np.linalg.norm(x))
+        cos_sim = np.dot(y_act, y_pred) / (np.linalg.norm(y_act) * np.linalg.norm(y_pred))
+        logger.info(f"Before Cosine Similarity: {cos_sim_orig:.2%}")
+        logger.info(f"After Cosine Similarity: {cos_sim:.2%}")
+
         fig = make_subplots(
-            rows=1,
-            cols=3,
-            specs=[
-                [{"colspan": 3, "type": "xy", "secondary_y": True}, None, None],
-            ],
-            subplot_titles=("ECG Plot",),
+            rows=3,
+            cols=1,
+            shared_xaxes=True,
+            # subplot_titles=("ECG Plot",),
             horizontal_spacing=0.1,
-            vertical_spacing=0.2,
+            vertical_spacing=0.0,
         )
 
         fig.add_trace(
@@ -421,11 +498,10 @@ class Denoise(HKTask):
                 y=x,
                 name="ECG raw",
                 mode="lines",
-                line=dict(color=primary_color, width=2),
+                line=dict(color=primary_color, width=3),
             ),
             row=1,
             col=1,
-            secondary_y=False,
         )
 
         fig.add_trace(
@@ -434,11 +510,10 @@ class Denoise(HKTask):
                 y=y_pred,
                 name="ECG clean",
                 mode="lines",
-                line=dict(color=secondary_color, width=2),
+                line=dict(color=quaternary_color, width=3),
             ),
-            row=1,
+            row=2,
             col=1,
-            secondary_y=True,
         )
 
         fig.add_trace(
@@ -447,14 +522,13 @@ class Denoise(HKTask):
                 y=y_act,
                 name="ECG ideal",
                 mode="lines",
-                line=dict(color=tertiary_color, width=2),
+                line=dict(color=tertiary_color, width=3),
             ),
-            row=1,
+            row=3,
             col=1,
-            secondary_y=False,
         )
 
-        fig.update_xaxes(title_text="Time (s)", row=1, col=1)
+        fig.update_xaxes(title_text="Time (s)", row=3, col=1)
         fig.update_yaxes(title_text="ECG", row=1, col=1)
 
         fig.update_layout(
@@ -468,6 +542,7 @@ class Denoise(HKTask):
         )
 
         fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=False)
-        fig.show()
-
         logger.info(f"Report saved to {params.job_dir / 'demo.html'}")
+
+        if params.display_report:
+            fig.show()

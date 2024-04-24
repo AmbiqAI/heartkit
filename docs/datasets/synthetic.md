@@ -17,7 +17,7 @@ The tool is available under BSD-3-Clause License.
 
 ## <span class="sk-h2-span">Supported Tasks</span>
 
-* [Arrhythmia](../tasks/arrhythmia.md)
+* [Rhythm](../tasks/rhythm.md)
 * [Segmentation](../tasks/segmentation.md)
 
 ## <span class="sk-h2-span">Usage</span>
@@ -46,5 +46,5 @@ The tool is available under BSD-3-Clause License.
     ```
 
     <div class="sk-plotly-graph-div">
-    --8<-- "assets/pk_ecg_synthetic_nsr.html"
+    --8<-- "assets/segmentation_example.html"
     </div>

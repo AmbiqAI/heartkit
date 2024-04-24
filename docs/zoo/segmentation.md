@@ -1,67 +1,132 @@
 # Pre-Trained Segmentation Models
 
-## <span class="sk-h2-span">Datasets Used</span>
+## <span class="sk-h2-span">Overview</span>
 
-We leverage the following datasets for training the segmentation models:
+The following table provides the latest pre-trained models for ECG segmentation. Below we also provide additional details including training configuration, accuracy metrics, and hardware performance results for the models.
 
-- **[Icentia11k](../datasets/icentia11k.md)**
-- **[Lobachevsky University Electrocardiography dataset (LUDB)](../datasets/ludb.md)**
-- **[QT dataset (QTDB)](../datasets/qtdb.md)**
-- **[Synthetic via PhysioKit](../datasets/synthetic.md)**
+--8<-- "assets/zoo/segmentation/segmentation-model-zoo-table.md"
 
 ---
 
-## <span class="sk-h2-span">Model Architectures</span>
+## <span class="sk-h2-span">Model Details</span>
 
-The models are based on the [U-Net architecture](../models/unet.md). The U-Net architecture is a fully convolutional network that consists of an encoder and decoder useful for image segmentation. The network was adapted for 1D time series data by replacing the 2D convolutions with 1D convolutions.
+=== "SEG-2-TCN-SM"
+
+    The __SEG-2-TCN-SM__ model is a 2-class ECG segmentation model that uses a Temporal Convolutional Network (TCN) architecture. The model is trained on raw ECG data and is able to delineate QRS complexes.
+
+    ### Input
+
+    - **Sensor**: ECG
+    - **Location**: Wrist
+    - **Sampling Rate**: 100 Hz
+    - **Frame Size**: 2.5 seconds
+
+    ### Class Mapping
+
+    Detect only QRS complexes
+
+    | Base Class    | Target Class | Label     |
+    | ------------- | ------------ | --------- |
+    | 0-NONE        | 0            | NONE      |
+    | 2-QRS         | 1            | QRS       |
+
+=== "SEG-4-TCN-SM"
+
+    The __SEG-4-TCN-SM__ model is a 4-class ECG segmentation model that uses a Temporal Convolutional Network (TCN) architecture. The model is trained on raw ECG data and is able to delineate P-wave, QRS complexes, and T-wave.
+
+    ### Input
+
+    - **Sensor**: ECG
+    - **Location**: Wrist
+    - **Sampling Rate**: 100 Hz
+    - **Frame Size**: 2.5 seconds
+
+    ### Class Mapping
+
+    Identify each of the P-wave, QRS complex, and T-wave.
+
+    | Base Class       | Target Class | Label        |
+    | ---------------- | ------------ | ------------ |
+    | 0-NONE           | 0            | NONE         |
+    | 1-PWAVE          | 1            | PWAVE        |
+    | 2-QRS            | 2            | QRS          |
+    | 3-TWAVE          | 3            | TWAVE        |
+
+    ### Datasets
+
+    - **[Icentia11k](../datasets/icentia11k.md)**
+    - **[PTB-XL](../datasets/ptbxl.md)**
+
+=== "SEG-4-TCN-LG"
+
+    The __SEG-4-TCN-LG__ model is a 4-class ECG segmentation model that uses a Temporal Convolutional Network (TCN) architecture. The model is trained on raw ECG data and is able to delineate P-wave, QRS complexes, and T-wave.
+
+    ### Input
+
+    - **Sensor**: ECG
+    - **Location**: Wrist
+    - **Sampling Rate**: 100 Hz
+    - **Frame Size**: 2.5 seconds
+
+    ### Class Mapping
+
+    Identify each of the P-wave, QRS complex, and T-wave.
+
+    | Base Class       | Target Class | Label        |
+    | ---------------- | ------------ | ------------ |
+    | 0-NONE           | 0            | NONE         |
+    | 1-PWAVE          | 1            | PWAVE        |
+    | 2-QRS            | 2            | QRS          |
+    | 3-TWAVE          | 3            | TWAVE        |
+
+    ### Datasets
+
+    - **[Lobachevsky University Electrocardiography dataset (LUDB)](../datasets/ludb.md)**
+    - **[Synthetic](../datasets/synthetic.md)**
 
 ---
 
-## <span class="sk-h2-span"> Preprocessing</span>
 
-For ECG segmentation, the models are trained directly on single channel ECG data. No feature extraction is performed. However, the data is preprocessed by applying a band-pass filter to remove noise followed by down-sampling. The filtered ECG signals are normalized by subtracting the mean and dividing by the standard deviation. We also add a small epsilon value to the standard deviation to avoid division by zero.
+## <span class="sk-h2-span">Model Performance</span>
 
----
+=== "SEG-2-TCN-SM"
 
-## <span class="sk-h2-span"> Training Procedure </span>
+    The confusion matrix for the __SEG-2-TCN-SM__ segmentation model is depicted below.
 
-For training the models, we utilize the following setup:
+    <div class="sk-plotly-graph-div">
+    --8<-- "assets/zoo/segmentation/seg-2-tcn-sm-cm.html"
+    </div>
 
-- **[Focal loss function](https://arxiv.org/pdf/1708.02002.pdf)**
-- **[Adam optimizer](https://arxiv.org/pdf/1412.6980.pdf)**
-- **[Cosine decay learning rate scheduler w/ restarts](https://arxiv.org/pdf/1608.03983.pdf)**
-- **Early stopping**
+=== "SEG-4-TCN-SM"
 
----
+    The confusion matrix for the __SEG-4-TCN-SM__ segmentation model is depicted below.
 
-## <span class="sk-h2-span"> Evaluation Metrics </span>
+    <div class="sk-plotly-graph-div">
+    --8<-- "assets/zoo/segmentation/seg-4-tcn-sm-cm.html"
+    </div>
 
-For each dataset, 10% of the data is held out for testing. From the remaining, 20% of the data is randomly selected for validation. There is no mixing of subjects between the training, validation, and test sets. Furthermore, the test set is held fixed while training and validation are randomly split during training. We evaluate the models performance using a variety of metrics including loss, accuracy, F1 score, average precision (AP).
+=== "SEG-4-TCN-LG"
 
----
+    The confusion matrix for the __SEG-4-TCN-LG__ segmentation model is depicted below.
 
-## <span class="sk-h2-span">Model Results</span>
-
-The following results are obtained from the pre-trained segmentation models when testing on 1,000 patients (not used during training).
-
---8<-- "assets/segmentation-model-hw-table.md"
+    <div class="sk-plotly-graph-div">
+    --8<-- "assets/zoo/segmentation/seg-4-tcn-lg-cm.html"
+    </div>
 
 ---
 
-## <span class="sk-h2-span">Confusion Matrix</span>
+## <span class="sk-h2-span">EVB Performance</span>
 
-=== "2-Class"
+The following table provides the latest performance and accuracy results of all models when running on Apollo4 Plus EVB. These results are obtained using neuralSPOTs [Autodeploy tool](https://ambiqai.github.io/neuralSPOT/docs/From%20TF%20to%20EVB%20-%20testing%2C%20profiling%2C%20and%20deploying%20AI%20models.html). From neuralSPOT repo, the following command can be used to capture EVB results via Autodeploy:
 
-    ![2-Stage Sleep Stage Confusion Matrix](../assets/segmentation-2-cm.png){ width="480" }
+``` console
+python -m ns_autodeploy \
+--tflite-filename model.tflite \
+--model-name model \
+--cpu-mode 192 \
+--arena-size-scratch-buffer-padding 0 \
+--max-arena-size 80 \
 
-=== "3-Class"
+```
 
-    ![3-Stage Sleep Stage Confusion Matrix](../assets/segmentation-3-cm.png){ width="480" }
-
-=== "4-Class"
-
-    ![4-Stage Sleep Stage Confusion Matrix](../assets/segmentation-4-cm.png){ width="480" }
-
----
-
-<!-- ## <span class="sk-h2-span">EVB Performance</span> -->
+--8<-- "assets/zoo/segmentation/segmentation-model-hw-table.md"

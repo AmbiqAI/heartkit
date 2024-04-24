@@ -6,6 +6,8 @@ U-Net is a type of convolutional neural network (CNN) that is commonly used for 
 
 For more info, refer to the original paper [U-Net: Convolutional Networks for Biomedical Image Segmentation](https://doi.org/10.1007/978-3-319-24574-4_28).
 
+---
+
 ## <span class="sk-h2-span">Additions</span>
 
 The U-Net architecture has been modified to allow the following:
@@ -16,13 +18,13 @@ The U-Net architecture has been modified to allow the following:
 * Normalization can be set between batch normalization and layer normalization.
 * ReLU is replaced with the approximated ReLU6.
 
-
+---
 
 ## <span class="sk-h2-span">Arguments</span>
 
 The following arguments can be passed to the `U-Net` class:
 
-`UNetParams`:
+### UNetParams
 
 | Argument | Type | Description | Default |
 | --- | --- | --- | --- |
@@ -33,7 +35,7 @@ The following arguments can be passed to the `U-Net` class:
 | output_kernel_size | int, tuple[int, int] | Output kernel size | 3 |
 | output_kernel_stride | int, tuple[int, int] | Output kernel stride | 1 |
 
-`UNetBlockParams`:
+### UNetBlockParams
 
 | Argument | Type | Description | Default |
 | --- | --- | --- | --- |
@@ -48,3 +50,60 @@ The following arguments can be passed to the `U-Net` class:
 | dropout | float | Dropout rate | None |
 | norm | Literal["batch", "layer"] | Normalization type | "batch" |
 | dilation | int, tuple[int, int] | Dilation factor | None |
+
+---
+
+## <span class="sk-h2-span">Usage</span>
+
+The following is an example of how to create a model either via CLI or within the `heartkit` python package.
+
+!!! Example
+
+    === "JSON"
+
+        ```json
+        {
+            "name": "unet",
+            "params": {
+                "blocks": [
+                    {"filters": 12, "depth": 2, "ddepth": 1, "kernel": [1, 5], "pool": [1, 3], "strides": [1, 2], "skip": true, "seperable": true},
+                    {"filters": 24, "depth": 2, "ddepth": 1, "kernel": [1, 5], "pool": [1, 3], "strides": [1, 2], "skip": true, "seperable": true},
+                    {"filters": 32, "depth": 2, "ddepth": 1, "kernel": [1, 5], "pool": [1, 3], "strides": [1, 2], "skip": true, "seperable": true},
+                    {"filters": 48, "depth": 2, "ddepth": 1, "kernel": [1, 5], "pool": [1, 3], "strides": [1, 2], "skip": true, "seperable": true}
+                ],
+                "output_kernel_size": [1, 5],
+                "include_top": true,
+                "use_logits": true,
+                "model_name": "efficientnetv2"
+            }
+        }
+        ```
+
+    === "Python"
+
+        ```python
+        import keras
+        from heartkit.models import UNet, UNetParams, UNetBlockParams
+
+        inputs = keras.Input(shape=(800, 1))
+        num_classes = 5
+
+        model = UNet(
+            x=inputs,
+            params=UNetParams(
+                blocks=[
+                    UNetBlockParams(filters=12, depth=2, ddepth=1, kernel=(1, 5), pool=(1, 3), strides=(1, 2), skip=True, seperable=True),
+                    UNetBlockParams(filters=24, depth=2, ddepth=1, kernel=(1, 5), pool=(1, 3), strides=(1, 2), skip=True, seperable=True),
+                    UNetBlockParams(filters=32, depth=2, ddepth=1, kernel=(1, 5), pool=(1, 3), strides=(1, 2), skip=True, seperable=True),
+                    UNetBlockParams(filters=48, depth=2, ddepth=1, kernel=(1, 5), pool=(1, 3), strides=(1, 2), skip=True, seperable=True)
+                ],
+                output_kernel_size=(1, 5),
+                include_top=True,
+                use_logits=True,
+                model_name="unet"
+            ),
+            num_classes=num_classes,
+        )
+        ```
+
+---

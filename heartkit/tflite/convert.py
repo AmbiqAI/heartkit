@@ -92,14 +92,16 @@ def xxd_c_dump(
     # END WITH
 
 
-def convert_tflite(
+def create_tflite_converter(
     model: keras.Model,
     quantize: bool = False,
     test_x: npt.NDArray | None = None,
     input_type: str | None = None,
     output_type: str | None = None,
     supported_ops: list | None = None,
-) -> bytes:
+    use_concrete: bool = False,
+    feat_shape: tuple[int, int] = (1, 128),
+) -> tf.lite.TFLiteConverter:
     """Convert TF model into TFLite model content
 
     Args:
@@ -108,13 +110,23 @@ def convert_tflite(
         test_x (npt.NDArray | None, optional): Enables full integer PTQ. Defaults to None.
         input_type (str | None): Input type data format. Defaults to None.
         output_type (str | None): Output type data format. Defaults to None.
+        supported_ops (list | None): Supported ops. Defaults to None.
+        use_concrete (bool): Use concrete function. Defaults to False.
 
     Returns:
         bytes: TFLite content
 
     """
 
-    converter = tf.lite.TFLiteConverter.from_keras_model(model=model)
+    # Following is a workaround for bug (https://github.com/tensorflow/tflite-micro/issues/2319)
+    # Default TFLiteConverter generates equivalent graph w/ SpaceToBatchND operations but losses dilation_rate factor.
+    if use_concrete:
+        input_spec = tf.TensorSpec(shape=(1,) + feat_shape, dtype=tf.float32)
+        model_func = tf.function(func=model)
+        model_cf = model_func.get_concrete_function(input_spec)
+        converter = tf.lite.TFLiteConverter.from_concrete_functions([model_cf], model)
+    else:
+        converter = tf.lite.TFLiteConverter.from_keras_model(model=model)
 
     # Optionally quantize model
     if quantize:
@@ -134,44 +146,26 @@ def convert_tflite(
     # END IF
 
     # Convert model
-    return converter.convert()
+    return converter
 
 
 def debug_quant_tflite(
-    model: keras.Model,
-    test_x: npt.NDArray | None = None,
-    input_type: str | None = None,
-    output_type: str | None = None,
-    supported_ops: list | None = None,
+    converter: tf.lite.TFLiteConverter,
 ) -> tuple[tf.lite.experimental.QuantizationDebugger, pd.DataFrame]:
     """Debug quantized TFLite model content
 
     Args:
-        model (keras.Model): TF model
-        quantize (bool, optional): Enable PTQ. Defaults to False.
-        test_x (npt.NDArray | None, optional): Enables full integer PTQ. Defaults to None.
-        input_type (str | None): Input type data format. Defaults to None.
-        output_type (str | None): Output type data format. Defaults to None.
+        converter (tf.lite.TFLiteConverter): TFLite converter
 
     Returns:
         tuple[tf.lite.experimental.QuantizationDebugger, pd.DataFrame]: TFlite debugger, Layer statistics
 
     """
-    converter = tf.lite.TFLiteConverter.from_keras_model(model=model)
-
-    def rep_dataset():
-        for i in range(test_x.shape[0]):
-            yield [test_x[i : i + 1]]
-
-    # Quantize model
-    converter.optimizations = [tf.lite.Optimize.DEFAULT]
-    converter.target_spec.supported_ops = supported_ops or [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-    converter.inference_input_type = tf.dtypes.as_dtype(input_type) if input_type else None
-    converter.inference_output_type = tf.dtypes.as_dtype(output_type) if output_type else None
-    converter.representative_dataset = rep_dataset
 
     # Debug model
-    debugger = tf.lite.experimental.QuantizationDebugger(converter=converter, debug_dataset=rep_dataset)
+    debugger = tf.lite.experimental.QuantizationDebugger(
+        converter=converter, debug_dataset=converter.representative_dataset
+    )
     debugger.run()
 
     with io.StringIO() as f:

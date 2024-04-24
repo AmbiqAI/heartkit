@@ -6,6 +6,8 @@ EfficientNetV2 is an improvement to EfficientNet that incorporates additional op
 
 For more info, refer to the original paper [EfficientNetV2: Smaller Models and Faster Training](https://arxiv.org/abs/2104.00298).
 
+---
+
 ## <span class="sk-h2-span">Additions</span>
 
 The EfficientNetV2 architecture has been modified to allow the following:
@@ -18,7 +20,7 @@ The EfficientNetV2 architecture has been modified to allow the following:
 
 The following arguments can be passed to the `EfficientNetV2` class:
 
-`EfficientNetV2Params`:
+### EfficientNetV2Params
 
 | Argument | Type | Description | Default |
 | --- | --- | --- | --- |
@@ -33,7 +35,7 @@ The following arguments can be passed to the `EfficientNetV2` class:
 | model_name | str | Model name | "EfficientNetV2" |
 
 
-`MBConvParams`:
+### MBConvParams
 
 | Argument | Type | Description | Default |
 | --- | --- | --- | --- |
@@ -44,3 +46,66 @@ The following arguments can be passed to the `EfficientNetV2` class:
 | strides | int, tuple[int, int] | Stride size | 1 |
 | se_ratio | float | Squeeze Excite ratio | 8 |
 | droprate | float | Drop rate | 0 |
+
+## <span class="sk-h2-span">Usage</span>
+
+The following is an example of how to create a model either via CLI or within the `heartkit` python package.
+
+!!! Example
+
+    === "JSON"
+
+        ```json
+        {
+            "name": "efficientnetv2",
+            "params": {
+
+                "input_filters": 24,
+                "input_kernel_size": [1, 7],
+                "input_stride": [1, 2],
+                "blocks": [
+                    {"filters": 32, "depth": 2, "kernel_size": [1, 7], "stride": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
+                    {"filters": 48, "depth": 2, "kernel_size": [1, 7], "stride": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
+                    {"filters": 64, "depth": 2, "kernel_size": [1, 7], "stride": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
+                    {"filters": 72, "depth": 1, "kernel_size": [1, 7], "stride": [1, 2], "ex_ratio": 1,  "se_ratio": 2}
+                ],
+                "output_filters": 0,
+                "include_top": true,
+                "use_logits": true,
+                "model_name": "efficientnetv2"
+            }
+        }
+        ```
+
+    === "Python"
+
+        ```python
+        import keras
+        from heartkit.models import EfficientNetV2, EfficientNetV2Params, MBConvParams
+
+        inputs = keras.Input(shape=(800, 1))
+        num_classes = 5
+
+        model = EfficientNetV2(
+            x=inputs,
+            params=EfficientNetV2Params(
+                input_filters=24,
+                input_kernel_size=(1, 7),
+                input_strides=(1, 2),
+                blocks=[
+                    MBConvParams(filters=32, depth=2, kernel_size=(1, 7), strides=(1, 2), ex_ratio=1, se_ratio=2),
+                    MBConvParams(filters=48, depth=2, kernel_size=(1, 7), strides=(1, 2), ex_ratio=1, se_ratio=2),
+                    MBConvParams(filters=64, depth=2, kernel_size=(1, 7), strides=(1, 2), ex_ratio=1, se_ratio=2),
+                    MBConvParams(filters=72, depth=1, kernel_size=(1, 7), strides=(1, 2), ex_ratio=1, se_ratio=2)
+                ],
+                output_filters=0,
+                include_top=True,
+                dropout=0.2,
+                drop_connect_rate=0.2,
+                model_name="efficientnetv2"
+            )
+            num_classes=num_classes,
+        )
+        ```
+
+---

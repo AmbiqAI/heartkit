@@ -2,7 +2,7 @@
 
 ::: heartkit.tasks.factory
 
-::: heartkit.tasks.arrhythmia
+::: heartkit.tasks.rhythm
 
 ::: heartkit.tasks.beat
 

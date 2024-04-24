@@ -1,6 +1,7 @@
 import functools
 import logging
 import os
+import random
 import tempfile
 import zipfile
 from multiprocessing import Pool
@@ -60,6 +61,7 @@ class LudbDataset(HKDataset):
         target_rate: int,
         spec: tuple[tf.TensorSpec, tf.TensorSpec],
         class_map: dict[int, int] | None = None,
+        leads: list[int] | None = None,
     ) -> None:
         super().__init__(
             ds_path=ds_path / "ludb",
@@ -69,6 +71,7 @@ class LudbDataset(HKDataset):
             spec=spec,
             class_map=class_map,
         )
+        self.leads = leads or list(range(12))
 
     @property
     def sampling_rate(self) -> int:
@@ -172,12 +175,13 @@ class LudbDataset(HKDataset):
             stop_offset = max(0, data.shape[0] - segs[-1][SEG_END_IDX] + 100)
             for _ in range(samples_per_patient):
                 # Randomly pick an ECG lead
-                lead_idx = np.random.randint(data.shape[1])
+                # lead = np.random.randint(data.shape[1])
+                lead = random.choice(self.leads)
                 # Randomly select frame within the segment
                 frame_start = np.random.randint(start_offset, data.shape[0] - self.frame_size - stop_offset)
                 frame_end = frame_start + self.frame_size
-                x = data[frame_start:frame_end, lead_idx].astype(np.float32)
-                y = labels[frame_start:frame_end, lead_idx].astype(np.int32)
+                x = data[frame_start:frame_end, lead].astype(np.float32)
+                y = labels[frame_start:frame_end, lead].astype(np.int32)
                 y = np.vectorize(self.class_map.get, otypes=[int])(y)
                 yield x, y
             # END FOR
@@ -202,13 +206,14 @@ class LudbDataset(HKDataset):
                 data = pk.signal.resample_signal(data, self.sampling_rate, self.target_rate, axis=0)
             # END IF
             for _ in range(samples_per_patient):
-                lead_idx = np.random.randint(data.shape[1])
+                # lead = np.random.randint(data.shape[1])
+                lead = random.choice(self.leads)
                 if data.shape[0] > self.frame_size:
                     frame_start = np.random.randint(data.shape[0] - self.frame_size)
                 else:
                     frame_start = 0
                 frame_end = frame_start + self.frame_size
-                x = data[frame_start:frame_end, lead_idx].astype(np.float32)
+                x = data[frame_start:frame_end, lead].astype(np.float32)
                 yield x
             # END FOR
         # END FOR

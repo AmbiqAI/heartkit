@@ -7,6 +7,7 @@ import tensorflow as tf
 from rich.console import Console
 
 from ...datasets import DatasetFactory, HKDataset, augment_pipeline, preprocess_pipeline
+from ...datasets.nstdb import NstdbNoise
 from ...defines import (
     DatasetParams,
     HKExportParams,
@@ -15,9 +16,34 @@ from ...defines import (
     ModelArchitecture,
     PreprocessParams,
 )
-from ...models import ModelFactory  # , Tcn, TcnBlockParams, TcnParams
+from ...models import ModelFactory, Tcn, TcnBlockParams, TcnParams
 
 console = Console()
+
+
+def get_feat_shape(frame_size: int) -> tuple[int, ...]:
+    """Get dataset feature shape.
+
+    Args:
+        frame_size (int): Frame size
+
+    Returns:
+        tuple[int, ...]: Feature shape
+    """
+    return (frame_size, 1)  # Time x Channels
+
+
+def get_class_shape(frame_size: int, nclasses: int) -> tuple[int, ...]:
+    """Get dataset class shape.
+
+    Args:
+        frame_size (int): Frame size
+        nclasses (int): Number of classes
+
+    Returns:
+        tuple[int, ...]: Class shape
+    """
+    return (frame_size, 1)  # Match feature shape
 
 
 def prepare(x: npt.NDArray, sample_rate: float, preprocesses: list[PreprocessParams]) -> npt.NDArray:
@@ -33,7 +59,7 @@ def prepare(x: npt.NDArray, sample_rate: float, preprocesses: list[PreprocessPar
     """
     if not preprocesses:
         preprocesses = [
-            dict(name="filter", args=dict(axis=0, lowcut=0.5, highcut=30, order=3, sample_rate=sample_rate)),
+            # dict(name="filter", args=dict(axis=0, lowcut=0.5, highcut=30, order=3, sample_rate=sample_rate)),
             dict(name="znorm", args=dict(axis=None, eps=0.1)),
         ]
     return preprocess_pipeline(x, preprocesses=preprocesses, sample_rate=sample_rate)
@@ -93,12 +119,23 @@ def load_train_datasets(
         tuple[tf.data.Dataset, tf.data.Dataset]: ds, train and validation datasets
     """
 
-    def preprocess(x: npt.NDArray) -> npt.NDArray:
-        xx = x.copy().squeeze()
+    feat_shape = get_feat_shape(params.frame_size)
+
+    nstdb_noise_gen = NstdbNoise(ds_path=params.ds_path, target_rate=params.sampling_rate)
+
+    def preprocess(x_y: tuple[npt.NDArray, npt.NDArray]) -> tuple[npt.NDArray, npt.NDArray]:
+        xx = x_y[0].copy().squeeze()
+        yy = x_y[1].copy().squeeze()
         if params.augmentations:
-            xx = augment_pipeline(xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
-        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
-        return xx
+            xx = augment_pipeline(x=xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
+            nstdb_aug = next(filter(lambda a: a.name == "nstdb", params.augmentations), None)
+            if nstdb_aug:
+                noise_range = nstdb_aug.params.get("noise_level", [0.1, 0.1])
+                noise_level = np.random.uniform(noise_range[0], noise_range[1])
+                xx = nstdb_noise_gen.apply_noise(xx, noise_level)
+        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
+        yy = prepare(yy, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
+        return xx, yy
 
     train_datasets = []
     val_datasets = []
@@ -117,7 +154,8 @@ def load_train_datasets(
         train_datasets.append(train_ds)
         val_datasets.append(val_ds)
     # END FOR
-    ds_weights = np.array([len(ds.get_train_patient_ids()) for ds in datasets])
+
+    ds_weights = np.array([d.weight for d in params.datasets])
     ds_weights = ds_weights / ds_weights.sum()
 
     train_ds = tf.data.Dataset.sample_from_datasets(train_datasets, weights=ds_weights)
@@ -158,12 +196,16 @@ def load_test_datasets(
         tuple[npt.NDArray, npt.NDArray]: Test data and labels
     """
 
-    def preprocess(x: npt.NDArray) -> npt.NDArray:
-        xx = x.copy().squeeze()
+    feat_shape = get_feat_shape(params.frame_size)
+
+    def preprocess(x_y: tuple[npt.NDArray, npt.NDArray]) -> tuple[npt.NDArray, npt.NDArray]:
+        xx = x_y[0].copy().squeeze()
+        yy = x_y[1].copy().squeeze()
         if params.augmentations:
-            xx = augment_pipeline(xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
-        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
-        return xx
+            xx = augment_pipeline(x=xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
+        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
+        yy = prepare(yy, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
+        return xx, yy
 
     with console.status("[bold green] Loading test dataset..."):
         test_datasets = [
@@ -174,7 +216,8 @@ def load_test_datasets(
             )
             for ds in datasets
         ]
-        ds_weights = np.array([len(ds.get_test_patient_ids()) for ds in datasets])
+
+        ds_weights = np.array([d.weight for d in params.datasets])
         ds_weights = ds_weights / ds_weights.sum()
 
         test_ds = tf.data.Dataset.sample_from_datasets(test_datasets, weights=ds_weights)
@@ -220,46 +263,24 @@ def _default_model(
     """
     # Default model
 
-    y = inputs
-    y = keras.layers.Reshape((1,) + y.shape[1:])(y)
+    blocks = [
+        TcnBlockParams(filters=8, kernel=(1, 7), dilation=(1, 1), dropout=0.1, ex_ratio=1, se_ratio=0, norm="batch"),
+        TcnBlockParams(filters=12, kernel=(1, 7), dilation=(1, 1), dropout=0.1, ex_ratio=1, se_ratio=2, norm="batch"),
+        TcnBlockParams(filters=16, kernel=(1, 7), dilation=(1, 2), dropout=0.1, ex_ratio=1, se_ratio=2, norm="batch"),
+        TcnBlockParams(filters=24, kernel=(1, 7), dilation=(1, 4), dropout=0.1, ex_ratio=1, se_ratio=2, norm="batch"),
+        TcnBlockParams(filters=32, kernel=(1, 7), dilation=(1, 8), dropout=0.1, ex_ratio=1, se_ratio=2, norm="batch"),
+    ]
 
-    y = keras.layers.Conv2D(filters=24, kernel_size=(1, 5), padding="same")(y)
-    y = keras.layers.BatchNormalization()(y)
-    y = keras.layers.Activation("tanh")(y)
-
-    y = keras.layers.Reshape(y.shape[2:])(y)
-
-    y = keras.layers.Bidirectional(keras.layers.LSTM(units=48, return_sequences=True))(y)
-    y = keras.layers.BatchNormalization()(y)
-    y = keras.layers.Activation("tanh")(y)
-
-    # y = keras.layers.TimeDistributed(keras.layers.Dense(64))(y)
-    # y = keras.layers.LayerNormalization(axis=[1])(y)
-    # y = keras.layers.Activation("tanh")(y)
-
-    y = keras.layers.TimeDistributed(keras.layers.Dense(num_classes))(y)
-    y = keras.layers.Activation("tanh")(y)
-
-    model = keras.models.Model(inputs, y)
-    return model
-
-    # blocks = [
-    #     TcnBlockParams(filters=8, kernel=(1, 3), dilation=(1, 1), dropout=0.1, ex_ratio=1, se_ratio=0, norm="batch"),
-    #     TcnBlockParams(filters=16, kernel=(1, 3), dilation=(1, 2), dropout=0.1, ex_ratio=1, se_ratio=0, norm="batch"),
-    #     TcnBlockParams(filters=24, kernel=(1, 3), dilation=(1, 4), dropout=0.1, ex_ratio=1, se_ratio=4, norm="batch"),
-    #     TcnBlockParams(filters=32, kernel=(1, 3), dilation=(1, 8), dropout=0.1, ex_ratio=1, se_ratio=4, norm="batch"),
-    # ]
-
-    # return Tcn(
-    #     x=inputs,
-    #     params=TcnParams(
-    #         input_kernel=(1, 3),
-    #         input_norm="batch",
-    #         blocks=blocks,
-    #         output_kernel=(1, 3),
-    #         include_top=True,
-    #         use_logits=True,
-    #         model_name="tcn",
-    #     ),
-    #     num_classes=num_classes,
-    # )
+    return Tcn(
+        x=inputs,
+        params=TcnParams(
+            input_kernel=(1, 7),
+            input_norm="batch",
+            blocks=blocks,
+            output_kernel=(1, 7),
+            include_top=True,
+            use_logits=True,
+            model_name="tcn",
+        ),
+        num_classes=num_classes,
+    )

@@ -157,3 +157,21 @@ def ResNet(
 
     model = keras.Model(x, y, name="model")
     return model
+
+
+def resnet_from_object(
+    x: tf.Tensor,
+    params: dict,
+    num_classes: int,
+) -> keras.Model:
+    """Create model from object
+
+    Args:
+        x (tf.Tensor): Input tensor
+        params (dict): Model parameters.
+        num_classes (int, optional): # classes.
+
+    Returns:
+        keras.Model: Model
+    """
+    return ResNet(x=x, params=ResNetParams(**params), num_classes=num_classes)

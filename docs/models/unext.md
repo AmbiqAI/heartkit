@@ -4,6 +4,8 @@
 
 U-NeXt is a modification of U-Net that utilizes techniques from ResNeXt and EfficientNetV2. During the encoding phase, mbconv blocks are used to efficiently process the input.
 
+---
+
 ### Additions
 
 The U-NeXt architecture has been modified to allow the following:
@@ -43,3 +45,11 @@ The following arguments can be passed to the `U-NeXt` class:
 | se_ratio | float | Squeeze and excite ratio | 0 |
 | dropout | float | Dropout rate | None |
 | norm | Literal["batch", "layer"] | Normalization type | "layer" |
+
+---
+
+## <span class="sk-h2-span">References</span>
+
+* [U2-Net: Going Deeper with Nested U-Structure for Salient Object Detection](https://arxiv.org/abs/2005.09007)
+* [UNET 3+: A FULL-SCALE CONNECTED UNET FOR MEDICAL IMAGE SEGMENTATION](https://arxiv.org/pdf/2004.08790.pdf)
+* [ResUNet-a: a deep learning framework for semantic segmentation of remotely sensed data](https://arxiv.org/pdf/1904.00592.pdf)

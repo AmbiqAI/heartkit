@@ -67,10 +67,10 @@ __HeartKit__ provides a number of **modes** that can be invoked for a given task
 
 __HeartKit__ includes a number of built-in **tasks**. Each task provides reference routines for training, evaluating, and exporting the model. The routines can be customized by providing a configuration file or by setting the parameters directly in the code. Additional tasks can be easily added to the __HeartKit__ framework by creating a new task class and registering it to the __task factory__.
 
-- **Segmentation**: Perform ECG based segmentation (P-Wave, QRS, T-Wave)
-- **Arrhythmia**: Heart arrhythmia detection (AFIB, AFL)
-- **Beat**: Classify individual beats (NORM, PAC, PVC, NOISE)
 - **Denoise**: Denoise ECG signal
+- **Segmentation**: Perform ECG based segmentation (P-Wave, QRS, T-Wave)
+- **Rhythm**: Heart rhythm detection (AFIB, AFL)
+- **Beat**: Classify individual beats (NORM, PAC, PVC)
 - **BYOT**: Bring-Your-Own-Task (BYOT) to create custom tasks
 
 ---
@@ -97,8 +97,6 @@ The two primary sensing modalities to monitor cardiac cycles are electrocardiogr
 | Contact | Yes | No |
 
 ---
-
-## <span class="sk-h2-span">Datasets</span>
 
 ## <span class="sk-h2-span">Dataset Factory</span>
 

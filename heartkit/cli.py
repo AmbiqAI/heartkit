@@ -47,16 +47,17 @@ def _run(
     task: str = ArgField("-t", description="Task"),
     config: str = ArgField("-c", description="File path or JSON content"),
 ):
-    """ "HeartKit CLI"""
+    """HeartKit CLI"""
 
-    logger.info(f"#STARTED {mode} mode")
+    logger.info(f"#STARTED MODE={mode} TASK={task}")
 
     if mode == HKMode.download:
         download_datasets(parse_content(HKDownloadParams, config))
         return
 
     if not TaskFactory.has(task):
-        logger.error(f"Error: Unknown task {task}")
+        raise ValueError(f"Unknown task {task}")
+
     task_handler = TaskFactory.get(task)
 
     match mode:
@@ -74,10 +75,9 @@ def _run(
 
         case _:
             logger.error("Error: Unknown command")
-
     # END MATCH
 
-    logger.info(f"#FINISHED {mode} mode")
+    logger.info(f"#FINISHED MODE={mode} TASK={task}")
 
 
 def run():

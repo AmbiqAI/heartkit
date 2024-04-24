@@ -21,7 +21,7 @@ The MobileOne architecture has been modified to allow the following:
 
 The following arguments can be passed to the `MobileOne` class:
 
-`MobileOneParams`:
+### MobileOneParams
 
 | Argument | Type | Description | Default |
 | --- | --- | --- | --- |
@@ -34,7 +34,7 @@ The following arguments can be passed to the `MobileOne` class:
 | dropout | float | Dropout rate | 0.2 |
 | model_name | str | Model name | "MobileOne" |
 
-`MobileOneBlockParams`:
+### MobileOneBlockParams
 
 | Argument | Type | Description | Default |
 | --- | --- | --- | --- |
@@ -46,3 +46,52 @@ The following arguments can be passed to the `MobileOne` class:
 | se_ratio | float | Squeeze Excite ratio | 8 |
 | se_depth | int | Depth length to apply SE | 0 |
 | num_conv_branches | int | Number of conv branches | 2 |
+
+---
+
+## <span class="sk-h2-span">Usage</span>
+
+The following is an example of how to create a model either via CLI or within the `heartkit` python package.
+
+!!! Example
+
+    === "JSON"
+
+        ```json
+        {
+            "name": "mobileone",
+            "params": {
+                "input_filters": 24,
+                "input_kernel_size": [1, 7],
+                "input_stride": [1, 2],
+                "blocks": [
+                    {"filters": 32, "depth": 2, "kernel_size": [1, 7], "stride": [1, 2], "se_ratio": 2, "se_depth": 2, "num_conv_branches": 2}
+                ],
+                "include_top": true,
+                "model_name": "MobileOne",
+            }
+        }
+        ```
+
+    === "Python"
+
+        ```python
+        import keras
+        from heartkit.models import MobileOne, MobileOneParams, MobileOneBlockParams
+
+        inputs = keras.Input(shape=(800, 1))
+
+        model = MobileOne(
+            x=inputs,
+            params=MobileOneParams(
+                input_filters=24,
+                input_kernel_size=(1, 7),
+                input_strides=(1, 2),
+                blocks=[
+                    MobileOneBlockParams(filters=32, depth=2, kernel_size=(1, 7), strides=(1, 2), se_ratio=2, se_depth=2, num_conv_branches=2)
+                ],
+                include_top=True,
+                model_name="MobileOne",
+            ),
+        )
+        ```

@@ -1,3 +1,10 @@
-from .beat import Beat
-from .defines import get_class_mapping, get_class_names, get_classes
-from .utils import load_datasets, load_test_datasets, load_train_datasets, prepare
+from .beat import BeatTask
+from .defines import HKBeat
+from .utils import (
+    get_class_shape,
+    get_feat_shape,
+    load_datasets,
+    load_test_datasets,
+    load_train_datasets,
+    prepare,
+)

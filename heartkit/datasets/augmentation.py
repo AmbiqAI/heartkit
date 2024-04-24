@@ -29,7 +29,11 @@ def preprocess_pipeline(x: npt.NDArray, preprocesses: list[PreprocessParams], sa
     return x
 
 
-def augment_pipeline(x: npt.NDArray, augmentations: list[AugmentationParams], sample_rate: float) -> npt.NDArray:
+def augment_pipeline(
+    x: npt.NDArray,
+    augmentations: list[AugmentationParams] | None = None,
+    sample_rate: float = 1000,
+) -> tuple[npt.NDArray, npt.NDArray | None]:
     """Apply augmentation pipeline
 
     Args:
@@ -41,6 +45,7 @@ def augment_pipeline(x: npt.NDArray, augmentations: list[AugmentationParams], sa
         npt.NDArray: Augmented signal
     """
     x_sd = np.nanstd(x)
+    augmentations = augmentations or []
     for augmentation in augmentations:
         args = augmentation.params
         match augmentation.name:
@@ -100,13 +105,31 @@ def augment_pipeline(x: npt.NDArray, augmentations: list[AugmentationParams], sa
                     signal_sd=x_sd,
                 )
             case "lead_noise":
-                scale = args.get("scale", [1e-3, 1e-2])
+                scale = args.get("scale", [0.05, 0.25])
                 x = pk.signal.add_lead_noise(
                     x,
-                    scale=np.random.uniform(scale[0], scale[1]),
+                    scale=x_sd * np.random.uniform(scale[0], scale[1]),
                 )
-            case _:
-                raise ValueError(f"Unknown augmentation '{augmentation.name}'")
+            case "cutout":
+                feat_len = x.shape[0]
+                prob = args.get("probability", [0, 0.25])[1]
+                amp = args.get("amplitude", [0, 0])
+                width = args.get("width", [0, 1])
+                ctype = args.get("type", "cut")
+                if np.random.rand() < prob:
+                    dur = int(np.random.uniform(width[0], width[1]) * feat_len)
+                    start = np.random.randint(0, feat_len - dur)
+                    stop = start + dur
+                    scale = np.random.uniform(amp[0], amp[1]) * x_sd
+                    if ctype == "cut":
+                        x[start:stop] = 0
+                    else:
+                        x[start:stop] += np.random.normal(0, scale, size=x[start:stop].shape)
+                    # END IF
+            # END IF
+            case _:  # default
+                pass
+                # raise ValueError(f"Unknown augmentation '{augmentation.name}'")
         # END MATCH
     # END FOR
     return x

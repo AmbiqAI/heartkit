@@ -1,29 +1,26 @@
 import functools
 import logging
+import math
 import os
+from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
 import sklearn
 import tensorflow as tf
 
-from ..utils import load_pkl, save_pkl
+from ..utils import load_pkl, resolve_template_path, save_pkl
 from .defines import PatientGenerator, Preprocessor, SampleGenerator
 from .utils import create_dataset_from_data
 
 logger = logging.getLogger(__name__)
 
 
-def default_preprocess(x: npt.NDArray) -> npt.NDArray:
-    """Default identity preprocessing."""
-    return x
-
-
 class HKDataset:
     """HeartKit dataset base class"""
 
     target_rate: int
-    ds_path: os.PathLike
+    ds_path: Path
     task: str
     frame_size: int
     spec: tuple[tf.TensorSpec, tf.TensorSpec]
@@ -39,7 +36,7 @@ class HKDataset:
         class_map: dict[int, int] | None = None,
     ) -> None:
         """HeartKit dataset base class"""
-        self.ds_path = ds_path
+        self.ds_path = Path(ds_path)
         self.task = task
         self.frame_size = frame_size
         self.target_rate = target_rate
@@ -133,7 +130,7 @@ class HKDataset:
         train_pt_samples: int | list[int] | None = None,
         val_pt_samples: int | list[int] | None = None,
         val_size: int | None = None,
-        val_file: str | None = None,
+        val_file: os.PathLike | None = None,
         preprocess: Preprocessor | None = None,
         num_workers: int = 1,
     ) -> tuple[tf.data.Dataset, tf.data.Dataset]:
@@ -161,11 +158,23 @@ class HKDataset:
 
         # Get train patients
         train_patient_ids = self.get_train_patient_ids()
+        train_patient_ids = self.filter_patients_for_task(train_patient_ids)
 
         # Use subset of training patients
         if train_patients is not None:
             num_pts = int(train_patients) if train_patients > 1 else int(train_patients * len(train_patient_ids))
             train_patient_ids = train_patient_ids[:num_pts]
+        # END IF
+
+        # Resolve validation file path (allows for templating)
+        if val_file:
+            val_file = resolve_template_path(
+                fpath=val_file,
+                dataset=self.ds_path.stem,
+                task=self.task,
+                frame_size=str(int(self.frame_size)),
+                sampling_rate=str(int(self.target_rate)),
+            )
         # END IF
 
         # Use existing validation data
@@ -177,11 +186,12 @@ class HKDataset:
             train_patient_ids = np.setdiff1d(train_patient_ids, val_patient_ids)
         else:
             logger.info("Splitting patients into train and validation")
-            train_patient_ids, val_patient_ids = self._split_train_test_patients(
+            train_patient_ids, val_patient_ids = self.split_train_test_patients(
                 patient_ids=train_patient_ids, test_size=val_patients
             )
             if val_size is None:
-                val_size = val_pt_samples * (len(val_patient_ids) - 1)
+                num_samples = np.mean(val_pt_samples) if isinstance(val_pt_samples, list) else val_pt_samples
+                val_size = math.ceil(num_samples * len(val_patient_ids))
 
             logger.info(f"Collecting {val_size} validation samples")
             val_ds = self._parallelize_dataset(
@@ -216,6 +226,7 @@ class HKDataset:
         self,
         test_patients: float | None = None,
         test_pt_samples: int | list[int] | None = None,
+        test_file: os.PathLike | None = None,
         repeat: bool = True,
         preprocess: Preprocessor | None = None,
         num_workers: int = 1,
@@ -225,25 +236,47 @@ class HKDataset:
         Args:
             test_patients (float | None, optional): # or proportion of test patients. Defaults to None.
             test_pt_samples (int | None, optional): # samples per patient for testing. Defaults to None.
+            test_file (str | None, optional): Path to existing pickled test file. Defaults to None.
             repeat (bool, optional): Restart generator when dataset is exhausted. Defaults to True.
             num_workers (int, optional): # of parallel workers. Defaults to 1.
 
         Returns:
             tf.data.Dataset: Test dataset
         """
+
+        # Get test patients
         test_patient_ids = self.get_test_patient_ids()
+        test_patient_ids = self.filter_patients_for_task(test_patient_ids)
 
         if test_patients is not None:
             num_pts = int(test_patients) if test_patients > 1 else int(test_patients * len(test_patient_ids))
             test_patient_ids = test_patient_ids[:num_pts]
 
-        test_ds = self._parallelize_dataset(
-            patient_ids=test_patient_ids,
-            samples_per_patient=test_pt_samples,
-            preprocess=preprocess,
-            repeat=repeat,
-            num_workers=num_workers,
-        )
+        # Resolve validation file path (allows for templating)
+        if test_file:
+            test_file = resolve_template_path(
+                fpath=test_file,
+                dataset=self.ds_path.stem,
+                task=self.task,
+                frame_size=str(int(self.frame_size)),
+                sampling_rate=str(int(self.target_rate)),
+            )
+        # END IF
+
+        # Use existing validation data
+        if self.cachable and test_file and os.path.isfile(test_file):
+            logger.info(f"Loading test data from file {test_file}")
+            test = load_pkl(test_file)
+            test_ds = create_dataset_from_data(test["x"], test["y"], self.spec)
+            test_patient_ids = test["patient_ids"]
+        else:
+            test_ds = self._parallelize_dataset(
+                patient_ids=test_patient_ids,
+                samples_per_patient=test_pt_samples,
+                preprocess=preprocess,
+                repeat=repeat,
+                num_workers=num_workers,
+            )
         return test_ds
 
     @tf.function
@@ -260,6 +293,7 @@ class HKDataset:
         Args:
             patient_ids (npt.NDArray): List of patient IDs.
             samples_per_patient (int | list[int], optional): # Samples per patient and class. Defaults to 100.
+            preprocess (Preprocessor | None, optional): Preprocess function. Defaults to None.
             repeat (bool, optional): Should data generator repeat. Defaults to False.
             num_workers (int, optional): Number of parallel workers. Defaults to 1.
 
@@ -275,8 +309,7 @@ class HKDataset:
                 preprocess=preprocess,
             )
 
-        if num_workers > len(patient_ids):
-            num_workers = len(patient_ids)
+        num_workers = min(num_workers, len(patient_ids))
         split = len(patient_ids) // num_workers
         datasets = [_make_train_dataset(i, split) for i in range(num_workers)]
         if num_workers <= 1:
@@ -288,7 +321,7 @@ class HKDataset:
             num_parallel_calls=tf.data.AUTOTUNE,
         )
 
-    def _split_train_test_patients(self, patient_ids: npt.NDArray, test_size: float) -> list[list[int]]:
+    def split_train_test_patients(self, patient_ids: npt.NDArray, test_size: float) -> list[list[int]]:
         """Perform train/test split on patients for given task.
         NOTE: We only perform inter-patient splits and not intra-patient.
 
@@ -300,6 +333,18 @@ class HKDataset:
             list[list[int]]: Train and test sets of patient ids
         """
         return sklearn.model_selection.train_test_split(patient_ids, test_size=test_size)
+
+    def filter_patients_for_task(self, patient_ids: npt.NDArray) -> npt.NDArray:
+        """Filter patients based on task.
+        Useful to remove patients w/o labels for task to speed up data loading.
+
+        Args:
+            patient_ids (npt.NDArray): Patient ids
+
+        Returns:
+            npt.NDArray: Filtered patient ids
+        """
+        return patient_ids
 
     def _create_dataset_from_generator(
         self,
@@ -313,6 +358,7 @@ class HKDataset:
         Args:
             patient_ids (npt.NDArray): Patient IDs
             samples_per_patient (int | list[int], optional): Samples per patient. Defaults to 100.
+            preprocess (Preprocessor | None, optional): Preprocess function. Defaults to None.
             repeat (bool, optional): Repeat. Defaults to True.
 
         Returns:
@@ -342,6 +388,7 @@ class HKDataset:
             patient_ids (npt.NDArray): Patient IDs
             samples_per_patient (int | list[int], optional): Samples per patient. Defaults to 100.
             repeat (bool, optional): Repeat. Defaults to True.
+            preprocess (Preprocessor | None, optional): Preprocess function. Defaults to None.
 
         Returns:
             SampleGenerator: Task sample generator
@@ -351,16 +398,8 @@ class HKDataset:
             patient_generator,
             samples_per_patient=samples_per_patient,
         )
-        preprocess_fn = preprocess if preprocess else default_preprocess
-        num_classes = len(set(self.class_map.values()))
-        feat_shape = tuple(self.spec[0].shape)
 
-        data_generator = map(
-            lambda x_y: (
-                preprocess_fn(x_y[0]).reshape(feat_shape),
-                x_y[0] if num_classes <= 1 else tf.one_hot(x_y[1], num_classes),
-            ),
-            data_generator,
-        )
+        if preprocess:
+            data_generator = map(preprocess, data_generator)
 
         return data_generator

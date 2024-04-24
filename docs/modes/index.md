@@ -1,10 +1,10 @@
 # HeartKit Modes
 
-
 ## <span class="sk-h2-span">Introduction</span>
 
 Rather than offering a handful of static models, HeartKit provides a complete framework designed to cover the entire design process of creating customized ML models well-suited for low-power, wearable applications. Each mode serves a specific purpose and is engineered to offer you the flexibility and efficiency required for different tasks and use-cases.
 
+---
 
 ## Available Modes
 
@@ -20,7 +20,7 @@ Train mode is used to train a model for the specified task and dataset. In this 
 
 ## <span class="sk-h2-span">[Evaluate](./evaluate.md)</span>
 
-Evaluate mode is used to test the performance of the model on the reserved test set for the specified task. For certain tasks, a confidence threshold can also be set such that a label is only assigned when the model's probability is greater than the threshold; otherwise, a label of inconclusive will be assigned. This is useful in noisy environments where the model may not be confident in its prediction.
+Evaluate mode is used to test the performance of the model on the reserved test set for the specified task. The routine can be customized via the configuration file or by setting the parameters directly in the code. The evaluation process involves testing the model's performance on the test data to measure its accuracy, precision, recall, and F1 score.
 
 ## <span class="sk-h2-span">[Export](./export.md)</span>
 
@@ -28,8 +28,9 @@ Export mode is used to convert the trained model into a format that can be used 
 
 ## <span class="sk-h2-span">[Demo](./demo.md)</span>
 
-Demo mode is used to run a task-level demonstration using either the PC or EVB as backend inference engine. This is useful to showcase the model's performance in real-time and to verify its accuracy in a real-world scenario.
+Demo mode is used to run a task-level demonstration on the trained model using the specified backend inference engine (e.g. PC or EVB). This is useful to showcase the model's performance in real-time and to verify its accuracy in a real-world scenario.
 
+---
 
 !!! Example "At-a-Glance"
 

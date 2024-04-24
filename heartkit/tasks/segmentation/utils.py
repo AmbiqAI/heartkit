@@ -20,6 +20,31 @@ from ...models import ModelFactory, UNet, UNetBlockParams, UNetParams
 console = Console()
 
 
+def get_feat_shape(frame_size: int) -> tuple[int, ...]:
+    """Get dataset feature shape.
+
+    Args:
+        frame_size (int): Frame size
+
+    Returns:
+        tuple[int, ...]: Feature shape
+    """
+    return (frame_size, 1)  # Time x Channels
+
+
+def get_class_shape(frame_size: int, nclasses: int) -> tuple[int, ...]:
+    """Get dataset class shape.
+
+    Args:
+        frame_size (int): Frame size
+        nclasses (int): Number of classes
+
+    Returns:
+        tuple[int, ...]: Class shape
+    """
+    return (frame_size, nclasses)  # Time x Classes
+
+
 def prepare(x: npt.NDArray, sample_rate: float, preprocesses: list[PreprocessParams]) -> npt.NDArray:
     """Prepare dataset
 
@@ -93,12 +118,21 @@ def load_train_datasets(
         tuple[tf.data.Dataset, tf.data.Dataset]: ds, train and validation datasets
     """
 
-    def preprocess(x: npt.NDArray) -> npt.NDArray:
-        xx = x.copy().squeeze()
+    feat_shape = get_feat_shape(params.frame_size)
+
+    def preprocess(x_y: tuple[npt.NDArray, npt.NDArray]) -> tuple[npt.NDArray, npt.NDArray]:
+        xx = x_y[0].copy()
+        yy = x_y[1].copy()
         if params.augmentations:
-            xx = augment_pipeline(xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
-        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
-        return xx
+            xx = augment_pipeline(
+                x=xx,
+                augmentations=params.augmentations,
+                sample_rate=params.sampling_rate,
+            )
+        # END IF
+        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
+        yy = tf.one_hot(yy, params.num_classes)
+        return xx, yy
 
     train_datasets = []
     val_datasets = []
@@ -117,7 +151,8 @@ def load_train_datasets(
         train_datasets.append(train_ds)
         val_datasets.append(val_ds)
     # END FOR
-    ds_weights = np.array([len(ds.get_train_patient_ids()) for ds in datasets])
+
+    ds_weights = np.array([d.weight for d in params.datasets])
     ds_weights = ds_weights / ds_weights.sum()
 
     train_ds = tf.data.Dataset.sample_from_datasets(train_datasets, weights=ds_weights)
@@ -158,21 +193,27 @@ def load_test_datasets(
         tuple[npt.NDArray, npt.NDArray]: Test data and labels
     """
 
-    def preprocess(x: npt.NDArray) -> npt.NDArray:
-        xx = x.copy().squeeze()
-        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
-        return xx
+    feat_shape = get_feat_shape(params.frame_size)
+
+    def preprocess(x_y: tuple[npt.NDArray, npt.NDArray]) -> tuple[npt.NDArray, npt.NDArray]:
+        xx = x_y[0].copy().squeeze()
+        yy = x_y[1].copy()
+        xx = prepare(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses).reshape(feat_shape)
+        yy = tf.one_hot(yy, params.num_classes)
+        return xx, yy
 
     with console.status("[bold green] Loading test dataset..."):
         test_datasets = [
             ds.load_test_dataset(
                 test_pt_samples=params.test_samples_per_patient,
+                test_file=params.test_file,
                 preprocess=preprocess,
                 num_workers=params.data_parallelism,
             )
             for ds in datasets
         ]
-        ds_weights = np.array([len(ds.get_test_patient_ids()) for ds in datasets])
+
+        ds_weights = np.array([d.weight for d in params.datasets])
         ds_weights = ds_weights / ds_weights.sum()
 
         test_ds = tf.data.Dataset.sample_from_datasets(test_datasets, weights=ds_weights)

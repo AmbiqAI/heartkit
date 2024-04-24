@@ -5,7 +5,7 @@
 #
 
 try:
-    from erpc import erpc_version
+    from ..erpc import erpc_version
 
     version = erpc_version.ERPC_VERSION
 except ImportError:

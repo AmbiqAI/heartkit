@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 
-from ...defines import HeartSegment
+from .defines import HKSegment
 
 
 def plot_segmentations(
@@ -23,10 +23,10 @@ def plot_segmentations(
         tuple[plt.Figure, plt.Axes]: Figure and axes handle
     """
     color_map = {
-        HeartSegment.normal: "lightgray",
-        HeartSegment.pwave: "blue",
-        HeartSegment.qrs: "orange",
-        HeartSegment.twave: "green",
+        HKSegment.normal: "lightgray",
+        HKSegment.pwave: "blue",
+        HKSegment.qrs: "orange",
+        HKSegment.twave: "green",
     }
     t = np.arange(0, data.shape[0])
     if fig is None or ax is None:
