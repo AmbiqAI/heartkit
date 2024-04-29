@@ -100,11 +100,39 @@ class DiagnosticTask(HKTask):
 
         with tfa.get_strategy().scope():
             inputs = keras.Input(shape=input_spec[0].shape, batch_size=None, name="input", dtype=input_spec[0].dtype)
-            if params.resume and params.model_file:
-                logger.info(f"Loading model from file {params.model_file}")
-                model = tfa.load_model(params.model_file)
+
+            # if params.resume and params.model_file:
+            #     logger.info(f"Loading model from file {params.model_file}")
+            #     model = tfa.load_model(params.model_file)
+            # else:
+            #     logger.info("Creating model from scratch")
+            #     model = create_model(
+            #         inputs,
+            #         num_classes=params.num_classes,
+            #         architecture=params.architecture,
+            #     )
+            # # END IF
+
+            # Load existing model
+            if params.model_file and params.resume:
+                prev_model = tfa.load_model(params.model_file)
+                outputs = prev_model(inputs)
+                # prev_model.trainable = params.resume
+                # Stack new layers on top of existing model
+                if params.architecture:
+                    model = create_model(
+                        outputs,
+                        num_classes=params.num_classes,
+                        architecture=params.architecture,
+                    )
+                    outputs = model(outputs)
+                    model = keras.Model(inputs, outputs, name=model.name)
+                # Replace model with existing model
+                else:
+                    model = prev_model
+                # END IF
+                params.model_file = None  # Dont overwrite existing model
             else:
-                logger.info("Creating model from scratch")
                 model = create_model(
                     inputs,
                     num_classes=params.num_classes,
@@ -127,12 +155,13 @@ class DiagnosticTask(HKTask):
                 )
             # END IF
             optimizer = keras.optimizers.Adam(scheduler)
-            loss = keras.losses.BinaryFocalCrossentropy(
-                apply_class_balancing=True,
-                alpha=class_weights,
-                from_logits=True,
-                label_smoothing=params.label_smoothing,
-            )
+            loss = keras.losses.BinaryCrossentropy(from_logits=True, label_smoothing=params.label_smoothing)
+            # loss = keras.losses.BinaryFocalCrossentropy(
+            #     apply_class_balancing=False,
+            #     alpha=class_weights,
+            #     from_logits=True,
+            #     label_smoothing=params.label_smoothing,
+            # )
             metrics = [
                 keras.metrics.BinaryAccuracy(name="acc"),
                 tfa.MultiF1Score(name="f1", average="weighted"),

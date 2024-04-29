@@ -115,7 +115,8 @@ def EfficientNetV2(
         y = keras.layers.GlobalAveragePooling2D(name=f"{name}.pool")(y)
         if 0 < params.dropout < 1:
             y = keras.layers.Dropout(params.dropout)(y)
-        y = keras.layers.Dense(num_classes, name=name)(y)
+        if num_classes is not None:
+            y = keras.layers.Dense(num_classes, name=name)(y)
         if params.output_activation:
             y = keras.layers.Activation(params.output_activation)(y)
         # if not params.use_logits:
@@ -127,7 +128,7 @@ def EfficientNetV2(
 def efficientnetv2_from_object(
     x: tf.Tensor,
     params: dict,
-    num_classes: int,
+    num_classes: int | None = None,
 ) -> keras.Model:
     """Create model from object
 

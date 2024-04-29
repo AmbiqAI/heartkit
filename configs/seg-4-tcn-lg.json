@@ -40,6 +40,7 @@
     "model_file": "model.keras",
     "samples_per_patient": 25,
     "val_file": "./results/${task}-class-4-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
+    "test_file": "./results/${task}-class-4-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
     "val_samples_per_patient": 25,
     "val_patients": 0.10,
     "test_samples_per_patient": 25,

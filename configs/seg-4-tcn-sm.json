@@ -40,6 +40,7 @@
     "model_file": "model.keras",
     "samples_per_patient": 25,
     "val_file": "./results/${task}-class-4-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
+    "test_file": "./results/${task}-class-4-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
     "val_samples_per_patient": 25,
     "val_patients": 0.10,
     "test_samples_per_patient": 25,
@@ -74,7 +75,7 @@
                 {"depth": 1, "branch": 1, "filters": 16, "kernel": [1, 7], "dilation": [1, 1], "dropout": 0.1, "ex_ratio": 1, "se_ratio": 0, "norm": "batch"},
                 {"depth": 1, "branch": 1, "filters": 24, "kernel": [1, 7], "dilation": [1, 2], "dropout": 0.1, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
                 {"depth": 1, "branch": 1, "filters": 32, "kernel": [1, 7], "dilation": [1, 4], "dropout": 0.1, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 40, "kernel": [1, 7], "dilation": [1, 8], "dropout": 0.1, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"}
+                {"depth": 1, "branch": 1, "filters": 48, "kernel": [1, 7], "dilation": [1, 8], "dropout": 0.1, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"}
             ],
             "output_kernel": [1, 7],
             "include_top": true,

@@ -115,18 +115,18 @@ def augment_pipeline(
                 prob = args.get("probability", [0, 0.25])[1]
                 amp = args.get("amplitude", [0, 0])
                 width = args.get("width", [0, 1])
-                ctype = args.get("type", "cut")
+                ctype = args.get("type", "cut")[0]
                 if np.random.rand() < prob:
                     dur = int(np.random.uniform(width[0], width[1]) * feat_len)
                     start = np.random.randint(0, feat_len - dur)
                     stop = start + dur
                     scale = np.random.uniform(amp[0], amp[1]) * x_sd
-                    if ctype == "cut":
+                    if ctype == 0:  # Cut
                         x[start:stop] = 0
-                    else:
+                    else:  # noise
                         x[start:stop] += np.random.normal(0, scale, size=x[start:stop].shape)
                     # END IF
-            # END IF
+                # END IF
             case _:  # default
                 pass
                 # raise ValueError(f"Unknown augmentation '{augmentation.name}'")

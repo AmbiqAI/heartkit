@@ -197,10 +197,10 @@ PtbxlDiagnosticMap = {
     # NORM
     PtbxlScpCode.NORM: HKDiagnostic.NORM,
     # STTC
-    PtbxlScpCode.NDT: HKDiagnostic.STTC,
-    PtbxlScpCode.NST_: HKDiagnostic.STTC,
-    PtbxlScpCode.DIG: HKDiagnostic.STTC,
-    PtbxlScpCode.LNGQT: HKDiagnostic.STTC,
+    # PtbxlScpCode.NDT: HKDiagnostic.STTC, FORM?
+    # PtbxlScpCode.NST_: HKDiagnostic.STTC, FORM?
+    # PtbxlScpCode.DIG: HKDiagnostic.STTC, FORM?
+    # PtbxlScpCode.LNGQT: HKDiagnostic.STTC, FORM?
     PtbxlScpCode.ISC_: HKDiagnostic.STTC,
     PtbxlScpCode.ISCAL: HKDiagnostic.STTC,
     PtbxlScpCode.ISCIN: HKDiagnostic.STTC,
@@ -408,6 +408,12 @@ class PtbxlDataset(HKDataset):
                 samples_per_patient=samples_per_patient,
             )
 
+        if self.task == "foundation":
+            return self.foundation_data_generator(
+                patient_generator=patient_generator,
+                samples_per_patient=samples_per_patient,
+            )
+
         raise NotImplementedError()
 
     def uniform_patient_generator(
@@ -506,6 +512,35 @@ class PtbxlDataset(HKDataset):
         for x in gen:
             y = x.copy()
             yield x, y
+
+    def foundation_data_generator(
+        self,
+        patient_generator: PatientGenerator,
+        samples_per_patient: int | list[int] = 1,
+    ) -> SampleGenerator:
+        """Generate frames and labels using patient generator.
+        Currently use two different leads of same subject data as positive pair.
+        """
+        input_size = int(np.round((self.sampling_rate / self.target_rate) * self.frame_size))
+        for _, segment in patient_generator:
+            data = segment["data"][:]
+            for _ in range(samples_per_patient):
+                leads = random.choices(self.leads, k=2)
+                lead_p1 = leads[0]
+                lead_p2 = leads[1]
+                start_p1 = np.random.randint(0, data.shape[1] - input_size)
+                start_p2 = np.random.randint(0, data.shape[1] - input_size)
+
+                x1 = np.nan_to_num(data[lead_p1, start_p1 : start_p1 + input_size].squeeze()).astype(np.float32)
+                x2 = np.nan_to_num(data[lead_p2, start_p2 : start_p2 + input_size].squeeze()).astype(np.float32)
+
+                if self.sampling_rate != self.target_rate:
+                    x1 = pk.signal.resample_signal(x1, self.sampling_rate, self.target_rate, axis=0)
+                    x2 = pk.signal.resample_signal(x2, self.sampling_rate, self.target_rate, axis=0)
+                # END IF
+                yield x1, x2
+            # END FOR
+        # END FOR
 
     def rhythm_data_generator(
         self,
@@ -866,7 +901,7 @@ class PtbxlDataset(HKDataset):
         Returns:
             npt.NDArray: Filtered patient ids
         """
-        if self.task in ("rhythm", "diagnotic"):
+        if self.task in ("rhythm", "diagnostic"):
             label_mask = self._get_patient_labels(patient_ids)
             neg_mask = label_mask == -1
             num_neg = neg_mask.sum()

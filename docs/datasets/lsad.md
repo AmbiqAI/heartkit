@@ -4,7 +4,7 @@
 
 The large scale arrhythmia database (LSAD) is a large-scale, multi-center, multi-lead, and multi-class ECG dataset for arrhythmia detection. The dataset contains ECG recordings from 45,152 patients. The dataset is collected from 3 different centers: Shaoxing People's Hospital, the Second Affiliated Hospital of Zhejiang University, and the First Affiliated Hospital of Zhejiang University. The dataset contains 11 different arrhythmia classes and 1 normal class. The dataset is collected from 12-lead ECGs and is annotated by a team of expert cardiologists. The dataset includes over 100 scp codes.
 
-Please visit [Physionet](https://physionet.org/content/ecg-rhythm/1.0.0/) for more details.
+Please visit [Physionet](https://physionet.org/content/ecg-arrhythmia/1.0.0/) for more details.
 
 ## <span class="sk-h2-span">Statistics</span>
 
@@ -28,8 +28,7 @@ This dataset received funding from the Kay Family Foundation Data Analytic Grant
 
 ## <span class="sk-h2-span">License</span>
 
-The dataset is available for non-commercial use only.
-[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](https://physionet.org/content/ecg-arrhythmia/view-license/1.0.0/)
+The dataset is available under [Creative Commons Attribution 4.0 International Public License](https://physionet.org/content/ecg-arrhythmia/view-license/1.0.0/)
 
 ## <span class="sk-h2-span">Supported Tasks</span>
 

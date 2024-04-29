@@ -12,7 +12,7 @@ The QT Database was created as part of a project funded by the National Library 
 
 ## <span class="sk-h2-span">License</span>
 
-The QT Database is available for commercial use.
+The QT Database is available for commercial use. [Open Data Commons Attribution License v1.0](https://physionet.org/content/qtdb/view-license/1.0.0/)
 
 ## <span class="sk-h2-span">Supported Tasks</span>
 

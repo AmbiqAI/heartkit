@@ -164,6 +164,7 @@ class HKDataset:
         if train_patients is not None:
             num_pts = int(train_patients) if train_patients > 1 else int(train_patients * len(train_patient_ids))
             train_patient_ids = train_patient_ids[:num_pts]
+            logger.info(f"Using {len(train_patient_ids)} training patients")
         # END IF
 
         # Resolve validation file path (allows for templating)

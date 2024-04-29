@@ -98,11 +98,26 @@ class RhythmTask(HKTask):
 
         with tfa.get_strategy().scope():
             inputs = keras.Input(shape=input_spec[0].shape, batch_size=None, name="input", dtype=input_spec[0].dtype)
-            if params.resume and params.model_file:
-                logger.info(f"Loading model from file {params.model_file}")
-                model = tfa.load_model(params.model_file)
+
+            # Load existing model
+            if params.model_file and params.resume:
+                prev_model = tfa.load_model(params.model_file)
+                outputs = prev_model(inputs)
+                # Stack new layers on top of existing model
+                if params.architecture:
+                    model = create_model(
+                        outputs,
+                        num_classes=params.num_classes,
+                        architecture=params.architecture,
+                    )
+                    outputs = model(outputs)
+                    model = keras.Model(inputs, outputs, name=model.name)
+                # Replace model with existing model
+                else:
+                    model = prev_model
+                # END IF
+                params.model_file = None  # Dont overwrite existing model
             else:
-                logger.info("Creating model from scratch")
                 model = create_model(
                     inputs,
                     num_classes=params.num_classes,
@@ -279,7 +294,7 @@ class RhythmTask(HKTask):
             logger.info(f"[TEST SET] THRESH={params.threshold:0.2%}, DROP={drop_perc:.2%}")
             logger.info(f"[TEST SET] ACC={test_acc:.2%}, F1={test_f1:.2%}")
         # END IF
-
+        print(y_true.shape, y_pred.shape)
         cm_path = params.job_dir / "confusion_matrix_test.png"
         confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
         px_plot_confusion_matrix(

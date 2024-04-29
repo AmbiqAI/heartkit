@@ -108,7 +108,8 @@ disable = [
     "duplicate-code",
     "use-dict-literal",
     "cyclic-import",
-    "unsubscriptable-object"
+    "unsubscriptable-object",
+    "not-callable"
 ]
 
 [tool.pylint.format]
