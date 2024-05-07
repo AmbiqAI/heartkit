@@ -43,9 +43,9 @@ def parse_content(cls: Type[B], content: str) -> B:
 
 @cli.command(name="run")
 def _run(
-    mode: HKMode = ArgField("-m", description="Mode"),
-    task: str = ArgField("-t", description="Task"),
-    config: str = ArgField("-c", description="File path or JSON content"),
+    mode: HKMode = ArgField("-m", description="Mode", default=HKMode.train),
+    task: str = ArgField("-t", description="Task", default=""),
+    config: str = ArgField("-c", description="File path or JSON content", default="{}"),
 ):
     """HeartKit CLI"""
 

@@ -1,10 +1,12 @@
 """ EfficientNet https://arxiv.org/abs/2104.00298"""
 
+from typing import Literal
+
 import keras
 import tensorflow as tf
 from pydantic import BaseModel, Field
 
-from .blocks import batch_norm, conv2d, mbconv_block, relu6
+from .blocks import conv2d, mbconv_block, norm_layer, relu6
 from .defines import KerasLayer, MBConvParams
 from .utils import make_divisible
 
@@ -23,6 +25,7 @@ class EfficientNetParams(BaseModel):
     drop_connect_rate: float = Field(default=0, description="Drop connect rate")
     use_logits: bool = Field(default=True, description="Use logits")
     activation: str = Field(default="relu6", description="Activation function")
+    norm: Literal["batch", "layer"] | None = Field(default="layer", description="Normalization type")
     model_name: str = Field(default="EfficientNetV2", description="Model name")
 
 
@@ -52,6 +55,7 @@ def efficientnet_core(blocks: list[MBConvParams], drop_connect_rate: float = 0) 
                     block.strides if d == 0 else 1,
                     block.se_ratio,
                     droprate=block_drop_rate,
+                    norm=block.norm,
                     name=name,
                 )(x)
                 global_block_id += 1
@@ -97,7 +101,7 @@ def EfficientNetV2(
             strides=params.input_strides,
             name=name,
         )(y)
-        y = batch_norm(name=name)(y)
+        y = norm_layer(params.norm, name)(y)
         y = relu6(name=name)(y)
     # END IF
 
@@ -107,7 +111,7 @@ def EfficientNetV2(
         name = "neck"
         filters = make_divisible(params.output_filters, 8)
         y = conv2d(filters, kernel_size=(1, 1), strides=(1, 1), padding="same", name=name)(y)
-        y = batch_norm(name=name)(y)
+        y = norm_layer(params.norm, name)(y)
         y = relu6(name=name)(y)
 
     if params.include_top:
@@ -117,10 +121,11 @@ def EfficientNetV2(
             y = keras.layers.Dropout(params.dropout)(y)
         if num_classes is not None:
             y = keras.layers.Dense(num_classes, name=name)(y)
+
         if params.output_activation:
             y = keras.layers.Activation(params.output_activation)(y)
-        # if not params.use_logits:
-        #     y = keras.layers.Softmax()(y)
+        elif not params.use_logits:
+            y = keras.layers.Softmax()(y)
     model = keras.Model(x, y, name=params.model_name)
     return model
 

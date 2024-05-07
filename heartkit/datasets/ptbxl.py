@@ -17,6 +17,7 @@ from ..tasks import HKDiagnostic, HKRhythm, HKSegment
 from ..utils import download_file
 from .dataset import HKDataset
 from .defines import PatientGenerator, SampleGenerator
+from .utils import download_s3_objects
 
 logger = logging.getLogger(__name__)
 
@@ -764,7 +765,14 @@ class PtbxlDataset(HKDataset):
             num_workers (int | None, optional): # parallel workers. Defaults to None.
             force (bool, optional): Force redownload. Defaults to False.
         """
-        self.download_raw_dataset(num_workers=num_workers, force=force)
+        download_s3_objects(
+            bucket="ambiq-ai-datasets",
+            prefix=self.ds_path.stem,
+            dst=self.ds_path.parent,
+            checksum="size",
+            progress=True,
+            num_workers=num_workers,
+        )
 
     def download_raw_dataset(self, num_workers: int | None = None, force: bool = False):
         """Downloads full dataset zipfile and converts into individial patient HDF5 files.

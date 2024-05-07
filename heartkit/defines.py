@@ -60,7 +60,7 @@ class HKMode(StrEnum):
 class HKDownloadParams(BaseModel, extra="allow"):
     """Download command params"""
 
-    job_dir: Path = Field(default_factory=tempfile.gettempdir, description="Job output directory")
+    job_dir: Path = Field(default_factory=lambda: Path(tempfile.gettempdir()), description="Job output directory")
     ds_path: Path = Field(default_factory=Path, description="Dataset root directory")
     datasets: list[str] = Field(default_factory=list, description="Datasets")
     progress: bool = Field(True, description="Display progress bar")

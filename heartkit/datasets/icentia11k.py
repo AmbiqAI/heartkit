@@ -5,11 +5,9 @@ import random
 import tempfile
 import zipfile
 from collections.abc import Iterable
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from enum import IntEnum
 from multiprocessing import Pool
 
-import boto3
 import h5py
 import numpy as np
 import numpy.typing as npt
@@ -18,14 +16,13 @@ import physiokit as pk
 import sklearn.model_selection
 import sklearn.preprocessing
 import tensorflow as tf
-from botocore import UNSIGNED
-from botocore.client import Config
 from tqdm import tqdm
 
 from ..tasks import HeartRate, HKBeat, HKRhythm, HKSegment
 from ..utils import download_file
 from .dataset import HKDataset
 from .defines import PatientGenerator, SampleGenerator
+from .utils import download_s3_objects
 
 logger = logging.getLogger(__name__)
 
@@ -727,54 +724,14 @@ class IcentiaDataset(HKDataset):
             num_workers (int | None, optional): # parallel workers. Defaults to None.
             force (bool, optional): Force redownload. Defaults to False.
         """
-
-        def download_s3_file(
-            s3_file: str,
-            save_path: os.PathLike,
-            bucket: str,
-            client: boto3.client,
-            force: bool = False,
-        ):
-            if not force and os.path.exists(save_path):
-                return
-            client.download_file(
-                Bucket=bucket,
-                Key=s3_file,
-                Filename=str(save_path),
-            )
-
-        s3_bucket = "ambiqai-ecg-icentia11k-dataset"
-        s3_prefix = "patients"
-
-        os.makedirs(self.ds_path, exist_ok=True)
-
-        patient_ids = self.patient_ids
-
-        # Creating only one session and one client
-        session = boto3.Session()
-        client = session.client("s3", config=Config(signature_version=UNSIGNED))
-
-        func = functools.partial(download_s3_file, bucket=s3_bucket, client=client, force=force)
-
-        with tqdm(desc="Downloading icentia11k dataset from S3", total=len(patient_ids)) as pbar:
-            pt_keys = [self._pt_key(patient_id) for patient_id in patient_ids]
-            with ThreadPoolExecutor(max_workers=2 * num_workers) as executor:
-                futures = (
-                    executor.submit(
-                        func,
-                        f"{s3_prefix}/{pt_key}.h5",
-                        self.ds_path / f"{pt_key}.h5",
-                    )
-                    for pt_key in pt_keys
-                )
-                for future in as_completed(futures):
-                    err = future.exception()
-                    if err:
-                        logger.exception("Failed on file")
-                    pbar.update(1)
-                # END FOR
-            # END WITH
-        # END WITH
+        download_s3_objects(
+            bucket="ambiq-ai-datasets",
+            prefix=self.ds_path.stem,
+            dst=self.ds_path.parent,
+            checksum="size",
+            progress=True,
+            num_workers=num_workers,
+        )
 
     def download_raw_dataset(self, num_workers: int | None = None, force: bool = False):
         """Downloads full Icentia dataset zipfile and converts into individial patient HDF5 files.

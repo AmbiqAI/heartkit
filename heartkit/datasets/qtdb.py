@@ -15,6 +15,7 @@ from tqdm import tqdm
 from ..utils import download_file
 from .dataset import HKDataset
 from .defines import PatientGenerator, SampleGenerator
+from .utils import download_s3_objects
 
 logger = logging.getLogger(__name__)
 
@@ -456,7 +457,22 @@ class QtdbDataset(HKDataset):
             num_workers (int | None, optional): # parallel workers. Defaults to None.
             force (bool, optional): Force redownload. Defaults to False.
         """
+        download_s3_objects(
+            bucket="ambiq-ai-datasets",
+            prefix=self.ds_path.stem,
+            dst=self.ds_path.parent,
+            checksum="size",
+            progress=True,
+            num_workers=num_workers,
+        )
 
+    def download_raw_dataset(self, num_workers: int | None = None, force: bool = False):
+        """Downloads full dataset zipfile and converts into individial patient HDF5 files.
+
+        Args:
+            force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
+            num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
+        """
         logger.info("Downloading QTDB dataset")
         ds_url = "https://physionet.org/static/published-projects/qtdb/qt-database-1.0.0.zip"
         ds_zip_path = self.ds_path / "qtdb.zip"
