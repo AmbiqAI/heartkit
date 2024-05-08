@@ -10,6 +10,12 @@ from .nstdb import NstdbNoise
 from .ptbxl import PtbxlDataset
 from .qtdb import QtdbDataset
 from .synthetic import SyntheticDataset
+from .utils import (
+    create_dataset_from_data,
+    create_interleaved_dataset_from_generator,
+    random_id_generator,
+    uniform_id_generator,
+)
 
 DatasetFactory.register("synthetic", SyntheticDataset)
 DatasetFactory.register("icentia11k", IcentiaDataset)

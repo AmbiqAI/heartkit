@@ -24,6 +24,24 @@ from .utils import (
 logger = setup_logger(__name__)
 
 
+class CustomCallback(keras.callbacks.Callback):
+    def on_train_begin(self, logs=None):
+        keys = list(logs.keys())
+        print("Starting training; got log keys: {}".format(keys))
+
+    def on_train_end(self, logs=None):
+        keys = list(logs.keys())
+        print("Stop training; got log keys: {}".format(keys))
+
+    def on_train_batch_begin(self, batch, logs=None):
+        # keys = list(logs.keys())
+        print(".", end="")
+
+    def on_train_batch_end(self, batch, logs=None):
+        # keys = list(logs.keys())
+        print("")
+
+
 class FoundationTask(HKTask):
     """HeartKit Foundation Task"""
 
@@ -129,6 +147,7 @@ class FoundationTask(HKTask):
         if env_flag("WANDB"):
             ModelCheckpoint = WandbModelCheckpoint
         model_callbacks = [
+            CustomCallback(),
             keras.callbacks.EarlyStopping(
                 monitor=f"val_{params.val_metric}",
                 patience=max(int(0.25 * params.epochs), 1),

@@ -11,7 +11,11 @@ import tensorflow as tf
 
 from ..utils import load_pkl, resolve_template_path, save_pkl
 from .defines import PatientGenerator, Preprocessor, SampleGenerator
-from .utils import create_dataset_from_data
+from .utils import (
+    create_dataset_from_data,
+    create_interleaved_dataset_from_generator,
+    uniform_id_generator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +52,11 @@ class HKDataset:
     #############################################
 
     @property
+    def name(self) -> str:
+        """Dataset name"""
+        return self.ds_path.stem
+
+    @property
     def cachable(self) -> bool:
         """If dataset supports file caching."""
         return True
@@ -73,22 +82,6 @@ class HKDataset:
         """
         raise NotImplementedError()
 
-    def task_data_generator(
-        self,
-        patient_generator: PatientGenerator,
-        samples_per_patient: int | list[int] = 1,
-    ) -> SampleGenerator:
-        """Task-level data generator.
-
-        Args:
-            patient_generator (PatientGenerator): Patient data generator
-            samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
-
-        Returns:
-            SampleGenerator: Sample data generator
-        """
-        raise NotImplementedError()
-
     def download(self, num_workers: int | None = None, force: bool = False):
         """Download dataset
 
@@ -98,56 +91,30 @@ class HKDataset:
         """
         raise NotImplementedError()
 
-    def uniform_patient_generator(
-        self,
-        patient_ids: npt.NDArray,
-        repeat: bool = True,
-        shuffle: bool = True,
-    ) -> PatientGenerator:
-        """Yield data uniformly for each patient in the array.
-
-        Args:
-            patient_ids (npt.NDArray): Array of patient ids
-            repeat (bool, optional): Whether to repeat generator. Defaults to True.
-            shuffle (bool, optional): Whether to shuffle patient ids. Defaults to True.
-
-        Returns:
-            PatientGenerator: Patient generator
-
-        Yields:
-            Iterator[PatientGenerator]
-        """
-        raise NotImplementedError()
-
     #############################################
     # !! Above must be implemented in subclass !!
     #############################################
 
-    def load_train_datasets(
+    def uniform_patient_generator(self, patient_ids: npt.NDArray, repeat: bool = True) -> PatientGenerator:
+        """Uniform patient generator
+
+        Args:
+            patient_ids (npt.NDArray): Patient IDs
+            repeat (bool, optional): Repeat. Defaults to True.
+
+        Yields:
+            PatientGenerator: Patient generator
+        """
+        return uniform_id_generator(patient_ids, repeat=repeat)
+
+    def get_train_val_patient_ids(
         self,
         train_patients: float | None = None,
         val_patients: float | None = None,
         train_pt_samples: int | list[int] | None = None,
         val_pt_samples: int | list[int] | None = None,
-        val_size: int | None = None,
         val_file: os.PathLike | None = None,
-        preprocess: Preprocessor | None = None,
-        num_workers: int = 1,
-    ) -> tuple[tf.data.Dataset, tf.data.Dataset]:
-        """Load training and validation TF datasets
-
-        Args:
-            train_patients (float | None, optional): # or proportion of train patients. Defaults to None.
-            val_patients (float | None, optional): # or proportion of val patients. Defaults to None.
-            train_pt_samples (int | list[int] | None, optional): # samples per patient for training. Defaults to None.
-            val_pt_samples (int | list[int] | None, optional): # samples per patient for validation. Defaults to None.
-            val_size (int | None, optional): Validation size. Defaults to 200*len(val_patient_ids).
-            val_file (str | None, optional): Path to existing pickled validation file. Defaults to None.
-            num_workers (int, optional): # of parallel workers. Defaults to 1.
-
-        Returns:
-            tuple[tf.data.Dataset, tf.data.Dataset]: Training and validation datasets
-        """
+    ) -> tuple[npt.NDArray, npt.NDArray]:
 
         if val_patients is not None and val_patients >= 1:
             val_patients = int(val_patients)
@@ -178,11 +145,9 @@ class HKDataset:
             )
         # END IF
 
-        # Use existing validation data
         if self.cachable and val_file and os.path.isfile(val_file):
             logger.info(f"Loading validation data from file {val_file}")
             val = load_pkl(val_file)
-            val_ds = create_dataset_from_data(val["x"], val["y"], self.spec)
             val_patient_ids = val["patient_ids"]
             train_patient_ids = np.setdiff1d(train_patient_ids, val_patient_ids)
         else:
@@ -190,18 +155,74 @@ class HKDataset:
             train_patient_ids, val_patient_ids = self.split_train_test_patients(
                 patient_ids=train_patient_ids, test_size=val_patients
             )
+
+        return train_patient_ids, val_patient_ids
+
+    def load_train_datasets(
+        self,
+        train_patients: float | None = None,
+        val_patients: float | None = None,
+        train_pt_samples: int | list[int] | None = None,
+        val_pt_samples: int | list[int] | None = None,
+        val_size: int | None = None,
+        val_file: os.PathLike | None = None,
+        preprocess: Preprocessor | None = None,
+        num_workers: int = 1,
+    ) -> tuple[tf.data.Dataset, tf.data.Dataset]:
+        """Load training and validation TF datasets
+
+        Args:
+            train_patients (float | None, optional): # or proportion of train patients. Defaults to None.
+            val_patients (float | None, optional): # or proportion of val patients. Defaults to None.
+            train_pt_samples (int | list[int] | None, optional): # samples per patient for training. Defaults to None.
+            val_pt_samples (int | list[int] | None, optional): # samples per patient for validation. Defaults to None.
+            val_size (int | None, optional): Validation size. Defaults to 200*len(val_patient_ids).
+            val_file (str | None, optional): Path to existing pickled validation file. Defaults to None.
+            num_workers (int, optional): # of parallel workers. Defaults to 1.
+
+        Returns:
+            tuple[tf.data.Dataset, tf.data.Dataset]: Training and validation datasets
+        """
+        train_patient_ids, val_patient_ids = self.get_train_val_patient_ids(
+            train_patients=train_patients,
+            val_patients=val_patients,
+            train_pt_samples=train_pt_samples,
+            val_pt_samples=val_pt_samples,
+            val_file=val_file,
+        )
+
+        # Resolve validation file path (allows for templating)
+        if val_file:
+            val_file = resolve_template_path(
+                fpath=val_file,
+                dataset=self.ds_path.stem,
+                task=self.task,
+                frame_size=str(int(self.frame_size)),
+                sampling_rate=str(int(self.target_rate)),
+            )
+        # END IF
+
+        # Use existing validation data
+        if self.cachable and val_file and os.path.isfile(val_file):
+            logger.info(f"Loading validation data from file {val_file}")
+            val = load_pkl(val_file)
+            val_ds = create_dataset_from_data(val["x"], val["y"], self.spec)
+        else:
             if val_size is None:
                 num_samples = np.mean(val_pt_samples) if isinstance(val_pt_samples, list) else val_pt_samples
                 val_size = math.ceil(num_samples * len(val_patient_ids))
 
             logger.info(f"Collecting {val_size} validation samples")
-            val_ds = self._parallelize_dataset(
-                patient_ids=val_patient_ids,
-                samples_per_patient=val_pt_samples,
+
+            val_ds = create_interleaved_dataset_from_generator(
+                data_generator=self.task_data_generator,
+                id_generator=functools.partial(uniform_id_generator, repeat=True),
+                ids=val_patient_ids,
+                spec=self.spec,
                 preprocess=preprocess,
-                repeat=False,
                 num_workers=num_workers,
             )
+
             val_x, val_y = next(val_ds.batch(val_size).as_numpy_iterator())
             val_ds = create_dataset_from_data(val_x, val_y, self.spec)
 
@@ -214,11 +235,13 @@ class HKDataset:
         # END IF
 
         logger.info("Building train dataset")
-        train_ds = self._parallelize_dataset(
-            patient_ids=train_patient_ids,
-            samples_per_patient=train_pt_samples,
+
+        train_ds = create_interleaved_dataset_from_generator(
+            data_generator=self.task_data_generator,
+            id_generator=functools.partial(uniform_id_generator, repeat=True),
+            ids=train_patient_ids,
+            spec=self.spec,
             preprocess=preprocess,
-            repeat=True,
             num_workers=num_workers,
         )
         return train_ds, val_ds

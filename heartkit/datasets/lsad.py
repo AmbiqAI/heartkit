@@ -448,12 +448,13 @@ class LsadDataset(HKDataset):
         for _, segment in patient_generator:
             data = segment["data"][:]
             for _ in range(samples_per_patient):
-                leads = random.choices(self.leads, k=2)
+                leads = random.sample(self.leads, k=2)
                 lead_p1 = leads[0]
                 lead_p2 = leads[1]
 
                 start_p1 = np.random.randint(0, data.shape[1] - input_size)
-                start_p2 = np.random.randint(0, data.shape[1] - input_size)
+                start_p2 = start_p1
+                # start_p2 = np.random.randint(0, data.shape[1] - input_size)
 
                 x1 = np.nan_to_num(data[lead_p1, start_p1 : start_p1 + input_size].squeeze()).astype(np.float32)
                 x2 = np.nan_to_num(data[lead_p2, start_p2 : start_p2 + input_size].squeeze()).astype(np.float32)

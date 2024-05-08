@@ -2,9 +2,10 @@ import functools
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Generator, TypeVar
+from typing import Callable, Generator, Iterable, TypeVar
 
 import boto3
+import numpy as np
 import numpy.typing as npt
 import tensorflow as tf
 from botocore import UNSIGNED
@@ -46,6 +47,7 @@ def create_dataset_from_data(x: npt.NDArray, y: npt.NDArray, spec: tuple[tf.Tens
 
 
 T = TypeVar("T")
+K = TypeVar("K")
 
 
 def buffered_generator(generator: Generator[T, None, None], buffer_size: int) -> Generator[list[T], None, None]:
@@ -67,6 +69,143 @@ def buffered_generator(generator: Generator[T, None, None], buffer_size: int) ->
     for e in generator:
         buffer = buffer[1:] + [e]
         yield buffer
+
+
+def uniform_id_generator(
+    ids: Iterable[T],
+    repeat: bool = True,
+    shuffle: bool = True,
+) -> Generator[T, None, None]:
+    """Simple generator that yields ids in a uniform manner.
+
+    Args:
+        ids (pt.ArrayLike): Array of ids
+        repeat (bool, optional): Whether to repeat generator. Defaults to True.
+        shuffle (bool, optional): Whether to shuffle ids.. Defaults to True.
+
+    Returns:
+        Generator[T, None, None]: Generator
+    Yields:
+        T: Id
+    """
+    ids = np.copy(ids)
+    while True:
+        if shuffle:
+            np.random.shuffle(ids)
+        for id in ids:
+            yield id
+        # END FOR
+        if not repeat:
+            break
+        # END IF
+    # END WHILE
+
+
+def random_id_generator(
+    ids: Iterable[T],
+    weights: list[int] | None = None,
+) -> Generator[T, None, None]:
+    """Simple generator that yields ids in a random manner.
+
+    Args:
+        ids (pt.ArrayLike): Array of ids
+        weights (list[int], optional): Weights for each id. Defaults to None.
+
+    Returns:
+        Generator[T, None, None]: Generator
+
+    Yields:
+        T: Id
+    """
+    import random
+
+    while True:
+        id = random.choice(ids)
+        yield id
+    # END WHILE
+
+
+def transform_dataset_pipeline(
+    ds: tf.data.Dataset,
+    buffer_size: int | None = None,
+    batch_size: int | None = None,
+    prefetch_size: int | None = None,
+) -> tf.data.Dataset:
+    if buffer_size is not None:
+        ds = ds.shuffle(
+            buffer_size=buffer_size,
+            reshuffle_each_iteration=True,
+        )
+    if batch_size is not None:
+        ds = ds.batch(
+            batch_size=batch_size,
+            drop_remainder=False,
+        )
+    if prefetch_size is not None:
+        ds = ds.prefetch(buffer_size=tf.data.AUTOTUNE)
+    return ds
+
+
+def create_interleaved_dataset_from_generator(
+    data_generator: Callable[[Generator[T, None, None], Generator[K, None, None]], Generator[T, None, None]],
+    id_generator: Callable[[list[T]], Generator[T, None, None]],
+    ids: list[T],
+    spec: tuple[tf.TensorSpec, tf.TensorSpec],
+    preprocess: Callable[[K], K] | None = None,
+    num_workers: int = 4,
+) -> tf.data.Dataset:
+    """Create TF dataset generator pipeline
+
+    Args:
+
+    Returns:
+        tf.data.Dataset: Dataset
+    """
+
+    def split_generator(split_ids: list[T]) -> tf.data.Dataset:
+        """Split generator per worker"""
+
+        def ds_gen():
+            """Worker generator routine"""
+            split_id_generator = id_generator(split_ids)
+            return map(preprocess, data_generator(split_id_generator))
+
+        return tf.data.Dataset.from_generator(
+            ds_gen,
+            output_signature=spec,
+        )
+
+    # END IF
+
+    if num_workers > len(ids):
+        num_workers = len(ids)
+    split = len(ids) // num_workers
+    ds_splits = [split_generator(ids[i * split : (i + 1) * split]) for i in range(num_workers)]
+
+    # Create TF datasets (interleave workers)
+    ds = tf.data.Dataset.from_tensor_slices(ds_splits)
+
+    ds = ds.interleave(
+        lambda x: x,
+        cycle_length=num_workers,
+        deterministic=False,
+        num_parallel_calls=tf.data.AUTOTUNE,
+    )
+
+    # if buffer_size is not None:
+    #     ds = ds.shuffle(
+    #         buffer_size=buffer_size,
+    #         reshuffle_each_iteration=True,
+    #     )
+    # if batch_size is not None:
+    #     ds = ds.batch(
+    #         batch_size=batch_size,
+    #         drop_remainder=False,
+    #     )
+    # if prefetch_size is not None:
+    #     ds = ds.prefetch(buffer_size=tf.data.AUTOTUNE)
+
+    return ds
 
 
 def download_s3_object(

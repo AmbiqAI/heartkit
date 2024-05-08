@@ -276,7 +276,7 @@ class PtbxlDataset(HKDataset):
         leads: list[int] | None = None,
     ) -> None:
         super().__init__(
-            ds_path=ds_path / "ptbxl",
+            ds_path=ds_path / self.name,
             task=task,
             frame_size=frame_size,
             target_rate=target_rate,
@@ -284,6 +284,12 @@ class PtbxlDataset(HKDataset):
             class_map=class_map,
         )
         self.leads = leads or list(range(12))
+        self._data_cache: dict[str, np.ndarray] = {}
+
+    @property
+    def name(self) -> str:
+        """Dataset name"""
+        return "ptbxl"
 
     @property
     def sampling_rate(self) -> int:
@@ -417,6 +423,22 @@ class PtbxlDataset(HKDataset):
 
         raise NotImplementedError()
 
+    def get_patient_data(self, patient_id: int) -> h5py.Dataset:
+        """Get patient data
+
+        Args:
+            patient_id (int): Patient id
+
+        Returns:
+            h5py.Dataset: Patient data
+        """
+        pt_key = self._pt_key(patient_id)
+        # if pt_key not in self._data_cache:
+        # self._data_cache[pt_key] = data
+        # yield patient_id, self._data_cache[pt_key]
+        with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
+            return h5
+
     def uniform_patient_generator(
         self,
         patient_ids: npt.NDArray,
@@ -441,10 +463,8 @@ class PtbxlDataset(HKDataset):
             if shuffle:
                 np.random.shuffle(patient_ids)
             for patient_id in patient_ids:
-                pt_key = self._pt_key(patient_id)
-                with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
-                    yield patient_id, h5
-                # END WITH
+                data = self.get_patient_data(patient_id)
+                yield patient_id, data
             # END FOR
             if not repeat:
                 break
@@ -492,7 +512,7 @@ class PtbxlDataset(HKDataset):
         for _, segment in patient_generator:
             data = segment["data"][:]
             for _ in range(samples_per_patient):
-                lead = random.choice(self.leads)
+                lead = random.sample(self.leads)
                 start = np.random.randint(0, data.shape[1] - input_size)
                 x = data[lead, start : start + input_size].squeeze()
                 x = np.nan_to_num(x).astype(np.float32)
@@ -522,15 +542,18 @@ class PtbxlDataset(HKDataset):
         """Generate frames and labels using patient generator.
         Currently use two different leads of same subject data as positive pair.
         """
+        print(f"Foundation data generator called")
         input_size = int(np.round((self.sampling_rate / self.target_rate) * self.frame_size))
         for _, segment in patient_generator:
-            data = segment["data"][:]
+            # data = segment["data"][:]
+            data = segment
             for _ in range(samples_per_patient):
-                leads = random.choices(self.leads, k=2)
+                leads = random.sample(self.leads, k=2)
                 lead_p1 = leads[0]
                 lead_p2 = leads[1]
                 start_p1 = np.random.randint(0, data.shape[1] - input_size)
-                start_p2 = np.random.randint(0, data.shape[1] - input_size)
+                start_p2 = start_p1
+                # start_p2 = np.random.randint(0, data.shape[1] - input_size)
 
                 x1 = np.nan_to_num(data[lead_p1, start_p1 : start_p1 + input_size].squeeze()).astype(np.float32)
                 x2 = np.nan_to_num(data[lead_p2, start_p2 : start_p2 + input_size].squeeze()).astype(np.float32)
@@ -910,8 +933,8 @@ class PtbxlDataset(HKDataset):
             npt.NDArray: Filtered patient ids
         """
         if self.task in ("rhythm", "diagnostic"):
-            label_mask = self._get_patient_labels(patient_ids)
-            neg_mask = label_mask == -1
+            pts_labels = self.get_patients_labels(patient_ids)
+            neg_mask = np.array([not pt_labels for pt_labels in pts_labels])
             num_neg = neg_mask.sum()
             if num_neg > 0:
                 logger.warning(f"Removed {num_neg} of {patient_ids.size} patients w/ no target class")
@@ -933,7 +956,8 @@ class PtbxlDataset(HKDataset):
 
         # Use stratified split for rhythm task
         if self.task in ("rhythm", "diagnostic"):
-            stratify = self._get_patient_labels(patient_ids)
+            pts_labels = self.get_patients_labels(patient_ids)
+            stratify = np.array([pt_labels[0] if pt_labels else -1 for pt_labels in pts_labels])
             neg_mask = stratify == -1
             stratify = stratify[~neg_mask]
             patient_ids = patient_ids[~neg_mask]
@@ -948,7 +972,7 @@ class PtbxlDataset(HKDataset):
             stratify=stratify,
         )
 
-    def _get_patient_labels(self, patient_ids: npt.NDArray) -> npt.NDArray:
+    def get_patients_labels(self, patient_ids: npt.NDArray) -> list[list[int]]:
         """Get scp labels for each patient
 
         Args:
@@ -960,10 +984,10 @@ class PtbxlDataset(HKDataset):
         """
         ids = patient_ids.tolist()
         with Pool() as pool:
-            pt_rhythms = list(pool.imap(self._get_patient_label, ids))
-        return np.array(pt_rhythms)
+            pt_labels = list(pool.imap(self._get_patient_label, ids))
+        return pt_labels
 
-    def _get_patient_label(self, patient_id: int) -> int:
+    def _get_patient_labels(self, patient_id: int) -> list[int]:
         """Get scp label for patient
 
         Args:
@@ -972,7 +996,13 @@ class PtbxlDataset(HKDataset):
         Returns:
             int: Target rhythm class
         """
-        tgt_map = {k: self.class_map.get(v, -1) for (k, v) in PtbxlRhythmMap.items()}
+        if self.task == "rhythm":
+            lcl_map = PtbxlRhythmMap
+        elif self.task == "diagnostic":
+            lcl_map = PtbxlDiagnosticMap
+        else:
+            raise ValueError(f"Invalid task {self.task}")
+        tgt_map = {k: self.class_map.get(v, -1) for (k, v) in lcl_map.items()}
         pt_key = self._pt_key(patient_id)
         with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
             pt_rhythms: npt.NDArray[np.int64] = np.array(h5["slabels"][:])
@@ -980,6 +1010,4 @@ class PtbxlDataset(HKDataset):
             return -1
         pt_rhythms = pt_rhythms[:, 0]
         pt_classes: list[int] = [tgt_map[r] for r in pt_rhythms if tgt_map.get(r, -1) != -1]
-        if len(pt_classes) == 0:
-            return -1
-        return random.choice(pt_classes)
+        return pt_classes
