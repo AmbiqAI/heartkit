@@ -1,22 +1,24 @@
+import contextlib
 import functools
 import logging
 import os
 import random
 import tempfile
 import zipfile
+from enum import IntEnum
 from multiprocessing import Pool
 from pathlib import Path
+from typing import Generator
 
 import h5py
 import numpy as np
 import numpy.typing as npt
 import physiokit as pk
-import tensorflow as tf
 from tqdm import tqdm
 
 from ..utils import download_file
 from .dataset import HKDataset
-from .defines import PatientGenerator, SampleGenerator
+from .defines import PatientGenerator
 from .utils import download_s3_objects
 
 logger = logging.getLogger(__name__)
@@ -27,6 +29,17 @@ LudbSymbolMap = {
     "N": 2,  # QRS complex
     "t": 3,  # T Wave
 }
+
+
+class LudbSegmentation(IntEnum):
+    """LUDB segmentation labels"""
+
+    normal = 0
+    pwave = 1
+    qrs = 2
+    twave = 3
+
+
 LudbLeadsMap = {
     "i": 0,
     "ii": 1,
@@ -57,22 +70,17 @@ class LudbDataset(HKDataset):
     def __init__(
         self,
         ds_path: os.PathLike,
-        task: str,
-        frame_size: int,
-        target_rate: int,
-        spec: tuple[tf.TensorSpec, tf.TensorSpec],
-        class_map: dict[int, int] | None = None,
         leads: list[int] | None = None,
     ) -> None:
         super().__init__(
-            ds_path=ds_path / "ludb",
-            task=task,
-            frame_size=frame_size,
-            target_rate=target_rate,
-            spec=spec,
-            class_map=class_map,
+            ds_path=ds_path,
         )
-        self.leads = leads or list(range(12))
+        self.leads = leads or list(LudbLeadsMap.values())
+
+    @property
+    def name(self) -> str:
+        """Dataset name"""
+        return "ludb"
 
     @property
     def sampling_rate(self) -> int:
@@ -114,112 +122,64 @@ class LudbDataset(HKDataset):
         """
         return self.patient_ids[180:]
 
-    def task_data_generator(
+    def _pt_key(self, patient_id: int):
+        """Get patient key"""
+        return f"p{patient_id:05d}"
+
+    @contextlib.contextmanager
+    def patient_data(self, patient_id: int) -> Generator[h5py.Group, None, None]:
+        """Get patient data
+
+        Args:
+            patient_id (int): Patient ID
+
+        Returns:
+            Generator[h5py.Group, None, None]: Patient data
+        """
+        with h5py.File(self.ds_path / f"{self._pt_key(patient_id)}.h5", mode="r") as h5:
+            yield h5
+
+    def signal_generator(
         self,
         patient_generator: PatientGenerator,
-        samples_per_patient: int | list[int] = 1,
-    ) -> SampleGenerator:
-        """Task-level data generator.
+        frame_size: int,
+        samples_per_patient: int = 1,
+        target_rate: int | None = None,
+    ) -> Generator[npt.NDArray, None, None]:
+        """Generate random frames.
 
         Args:
-            patient_generator (PatientGenerator): Patient data generator
-            samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
+            patient_generator (PatientGenerator): Patient generator
+            frame_size (int): Frame size
+            samples_per_patient (int, optional): # samples per patient. Defaults to 1.
+            target_rate (int | None, optional): Target sampling rate. Defaults to None.
 
         Returns:
-            SampleGenerator: Sample data generator
+            Generator[npt.NDArray, None, None]: Generator of input data of shape (frame_size, 1)
         """
-        if self.task == "segmentation":
-            return self.segmentation_generator(
-                patient_generator=patient_generator,
-                samples_per_patient=samples_per_patient,
-            )
-        raise NotImplementedError()
 
-    def segmentation_generator(
-        self,
-        patient_generator: PatientGenerator,
-        samples_per_patient: int | list[int] = 1,
-    ) -> SampleGenerator:
-        """Generate frames and segment labels.
+        if target_rate is None:
+            target_rate = self.sampling_rate
 
-        Args:
-            patient_generator (PatientGenerator): Patient Generator
-            samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
+        input_size = int(np.round((self.sampling_rate / target_rate) * frame_size))
 
-        Returns:
-            SampleGenerator: Sample generator
-
-        Yields:
-            Iterator[SampleGenerator]
-        """
-        for _, pt in patient_generator:
-            # NOTE: [:] will load all data into RAM- ideal for small dataset
-            data = pt["data"][:]
-            segs = pt["segmentations"][:]
-            fids = pt["fiducials"][:]
-
-            if self.sampling_rate != self.target_rate:
-                ratio = self.target_rate / self.sampling_rate
-                data = pk.signal.resample_signal(data, self.sampling_rate, self.target_rate, axis=0)
-                segs[:, (SEG_BEG_IDX, SEG_END_IDX)] = segs[:, (SEG_BEG_IDX, SEG_END_IDX)] * ratio
-                fids[:, FID_LOC_IDX] = fids[:, FID_LOC_IDX] * ratio
-            # END IF
-
-            # Create segmentation mask
-            labels = np.zeros_like(data)
-            for seg_idx in range(segs.shape[0]):
-                seg = segs[seg_idx]
-                labels[seg[SEG_BEG_IDX] : seg[SEG_END_IDX], seg[SEG_LEAD_IDX]] = seg[SEG_LBL_IDX]
-            # END FOR
-
-            start_offset = max(0, segs[0][SEG_BEG_IDX] - 100)
-            stop_offset = max(0, data.shape[0] - segs[-1][SEG_END_IDX] + 100)
+        for pt in patient_generator:
+            with self.patient_data(pt) as h5:
+                data: h5py.Dataset = h5["data"][:]
+            # END WITH
             for _ in range(samples_per_patient):
-                # Randomly pick an ECG lead
-                # lead = np.random.randint(data.shape[1])
                 lead = random.choice(self.leads)
-                # Randomly select frame within the segment
-                frame_start = np.random.randint(start_offset, data.shape[0] - self.frame_size - stop_offset)
-                frame_end = frame_start + self.frame_size
-                x = data[frame_start:frame_end, lead].astype(np.float32)
-                y = labels[frame_start:frame_end, lead].astype(np.int32)
-                y = np.vectorize(self.class_map.get, otypes=[int])(y)
-                yield x, y
-            # END FOR
-        # END FOR
-
-    def signal_generator(self, patient_generator: PatientGenerator, samples_per_patient: int = 1) -> SampleGenerator:
-        """
-        Generate frames using patient generator.
-        from the segments in patient data by placing a frame in a random location within one of the segments.
-
-        Args:
-            patient_generator (PatientGenerator): Generator that yields a tuple of patient id and patient data.
-                    Patient data may contain only signals, since labels are not used.
-            samples_per_patient (int): Samples per patient.
-
-        Returns:
-            SampleGenerator: Generator of input data of shape (frame_size, 1)
-        """
-        for _, pt in patient_generator:
-            data = pt["data"][:]
-            if self.sampling_rate != self.target_rate:
-                data = pk.signal.resample_signal(data, self.sampling_rate, self.target_rate, axis=0)
-            # END IF
-            for _ in range(samples_per_patient):
-                # lead = np.random.randint(data.shape[1])
-                lead = random.choice(self.leads)
-                if data.shape[0] > self.frame_size:
-                    frame_start = np.random.randint(data.shape[0] - self.frame_size)
-                else:
-                    frame_start = 0
-                frame_end = frame_start + self.frame_size
-                x = data[frame_start:frame_end, lead].astype(np.float32)
+                start = np.random.randint(0, data.shape[0] - input_size)
+                x = data[start : start + input_size, lead].squeeze()
+                x = np.nan_to_num(x).astype(np.float32)
+                if self.sampling_rate != target_rate:
+                    x = pk.signal.resample_signal(x, self.sampling_rate, target_rate, axis=0)
+                # END IF
                 yield x
             # END FOR
         # END FOR
 
-    def get_patient_data_segments(self, patient: int) -> tuple[npt.NDArray, npt.NDArray]:
+    def get_patient_data_segments(self, patient_id: int) -> tuple[npt.NDArray, npt.NDArray]:
         """Get patient's entire data and segments
 
         Args:
@@ -228,8 +188,7 @@ class LudbDataset(HKDataset):
         Returns:
             tuple[npt.NDArray, npt.NDArray]: (data, segment labels)
         """
-        pt_key = f"p{patient:05d}"
-        with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as pt:
+        with self.patient_data(patient_id) as pt:
             data: npt.NDArray = pt["data"][:]
             segs: npt.NDArray = pt["segmentations"][:]
         labels = np.zeros_like(data)
@@ -239,37 +198,80 @@ class LudbDataset(HKDataset):
         # END FOR
         return data, labels
 
-    def uniform_patient_generator(
-        self,
-        patient_ids: npt.NDArray,
-        repeat: bool = True,
-        shuffle: bool = True,
-    ) -> PatientGenerator:
-        """Yield data for each patient in the array.
+    def download(self, num_workers: int | None = None, force: bool = False):
+        """Download LUDB dataset
 
         Args:
-            patient_ids (pt.ArrayLike): Array of patient ids
-            repeat (bool, optional): Whether to repeat generator. Defaults to True.
-            shuffle (bool, optional): Whether to shuffle patient ids.. Defaults to True.
-
-        Returns:
-            PatientGenerator: Patient generator
-
-        Yields:
-            Iterator[PatientGenerator]
+            num_workers (int | None, optional): # parallel workers. Defaults to None.
+            force (bool, optional): Force redownload. Defaults to False.
         """
-        patient_ids = np.copy(patient_ids)
-        while True:
-            if shuffle:
-                np.random.shuffle(patient_ids)
-            for patient_id in patient_ids:
-                pt_key = f"p{patient_id:05d}"
-                with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
-                    yield patient_id, h5
-            # END FOR
-            if not repeat:
-                break
-        # END WHILE
+        download_s3_objects(
+            bucket="ambiq-ai-datasets",
+            prefix=self.ds_path.stem,
+            dst=self.ds_path.parent,
+            checksum="size",
+            progress=True,
+            num_workers=num_workers,
+        )
+
+    def download_raw_dataset(self, num_workers: int | None = None, force: bool = False):
+        """Downloads full dataset zipfile and converts into individial patient HDF5 files.
+
+        Args:
+            force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
+            num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
+        """
+        logger.info("Downloading LUDB dataset")
+        ds_url = (
+            "https://physionet.org/static/published-projects/ludb/"
+            "lobachevsky-university-electrocardiography-database-1.0.1.zip"
+        )
+        ds_zip_path = self.ds_path / "ludb.zip"
+        os.makedirs(self.ds_path, exist_ok=True)
+        if os.path.exists(ds_zip_path) and not force:
+            logger.warning(
+                f"Zip file already exists. Please delete or set `force` flag to redownload. PATH={ds_zip_path}"
+            )
+        else:
+            download_file(ds_url, ds_zip_path, progress=True)
+
+        # 2. Extract and convert patient ECG data to H5 files
+        logger.info("Generating LUDB patient data")
+        self.convert_dataset_zip_to_hdf5(zip_path=ds_zip_path, force=force, num_workers=num_workers)
+        logger.info("Finished LUDB patient data")
+
+    def convert_dataset_zip_to_hdf5(
+        self,
+        zip_path: os.PathLike,
+        patient_ids: npt.NDArray | None = None,
+        force: bool = False,
+        num_workers: int | None = None,
+    ):
+        """Convert dataset into individial patient HDF5 files.
+
+        Args:
+            zip_path (PathLike): Zip path
+            patient_ids (npt.NDArray | None, optional): List of patient IDs to extract. Defaults to all.
+            force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
+            num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
+        """
+        if not patient_ids:
+            patient_ids = self.patient_ids
+
+        subdir = "lobachevsky-university-electrocardiography-database-1.0.1"
+        with Pool(processes=num_workers) as pool, tempfile.TemporaryDirectory() as tmpdir, zipfile.ZipFile(
+            zip_path, mode="r"
+        ) as zp:
+            ludb_dir = Path(tmpdir, "ludb")
+            zp.extractall(ludb_dir)
+            f = functools.partial(
+                self.convert_pt_wfdb_to_hdf5,
+                src_path=ludb_dir / subdir / "data",
+                dst_path=self.ds_path,
+                force=force,
+            )
+            _ = list(tqdm(pool.imap(f, patient_ids), total=len(patient_ids)))
+        # END WITH
 
     def convert_pt_wfdb_to_hdf5(
         self, patient: int, src_path: os.PathLike, dst_path: os.PathLike, force: bool = False
@@ -331,78 +333,3 @@ class LudbDataset(HKDataset):
         # END IF
 
         return data, segs, fids
-
-    def convert_dataset_zip_to_hdf5(
-        self,
-        zip_path: os.PathLike,
-        patient_ids: npt.NDArray | None = None,
-        force: bool = False,
-        num_workers: int | None = None,
-    ):
-        """Convert dataset into individial patient HDF5 files.
-
-        Args:
-            zip_path (PathLike): Zip path
-            patient_ids (npt.NDArray | None, optional): List of patient IDs to extract. Defaults to all.
-            force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
-            num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
-        """
-        if not patient_ids:
-            patient_ids = self.patient_ids
-
-        subdir = "lobachevsky-university-electrocardiography-database-1.0.1"
-        with Pool(processes=num_workers) as pool, tempfile.TemporaryDirectory() as tmpdir, zipfile.ZipFile(
-            zip_path, mode="r"
-        ) as zp:
-            ludb_dir = Path(tmpdir, "ludb")
-            zp.extractall(ludb_dir)
-            f = functools.partial(
-                self.convert_pt_wfdb_to_hdf5,
-                src_path=ludb_dir / subdir / "data",
-                dst_path=self.ds_path,
-                force=force,
-            )
-            _ = list(tqdm(pool.imap(f, patient_ids), total=len(patient_ids)))
-        # END WITH
-
-    def download(self, num_workers: int | None = None, force: bool = False):
-        """Download LUDB dataset
-
-        Args:
-            num_workers (int | None, optional): # parallel workers. Defaults to None.
-            force (bool, optional): Force redownload. Defaults to False.
-        """
-        download_s3_objects(
-            bucket="ambiq-ai-datasets",
-            prefix=self.ds_path.stem,
-            dst=self.ds_path.parent,
-            checksum="size",
-            progress=True,
-            num_workers=num_workers,
-        )
-
-    def download_raw_dataset(self, num_workers: int | None = None, force: bool = False):
-        """Downloads full dataset zipfile and converts into individial patient HDF5 files.
-
-        Args:
-            force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
-            num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
-        """
-        logger.info("Downloading LUDB dataset")
-        ds_url = (
-            "https://physionet.org/static/published-projects/ludb/"
-            "lobachevsky-university-electrocardiography-database-1.0.1.zip"
-        )
-        ds_zip_path = self.ds_path / "ludb.zip"
-        os.makedirs(self.ds_path, exist_ok=True)
-        if os.path.exists(ds_zip_path) and not force:
-            logger.warning(
-                f"Zip file already exists. Please delete or set `force` flag to redownload. PATH={ds_zip_path}"
-            )
-        else:
-            download_file(ds_url, ds_zip_path, progress=True)
-
-        # 2. Extract and convert patient ECG data to H5 files
-        logger.info("Generating LUDB patient data")
-        self.convert_dataset_zip_to_hdf5(zip_path=ds_zip_path, force=force, num_workers=num_workers)
-        logger.info("Finished LUDB patient data")

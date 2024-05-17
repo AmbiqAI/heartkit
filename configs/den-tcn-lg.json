@@ -1,14 +1,17 @@
 {
     "name": "den-tcn-lg",
+    "project": "hk-denoise",
     "job_dir": "./results/den-tcn-lg",
-    "ds_path": "./datasets",
     "datasets": [{
         "name": "synthetic",
+        "path": "./datasets/synthetic",
         "params": {
             "num_pts": 20000,
             "params": {
                 "presets": ["SR", "AFIB", "ant_STEMI", "LAHB", "LPHB", "high_take_off", "LBBB", "random_morphology"],
-                "preset_weights": [8, 4, 1, 1, 1, 1, 1, 8],
+                "preset_weights": [8, 4, 1, 1, 1, 1, 1, 1],
+                "duration": 20,
+                "sample_rate": 100,
                 "heart_rate": [40, 160],
                 "impedance": [1, 2],
                 "p_multiplier": [0.7, 1.3],
@@ -19,6 +22,7 @@
         }
     }, {
         "name": "ptbxl",
+        "path": "./datasets/ptbxl",
         "params": {
         }
     }],
@@ -120,7 +124,7 @@
         {
             "name": "nstdb",
             "params": {
-                "noise_level": [0.2, 0.6]
+                "noise_level": [0.2, 0.4]
             }
         }
     ]

@@ -15,7 +15,7 @@ from .defines import (
     PreprocessParams,
 )
 from .models import ModelFactory
-from .tasks import HeartRate, HKBeat, HKRhythm, HKSegment, HKTask, TaskFactory
+from .tasks import HKBeat, HKRhythm, HKSegment, HKTask, TaskFactory
 from .utils import setup_logger
 
 __version__ = version(__name__)

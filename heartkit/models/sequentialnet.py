@@ -4,7 +4,11 @@ import keras
 import tensorflow as tf
 from pydantic import BaseModel, Field
 
-from .blocks import batch_norm, conv2d, relu6, se_block
+from .. import tflite as tfa
+from ..utils import setup_logger
+from .blocks import conv2d, relu6, se_block
+
+logger = setup_logger(__name__)
 
 
 class SequentialLayerParams(BaseModel):
@@ -32,16 +36,28 @@ def SequentialNetwork(
     y = x
     for layer in params.layers:
         match layer.name:
+            case "batch_norm":
+                y = keras.layers.BatchNormalization(**layer.params)(y)
+            case "layer_norm":
+                y = keras.layers.LayerNormalization(**layer.params)(y)
             case "conv2d":
                 y = conv2d(y, **layer.params)
             case "dense":
                 y = keras.layers.Dense(**layer.params)(y)
+            case "dropout":
+                y = keras.layers.Dropout(**layer.params)(y)
             case "relu6":
                 y = relu6(y)
-            case "batch_norm":
-                y = batch_norm(y)
             case "se_block":
                 y = se_block(y, **layer.params)
+            case "load_model":
+                prev_model = tfa.load_model(layer.params["model_file"])
+                logger.info(f"Loaded model {prev_model.name}")
+                trainable = layer.params.get("trainable", True)
+                if not trainable:
+                    logger.info(f"Freezing model {prev_model.name}")
+                prev_model.trainable = trainable
+                y = prev_model(y, training=trainable)
             case _:
                 raise ValueError(f"Unknown layer {layer.name}")
         # END MATCH

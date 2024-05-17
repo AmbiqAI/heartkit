@@ -1,18 +1,22 @@
 {
     "name": "seg-4-tcn-sm",
+    "project": "hk-segmentation-4",
     "job_dir": "./results/seg-4-tcn-sm",
-    "ds_path": "./datasets",
     "datasets": [{
         "name": "ludb",
+        "path": "./datasets/ludb",
         "params": {},
         "weight": 0.10
     }, {
         "name": "synthetic",
+        "path": "./datasets/synthetic",
         "params": {
             "num_pts": 5000,
             "params": {
                 "presets": ["SR", "AFIB", "ant_STEMI", "LAHB", "LPHB", "high_take_off", "LBBB", "random_morphology"],
                 "preset_weights": [8, 4, 1, 1, 1, 1, 1, 1],
+                "duration": 20,
+                "sample_rate": 100,
                 "heart_rate": [40, 160],
                 "impedance": [1, 2],
                 "p_multiplier": [0.8, 1.2],
@@ -149,7 +153,7 @@
         {
             "name": "nstdb",
             "params": {
-                "noise_level": [0, 0.15]
+                "noise_level": [0.0, 0.15]
             }
         }
     ]

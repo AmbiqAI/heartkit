@@ -90,6 +90,9 @@ profile = 'black'
 [tool.black]
 line-length = 120
 
+[tool.pylint]
+ignored-modules = ["h5py"]
+
 [tool.pylint.master]
 ignore-paths = [
     "heartkit/rpc/GenericDataOperations_EvbToPc",
@@ -97,6 +100,7 @@ ignore-paths = [
     "heartkit/rpc/erpc"
 ]
 extension-pkg-whitelist = "pydantic"
+
 
 [tool.pylint.message_control]
 disable = [

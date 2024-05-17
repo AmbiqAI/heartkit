@@ -1,10 +1,7 @@
 from typing import Callable, Generator
 
-import h5py
 import numpy.typing as npt
 
-PatientGenerator = Generator[tuple[int], None, None]
-
-SampleGenerator = Generator[tuple[npt.NDArray, npt.NDArray], None, None]
-
 Preprocessor = Callable[[tuple[npt.NDArray, npt.NDArray]], tuple[npt.NDArray, npt.NDArray]]
+
+PatientGenerator = Generator[int, None, None]

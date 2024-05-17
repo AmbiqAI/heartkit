@@ -2,31 +2,10 @@ import numpy as np
 import numpy.typing as npt
 import physiokit as pk
 
-from ..defines import AugmentationParams, PreprocessParams
+from ..defines import AugmentationParams
+from .nstdb import NstdbNoise
 
-
-def preprocess_pipeline(x: npt.NDArray, preprocesses: list[PreprocessParams], sample_rate: float) -> npt.NDArray:
-    """Apply preprocessing pipeline
-
-    Args:
-        x (npt.NDArray): Signal
-        preprocesses (list[PreprocessParams]): Preprocessing pipeline
-        sample_rate (float): Sampling rate in Hz.
-
-    Returns:
-        npt.NDArray: Preprocessed signal
-    """
-    for preprocess in preprocesses:
-        match preprocess.name:
-            case "filter":
-                x = pk.signal.filter_signal(x, sample_rate=sample_rate, **preprocess.params)
-            case "znorm":
-                x = pk.signal.normalize_signal(x, **preprocess.params)
-            case _:
-                raise ValueError(f"Unknown preprocess '{preprocess.name}'")
-        # END MATCH
-    # END FOR
-    return x
+_nstdb_glb: NstdbNoise | None = None
 
 
 def augment_pipeline(
@@ -127,6 +106,16 @@ def augment_pipeline(
                         x[start:stop] += np.random.normal(0, scale, size=x[start:stop].shape)
                     # END IF
                 # END IF
+
+            case "nstdb":
+                global _nstdb_glb  # pylint: disable=global-statement
+                if _nstdb_glb is None:
+                    _nstdb_glb = NstdbNoise(target_rate=sample_rate)
+                _nstdb_glb.set_target_rate(sample_rate)
+                noise_range = args.get("noise_level", [0.1, 0.1])
+                noise_level = np.random.uniform(noise_range[0], noise_range[1])
+                x = _nstdb_glb.apply_noise(x, noise_level)
+
             case _:  # default
                 pass
                 # raise ValueError(f"Unknown augmentation '{augmentation.name}'")

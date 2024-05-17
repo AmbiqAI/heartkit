@@ -43,6 +43,7 @@ class DatasetParams(BaseModel, extra="allow"):
     """Dataset parameters"""
 
     name: str
+    path: Path = Field(default_factory=Path, description="Dataset path")
     params: dict[str, Any] = Field(default_factory=dict, description="Parameters")
     weight: float = Field(1, description="Dataset weight")
 
@@ -61,8 +62,7 @@ class HKDownloadParams(BaseModel, extra="allow"):
     """Download command params"""
 
     job_dir: Path = Field(default_factory=lambda: Path(tempfile.gettempdir()), description="Job output directory")
-    ds_path: Path = Field(default_factory=Path, description="Dataset root directory")
-    datasets: list[str] = Field(default_factory=list, description="Datasets")
+    datasets: list[DatasetParams] = Field(default_factory=list, description="Datasets")
     progress: bool = Field(True, description="Display progress bar")
     force: bool = Field(False, description="Force download dataset- overriding existing files")
     data_parallelism: int = Field(
@@ -75,21 +75,24 @@ class HKTrainParams(BaseModel, extra="allow"):
     """Train command params"""
 
     name: str = Field("experiment", description="Experiment name")
+    project: str = Field("heartkit", description="Project name")
     job_dir: Path = Field(default_factory=lambda: Path(tempfile.gettempdir()), description="Job output directory")
     # Dataset arguments
-    ds_path: Path = Field(default_factory=lambda: Path("./datasets"), description="Dataset directory")
     datasets: list[DatasetParams] = Field(default_factory=list, description="Datasets")
+
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
     num_classes: int = Field(1, description="# of classes")
     class_map: dict[int, int] = Field(default_factory=lambda: {1: 1}, description="Class/label mapping")
     class_names: list[str] | None = Field(default=None, description="Class names")
+
     samples_per_patient: int | list[int] = Field(1000, description="# train samples per patient")
     val_samples_per_patient: int | list[int] = Field(1000, description="# validation samples per patient")
     train_patients: float | None = Field(None, description="# or proportion of patients for training")
     val_patients: float | None = Field(None, description="# or proportion of patients for validation")
     val_file: Path | None = Field(None, description="Path to load/store pickled validation file")
     val_size: int | None = Field(None, description="# samples for validation")
+
     # Model arguments
     resume: bool = Field(False, description="Resume training")
     architecture: ModelArchitecture | None = Field(default=None, description="Custom model architecture")
@@ -136,9 +139,10 @@ class HKTrainParams(BaseModel, extra="allow"):
 class HKTestParams(BaseModel, extra="allow"):
     """Test command params"""
 
+    name: str = Field("experiment", description="Experiment name")
+    project: str = Field("heartkit", description="Project name")
     job_dir: Path = Field(default_factory=lambda: Path(tempfile.gettempdir()), description="Job output directory")
     # Dataset arguments
-    ds_path: Path = Field(default_factory=lambda: Path("./datasets"), description="Dataset directory")
     datasets: list[DatasetParams] = Field(default_factory=list, description="Datasets")
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
@@ -175,9 +179,10 @@ class HKTestParams(BaseModel, extra="allow"):
 class HKExportParams(BaseModel, extra="allow"):
     """Export command params"""
 
+    name: str = Field("experiment", description="Experiment name")
+    project: str = Field("heartkit", description="Project name")
     job_dir: Path = Field(default_factory=lambda: Path(tempfile.gettempdir()), description="Job output directory")
     # Dataset arguments
-    ds_path: Path = Field(default_factory=lambda: Path("./datasets"), description="Dataset directory")
     datasets: list[DatasetParams] = Field(default_factory=list, description="Datasets")
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
@@ -219,9 +224,10 @@ class HKExportParams(BaseModel, extra="allow"):
 class HKDemoParams(BaseModel, extra="allow"):
     """HK demo command params"""
 
+    name: str = Field("experiment", description="Experiment name")
+    project: str = Field("heartkit", description="Project name")
     job_dir: Path = Field(default_factory=lambda: Path(tempfile.gettempdir()), description="Job output directory")
     # Dataset arguments
-    ds_path: Path = Field(default_factory=lambda: Path("./datasets"), description="Dataset directory")
     datasets: list[DatasetParams] = Field(default_factory=list, description="Datasets")
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
     frame_size: int = Field(1250, description="Frame size")
@@ -233,6 +239,7 @@ class HKDemoParams(BaseModel, extra="allow"):
     # Model arguments
     model_file: Path | None = Field(None, description="Path to save model file (.keras)")
     backend: str = Field("pc", description="Backend")
+    # Demo arguments
     demo_size: int | None = Field(1000, description="# samples for demo")
     display_report: bool = Field(True, description="Display report")
     # Extra arguments

@@ -168,6 +168,7 @@ def debug_quant_tflite(
     )
     debugger.run()
 
+    # Dump layer statistics and convert to DataFrame
     with io.StringIO() as f:
         debugger.layer_statistics_dump(f)
         f.seek(0)

@@ -15,10 +15,8 @@ class NstdbNoise:
 
     def __init__(
         self,
-        ds_path: os.PathLike,
         target_rate: int,
     ):
-        self.path = ds_path
         self.target_rate = target_rate
         self._noises: dict[str, npt.NDArray] | None = None
 
@@ -26,6 +24,13 @@ class NstdbNoise:
     def sampling_rate(self) -> int:
         """Sampling rate in Hz"""
         return 360
+
+    def set_target_rate(self, target_rate: int):
+        """Set target rate."""
+        if target_rate == self.target_rate:
+            return
+        self._noises = None
+        self.target_rate = target_rate
 
     def _load_noise_data(self):
         """Load noise data from HDF5 file."""
@@ -94,3 +99,7 @@ class NstdbNoise:
         data += em_amp * em[em_start:em_end, em_lead]
 
         return data
+
+    def close(self):
+        """Close noise generator."""
+        self._noises = None

@@ -191,7 +191,7 @@ class PcBackend(DemoBackend):
 
     def perform_inference(self):
         if self._is_tf_model():
-            self._outputs = self._model.predict(np.expand_dims(self._inputs, 0)).squeeze(0)
+            self._outputs = self._model.predict(np.expand_dims(self._inputs, 0), verbose=0).squeeze(0)
         else:
             self._outputs = tflite.predict_tflite(self._model, self._inputs)
 

@@ -1,12 +1,14 @@
 {
     "name": "seg-2-tcn-sm",
+    "project": "hk-segmentation-2",
     "job_dir": "./results/seg-2-tcn-sm",
-    "ds_path": "./datasets",
     "datasets": [{
         "name": "icentia11k",
+        "path": "./datasets/icentia11k",
         "params": {}
     }, {
         "name": "ptbxl",
+        "path": "./datasets/ptbxl",
         "params": {}
     }],
     "num_classes": 2,

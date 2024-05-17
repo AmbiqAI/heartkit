@@ -1,108 +1,150 @@
 import functools
 import logging
-import random
-from typing import Generator
+from pathlib import Path
 
-import keras
 import numpy as np
 import numpy.typing as npt
-import physiokit as pk
 import tensorflow as tf
-from rich.console import Console
 
 from ...datasets import (
-    DatasetFactory,
     HKDataset,
-    PatientGenerator,
-    PtbxlDataset,
-    SampleGenerator,
     augment_pipeline,
-    create_dataset_from_data,
-    create_interleaved_dataset_from_generator,
     preprocess_pipeline,
     uniform_id_generator,
 )
+from ...datasets.dataloader import test_dataloader, train_val_dataloader
 from ...defines import (
     AugmentationParams,
-    DatasetParams,
     HKExportParams,
     HKTestParams,
     HKTrainParams,
-    ModelArchitecture,
     PreprocessParams,
 )
-from ...utils import load_pkl
+from ...utils import resolve_template_path
+from .dataloaders import lsad_data_generator, ptbxl_data_generator
 
 logger = logging.getLogger(__name__)
 
 
-def preprocess(x: npt.NDArray, y: npt.NDArray, preprocesses: list[PreprocessParams], sample_rate: float):
-    return preprocess_pipeline(x, preprocesses=preprocesses, sample_rate=sample_rate), y
+def preprocess(x: npt.NDArray, preprocesses: list[PreprocessParams], sample_rate: float) -> npt.NDArray:
+    """Preprocess data pipeline
+
+    Args:
+        x (npt.NDArray): Input data
+        preprocesses (list[PreprocessParams]): Preprocess parameters
+        sample_rate (float): Sample rate
+
+    Returns:
+        npt.NDArray: Preprocessed data
+    """
+    return preprocess_pipeline(x, preprocesses=preprocesses, sample_rate=sample_rate)
 
 
-def augment(x: npt.NDArray, y: npt.NDArray, augmentations: list[AugmentationParams], sample_rate: float):
-    p1, p2 = x.copy(), y.copy
-    p1 = augment_pipeline(
-        x=p1,
-        augmentations=augmentations,
-        sample_rate=sample_rate,
-    )
-    p2 = augment_pipeline(
-        x=p2,
-        augmentations=augmentations,
-        sample_rate=sample_rate,
-    )
-    return p1, p2
+def augment(x: npt.NDArray, augmentations: list[AugmentationParams], sample_rate: float) -> npt.NDArray:
+    """Augment data pipeline
+
+    Args:
+        x (npt.NDArray): Input data
+        augmentations (list[AugmentationParams]): Augmentation parameters
+        sample_rate (float): Sample rate
+
+    Returns:
+        npt.NDArray: Augmented data
+    """
+
+    return augment_pipeline(x=x, augmentations=augmentations, sample_rate=sample_rate)
 
 
 def prepare(
-    ds: tf.data.Dataset,
+    x_y: tuple[npt.NDArray, npt.NDArray],
     sample_rate: float,
     preprocesses: list[PreprocessParams],
     augmentations: list[AugmentationParams],
-):
-    if preprocesses:
-        ds = ds.map(lambda x, y: preprocess(x, y, preprocesses, sample_rate))
-    # END IF
+    spec: tuple[tf.TensorSpec, tf.TensorSpec],
+    num_classes: int,
+) -> tuple[npt.NDArray, npt.NDArray]:
+    """Prepare dataset
+
+    Args:
+        x_y (tuple[npt.NDArray, npt.NDArray]): Input data
+        sample_rate (float): Sampling rate
+        preprocesses (list[PreprocessParams]): Preprocessing pipeline
+        augmentations (list[AugmentationParams]): Augmentation pipeline
+        spec (tuple[tf.TensorSpec, tf.TensorSpec]): Spec
+        num_classes (int): Number of classes
+
+    Returns:
+        tuple[npt.NDArray, npt.NDArray]: Prepared data
+    """
+    x, y = x_y[0].copy(), x_y[1].copy()
 
     if augmentations:
-        ds = ds.map(
-            lambda x, y: augment(x, y, augmentations, sample_rate), num_parallel_calls=tf.data.experimental.AUTOTUNE
-        )
+        x = augment(x, augmentations, sample_rate)
+        y = augment(y, augmentations, sample_rate)
     # END IF
 
+    if preprocesses:
+        x = preprocess(x, preprocesses, sample_rate)
+        y = preprocess(y, preprocesses, sample_rate)
+    # END IF
 
-def ptbxl_data_generator(
-    self: PtbxlDataset,
-    patient_generator: Generator[int, None, None],
-    samples_per_patient: int | list[int] = 1,
-) -> Generator[tuple[npt.NDArray, npt.NDArray], None, None]:
-    """Generate frames and labels using patient generator.
-    Currently use two different leads of same subject data as positive pair.
+    x = x.reshape(spec[0].shape)
+    y = y.reshape(spec[0].shape)
+
+    return x, y
+
+
+def get_data_generator(ds: HKDataset, frame_size: int, samples_per_patient: int, target_rate: int):
+    """Get task data generator for dataset
+
+    Args:
+        ds (HKDataset): Dataset
+        frame_size (int): Frame size
+        samples_per_patient (int): Samples per patient
+        target_rate (int): Target rate
+
+    Returns:
+        callable: Data generator
     """
+    match ds.name:
+        case "ptbxl":
+            data_generator = ptbxl_data_generator
+        case "lsad":
+            data_generator = lsad_data_generator
+        case _:
+            raise ValueError(f"Dataset {ds.name} not supported")
+    # END MATCH
+    return functools.partial(
+        data_generator,
+        ds=ds,
+        frame_size=frame_size,
+        samples_per_patient=samples_per_patient,
+        target_rate=target_rate,
+    )
 
-    input_size = int(np.round((self.sampling_rate / self.target_rate) * self.frame_size))
-    for pt in patient_generator:
-        segment = self.get_patient_data(pt)
-        data = segment["data"]
-        for _ in range(samples_per_patient):
-            leads = random.sample(self.leads, k=2)
-            lead_p1 = leads[0]
-            lead_p2 = leads[1]
-            start_p1 = np.random.randint(0, data.shape[1] - input_size)
-            start_p2 = start_p1
-            # start_p2 = np.random.randint(0, data.shape[1] - input_size)
 
-            x1 = np.nan_to_num(data[lead_p1, start_p1 : start_p1 + input_size].squeeze()).astype(np.float32)
-            x2 = np.nan_to_num(data[lead_p2, start_p2 : start_p2 + input_size].squeeze()).astype(np.float32)
+def resolve_ds_cache_path(fpath: Path | None, ds: HKDataset, task: str, frame_size: int, sample_rate: int):
+    """Resolve dataset cache path
 
-            if self.sampling_rate != self.target_rate:
-                x1 = pk.signal.resample_signal(x1, self.sampling_rate, self.target_rate, axis=0)
-                x2 = pk.signal.resample_signal(x2, self.sampling_rate, self.target_rate, axis=0)
-            # END IF
-            yield x1, x2
-        # END FOR
-    # END FOR
+    Args:
+        fpath (Path|None): File path
+        ds (HKDataset): Dataset
+        task (str): Task
+        frame_size (int): Frame size
+        sample_rate (int): Sampling rate
+
+    Returns:
+        Path|None: Resolved path
+    """
+    if not fpath:
+        return None
+    return resolve_template_path(
+        fpath=fpath,
+        dataset=ds.name,
+        task=task,
+        frame_size=frame_size,
+        sampling_rate=sample_rate,
+    )
 
 
 def load_train_datasets(
@@ -110,76 +152,54 @@ def load_train_datasets(
     params: HKTrainParams,
     ds_spec: tuple[tf.TensorSpec, tf.TensorSpec],
 ) -> tuple[tf.data.Dataset, tf.data.Dataset]:
+    """Load training and validation datasets
+
+    Args:
+        datasets (list[HKDataset]): Datasets
+        params (HKTrainParams): Training parameters
+        ds_spec (tuple[tf.TensorSpec, tf.TensorSpec]): TensorSpec
+
+    Returns:
+        tuple[tf.data.Dataset, tf.data.Dataset]: Train and validation datasets
+    """
 
     id_generator = functools.partial(uniform_id_generator, repeat=True)
+    train_prepare = functools.partial(
+        prepare,
+        sample_rate=params.sampling_rate,
+        preprocesses=params.preprocesses,
+        augmentations=params.augmentations,
+        spec=ds_spec,
+        num_classes=params.num_classes,
+    )
 
     train_datasets = []
     val_datasets = []
     for ds in datasets:
-        match ds.name:
-            case "ptbxl":
-                data_generator = functools.partial(ptbxl_data_generator, ds=ds)
-            case _:
-                raise ValueError(f"Dataset {ds.name} not supported")
 
-        train_ids, val_ids = ds.get_train_val_patient_ids(
-            train_patients=params.train_patients,
-            val_patients=params.val_patients,
-            train_pt_samples=params.samples_per_patient,
-            val_pt_samples=params.val_samples_per_patient,
+        val_file = resolve_ds_cache_path(
+            params.val_file, ds=ds, task="foundation", frame_size=params.frame_size, sample_rate=params.sampling_rate
+        )
+        data_generator = get_data_generator(
+            ds=ds,
+            frame_size=params.frame_size,
+            samples_per_patient=params.samples_per_patient,
+            target_rate=params.sampling_rate,
         )
 
-        # TODO: Filter
-
-        train_ds, val_ds = ds.load_train_datasets(
-            train_patients=train_ids,
-            val_patients=val_ids,
-            train_pt_samples=params.samples_per_patient,
-            val_pt_samples=params.val_samples_per_patient,
-            val_file=params.val_file,
-            val_size=params.val_size,
-            preprocess=preprocess,
-            num_workers=params.data_parallelism,
-        )
-        # Create TF datasets
-        train_ds = create_interleaved_dataset_from_generator(
+        train_ds, val_ds = train_val_dataloader(
+            ds=ds,
+            spec=ds_spec,
             data_generator=data_generator,
             id_generator=id_generator,
-            ids=train_ids,
-            spec=ds_spec,
-            buffer_size=params.buffer_size,
-            batch_size=params.batch_size,
-            prefetch_size=-1,
-            preprocess=preprocess,
-            num_workers=params.data_parallelism,
-        )
-
-        if ds.cachable and params.val_file and params.val_file.is_file():
-            logger.info(f"Loading validation data from file {params.val_file}")
-            val = load_pkl(params.val_file)
-            val_ds = create_dataset_from_data(val["x"], val["y"], ds_spec)
-
-        else:
-            val_ds = create_interleaved_dataset_from_generator(
-                data_generator=data_generator,
-                id_generator=id_generator,
-                ids=val_ids,
-                spec=ds_spec,
-                buffer_size=params.buffer_size,
-                batch_size=params.batch_size,
-                prefetch_size=-1,
-                preprocess=preprocess,
-                num_workers=params.data_parallelism,
-            )
-
-        train_ds, val_ds = ds.load_train_datasets(
             train_patients=params.train_patients,
             val_patients=params.val_patients,
-            train_pt_samples=params.samples_per_patient,
             val_pt_samples=params.val_samples_per_patient,
-            val_file=params.val_file,
+            val_file=val_file,
             val_size=params.val_size,
-            preprocess=preprocess,
+            label_map=None,
+            label_type=None,
+            preprocess=train_prepare,
             num_workers=params.data_parallelism,
         )
         train_datasets.append(train_ds)
@@ -193,10 +213,87 @@ def load_train_datasets(
     val_ds = tf.data.Dataset.sample_from_datasets(val_datasets, weights=ds_weights)
 
     # Shuffle and batch datasets for training
-
+    train_ds = (
+        train_ds.shuffle(
+            buffer_size=params.buffer_size,
+            reshuffle_each_iteration=True,
+        )
+        .batch(
+            batch_size=params.batch_size,
+            drop_remainder=False,
+            num_parallel_calls=tf.data.AUTOTUNE,
+        )
+        .prefetch(buffer_size=tf.data.AUTOTUNE)
+    )
     val_ds = val_ds.batch(
         batch_size=params.batch_size,
         drop_remainder=True,
         num_parallel_calls=tf.data.AUTOTUNE,
     )
     return train_ds, val_ds
+
+
+def load_test_dataset(
+    datasets: list[HKDataset],
+    params: HKTestParams | HKExportParams,
+    ds_spec: tuple[tf.TensorSpec, tf.TensorSpec],
+) -> tf.data.Dataset:
+    """Load test dataset
+
+    Args:
+        datasets (list[HKDataset]): Datasets
+        params (HKTestParams|HKExportParams): Test parameters
+        ds_spec (tuple[tf.TensorSpec, tf.TensorSpec]): TensorSpec
+
+    Returns:
+        tf.data.Dataset: Test dataset
+    """
+
+    id_generator = functools.partial(uniform_id_generator, repeat=True)
+    test_prepare = functools.partial(
+        prepare,
+        preprocesses=params.preprocesses,
+        augmentations=params.augmentations,
+        spec=ds_spec,
+        num_classes=params.num_classes,
+    )
+
+    test_datasets = []
+    for ds in datasets:
+
+        test_file = resolve_ds_cache_path(
+            fpath=params.test_file,
+            ds=ds,
+            task="foundation",
+            frame_size=params.frame_size,
+            sample_rate=params.sampling_rate,
+        )
+        data_generator = get_data_generator(
+            ds=ds,
+            frame_size=params.frame_size,
+            samples_per_patient=params.test_samples_per_patient,
+            target_rate=params.sampling_rate,
+        )
+
+        test_ds = test_dataloader(
+            ds=ds,
+            spec=ds_spec,
+            data_generator=data_generator,
+            id_generator=id_generator,
+            test_patients=params.test_patients,
+            test_file=test_file,
+            label_map=None,
+            label_type=None,
+            preprocess=test_prepare,
+            num_workers=params.data_parallelism,
+        )
+        test_datasets.append(test_ds)
+    # END FOR
+
+    ds_weights = np.array([d.weight for d in params.datasets])
+    ds_weights = ds_weights / ds_weights.sum()
+
+    test_ds = tf.data.Dataset.sample_from_datasets(test_datasets, weights=ds_weights)
+
+    # END WITH
+    return test_ds

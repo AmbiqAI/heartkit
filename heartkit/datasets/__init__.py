@@ -1,12 +1,13 @@
-from .augmentation import augment_pipeline, preprocess_pipeline
+from .augmentation import augment_pipeline
 from .dataset import HKDataset
-from .defines import PatientGenerator, Preprocessor, SampleGenerator
+from .defines import PatientGenerator, Preprocessor
 from .download import download_datasets
 from .factory import DatasetFactory
 from .icentia11k import IcentiaDataset
 from .lsad import LsadDataset
 from .ludb import LudbDataset
 from .nstdb import NstdbNoise
+from .preprocessing import preprocess_pipeline
 from .ptbxl import PtbxlDataset
 from .qtdb import QtdbDataset
 from .synthetic import SyntheticDataset

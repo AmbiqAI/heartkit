@@ -1,18 +1,22 @@
 {
     "name": "seg-4-tcn-lg",
+    "project": "hk-segmentation-4",
     "job_dir": "./results/seg-4-tcn-lg",
-    "ds_path": "./datasets",
     "datasets": [{
         "name": "ludb",
+        "path": "./datasets/ludb",
         "params": {},
         "weight": 0.10
     }, {
         "name": "synthetic",
+        "path": "./datasets/synthetic",
         "params": {
             "num_pts": 5000,
             "params": {
                 "presets": ["SR", "AFIB", "ant_STEMI", "LAHB", "LPHB", "high_take_off", "LBBB", "random_morphology"],
                 "preset_weights": [8, 4, 1, 1, 1, 1, 1, 1],
+                "duration": 20,
+                "sample_rate": 100,
                 "heart_rate": [40, 160],
                 "impedance": [1, 2],
                 "p_multiplier": [0.8, 1.2],
@@ -74,9 +78,9 @@
             "input_norm": "batch",
             "blocks": [
                 {"depth": 2, "branch": 1, "filters": 16, "kernel": [1, 7], "dilation": [1, 1], "dropout": 0, "ex_ratio": 1, "se_ratio": 0, "norm": "batch"},
-                {"depth": 2, "branch": 1, "filters": 32, "kernel": [1, 7], "dilation": [1, 2], "dropout": 0, "ex_ratio": 1, "se_ratio": 4, "norm": "batch"},
-                {"depth": 2, "branch": 1, "filters": 48, "kernel": [1, 7], "dilation": [1, 4], "dropout": 0, "ex_ratio": 1, "se_ratio": 4, "norm": "batch"},
-                {"depth": 2, "branch": 1, "filters": 64, "kernel": [1, 7], "dilation": [1, 8], "dropout": 0, "ex_ratio": 1, "se_ratio": 4, "norm": "batch"}
+                {"depth": 1, "branch": 1, "filters": 24, "kernel": [1, 7], "dilation": [1, 2], "dropout": 0, "ex_ratio": 1, "se_ratio": 4, "norm": "batch"},
+                {"depth": 2, "branch": 1, "filters": 32, "kernel": [1, 7], "dilation": [1, 4], "dropout": 0, "ex_ratio": 1, "se_ratio": 4, "norm": "batch"},
+                {"depth": 1, "branch": 1, "filters": 64, "kernel": [1, 7], "dilation": [1, 8], "dropout": 0, "ex_ratio": 1, "se_ratio": 4, "norm": "batch"}
             ],
             "output_kernel": [1, 7],
             "include_top": true,
@@ -145,12 +149,6 @@
             "name": "lead_noise",
             "params": {
                 "scale": [0.0, 0.15]
-            }
-        },
-        {
-            "name": "nstdb",
-            "params": {
-                "noise_level": [0, 0.15]
             }
         }
     ]

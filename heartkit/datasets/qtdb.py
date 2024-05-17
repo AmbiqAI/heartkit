@@ -1,20 +1,22 @@
+import contextlib
 import functools
 import logging
 import os
+import random
 import tempfile
 import zipfile
 from multiprocessing import Pool
+from typing import Generator
 
 import h5py
 import numpy as np
 import numpy.typing as npt
 import physiokit as pk
-import tensorflow as tf
 from tqdm import tqdm
 
 from ..utils import download_file
 from .dataset import HKDataset
-from .defines import PatientGenerator, SampleGenerator
+from .defines import PatientGenerator
 from .utils import download_s3_objects
 
 logger = logging.getLogger(__name__)
@@ -41,20 +43,13 @@ class QtdbDataset(HKDataset):
     def __init__(
         self,
         ds_path: os.PathLike,
-        task: str,
-        frame_size: int,
-        target_rate: int,
-        spec: tuple[tf.TensorSpec, tf.TensorSpec],
-        class_map: dict[int, int] | None = None,
     ) -> None:
-        super().__init__(
-            ds_path=ds_path / "qtdb",
-            task=task,
-            frame_size=frame_size,
-            target_rate=target_rate,
-            spec=spec,
-            class_map=class_map,
-        )
+        super().__init__(ds_path=ds_path)
+
+    @property
+    def name(self) -> str:
+        """Dataset name"""
+        return "qtdb"
 
     @property
     def sampling_rate(self) -> int:
@@ -204,79 +199,31 @@ class QtdbDataset(HKDataset):
         """
         return self.patient_ids[82:]
 
-    def task_data_generator(
-        self,
-        patient_generator: PatientGenerator,
-        samples_per_patient: int | list[int] = 1,
-    ) -> SampleGenerator:
-        """Task-level data generator.
+    def _pt_key(self, patient_id: int):
+        """Get patient key"""
+        return f"{patient_id}"
+
+    @contextlib.contextmanager
+    def patient_data(self, patient_id: int) -> Generator[h5py.Group, None, None]:
+        """Get patient data
 
         Args:
-            patient_generator (PatientGenerator): Patient data generator
-            samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
+            patient_id (int): Patient ID
 
         Returns:
-            SampleGenerator: Sample data generator
+            Generator[h5py.Group, None, None]: Patient data
         """
-        if self.task == "segmentation":
-            return self.segmentation_generator(
-                patient_generator=patient_generator,
-                samples_per_patient=samples_per_patient,
-            )
-        raise NotImplementedError()
+        with h5py.File(self.ds_path / f"{self._pt_key(patient_id)}.h5", mode="r") as h5:
+            yield h5
 
-    def segmentation_generator(
+    def signal_generator(
         self,
         patient_generator: PatientGenerator,
-        samples_per_patient: int | list[int] = 1,
-    ) -> SampleGenerator:
-        """Generate frames and segment labels.
-
-        Args:
-            patient_generator (PatientGenerator): Patient Generator
-            samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
-        Returns:
-            SampleGenerator: Sample generator
-        Yields:
-            Iterator[SampleGenerator]
-        """
-
-        for _, pt in patient_generator:
-            # NOTE: [:] will load all data into RAM- ideal for small dataset
-            data = pt["data"][:]
-            segs = pt["segmentations"][:]
-            fids = pt["fiducials"][:]
-
-            if self.sampling_rate != self.target_rate:
-                ratio = self.target_rate / self.sampling_rate
-                data = pk.signal.resample_signal(data, self.sampling_rate, self.target_rate, axis=0)
-                segs[:, (SEG_BEG_IDX, SEG_END_IDX)] = segs[:, (SEG_BEG_IDX, SEG_END_IDX)] * ratio
-                fids[:, FID_LOC_IDX] = fids[:, FID_LOC_IDX] * ratio
-            # END IF
-
-            # Create segmentation mask
-            labels = np.zeros_like(data)
-            for seg_idx in range(segs.shape[0]):
-                seg = segs[seg_idx]
-                labels[seg[SEG_BEG_IDX] : seg[SEG_END_IDX], seg[SEG_LEAD_IDX]] = seg[SEG_LBL_IDX]
-            # END FOR
-
-            start_offset = max(0, segs[0][SEG_BEG_IDX] - 100)
-            stop_offset = max(0, data.shape[0] - segs[-1][SEG_END_IDX] + 100)
-            for _ in range(samples_per_patient):
-                # Randomly pick an ECG lead
-                lead = np.random.randint(data.shape[1])
-                # Randomly select frame within the segment
-                frame_start = np.random.randint(start_offset, data.shape[0] - self.frame_size - stop_offset)
-                frame_end = frame_start + self.frame_size
-                x = data[frame_start:frame_end, lead].astype(np.float32).reshape((self.frame_size,))
-                y = labels[frame_start:frame_end, lead].astype(np.int32)
-                yield x, y
-            # END FOR
-        # END FOR
-
-    def signal_generator(self, patient_generator: PatientGenerator, samples_per_patient: int = 1) -> SampleGenerator:
-        """Generate frames using patient generator.
+        frame_size: int,
+        samples_per_patient: int = 1,
+        target_rate: int | None = None,
+    ) -> Generator[npt.NDArray, None, None]:
+        """Generate random frames.
 
         Args:
             patient_generator (PatientGenerator): Generator that yields a tuple of patient id and patient data.
@@ -284,26 +231,30 @@ class QtdbDataset(HKDataset):
             samples_per_patient (int): Samples per patient.
 
         Returns:
-            SampleGenerator: Generator of input data of shape (frame_size, 1)
+            Generator[npt.NDArray, None, None]: Generator of input data of shape (frame_size, 1)
         """
-        for _, pt in patient_generator:
-            data = pt["data"][:]
-            if self.sampling_rate != self.target_rate:
-                data = pk.signal.resample_signal(data, self.sampling_rate, self.target_rate, axis=0)
-            # END IF
+        if target_rate is None:
+            target_rate = self.sampling_rate
+
+        input_size = int(np.round((self.sampling_rate / target_rate) * frame_size))
+
+        for pt in patient_generator:
+            with self.patient_data(pt) as h5:
+                data: h5py.Dataset = h5["data"][:]
+            # END WITH
             for _ in range(samples_per_patient):
-                lead_idx = np.random.randint(data.shape[1])
-                if data.shape[0] > self.frame_size:
-                    frame_start = np.random.randint(data.shape[0] - self.frame_size)
-                else:
-                    frame_start = 0
-                frame_end = frame_start + self.frame_size
-                x = data[frame_start:frame_end, lead_idx].astype(np.float32).reshape((self.frame_size,))
+                lead = random.choice(data.shape[1])
+                start = np.random.randint(0, data.shape[0] - input_size)
+                x = data[start : start + input_size, lead].squeeze()
+                x = np.nan_to_num(x).astype(np.float32)
+                if self.sampling_rate != target_rate:
+                    x = pk.signal.resample_signal(x, self.sampling_rate, target_rate, axis=0)
+                # END IF
                 yield x
             # END FOR
         # END FOR
 
-    def get_patient_data_segments(self, patient: int) -> tuple[npt.NDArray, npt.NDArray]:
+    def get_patient_data_segments(self, patient_id: int) -> tuple[npt.NDArray, npt.NDArray]:
         """Get patient's entire data and segments
 
         Args:
@@ -312,8 +263,7 @@ class QtdbDataset(HKDataset):
         Returns:
             tuple[npt.NDArray, npt.NDArray]: (data, segment labels)
         """
-        pt_key = f"p{patient:05d}"
-        with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as pt:
+        with self.patient_data(patient_id) as pt:
             data: npt.NDArray = pt["data"][:]
             segs: npt.NDArray = pt["segmentations"][:]
         labels = np.zeros_like(data)
@@ -322,37 +272,44 @@ class QtdbDataset(HKDataset):
             labels[seg[2] : seg[3] + 0, seg[0]] = seg[1]
         return data, labels
 
-    def uniform_patient_generator(
-        self,
-        patient_ids: npt.NDArray,
-        repeat: bool = True,
-        shuffle: bool = True,
-    ) -> PatientGenerator:
-        """Yield data for each patient in the array.
+    def download(self, num_workers: int | None = None, force: bool = False):
+        """Download QT dataset
 
         Args:
-            patient_ids (pt.ArrayLike): Array of patient ids
-            repeat (bool, optional): Whether to repeat generator. Defaults to True.
-            shuffle (bool, optional): Whether to shuffle patient ids.. Defaults to True.
-
-        Returns:
-            PatientGenerator: Patient generator
-
-        Yields:
-            Iterator[PatientGenerator]
+            num_workers (int | None, optional): # parallel workers. Defaults to None.
+            force (bool, optional): Force redownload. Defaults to False.
         """
-        patient_ids = np.copy(patient_ids)
-        while True:
-            if shuffle:
-                np.random.shuffle(patient_ids)
-            for patient_id in patient_ids:
-                pt_key = f"{patient_id}"
-                with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
-                    yield patient_id, h5
-            # END FOR
-            if not repeat:
-                break
-        # END WHILE
+        download_s3_objects(
+            bucket="ambiq-ai-datasets",
+            prefix=self.ds_path.stem,
+            dst=self.ds_path.parent,
+            checksum="size",
+            progress=True,
+            num_workers=num_workers,
+        )
+
+    def download_raw_dataset(self, num_workers: int | None = None, force: bool = False):
+        """Downloads full dataset zipfile and converts into individial patient HDF5 files.
+
+        Args:
+            force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
+            num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
+        """
+        logger.info("Downloading QTDB dataset")
+        ds_url = "https://physionet.org/static/published-projects/qtdb/qt-database-1.0.0.zip"
+        ds_zip_path = self.ds_path / "qtdb.zip"
+        os.makedirs(self.ds_path, exist_ok=True)
+        if os.path.exists(ds_zip_path) and not force:
+            logger.warning(
+                f"Zip file already exists. Please delete or set `force` flag to redownload. PATH={ds_zip_path}"
+            )
+        else:
+            download_file(ds_url, ds_zip_path, progress=True)
+
+        # 2. Extract and convert patient ECG data to H5 files
+        logger.info("Generating QT patient data")
+        self.convert_dataset_zip_to_hdf5(zip_path=ds_zip_path, force=force, num_workers=num_workers)
+        logger.info("Finished QTDB patient data")
 
     def convert_pt_wfdb_to_hdf5(
         self, patient: int, src_path: os.PathLike, dst_path: os.PathLike, force: bool = False
@@ -449,42 +406,3 @@ class QtdbDataset(HKDataset):
             )
             _ = list(tqdm(pool.imap(f, patient_ids), total=len(patient_ids)))
         # END WITH
-
-    def download(self, num_workers: int | None = None, force: bool = False):
-        """Download QT dataset
-
-        Args:
-            num_workers (int | None, optional): # parallel workers. Defaults to None.
-            force (bool, optional): Force redownload. Defaults to False.
-        """
-        download_s3_objects(
-            bucket="ambiq-ai-datasets",
-            prefix=self.ds_path.stem,
-            dst=self.ds_path.parent,
-            checksum="size",
-            progress=True,
-            num_workers=num_workers,
-        )
-
-    def download_raw_dataset(self, num_workers: int | None = None, force: bool = False):
-        """Downloads full dataset zipfile and converts into individial patient HDF5 files.
-
-        Args:
-            force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
-            num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
-        """
-        logger.info("Downloading QTDB dataset")
-        ds_url = "https://physionet.org/static/published-projects/qtdb/qt-database-1.0.0.zip"
-        ds_zip_path = self.ds_path / "qtdb.zip"
-        os.makedirs(self.ds_path, exist_ok=True)
-        if os.path.exists(ds_zip_path) and not force:
-            logger.warning(
-                f"Zip file already exists. Please delete or set `force` flag to redownload. PATH={ds_zip_path}"
-            )
-        else:
-            download_file(ds_url, ds_zip_path, progress=True)
-
-        # 2. Extract and convert patient ECG data to H5 files
-        logger.info("Generating QT patient data")
-        self.convert_dataset_zip_to_hdf5(zip_path=ds_zip_path, force=force, num_workers=num_workers)
-        logger.info("Finished QTDB patient data")

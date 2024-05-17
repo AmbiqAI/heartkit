@@ -1,5 +1,6 @@
 import functools
 import os
+import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Callable, Generator, Iterable, TypeVar
@@ -92,9 +93,7 @@ def uniform_id_generator(
     while True:
         if shuffle:
             np.random.shuffle(ids)
-        for id in ids:
-            yield id
-        # END FOR
+        yield from ids
         if not repeat:
             break
         # END IF
@@ -117,11 +116,8 @@ def random_id_generator(
     Yields:
         T: Id
     """
-    import random
-
     while True:
-        id = random.choice(ids)
-        yield id
+        yield random.choice(ids)
     # END WHILE
 
 
@@ -131,6 +127,17 @@ def transform_dataset_pipeline(
     batch_size: int | None = None,
     prefetch_size: int | None = None,
 ) -> tf.data.Dataset:
+    """Transform dataset pipeline
+
+    Args:
+        ds (tf.data.Dataset): Dataset
+        buffer_size (int | None, optional): Buffer size. Defaults to None.
+        batch_size (int | None, optional): Batch size. Defaults to None.
+        prefetch_size (int | None, optional): Prefetch size. Defaults to None.
+
+    Returns:
+        tf.data.Dataset: Transformed dataset
+    """
     if buffer_size is not None:
         ds = ds.shuffle(
             buffer_size=buffer_size,
@@ -147,16 +154,25 @@ def transform_dataset_pipeline(
 
 
 def create_interleaved_dataset_from_generator(
-    data_generator: Callable[[Generator[T, None, None], Generator[K, None, None]], Generator[T, None, None]],
+    data_generator: Callable[[Generator[T, None, None]], Generator[K, None, None]],
     id_generator: Callable[[list[T]], Generator[T, None, None]],
     ids: list[T],
     spec: tuple[tf.TensorSpec, tf.TensorSpec],
     preprocess: Callable[[K], K] | None = None,
     num_workers: int = 4,
 ) -> tf.data.Dataset:
-    """Create TF dataset generator pipeline
+    """Create TF dataset pipeline by interleaving multiple workers across ids
+
+    The id_generator is used to generate ids for each worker.
+    The data_generator is used to generate data for each id.
 
     Args:
+        data_generator (Callable[[Generator[T, None, None]], Generator[K, None, None]]): Data generator
+        id_generator (Callable[[list[T]], Generator[T, None, None]]): Id generator
+        ids (list[T]): List of ids
+        spec (tuple[tf.TensorSpec, tf.TensorSpec]): Tensor spec
+        preprocess (Callable[[K], K] | None, optional): Preprocess function. Defaults to None.
+        num_workers (int, optional): Number of workers. Defaults to 4.
 
     Returns:
         tf.data.Dataset: Dataset
@@ -177,9 +193,9 @@ def create_interleaved_dataset_from_generator(
 
     # END IF
 
-    if num_workers > len(ids):
-        num_workers = len(ids)
+    num_workers = min(num_workers, len(ids))
     split = len(ids) // num_workers
+    logger.info(f"Splitting {len(ids)} ids into {num_workers} workers with {split} ids each")
     ds_splits = [split_generator(ids[i * split : (i + 1) * split]) for i in range(num_workers)]
 
     # Create TF datasets (interleave workers)
@@ -191,19 +207,6 @@ def create_interleaved_dataset_from_generator(
         deterministic=False,
         num_parallel_calls=tf.data.AUTOTUNE,
     )
-
-    # if buffer_size is not None:
-    #     ds = ds.shuffle(
-    #         buffer_size=buffer_size,
-    #         reshuffle_each_iteration=True,
-    #     )
-    # if batch_size is not None:
-    #     ds = ds.batch(
-    #         batch_size=batch_size,
-    #         drop_remainder=False,
-    #     )
-    # if prefetch_size is not None:
-    #     ds = ds.prefetch(buffer_size=tf.data.AUTOTUNE)
 
     return ds
 
