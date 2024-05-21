@@ -13,7 +13,7 @@ This work is partially funded by a grant from Icentia, Fonds de Recherche en San
 ## <span class="sk-h2-span">Licensing</span>
 
 The Icentia11k dataset is available for non-commercial use only.
-Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
+[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](https://physionet.org/content/icentia11k-continuous-ecg/view-license/1.0/)
 
 ## <span class="sk-h2-span">Supported Tasks</span>
 

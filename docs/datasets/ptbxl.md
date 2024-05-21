@@ -4,7 +4,7 @@
 
 This dataset consists of 21837 clinical 12-lead ECGs from 18885 patients. The ECGs were recorded at a sampling frequency of 500 Hz and a resolution of 16 bits per sample. The dataset includes 21837 ECGs, 21837 ECGs with diagnostic labels, and 21837 ECGs with rhythm labels. The diagnostic labels include 71 classes, and the rhythm labels include 9 classes.
 
-Please visit [Physionet](https://doi.org/10.13026/C28C71) for more details.
+Please visit [Physionet](https://physionet.org/content/ptb-xl/1.0.3/) for more details.
 
 ### <span class="sk-h2-span">Funding</span>
 
@@ -12,8 +12,7 @@ This work was supported by BMBF (01IS14013A), Berlin Big Data Center, Berlin Cen
 
 ### <span class="sk-h2-span">License</span>
 
-This database is available for non-commercial use.
-[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](https://physionet.org/content/ptb-xl/view-license/1.0.3/)
+This database is available under [Creative Commons Attribution 4.0 International Public License](https://physionet.org/content/ptb-xl/view-license/1.0.3/)
 
 ### <span class="sk-h2-span">Supported Tasks</span>
 

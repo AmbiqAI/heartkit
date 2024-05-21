@@ -22,12 +22,11 @@ def download_datasets(params: HKDownloadParams):
     handler.setLevel(logging.INFO)
     logger.addHandler(handler)
 
-    os.makedirs(params.ds_path, exist_ok=True)
-
-    for ds_name in params.datasets:
-        if DatasetFactory.has(ds_name):
-            Dataset = DatasetFactory.get(ds_name)
-            ds = Dataset(ds_path=params.ds_path, task="", frame_size=1, target_rate=1, spec=((), ()))
+    for ds in params.datasets:
+        if DatasetFactory.has(ds.name):
+            os.makedirs(ds.path, exist_ok=True)
+            Dataset = DatasetFactory.get(ds.name)
+            ds = Dataset(ds_path=ds.path, **ds.params)
             ds.download(
                 num_workers=params.data_parallelism,
                 force=params.force,

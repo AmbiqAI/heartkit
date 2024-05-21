@@ -12,7 +12,7 @@ N/A
 
 ## <span class="sk-h2-span">License</span>
 
-This database is available for commercial use.
+This database is available for commercial use. [Open Data Commons Attribution License v1.0](https://physionet.org/content/nsrdb/view-license/1.0.0/)
 
 ## <span class="sk-h2-span">Supported Tasks</span>
 

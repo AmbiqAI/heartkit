@@ -29,7 +29,7 @@ class ModelFactory:
         _models.pop(name, None)
 
     @staticmethod
-    def create(name: str, params: dict, inputs: tf.Tensor, num_classes: int) -> keras.models.Model:
+    def create(name: str, params: dict, inputs: tf.Tensor, num_classes: int | None = None) -> keras.models.Model:
         """Create a model
 
         Args:

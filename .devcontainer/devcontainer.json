@@ -31,7 +31,8 @@
     },
 
     "mounts": [
-        "source=${localEnv:HOME}${localEnv:USERPROFILE}/tensorflow_datasets,target=/home/vscode/tensorflow_datasets,type=bind,consistency=cached"
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/tensorflow_datasets,target=/home/vscode/tensorflow_datasets,type=bind,consistency=cached",
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/datasets,target=/home/vscode/datasets,type=bind,consistency=cached"
     ],
 
     "forwardPorts": [6006],

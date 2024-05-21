@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "heartkit"
-version = "1.2.0"
+version = "1.3.0"
 description = "AI driven heart monitoring kit for ultra low-power wearables."
 license = "BSD-3-Clause"
 authors = ["Ambiq AI <support.aitg@ambiq.com>"]
@@ -90,6 +90,9 @@ profile = 'black'
 [tool.black]
 line-length = 120
 
+[tool.pylint]
+ignored-modules = ["h5py"]
+
 [tool.pylint.master]
 ignore-paths = [
     "heartkit/rpc/GenericDataOperations_EvbToPc",
@@ -97,6 +100,7 @@ ignore-paths = [
     "heartkit/rpc/erpc"
 ]
 extension-pkg-whitelist = "pydantic"
+
 
 [tool.pylint.message_control]
 disable = [
@@ -108,7 +112,8 @@ disable = [
     "duplicate-code",
     "use-dict-literal",
     "cyclic-import",
-    "unsubscriptable-object"
+    "unsubscriptable-object",
+    "not-callable"
 ]
 
 [tool.pylint.format]

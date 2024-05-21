@@ -1,3 +1,4 @@
+import contextlib
 import functools
 import logging
 import os
@@ -5,19 +6,19 @@ import random
 from collections.abc import Iterable
 from enum import IntEnum
 from multiprocessing import Pool
+from typing import Generator
 
 import h5py
 import numpy as np
 import numpy.typing as npt
 import physiokit as pk
 import sklearn.model_selection
-import tensorflow as tf
 from tqdm import tqdm
 
-from ..tasks import HKDiagnostic, HKRhythm
 from ..utils import download_file
 from .dataset import HKDataset
-from .defines import PatientGenerator, SampleGenerator
+from .defines import PatientGenerator
+from .utils import download_s3_objects
 
 logger = logging.getLogger(__name__)
 
@@ -151,76 +152,6 @@ class LsadScpCode(IntEnum):
     # -2108975294  # ???
 
 
-##
-# These map LSAD specific labels to common labels
-##
-
-LsadDiagnosticMap = {
-    # NORM
-    LsadScpCode.SR: HKDiagnostic.NORM,
-    # STTC
-    LsadScpCode.QTIE: HKDiagnostic.STTC,
-    # LsadScpCode.STDD: HKDiagnostic.STTC,  # ?
-    # LsadScpCode.STE: HKDiagnostic.STTC,  # ?
-    LsadScpCode.STTC: HKDiagnostic.STTC,
-    LsadScpCode.STTU: HKDiagnostic.STTC,
-    # MI
-    LsadScpCode.MI: HKDiagnostic.MI,
-    LsadScpCode.AMI: HKDiagnostic.MI,
-    LsadScpCode.AAMI: HKDiagnostic.MI,
-    # HYP
-    LsadScpCode.LVH: HKDiagnostic.HYP,
-    LsadScpCode.LVH2: HKDiagnostic.HYP,
-    LsadScpCode.RAH: HKDiagnostic.HYP,
-    LsadScpCode.RVH: HKDiagnostic.HYP,
-    LsadScpCode.LAH: HKDiagnostic.HYP,
-    # CD
-    LsadScpCode.AVB: HKDiagnostic.CD,
-    LsadScpCode.AVB11: HKDiagnostic.CD,
-    LsadScpCode.AVB2: HKDiagnostic.CD,
-    LsadScpCode.AVB21: HKDiagnostic.CD,
-    LsadScpCode.AVB22: HKDiagnostic.CD,
-    LsadScpCode.AVB3: HKDiagnostic.CD,
-    LsadScpCode.AVB221: HKDiagnostic.CD,
-    LsadScpCode.BBB: HKDiagnostic.CD,
-    LsadScpCode.LBBB: HKDiagnostic.CD,
-    LsadScpCode.RBBB: HKDiagnostic.CD,
-    LsadScpCode.ILBBB: HKDiagnostic.CD,
-    LsadScpCode.CRBBB: HKDiagnostic.CD,
-    LsadScpCode.CLBBB: HKDiagnostic.CD,
-    LsadScpCode.IRBBB: HKDiagnostic.CD,
-    LsadScpCode.IDC: HKDiagnostic.CD,
-    LsadScpCode.AVD: HKDiagnostic.CD,
-    LsadScpCode.WPW: HKDiagnostic.CD,
-    LsadScpCode.LAFB: HKDiagnostic.CD,
-    LsadScpCode.LPFB: HKDiagnostic.CD,
-}
-
-LsadRhythmMap = {
-    LsadScpCode.SR: HKRhythm.sr,
-    LsadScpCode.SB: HKRhythm.sbrad,
-    LsadScpCode.SBRAD: HKRhythm.sbrad,
-    LsadScpCode.ST: HKRhythm.stach,
-    LsadScpCode.AA: HKRhythm.sarrh,
-    LsadScpCode.SA: HKRhythm.sarrh,
-    LsadScpCode.AVNRT: HKRhythm.svt,
-    LsadScpCode.AVNRT2: HKRhythm.svt,
-    LsadScpCode.AVRT: HKRhythm.svt,
-    LsadScpCode.SVT: HKRhythm.svt,
-    LsadScpCode.WPW: HKRhythm.svt,
-    LsadScpCode.AT: HKRhythm.svt,
-    LsadScpCode.JT: HKRhythm.svt,
-    LsadScpCode.PVT: HKRhythm.vtach,
-    LsadScpCode.AFIB: HKRhythm.afib,
-    LsadScpCode.AF: HKRhythm.aflut,
-    LsadScpCode.VFIB: HKRhythm.vfib,
-    LsadScpCode.VF: HKRhythm.vflut,
-    LsadScpCode.ABI: HKRhythm.bigu,
-    LsadScpCode.VB: HKRhythm.bigu,
-    LsadScpCode.VET: HKRhythm.trigu,
-}
-
-
 LsadLeadsMap = {
     "i": 0,
     "ii": 1,
@@ -243,22 +174,17 @@ class LsadDataset(HKDataset):
     def __init__(
         self,
         ds_path: os.PathLike,
-        task: str,
-        frame_size: int,
-        target_rate: int,
-        spec: tuple[tf.TensorSpec, tf.TensorSpec],
-        class_map: dict[int, int] | None = None,
         leads: list[int] | None = None,
     ) -> None:
         super().__init__(
-            ds_path=ds_path / "lsad",
-            task=task,
-            frame_size=frame_size,
-            target_rate=target_rate,
-            spec=spec,
-            class_map=class_map,
+            ds_path=ds_path,
         )
-        self.leads = leads or list(range(12))
+        self.leads = leads or list(LsadLeadsMap.values())
+
+    @property
+    def name(self) -> str:
+        """Dataset name"""
+        return "lsad"
 
     @property
     def sampling_rate(self) -> int:
@@ -282,7 +208,6 @@ class LsadDataset(HKDataset):
         Returns:
             npt.NDArray: patient IDs
         """
-
         pts = np.array([int(p.stem) for p in self.ds_path.glob("*.h5")])
         pts.sort()
         return pts
@@ -309,211 +234,104 @@ class LsadDataset(HKDataset):
         """Get patient key"""
         return f"{patient_id:05d}"
 
-    def task_data_generator(
+    def label_key(self, label_type: str = "scp") -> str:
+        """Get label key
+
+        Args:
+            label_type (str, optional): Label type. Defaults to "scp".
+
+        Returns:
+            str: Label key
+        """
+        if label_type == "scp":
+            return "slabels"
+        raise ValueError(f"Invalid label type: {label_type}")
+
+    @contextlib.contextmanager
+    def patient_data(self, patient_id: int) -> Generator[h5py.Group, None, None]:
+        """Get patient data
+
+        Args:
+            patient_id (int): Patient ID
+
+        Returns:
+            Generator[h5py.Group, None, None]: Patient data
+        """
+        with h5py.File(self.ds_path / f"{self._pt_key(patient_id)}.h5", mode="r") as h5:
+            yield h5
+
+    def signal_generator(
         self,
         patient_generator: PatientGenerator,
-        samples_per_patient: int | list[int] = 1,
-    ) -> SampleGenerator:
-        """Task-level data generator.
+        frame_size: int,
+        samples_per_patient: int = 1,
+        target_rate: int | None = None,
+    ) -> Generator[npt.NDArray, None, None]:
+        """Generate random frames.
 
         Args:
-            patient_generator (PatientGenerator): Patient data generator
-            samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
+            patient_generator (PatientGenerator): Patient Generator
+            frame_size (int): Frame size
+            samples_per_patient (int, optional): Samples per patient. Defaults to 1.
+            target_rate (int, optional): Target rate. Defaults to None.
 
         Returns:
-            SampleGenerator: Sample data generator
+            Generator[npt.NDArray, None, None]: Generator of input data
         """
-        if self.task == "rhythm":
-            return self.rhythm_data_generator(
-                patient_generator=patient_generator,
-                samples_per_patient=samples_per_patient,
-            )
+        if target_rate is None:
+            target_rate = self.sampling_rate
 
-        if self.task == "denoise":
-            return self.denoising_generator(
-                patient_generator=patient_generator,
-                samples_per_patient=samples_per_patient,
-            )
-
-        if self.task == "diagnostic":
-            return self.diagnostic_data_generator(
-                patient_generator=patient_generator,
-                samples_per_patient=samples_per_patient,
-            )
-
-        raise NotImplementedError()
-
-    def uniform_patient_generator(
-        self,
-        patient_ids: npt.NDArray,
-        repeat: bool = True,
-        shuffle: bool = True,
-    ) -> PatientGenerator:
-        """Yield data for each patient in the array.
-
-        Args:
-            patient_ids (pt.ArrayLike): Array of patient ids
-            repeat (bool, optional): Whether to repeat generator. Defaults to True.
-            shuffle (bool, optional): Whether to shuffle patient ids.. Defaults to True.
-
-        Returns:
-            PatientGenerator: Patient generator
-
-        Yields:
-            Iterator[PatientGenerator]
-        """
-        patient_ids = np.copy(patient_ids)
-        while True:
-            if shuffle:
-                np.random.shuffle(patient_ids)
-            for patient_id in patient_ids:
-                pt_key = self._pt_key(patient_id)
-                with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
-                    yield patient_id, h5
-                # END WITH
-            # END FOR
-            if not repeat:
-                break
-            # END IF
-        # END WHILE
-
-    def random_patient_generator(
-        self,
-        patient_ids: list[int],
-        patient_weights: list[int] | None = None,
-    ) -> PatientGenerator:
-        """Samples patient data from the provided patient distribution.
-
-        Args:
-            patient_ids (list[int]): Patient ids
-            patient_weights (list[int] | None, optional): Probabilities associated with each patient. Defaults to None.
-
-        Returns:
-            PatientGenerator: Patient generator
-
-        Yields:
-            Iterator[PatientGenerator]
-        """
-        while True:
-            for patient_id in np.random.choice(patient_ids, size=1024, p=patient_weights):
-                pt_key = self._pt_key(patient_id)
-                with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
-                    yield patient_id, h5
-                # END WITH
-            # END FOR
-        # END WHILE
-
-    def signal_generator(self, patient_generator: PatientGenerator, samples_per_patient: int = 1) -> SampleGenerator:
-        """Generate random frames using patient generator.
-
-        Args:
-            patient_generator (PatientGenerator): Generator that yields a tuple of patient id and patient data.
-                    Patient data may contain only signals, since labels are not used.
-            samples_per_patient (int): Samples per patient.
-
-        Returns:
-            SampleGenerator: Generator of input data of shape (frame_size, 1)
-        """
-        input_size = int(np.round((self.sampling_rate / self.target_rate) * self.frame_size))
-        for _, segment in patient_generator:
-            data = segment["data"][:]
+        input_size = int(np.round((self.sampling_rate / target_rate) * frame_size))
+        for pt in patient_generator:
+            with self.patient_data(pt) as h5:
+                data: h5py.Dataset = h5["data"][:]
+            # END WITH
             for _ in range(samples_per_patient):
                 lead = random.choice(self.leads)
                 start = np.random.randint(0, data.shape[1] - input_size)
                 x = data[lead, start : start + input_size].squeeze()
                 x = np.nan_to_num(x).astype(np.float32)
-                if self.sampling_rate != self.target_rate:
-                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate, axis=0)
+                if self.sampling_rate != target_rate:
+                    x = pk.signal.resample_signal(x, self.sampling_rate, target_rate, axis=0)
                 # END IF
                 yield x
             # END FOR
         # END FOR
 
-    def denoising_generator(
+    def signal_label_generator(
         self,
         patient_generator: PatientGenerator,
-        samples_per_patient: int | list[int] = 1,
-    ) -> SampleGenerator:
-        """Generate frames and denoised frames."""
-        gen = self.signal_generator(patient_generator, samples_per_patient)
-        for x in gen:
-            y = x.copy()
-            yield x, y
-
-    def rhythm_data_generator(
-        self,
-        patient_generator: PatientGenerator,
-        samples_per_patient: int | list[int] = 1,
-    ) -> SampleGenerator:
-        """Generate frames w/ rhythm labels (e.g. afib) using patient generator.
-
-        Args:
-            patient_generator (PatientGenerator): Patient Generator
-            samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
-
-        Returns:
-            SampleGenerator: Sample generator
-
-        Yields:
-            Iterator[SampleGenerator]
-        """
-        return self._label_data_generator(
-            patient_generator=patient_generator,
-            local_map=LsadRhythmMap,
-            samples_per_patient=samples_per_patient,
-        )
-
-    def diagnostic_data_generator(
-        self,
-        patient_generator: PatientGenerator,
-        samples_per_patient: int | list[int] = 1,
-    ) -> SampleGenerator:
-        """Generate frames w/ diagnostic labels using patient generator.
-
-        Args:
-            patient_generator (PatientGenerator): Patient Generator
-            samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
-
-        Returns:
-            SampleGenerator: Sample generator
-
-        Yields:
-            Iterator[SampleGenerator]
-        """
-        return self._label_data_generator(
-            patient_generator=patient_generator,
-            local_map=LsadDiagnosticMap,
-            samples_per_patient=samples_per_patient,
-            label_format="multi_hot",
-        )
-
-    def _label_data_generator(
-        self,
-        patient_generator: PatientGenerator,
-        local_map: dict[int, int],
-        samples_per_patient: int | list[int] = 1,
+        frame_size: int,
+        samples_per_patient: int = 1,
+        target_rate: int | None = None,
+        label_map: dict[int, int] | None = None,
+        label_type: str = "scp",
         label_format: str | None = None,
-    ) -> SampleGenerator:
+    ) -> Generator[tuple[npt.NDArray, int | npt.NDArray], None, None]:
         """Generate frames w/ labels using patient generator.
 
         Args:
             patient_generator (PatientGenerator): Patient Generator
-            local_map (dict[int, int]): Local label map
-            samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
+            frame_size (int): Frame size
+            samples_per_patient (int, optional): Samples per patient. Defaults to 1.
+            target_rate (int, optional): Target rate. Defaults to None.
+            label_map (dict[int, int], optional): Label map. Defaults to None.
+            label_type (str, optional): Class type. Defaults to "scp".
             label_format (str, optional): Label format. Defaults to None.
 
         Returns:
-            SampleGenerator: Sample generator
+            Generator[tuple[npt.NDArray, int|npt.NDArray], None, None]: Generator of input data and labels
 
         Yields:
-            Iterator[SampleGenerator]
+            tuple[npt.NDArray, int]: Input data and label
         """
+        if target_rate is None:
+            target_rate = self.sampling_rate
+        # END IF
 
         # Target labels and mapping
-        tgt_labels = list(set(self.class_map.values()))
-
-        # Convert dataset labels -> HK labels -> class map labels (-1 indicates not in class map)
-        tgt_map = {k: self.class_map.get(v, -1) for (k, v) in local_map.items()}
+        tgt_labels = sorted(list(set((lbl for lbl in label_map.values() if lbl != -1))))
+        label_key = self.label_key(label_type)
         num_classes = len(tgt_labels)
 
         # If samples_per_patient is a list, then it must be the same length as nclasses
@@ -523,18 +341,21 @@ class LsadDataset(HKDataset):
             num_per_tgt = int(max(1, samples_per_patient / num_classes))
             samples_per_tgt = num_classes * [num_per_tgt]
 
-        input_size = int(np.round((self.sampling_rate / self.target_rate) * self.frame_size))
+        input_size = int(np.round((self.sampling_rate / target_rate) * frame_size))
 
-        for _, seg in patient_generator:
-            # pt_info = {k:v for k,v in seg.attrs.items()}
+        for pt in patient_generator:
+
             # 1. Grab patient scp label (fixed for all samples)
-            slabels = seg["slabels"][:]
+            with self.patient_data(pt) as h5:
+                data = h5["data"][:]
+                slabels = h5[label_key][:]
+            # END WITH
 
             # 2. Map scp labels (skip patient if not in class map == -1)
             pt_lbls = []
             pt_lbl_weights = []
             for i in range(slabels.shape[0]):
-                label = tgt_map.get(int(slabels[i, 0]), -1)
+                label = label_map.get(int(slabels[i, 0]), -1)
                 if label == -1:
                     continue
                 # END IF
@@ -555,7 +376,6 @@ class LsadDataset(HKDataset):
             if label_format == "multi_hot":
                 y = np.zeros(num_classes, dtype=np.int32)
                 y[pt_lbls] = 1
-                # y = np.expand_dims(y, axis=0)
                 num_samples = sum((samples_per_tgt[tgt_labels.index(i)] for i in pt_lbls))
             elif label_format == "one_hot":
                 raise NotImplementedError()
@@ -567,21 +387,119 @@ class LsadDataset(HKDataset):
                 raise ValueError(f"Invalid label_format: {label_format}")
 
             # 3. Generate samples based on samples_per_tgt
-            data = seg["data"][:]
-            # print(f'{pt} creating {num_samples} samples')
             for _ in range(num_samples):
                 # select random lead and start index
                 lead = random.choice(self.leads)
-                # lead = self.leads
                 start = np.random.randint(0, data.shape[1] - input_size)
-                # Extract frame
                 x = np.nan_to_num(data[lead, start : start + input_size], posinf=0, neginf=0).astype(np.float32)
                 # Resample if needed
-                if self.sampling_rate != self.target_rate:
-                    x = pk.signal.resample_signal(x, self.sampling_rate, self.target_rate, axis=0)
+                if self.sampling_rate != target_rate:
+                    x = pk.signal.resample_signal(x, self.sampling_rate, target_rate, axis=0)
                 yield x, y
             # END FOR
         # END FOR
+
+    def split_train_test_patients(
+        self,
+        patient_ids: npt.NDArray,
+        test_size: float,
+        label_map: dict[int, int] | None = None,
+        label_type: str | None = None,
+    ) -> list[list[int]]:
+        """Perform train/test split on patients for given task.
+        NOTE: We only perform inter-patient splits and not intra-patient.
+
+        Args:
+            patient_ids (npt.NDArray): Patient Ids
+            test_size (float): Test size
+            label_map (dict[int, int], optional): Label map. Defaults to None.
+            label_type (str, optional): Label type. Defaults to None.
+
+        Returns:
+            list[list[int]]: Train and test sets of patient ids
+        """
+        stratify = None
+        if label_map is not None and label_type is not None:
+            patients_labels = self.get_patients_labels(patient_ids, label_map=label_map, label_type=label_type)
+            # Select random label for stratification or -1 if no labels
+            stratify = np.array([random.choice(x) if len(x) > 0 else -1 for x in patients_labels])
+            # Remove patients w/o labels
+            neg_mask = stratify == -1
+            stratify = stratify[~neg_mask]
+            patient_ids = patient_ids[~neg_mask]
+            num_neg = neg_mask.sum()
+            if num_neg > 0:
+                logger.warning(f"Removed {num_neg} patients w/ no target class")
+            # END IF
+        # END IF
+
+        return sklearn.model_selection.train_test_split(
+            patient_ids,
+            test_size=test_size,
+            shuffle=True,
+            stratify=stratify,
+        )
+
+    def filter_patients_for_labels(
+        self, patient_ids: npt.NDArray, label_map: dict[int, int] | None = None, label_type: str | None = None
+    ) -> npt.NDArray:
+        """Filter patients based on labels.
+        Useful to remove patients w/o labels for task to speed up data loading.
+
+        Args:
+            patient_ids (npt.NDArray): Patient ids
+            patient_ids (npt.NDArray): Patient ids
+            label_map (dict[int, int], optional): Label map. Defaults to None.
+            label_type (str, optional): Label type. Defaults to None.
+
+        Returns:
+            npt.NDArray: Filtered patient ids
+        """
+        if label_map is None or label_type is None:
+            return patient_ids
+
+        patients_labels = self.get_patients_labels(patient_ids, label_map, label_type)
+        # Find any patient with empty list
+        label_mask = np.array([len(x) > 0 for x in patients_labels])
+        neg_mask = label_mask == -1
+        num_neg = neg_mask.sum()
+        if num_neg > 0:
+            logger.warning(f"Removed {num_neg} of {patient_ids.size} patients w/ no target class")
+        return patient_ids[~neg_mask]
+
+    def get_patients_labels(
+        self, patient_ids: npt.NDArray, label_map: dict[int, int], label_type: str = "scp"
+    ) -> list[list[int]]:
+        """Get class labels for each patient
+
+        Args:
+            patient_ids (npt.NDArray): Patient ids
+
+        Returns:
+            list[list[int]]: List of class labels per patient
+
+        """
+        ids = patient_ids.tolist()
+        func = functools.partial(self.get_patient_labels, label_map=label_map, label_type=label_type)
+        with Pool() as pool:
+            pts_labels = list(pool.imap(func, ids))
+        return pts_labels
+
+    def get_patient_labels(self, patient_id: int, label_map: dict[int, int], label_type: str = "scp") -> list[int]:
+        """Get class labels for patient
+
+        Args:
+            patient_id (int): Patient id
+
+        Returns:
+            list[int]: List of class labels
+
+        """
+        with self.patient_data(patient_id) as h5:
+            labels = h5[self.label_key(label_type)][:, 0]
+        labels = np.unique(labels)
+        labels: list[int] = [label_map[r] for r in labels if label_map.get(r, -1) != -1]
+        return labels
 
     def download(self, num_workers: int | None = None, force: bool = False):
         """Download dataset
@@ -592,7 +510,14 @@ class LsadDataset(HKDataset):
             num_workers (int | None, optional): # parallel workers. Defaults to None.
             force (bool, optional): Force redownload. Defaults to False.
         """
-        self.download_raw_dataset(num_workers=num_workers, force=force)
+        download_s3_objects(
+            bucket="ambiq-ai-datasets",
+            prefix=self.ds_path.stem,
+            dst=self.ds_path.parent,
+            checksum="size",
+            progress=True,
+            num_workers=num_workers,
+        )
 
     def download_raw_dataset(self, num_workers: int | None = None, force: bool = False):
         """Downloads full dataset zipfile and converts into individial patient HDF5 files.
@@ -707,87 +632,4 @@ class LsadDataset(HKDataset):
             except Exception:  # pylint: disable=broad-except
                 logger.warning(f"Failed processing {zp_rec_name}")
                 continue
-
-    def filter_patients_for_task(self, patient_ids: npt.NDArray) -> npt.NDArray:
-        """Filter patients based on task.
-        Useful to remove patients w/o labels for task to speed up data loading.
-
-        Args:
-            patient_ids (npt.NDArray): Patient ids
-
-        Returns:
-            npt.NDArray: Filtered patient ids
-        """
-        if self.task in ("rhythm", "diagnotic"):
-            label_mask = self._get_patient_labels(patient_ids)
-            neg_mask = label_mask == -1
-            num_neg = neg_mask.sum()
-            if num_neg > 0:
-                logger.warning(f"Removed {num_neg} of {patient_ids.size} patients w/ no target class")
-            return patient_ids[~neg_mask]
-        return patient_ids
-
-    def split_train_test_patients(self, patient_ids: npt.NDArray, test_size: float) -> list[list[int]]:
-        """Perform train/test split on patients for given task.
-        NOTE: We only perform inter-patient splits and not intra-patient.
-
-        Args:
-            patient_ids (npt.NDArray): Patient Ids
-            test_size (float): Test size
-
-        Returns:
-            list[list[int]]: Train and test sets of patient ids
-        """
-        stratify = None
-
-        # Use stratified split for rhythm task
-        if self.task in ("rhythm", "diagnostic"):
-            stratify = self._get_patient_labels(patient_ids)
-            neg_mask = stratify == -1
-            stratify = stratify[~neg_mask]
-            patient_ids = patient_ids[~neg_mask]
-            num_neg = neg_mask.sum()
-            if num_neg > 0:
-                logger.warning(f"Removed {num_neg} patients w/ no target class")
-
-        return sklearn.model_selection.train_test_split(
-            patient_ids,
-            test_size=test_size,
-            shuffle=True,
-            stratify=stratify,
-        )
-
-    def _get_patient_labels(self, patient_ids: npt.NDArray) -> npt.NDArray:
-        """Get rhythm class for each patient
-
-        Args:
-            patient_ids (npt.NDArray): Patient ids
-
-        Returns:
-            npt.NDArray: Patient ids
-
-        """
-        ids = patient_ids.tolist()
-        with Pool() as pool:
-            pt_rhythms = list(pool.imap(self._get_patient_label, ids))
-        return np.array(pt_rhythms)
-
-    def _get_patient_label(self, patient_id: int) -> int:
-        """Get label class for patient
-
-        Args:
-            patient_id (int): Patient id
-
-        Returns:
-            int: Target rhythm class
-        """
-        tgt_map = {k: self.class_map.get(v, -1) for (k, v) in LsadRhythmMap.items()}
-        pt_key = self._pt_key(patient_id)
-        with h5py.File(self.ds_path / f"{pt_key}.h5", mode="r") as h5:
-            pt_rhythms: npt.NDArray[np.int64] = np.array(h5["slabels"][:, 0])
-        if pt_rhythms.size == 0:
-            return -1
-        pt_classes: list[int] = [tgt_map[r] for r in pt_rhythms if tgt_map.get(r, -1) != -1]
-        if len(pt_classes) == 0:
-            return -1
-        return random.choice(pt_classes)
+        # END FOR

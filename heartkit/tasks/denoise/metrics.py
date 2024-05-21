@@ -82,7 +82,7 @@ def snr(y1: npt.NDArray, y2: npt.NDArray) -> npt.NDArray:
     return SNR
 
 
-def SNR_improvement(y_in: npt.NDArray, y_out: npt.NDArray, y_clean: npt.NDArray) -> npt.NDArray:
+def snr_improvement(y_in: npt.NDArray, y_out: npt.NDArray, y_clean: npt.NDArray) -> npt.NDArray:
     """Compute signal to noise ratio improvement
 
     Args:

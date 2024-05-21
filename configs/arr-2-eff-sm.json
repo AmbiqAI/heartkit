@@ -1,15 +1,18 @@
 {
     "name": "arr-2-eff-sm",
+    "project": "hk-rhythm-2",
     "job_dir": "./results/arr-2-eff-sm",
-    "ds_path": "./datasets",
     "datasets": [{
         "name": "icentia11k",
+        "path": "./datasets/icentia11k",
         "params": {}
     }, {
         "name": "ptbxl",
+        "path": "./datasets/ptbxl",
         "params": {}
     }, {
         "name": "lsad",
+        "path": "./datasets/lsad",
         "params": {}
     }],
     "num_classes": 2,
@@ -24,6 +27,7 @@
     "sampling_rate": 100,
     "frame_size": 512,
     "model_file": "model.keras",
+    "use_logits": false,
     "samples_per_patient": [10, 10],
     "val_samples_per_patient": [10, 10],
     "val_file": "./results/${task}-class-2-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
@@ -44,10 +48,12 @@
     "tflm_var_name": "g_rhythm_model",
     "tflm_file": "rhythm_model_buffer.h",
     "backend": "pc",
+    "demo_size": 800,
+    "display_report": true,
     "quantization": {
-        "enabled": true,
+        "enabled": false,
         "qat": false,
-        "ptq": true,
+        "ptq": false,
         "input_type": "int8",
         "output_type": "int8",
         "supported_ops": null

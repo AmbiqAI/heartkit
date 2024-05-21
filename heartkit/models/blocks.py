@@ -16,6 +16,35 @@ def batch_norm(name: str | None = None, momentum=0.9, epsilon=1e-3) -> KerasLaye
     return keras.layers.BatchNormalization(momentum=momentum, epsilon=epsilon, name=name)
 
 
+def norm_layer(norm: str, name: str) -> KerasLayer:
+    """Normalization layer
+
+    Args:
+        norm (str): Normalization type
+        name (str): Name
+
+    Returns:
+        KerasLayer: Layer
+    """
+
+    def layer(x: tf.Tensor) -> tf.Tensor:
+        """Functional normalization layer
+
+        Args:
+            x (tf.Tensor): Input tensor
+
+        Returns:
+            tf.Tensor: Output tensor
+        """
+        if norm == "batch":
+            return batch_norm(name=name)(x)
+        if norm == "layer":
+            return layer_norm(name=name)(x)
+        return x
+
+    return layer
+
+
 def glu(dim: int = -1) -> KerasLayer:
     """Gated linear unit layer"""
 
@@ -165,6 +194,7 @@ def mbconv_block(
     strides: int | tuple[int, int] = 1,
     se_ratio: float = 8,
     droprate: float = 0,
+    norm: str = "batch",
     name: str | None = None,
 ) -> KerasLayer:
     """MBConv block w/ expansion and SE
@@ -193,7 +223,7 @@ def mbconv_block(
             name_ex = f"{name}.exp" if name else None
             filters = int(input_filters * expand_ratio)
             y = conv2d(filters, kernel_size=(1, 1), strides=(1, 1), name=name_ex)(x)
-            y = batch_norm(name=name_ex)(y)
+            y = norm_layer(norm, name=name_ex)(y)
             y = relu6(name=name_ex)(y)
         else:
             y = x
@@ -209,7 +239,7 @@ def mbconv_block(
             depthwise_initializer="he_normal",
             name=name_dp,
         )(y)
-        y = batch_norm(name=name_dp)(y)
+        y = norm_layer(norm, name=name_dp)(y)
         y = relu6(name=name_dp)(y)
         if is_downsample:
             y = keras.layers.MaxPool2D(pool_size=strides, padding="same")(y)
@@ -228,7 +258,7 @@ def mbconv_block(
             padding="same",
             name=name_red,
         )(y)
-        y = batch_norm(name=name_red)(y)
+        y = norm_layer(norm, name=name_red)(y)
         # No activation
 
         if add_residual:

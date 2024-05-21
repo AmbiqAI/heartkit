@@ -1,0 +1,132 @@
+{
+    "name": "arr-4-eff-lg",
+    "project": "hk-rhythm-4",
+    "job_dir": "./results/arr-4-eff-lg",
+    "datasets": [{
+        "name": "lsad",
+        "path": "./datasets/lsad",
+        "params": {
+        }
+    }],
+    "num_classes": 4,
+    "class_map": {
+        "0": 0,
+        "1": 1,
+        "7": 2,
+        "8": 2,
+        "2": 3,
+        "5": 3
+    },
+    "class_names": [
+        "SR", "SB", "AFIB", "GSVT"
+    ],
+    "sampling_rate": 100,
+    "frame_size": 800,
+    "model_file": "model.keras",
+    "use_logits": false,
+    "samples_per_patient": [5, 5, 5, 10],
+    "val_file": "./results/${task}-class-4-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
+    "test_file": "./results/${task}-class-4-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
+    "val_samples_per_patient": [5, 5, 5, 10],
+    "val_patients": 0.20,
+    "test_samples_per_patient": [5, 5, 5, 10],
+    "test_size": 50000,
+    "batch_size": 256,
+    "buffer_size": 50000,
+    "epochs": 100,
+    "steps_per_epoch": 50,
+    "val_metric": "loss",
+    "lr_rate": 1e-3,
+    "lr_cycles": 1,
+    "class_weights": "balanced",
+    "threshold": 0.5,
+    "val_acc_threshold": 0.98,
+    "tflm_var_name": "g_rhythm_model",
+    "tflm_file": "rhythm_model_buffer.h",
+    "backend": "pc",
+    "demo_size": 800,
+    "display_report": false,
+    "quantization": {
+        "enabled": false,
+        "qat": false,
+        "ptq": false,
+        "input_type": "int8",
+        "output_type": "int8",
+        "supported_ops": null
+    },
+    "preprocesses": [
+        {
+            "name": "filter",
+            "params": {
+                "lowcut": 1.0,
+                "highcut": 30,
+                "order": 3,
+                "forward_backward": true,
+                "axis": 0
+            }
+        },
+        {
+            "name": "znorm",
+            "params": {
+                "eps": 0.01,
+                "axis": null
+            }
+        }
+    ],
+    "architecture": {
+        "name": "efficientnetv2",
+        "params": {
+            "input_filters": 24,
+            "input_kernel_size": [1, 9],
+            "input_strides": [1, 2],
+            "blocks": [
+                {"filters": 32, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4},
+                {"filters": 48, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4},
+                {"filters": 64, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4},
+                {"filters": 80, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4},
+                {"filters": 96, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4}
+            ],
+            "output_filters": 0,
+            "include_top": true,
+            "use_logits": true
+        }
+    },
+    "augmentations": [
+        {
+            "name": "baseline_wander",
+            "params": {
+                "amplitude": [0.0, 0.2],
+                "frequency": [0.5, 1.5]
+            }
+        },
+        {
+            "name": "powerline_noise",
+            "params": {
+                "amplitude": [0.0, 0.15],
+                "frequency": [45, 50]
+            }
+        },
+        {
+            "name": "burst_noise",
+            "params": {
+                "burst_number": [0, 4],
+                "amplitude": [0.0, 0.1],
+                "frequency": [20, 49]
+            }
+        },
+        {
+            "name": "noise_sources",
+            "params": {
+                "num_sources": [1, 2],
+                "amplitude": [0.0, 0.1],
+                "frequency": [10, 40]
+            }
+        },
+        {
+            "name": "lead_noise",
+            "params": {
+                "scale": [0.05, 0.2]
+            }
+        }
+    ]
+}

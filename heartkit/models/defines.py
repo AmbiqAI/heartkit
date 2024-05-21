@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Literal
 
 import tensorflow as tf
 from pydantic import BaseModel, Field
@@ -16,3 +16,4 @@ class MBConvParams(BaseModel):
     strides: int | tuple[int, int] = Field(default=1, description="Stride size")
     se_ratio: float = Field(default=8, description="Squeeze Excite ratio")
     droprate: float = Field(default=0, description="Drop rate")
+    norm: Literal["batch", "layer"] | None = Field(default="layer", description="Normalization type")

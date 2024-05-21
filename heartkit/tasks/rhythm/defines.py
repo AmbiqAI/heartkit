@@ -4,7 +4,7 @@ from enum import IntEnum, StrEnum
 class HKRhythm(IntEnum):
     """Heart rhythm labels"""
 
-    sr = 0
+    sr = 0  # Sinus rhythm
     sbrad = 1  # Sinus bradycardia
     stach = 2  # Sinus tachycardia
 
