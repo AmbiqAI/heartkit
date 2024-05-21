@@ -14,11 +14,12 @@
         "2": 2
     },
     "class_names": [
-        "NONE", "PAC", "PVC"
+        "QRS", "PAC", "PVC"
     ],
     "sampling_rate": 100,
     "frame_size": 512,
     "model_file": "model.keras",
+    "use_logits": false,
     "samples_per_patient": [10, 40, 40],
     "val_samples_per_patient": [10, 40, 40],
     "val_file": "./results/${task}-class-3-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
@@ -40,8 +41,8 @@
     "tflm_var_name": "g_beat_model",
     "tflm_file": "beat_model_buffer.h",
     "backend": "pc",
-    "demo_size": 800,
-    "display_report": false,
+    "demo_size": 900,
+    "display_report": true,
     "quantization": {
         "enabled": false,
         "qat": false,

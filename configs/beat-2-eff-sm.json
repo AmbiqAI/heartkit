@@ -1,7 +1,7 @@
 {
-    "name": "bc-2-eff-sm",
+    "name": "beat-2-eff-sm",
     "project": "hk-beat-2",
-    "job_dir": "./results/bc-2-eff-sm",
+    "job_dir": "./results/beat-2-eff-sm",
     "datasets": [{
         "name": "icentia11k",
         "path": "./datasets/icentia11k",
@@ -14,21 +14,22 @@
         "2": 1
     },
     "class_names": [
-        "NONE", "PAC/PVC"
+        "QRS", "PAC/PVC"
     ],
     "sampling_rate": 100,
     "frame_size": 512,
     "model_file": "model.keras",
-    "samples_per_patient": [40, 40],
-    "val_samples_per_patient": [40, 40],
+    "use_logits": false,
+    "samples_per_patient": [20, 20],
+    "val_samples_per_patient": [20, 20],
     "val_file": "./results/${task}-class-2-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
     "test_file": "./results/${task}-class-2-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
     "val_patients": 0.20,
     "val_size": 24000,
-    "test_samples_per_patient": [40, 40],
+    "test_samples_per_patient": [20, 20],
     "test_size": 30000,
     "batch_size": 256,
-    "buffer_size": 100000,
+    "buffer_size": 80000,
     "epochs": 150,
     "steps_per_epoch": 50,
     "val_metric": "loss",
@@ -40,7 +41,7 @@
     "tflm_var_name": "g_beat_model",
     "tflm_file": "beat_model_buffer.h",
     "backend": "pc",
-    "demo_size": 800,
+    "demo_size": 1024,
     "display_report": false,
     "quantization": {
         "enabled": false,

@@ -2,6 +2,7 @@ import random
 
 import numpy as np
 import plotly.graph_objects as go
+import tensorflow as tf
 from plotly.subplots import make_subplots
 from tqdm import tqdm
 
@@ -10,7 +11,7 @@ from ...defines import HKDemoParams
 from ...rpc import BackendFactory
 from ...utils import setup_logger
 from ..utils import load_datasets
-from .datasets import augment, preprocess
+from .datasets import prepare
 
 logger = setup_logger(__name__)
 
@@ -33,13 +34,13 @@ def demo(params: HKDemoParams):
     # Load backend inference engine
     runner = BackendFactory.create(params.backend, params=params)
 
-    # feat_shape = (params.frame_size, 1)
-    # class_shape = (params.frame_size, 1)
+    feat_shape = (params.demo_size, 1)
+    class_shape = (params.demo_size, 1)
 
-    # ds_spec = (
-    #     tf.TensorSpec(shape=feat_shape, dtype=tf.float32),
-    #     tf.TensorSpec(shape=class_shape, dtype=tf.float32),
-    # )
+    ds_spec = (
+        tf.TensorSpec(shape=feat_shape, dtype=tf.float32),
+        tf.TensorSpec(shape=class_shape, dtype=tf.float32),
+    )
 
     # Load data
     dsets = load_datasets(datasets=params.datasets)
@@ -53,11 +54,17 @@ def demo(params: HKDemoParams):
     )
     x = next(ds_gen)
 
-    if params.augmentations:
-        x = augment(x, augmentations=params.augmentations, sample_rate=params.sampling_rate)
-
-    x = preprocess(x, preprocesses=params.preprocesses, sample_rate=params.sampling_rate)
-    y_act = x.copy()
+    x, y_act = prepare(
+        (x, x),
+        sample_rate=params.sampling_rate,
+        preprocesses=params.preprocesses,
+        augmentations=params.augmentations,
+        spec=ds_spec,
+        num_classes=params.num_classes,
+    )
+    print(x.shape, y_act.shape)
+    x = x.flatten()
+    y_act = y_act.flatten()
 
     # Run inference
     runner.open()
@@ -69,7 +76,6 @@ def demo(params: HKDemoParams):
 
     x_input = x.copy()
     for trial in range(8):
-
         for i in tqdm(range(0, x.size, params.frame_size), desc="Inference"):
             if i + params.frame_size > x.size:
                 start, stop = x.size - params.frame_size, x.size

@@ -159,6 +159,5 @@ def demo(params: HKDemoParams):
     fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=True)
     logger.info(f"Report saved to {params.job_dir / 'demo.html'}")
 
-    fig.show()
-    # if params.display_report:
-    #     fig.show()
+    if params.display_report:
+        fig.show()

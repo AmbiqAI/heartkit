@@ -313,6 +313,8 @@ class PtbxlDataset(HKDataset):
         """
         if label_type == "scp":
             return "slabels"
+        if label_type == "beat":
+            return "blabels"
         raise ValueError(f"Invalid label type: {label_type}")
 
     @contextlib.contextmanager

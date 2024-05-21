@@ -35,6 +35,7 @@ def train_val_dataloader(
     label_map: dict[int, int] | None = None,
     label_type: str | None = None,
     preprocess: Preprocessor | None = None,
+    val_preprocess: Preprocessor | None = None,
     num_workers: int = 1,
 ) -> tuple[tf.data.Dataset, tf.data.Dataset]:
     """Load training and validation TF datasets
@@ -57,6 +58,9 @@ def train_val_dataloader(
 
     if val_patients is not None and val_patients >= 1:
         val_patients = int(val_patients)
+
+    if val_preprocess is None:
+        val_preprocess = preprocess
 
     val_pt_samples = val_pt_samples or 100
 
@@ -101,7 +105,7 @@ def train_val_dataloader(
             id_generator=id_generator,
             ids=val_patient_ids,
             spec=spec,
-            preprocess=preprocess,
+            preprocess=val_preprocess,
             num_workers=num_workers,
         )
 

@@ -11,7 +11,7 @@
         "name": "synthetic",
         "path": "./datasets/synthetic",
         "params": {
-            "num_pts": 5000,
+            "num_pts": 10000,
             "params": {
                 "presets": ["SR", "AFIB", "ant_STEMI", "LAHB", "LPHB", "high_take_off", "LBBB", "random_morphology"],
                 "preset_weights": [8, 4, 1, 1, 1, 1, 1, 1],

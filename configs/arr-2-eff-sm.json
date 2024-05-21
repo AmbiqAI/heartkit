@@ -27,6 +27,7 @@
     "sampling_rate": 100,
     "frame_size": 512,
     "model_file": "model.keras",
+    "use_logits": false,
     "samples_per_patient": [10, 10],
     "val_samples_per_patient": [10, 10],
     "val_file": "./results/${task}-class-2-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",

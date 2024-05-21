@@ -210,6 +210,14 @@ def load_train_datasets(
         spec=ds_spec,
         num_classes=params.num_classes,
     )
+    val_prepare = functools.partial(
+        prepare,
+        sample_rate=params.sampling_rate,
+        preprocesses=params.preprocesses,
+        augmentations=None,
+        spec=ds_spec,
+        num_classes=params.num_classes,
+    )
 
     train_datasets = []
     val_datasets = []
@@ -238,6 +246,7 @@ def load_train_datasets(
             label_map=get_ds_label_map(ds, params.class_map),
             label_type=get_ds_label_type(ds),
             preprocess=train_prepare,
+            val_preprocess=val_prepare,
             num_workers=params.data_parallelism,
         )
         train_datasets.append(train_ds)

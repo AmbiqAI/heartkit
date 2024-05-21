@@ -223,63 +223,6 @@ class SyntheticDataset(HKDataset):
         self._noise_gen.apply_noise(ecg, noise_level)
         return ecg
 
-    def _patient_file_path(self, patient_id: int) -> os.PathLike:
-        """Get patient file path
-
-        Args:
-            patient_id (int): Patient ID
-
-        Returns:
-            os.PathLike: File path
-        """
-        # return self.ds_path / f"{self._unique_id}_{self.pt_key(patient_id)}.h5"
-        return self.ds_path / f"{self.pt_key(patient_id)}.h5"
-
-    # def _is_patient_file_valid(self, patient_id: int) -> bool:
-    #     """Check if patient file is valid
-
-    #     Args:
-    #         patient_id (int): Patient ID
-
-    #     Returns:
-    #         bool: True if data is valid
-    #     """
-    #     # Create in-memory hdf5 file
-    #     pt_path = self._patient_file_path(patient_id)
-    #     if not pt_path.is_file():
-    #         return False
-    #     try:
-    #         with h5py.File(pt_path, mode="r") as h5:
-    #             return h5.attrs.get("unique_id") == self._unique_id
-    #     except OSError:
-    #         return False
-
-    # def _create_patient_file(self, patient_id: int):
-    #     """Create patient data
-
-    #     Args:
-    #         patient_id (int): Patient ID
-    #     """
-
-    #     ecg, segs, fids = self._synthesize_signal(
-    #         frame_size=int(self.params.duration * self.sampling_rate), target_rate=self.sampling_rate
-    #     )
-    #     with h5py.File(self._patient_file_path(patient_id), mode="w") as h5:
-    #         h5.create_dataset("data", data=ecg, compression="gzip", compression_opts=6)
-    #         h5.create_dataset("segmentations", data=segs, compression="gzip", compression_opts=6)
-    #         h5.create_dataset("fiducials", data=fids, compression="gzip", compression_opts=6)
-    #         h5.attrs["unique_id"] = self._unique_id
-
-    # def _remove_patient_file(self, patient_id: int):
-    #     """Remove patient file
-
-    #     Args:
-    #         patient_id (int): Patient ID
-    #     """
-    #     pt_path = self._patient_file_path(patient_id)
-    #     if pt_path.is_file():
-    #         pt_path.unlink()
-
     def _synthesize_signal(
         self,
         frame_size: int,

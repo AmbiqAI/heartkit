@@ -126,6 +126,7 @@ def EfficientNetV2(
             y = keras.layers.Activation(params.output_activation)(y)
         elif not params.use_logits:
             y = keras.layers.Softmax()(y)
+
     model = keras.Model(x, y, name=params.model_name)
     return model
 
