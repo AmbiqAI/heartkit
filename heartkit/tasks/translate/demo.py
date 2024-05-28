@@ -11,13 +11,13 @@ from ...defines import HKDemoParams
 from ...rpc import BackendFactory
 from ...utils import setup_logger
 from ..utils import load_datasets
-from .datasets import prepare
+from .datasets import get_data_generator, prepare
 
 logger = setup_logger(__name__)
 
 
 def demo(params: HKDemoParams):
-    """Run segmentation demo.
+    """Run task demo.
 
     Args:
         params (HKDemoParams): Demo parameters
@@ -46,25 +46,24 @@ def demo(params: HKDemoParams):
     dsets = load_datasets(datasets=params.datasets)
     ds = random.choice(dsets)
 
-    ds_gen = ds.signal_generator(
-        patient_generator=uniform_id_generator(ds.get_test_patient_ids(), repeat=False),
-        frame_size=params.demo_size,
-        samples_per_patient=5,
-        target_rate=params.sampling_rate,
+    ds_gen = get_data_generator(
+        ds, frame_size=params.demo_size, samples_per_patient=5, target_rate=params.sampling_rate
     )
-    x = next(ds_gen)
 
-    x, y_act = prepare(
-        (x, x),
+    ds_gen = ds_gen(patient_generator=uniform_id_generator(ds.get_test_patient_ids(), repeat=False))
+
+    x, y = next(ds_gen)
+
+    x, y = prepare(
+        (x, y),
         sample_rate=params.sampling_rate,
         preprocesses=params.preprocesses,
         augmentations=params.augmentations,
         spec=ds_spec,
         num_classes=params.num_classes,
     )
-    print(x.shape, y_act.shape)
     x = x.flatten()
-    y_act = y_act.flatten()
+    y = y.flatten()
 
     # Run inference
     runner.open()
@@ -88,7 +87,7 @@ def demo(params: HKDemoParams):
             y_pred[start:stop] = yy.flatten()
         # END FOR
         x_input = y_pred.copy()
-        cos_sim = np.dot(y_act, y_pred) / (np.linalg.norm(y_act) * np.linalg.norm(y_pred))
+        cos_sim = np.dot(y, y_pred) / (np.linalg.norm(y) * np.linalg.norm(y_pred))
         cos_sim_diff = cos_sim - prev_cos_sim
         prev_cos_sim = cos_sim
         logger.info(f"Trial {trial+1}: Cosine Similarity: {cos_sim:.2%} (diff: {cos_sim_diff:.2%})")
@@ -103,8 +102,8 @@ def demo(params: HKDemoParams):
     ts = np.arange(0, x.size) / params.sampling_rate
 
     # Compute cosine similarity
-    cos_sim_orig = np.dot(y_act, x) / (np.linalg.norm(y_act) * np.linalg.norm(x))
-    cos_sim = np.dot(y_act, y_pred) / (np.linalg.norm(y_act) * np.linalg.norm(y_pred))
+    cos_sim_orig = np.dot(y, x) / (np.linalg.norm(y) * np.linalg.norm(x))
+    cos_sim = np.dot(y, y_pred) / (np.linalg.norm(y) * np.linalg.norm(y_pred))
     logger.info(f"Before Cosine Similarity: {cos_sim_orig:.2%}")
     logger.info(f"After Cosine Similarity: {cos_sim:.2%}")
 
@@ -119,7 +118,7 @@ def demo(params: HKDemoParams):
     fig.add_trace(
         go.Scatter(
             x=ts,
-            y=y_act,
+            y=y,
             name="REF",
             mode="lines",
             line=dict(color=tertiary_color, width=3),
@@ -133,27 +132,27 @@ def demo(params: HKDemoParams):
         go.Scatter(
             x=ts,
             y=x,
-            name="NOISE",
+            name="INPUT",
             mode="lines",
             line=dict(color=primary_color, width=3),
         ),
         row=2,
         col=1,
     )
-    fig.update_yaxes(title_text="NOISE", row=2, col=1)
+    fig.update_yaxes(title_text="INPUT", row=2, col=1)
 
     fig.add_trace(
         go.Scatter(
             x=ts,
             y=y_pred,
-            name="CLEAN",
+            name="OUTPUT",
             mode="lines",
             line=dict(color=quaternary_color, width=3),
         ),
         row=3,
         col=1,
     )
-    fig.update_yaxes(title_text="CLEAN", row=3, col=1)
+    fig.update_yaxes(title_text="OUTPUT", row=3, col=1)
 
     fig.add_annotation(
         x=1,
@@ -193,7 +192,7 @@ def demo(params: HKDemoParams):
         plot_bgcolor=bg_color,
         paper_bgcolor=bg_color,
         margin=dict(l=10, r=10, t=80, b=60),
-        title="HeartKit: Denoising Demo",
+        title="HeartKit: Translate Demo",
     )
 
     fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=False)

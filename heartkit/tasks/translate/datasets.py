@@ -21,18 +21,7 @@ from ...defines import (
     PreprocessParams,
 )
 from ...utils import resolve_template_path
-from .dataloaders import (
-    icentia11k_data_generator,
-    icentia11k_label_map,
-    ludb_data_generator,
-    ludb_label_map,
-    ptbxl_data_generator,
-    ptbxl_label_map,
-    synthetic_data_generator,
-    synthetic_label_map,
-    syntheticppg_data_generator,
-    syntheticppg_label_map,
-)
+from .dataloaders import bidmc_data_generator
 
 logger = logging.getLogger(__name__)
 
@@ -62,11 +51,8 @@ def augment(x: npt.NDArray, augmentations: list[AugmentationParams], sample_rate
     Returns:
         npt.NDArray: Augmented data
     """
-    return augment_pipeline(
-        x=x,
-        augmentations=augmentations,
-        sample_rate=sample_rate,
-    )
+
+    return augment_pipeline(x=x, augmentations=augmentations, sample_rate=sample_rate)
 
 
 def prepare(
@@ -80,7 +66,7 @@ def prepare(
     """Prepare dataset
 
     Args:
-        x_y (tuple[npt.NDArray, int]): Input data and label
+        x_y (tuple[npt.NDArray, npt.NDArray]): Input data
         sample_rate (float): Sample rate
         preprocesses (list[PreprocessParams]|None): Preprocess parameters
         augmentations (list[AugmentationParams]|None): Augmentation parameters
@@ -88,20 +74,22 @@ def prepare(
         num_classes (int): Number of classes
 
     Returns:
-        tuple[npt.NDArray, npt.NDArray]: Data and label
+        tuple[npt.NDArray, npt.NDArray]: Prepared data
     """
-    x, y = x_y[0].copy(), x_y[1]
+    x, y = x_y[0].copy(), x_y[1].copy()
 
     if augmentations:
         x = augment(x, augmentations, sample_rate)
+        y = augment(y, augmentations, sample_rate)
     # END IF
 
     if preprocesses:
         x = preprocess(x, preprocesses, sample_rate)
+        y = preprocess(y, preprocesses, sample_rate)
     # END IF
 
     x = x.reshape(spec[0].shape)
-    y = tf.one_hot(y, num_classes)
+    y = y.reshape(spec[1].shape)
 
     return x, y
 
@@ -116,25 +104,10 @@ def get_ds_label_map(ds: HKDataset, label_map: dict[int, int] | None = None) -> 
     Returns:
         dict[int, int]: Label map
     """
-    match ds.name:
-        case "icentia11k":
-            return icentia11k_label_map(label_map=label_map)
-        case "ludb":
-            return ludb_label_map(label_map=label_map)
-        case "ptbxl":
-            return ptbxl_label_map(label_map=label_map)
-        case "synthetic":
-            return synthetic_label_map(label_map=label_map)
-        case "syntheticppg":
-            return syntheticppg_label_map(label_map=label_map)
-        case _:
-            raise ValueError(f"Dataset {ds.name} not supported")
-    # END MATCH
+    return label_map
 
 
-def get_data_generator(
-    ds: HKDataset, frame_size: int, samples_per_patient: int, target_rate: int, label_map: dict[int, int] | None = None
-):
+def get_data_generator(ds: HKDataset, frame_size: int, samples_per_patient: int, target_rate: int):
     """Get task data generator for dataset
 
     Args:
@@ -142,22 +115,13 @@ def get_data_generator(
         frame_size (int): Frame size
         samples_per_patient (int): Samples per patient
         target_rate (int): Target rate
-        label_map (dict[int, int]|None): Label map
 
     Returns:
         callable: Data generator
     """
     match ds.name:
-        case "icentia11k":
-            data_generator = icentia11k_data_generator
-        case "ludb":
-            data_generator = ludb_data_generator
-        case "ptbxl":
-            data_generator = ptbxl_data_generator
-        case "synthetic":
-            data_generator = synthetic_data_generator
-        case "syntheticppg":
-            data_generator = syntheticppg_data_generator
+        case "bidmc":
+            data_generator = bidmc_data_generator
         case _:
             raise ValueError(f"Dataset {ds.name} not supported")
     # END MATCH
@@ -167,7 +131,6 @@ def get_data_generator(
         frame_size=frame_size,
         samples_per_patient=samples_per_patient,
         target_rate=target_rate,
-        label_map=label_map,
     )
 
 
@@ -225,15 +188,15 @@ def load_train_datasets(
     for ds in datasets:
 
         val_file = resolve_ds_cache_path(
-            params.val_file, ds=ds, task="segmentation", frame_size=params.frame_size, sample_rate=params.sampling_rate
+            params.val_file, ds=ds, task="denoise", frame_size=params.frame_size, sample_rate=params.sampling_rate
         )
         data_generator = get_data_generator(
             ds=ds,
             frame_size=params.frame_size,
             samples_per_patient=params.samples_per_patient,
             target_rate=params.sampling_rate,
-            label_map=params.class_map,
         )
+
         train_ds, val_ds = train_val_dataloader(
             ds=ds,
             spec=ds_spec,
@@ -244,7 +207,7 @@ def load_train_datasets(
             val_pt_samples=params.val_samples_per_patient,
             val_file=val_file,
             val_size=params.val_size,
-            label_map=params.class_map,
+            label_map=None,
             label_type=None,
             preprocess=train_prepare,
             num_workers=params.data_parallelism,
@@ -301,17 +264,18 @@ def load_test_dataset(
         prepare,
         sample_rate=params.sampling_rate,
         preprocesses=params.preprocesses,
-        augmentations=None,  # params.augmentations,
+        augmentations=params.augmentations,
         spec=ds_spec,
         num_classes=params.num_classes,
     )
+
     test_datasets = []
     for ds in datasets:
 
         test_file = resolve_ds_cache_path(
             fpath=params.test_file,
             ds=ds,
-            task="segmentation",
+            task="translate",
             frame_size=params.frame_size,
             sample_rate=params.sampling_rate,
         )
@@ -320,8 +284,8 @@ def load_test_dataset(
             frame_size=params.frame_size,
             samples_per_patient=params.test_samples_per_patient,
             target_rate=params.sampling_rate,
-            label_map=params.class_map,
         )
+
         test_ds = test_dataloader(
             ds=ds,
             spec=ds_spec,
@@ -329,7 +293,7 @@ def load_test_dataset(
             id_generator=id_generator,
             test_patients=params.test_patients,
             test_file=test_file,
-            label_map=params.class_map,
+            label_map=None,
             label_type=None,
             preprocess=test_prepare,
             num_workers=params.data_parallelism,

@@ -1,0 +1,122 @@
+{
+    "name": "den-ppg-tcn-xl",
+    "project": "hk-denoise",
+    "job_dir": "./results/den-ppg-tcn-xl",
+    "datasets": [{
+        "name": "syntheticppg",
+        "path": "./datasets/syntheticppg",
+        "params": {
+            "num_pts": 20000,
+            "params": {
+                "duration": 20,
+                "sample_rate": 100,
+                "heart_rate": [40, 160],
+                "frequency_modulation": [0.1, 0.4],
+                "ibi_randomness": [0.05, 0.15],
+                "noise_multiplier": [0.0, 0.01]
+            }
+        }
+    }],
+    "num_classes": 1,
+    "class_map": {},
+    "class_names": ["CLEAN"],
+    "sampling_rate": 100,
+    "frame_size": 256,
+    "model_file": "model.keras",
+    "samples_per_patient": 5,
+    "val_samples_per_patient": 5,
+    "val_patients": 0.20,
+    "test_samples_per_patient": 5,
+    "test_size": 10000,
+    "batch_size": 128,
+    "buffer_size": 50000,
+    "epochs": 100,
+    "steps_per_epoch": 50,
+    "val_metric": "loss",
+    "lr_rate": 1e-3,
+    "lr_cycles": 1,
+    "tflm_var_name": "ppg_denoise_flatbuffer",
+    "tflm_file": "ppg_denoise_flatbuffer.h",
+    "backend": "pc",
+    "demo_size": 768,
+    "display_report": true,
+    "quantization": {
+        "enabled": false,
+        "qat": false,
+        "ptq": false,
+        "input_type": "int8",
+        "output_type": "int8",
+        "supported_ops": null
+    },
+    "architecture": {
+        "name": "tcn",
+        "params": {
+            "input_kernel": [1, 9],
+            "input_norm": "batch",
+            "blocks": [
+                {"depth": 2, "branch": 1, "filters": 16, "kernel": [1, 9], "dilation": [1, 1], "dropout": 0, "ex_ratio": 1, "se_ratio": 0, "norm": "batch"},
+                {"depth": 2, "branch": 1, "filters": 24, "kernel": [1, 9], "dilation": [1, 1], "dropout": 0, "ex_ratio": 1, "se_ratio": 4, "norm": "batch"},
+                {"depth": 2, "branch": 1, "filters": 32, "kernel": [1, 9], "dilation": [1, 2], "dropout": 0, "ex_ratio": 1, "se_ratio": 4, "norm": "batch"},
+                {"depth": 1, "branch": 1, "filters": 48, "kernel": [1, 9], "dilation": [1, 4], "dropout": 0, "ex_ratio": 1, "se_ratio": 4, "norm": "batch"},
+                {"depth": 1, "branch": 1, "filters": 64, "kernel": [1, 9], "dilation": [1, 8], "dropout": 0, "ex_ratio": 1, "se_ratio": 4, "norm": "batch"}
+            ],
+            "output_kernel": [1, 9],
+            "include_top": true,
+            "use_logits": true,
+            "model_name": "tcn"
+        }
+    },
+    "preprocesses": [
+        {
+            "name": "znorm",
+            "params": {
+                "eps": 0.001,
+                "axis": null
+            }
+        }
+    ],
+    "augmentations": [
+        {
+            "name": "baseline_wander",
+            "params": {
+                "amplitude": [0.5, 2.0],
+                "frequency": [0.5, 1.5]
+            }
+        },
+        {
+            "name": "powerline_noise",
+            "params": {
+                "amplitude": [0.05, 0.2],
+                "frequency": [45, 50]
+            }
+        },
+        {
+            "name": "burst_noise",
+            "params": {
+                "burst_number": [0, 4],
+                "amplitude": [0.05, 0.2],
+                "frequency": [20, 49]
+            }
+        },
+        {
+            "name": "noise_sources",
+            "params": {
+                "num_sources": [1, 2],
+                "amplitude": [0.05, 0.2],
+                "frequency": [10, 40]
+            }
+        },
+        {
+            "name": "lead_noise",
+            "params": {
+                "scale": [0.05, 0.5]
+            }
+        },
+        {
+            "name": "nstdb",
+            "params": {
+                "noise_level": [0.05, 0.5]
+            }
+        }
+    ]
+}

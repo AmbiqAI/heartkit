@@ -30,6 +30,8 @@ def demo(params: HKDemoParams):
     quaternary_color = "rgb(92,201,154)"
     plotly_template = "plotly_dark"
 
+    signal_type = getattr(params, "signal_type", "ECG")  # ECG or PPG
+
     params.demo_size = params.demo_size or params.frame_size
 
     # Load backend inference engine
@@ -88,20 +90,37 @@ def demo(params: HKDemoParams):
             [{"colspan": 3, "type": "xy", "secondary_y": True}, None, None],
             [{"type": "xy"}, {"type": "bar"}, {"type": "table"}],
         ],
-        subplot_titles=("ECG Plot", "IBI Poincare Plot", "HRV Frequency Bands"),
+        subplot_titles=(f"{signal_type} Plot", "IBI Poincare Plot", "HRV Frequency Bands"),
         horizontal_spacing=0.1,
         vertical_spacing=0.2,
     )
+    if signal_type == "ECG":
+        # Extract R peaks from QRS segments
+        pred_bounds = np.concatenate(([0], np.diff(y_pred).nonzero()[0] + 1, [y_pred.size - 1]))
+        peaks = []
+        for i in range(1, len(pred_bounds)):
+            start, stop = pred_bounds[i - 1], pred_bounds[i]
+            duration = 1000 * (stop - start) / params.sampling_rate
+            if y_pred[start] == params.class_map.get(HKSegment.qrs, -1) and (duration > 20):
+                peaks.append(start + np.argmax(np.abs(x[start:stop])))
+            # END IF
+        # END FOR
+        peaks = np.array(peaks)
 
-    # Extract R peaks from QRS segments
-    pred_bounds = np.concatenate(([0], np.diff(y_pred).nonzero()[0] + 1, [y_pred.size - 1]))
-    peaks = []
-    for i in range(1, len(pred_bounds)):
-        start, stop = pred_bounds[i - 1], pred_bounds[i]
-        duration = 1000 * (stop - start) / params.sampling_rate
-        if y_pred[start] == params.class_map.get(HKSegment.qrs, -1) and (duration > 20):
-            peaks.append(start + np.argmax(np.abs(x[start:stop])))
-    peaks = np.array(peaks)
+    elif signal_type == "PPG":
+        # peaks = pk.ppg.find_peaks(x, sample_rate=params.sampling_rate)
+        pred_bounds = np.concatenate(([0], np.diff(y_pred).nonzero()[0] + 1, [y_pred.size - 1]))
+        peaks = []
+        for i in range(1, len(pred_bounds)):
+            start, stop = pred_bounds[i - 1], pred_bounds[i]
+            duration = 1000 * (stop - start) / params.sampling_rate
+            if y_pred[start] == params.class_map.get(HKSegment.systolic, -1) and (duration > 100):
+                peaks.append(start + np.argmax(np.abs(x[start:stop])))
+            # END IF
+        # END FOR
+        peaks = np.array(peaks)
+    else:
+        raise ValueError(f"Unknown signal type: {signal_type}")
 
     band_names = ["VLF", "LF", "HF", "VHF"]
     bands = [(0.0033, 0.04), (0.04, 0.15), (0.15, 0.4), (0.4, 0.5)]
@@ -128,7 +147,7 @@ def demo(params: HKDemoParams):
         go.Scatter(
             x=ts,
             y=x,
-            name="ECG",
+            name="SIGNAL",
             mode="lines",
             line=dict(color=primary_color, width=2),
         ),
@@ -150,10 +169,10 @@ def demo(params: HKDemoParams):
             secondary_y=False,
         )
     fig.update_xaxes(title_text="Time (s)", row=1, col=1)
-    fig.update_yaxes(title_text="ECG", row=1, col=1)
+    fig.update_yaxes(title_text=f"{signal_type}", row=1, col=1)
 
     for i, label in enumerate(classes):
-        if label <= 0:
+        if label < 0:
             continue
         fig.add_trace(
             go.Scatter(

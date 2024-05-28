@@ -25,6 +25,7 @@ from .dataloaders import (
     lsad_data_generator,
     ptbxl_data_generator,
     synthetic_data_generator,
+    synthetic_ppg_data_generator,
 )
 
 logger = logging.getLogger(__name__)
@@ -80,10 +81,11 @@ def prepare(
     Returns:
         tuple[npt.NDArray, npt.NDArray]: Prepared data
     """
-    x, y = x_y
-    x, y = x.copy(), y.copy()
+
+    x, y = x_y[0].copy(), x_y[1].copy()
+
     if augmentations:
-        x = (augment(x, augmentations, sample_rate),)
+        x = augment(x, augmentations, sample_rate)
     # END IF
 
     if preprocesses:
@@ -129,6 +131,8 @@ def get_data_generator(ds: HKDataset, frame_size: int, samples_per_patient: int,
             data_generator = ptbxl_data_generator
         case "synthetic":
             data_generator = synthetic_data_generator
+        case "syntheticppg":
+            data_generator = synthetic_ppg_data_generator
         case _:
             raise ValueError(f"Dataset {ds.name} not supported")
     # END MATCH

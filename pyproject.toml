@@ -5,7 +5,8 @@ description = "AI driven heart monitoring kit for ultra low-power wearables."
 license = "BSD-3-Clause"
 authors = ["Ambiq AI <support.aitg@ambiq.com>"]
 readme = "README.md"
-homepage = "https://ambiq.ai"
+homepage = "https://ambiqai.github.io/heartkit"
+repository = "https://github.com/AmbiqAI/heartkit"
 packages = [
     { include = "heartkit" },
 ]

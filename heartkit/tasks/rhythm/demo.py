@@ -66,11 +66,14 @@ def demo(params: HKDemoParams):
         else:
             start, stop = i, i + params.frame_size
         xx = preprocess(x[start:stop], sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
+
         xx = xx.reshape(feat_shape)
         runner.set_inputs(xx)
         runner.perform_inference()
         yy = runner.get_outputs()
-        y_pred[start:stop] = np.argmax(yy, axis=-1).flatten()
+        y_probs = np.exp(yy) / np.sum(np.exp(yy), axis=-1, keepdims=True)
+        y_pred[start:stop] = np.argmax(y_probs, axis=-1)
+        print(f"Prediced {y_pred[start]} (prob {y_probs[y_pred[start]]})")
     # END FOR
     runner.close()
 

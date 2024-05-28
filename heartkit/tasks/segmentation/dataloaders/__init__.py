@@ -4,3 +4,4 @@ from .ptbxl import ptbxl_data_generator, ptbxl_label_map
 
 # from .qtdb import qtdb_data_generator
 from .synthetic import synthetic_data_generator, synthetic_label_map
+from .syntheticppg import syntheticppg_data_generator, syntheticppg_label_map

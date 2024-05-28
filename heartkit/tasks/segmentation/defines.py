@@ -10,3 +10,5 @@ class HKSegment(IntEnum):
     twave = 3
     uwave = 4  # Not used
     noise = 5
+    systolic = 6
+    diastolic = 7
