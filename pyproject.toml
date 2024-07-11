@@ -99,5 +99,4 @@ ignore = []
 "__init__.py" = ["F401"]
 
 [tool.pyright]
-
 reportShadowedImports = "none"
