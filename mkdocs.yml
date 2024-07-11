@@ -69,12 +69,6 @@ nav:
 
   - Models:
     - models/index.md
-    - TCN: models/tcn.md
-    - EfficientNetV2: models/efficientnet.md
-    - MobileOne: models/mobileone.md
-    - UNet: models/unet.md
-    - UNeXt: models/unext.md
-    - ResNet: models/resnet.md
 
   - Datasets:
     - datasets/index.md

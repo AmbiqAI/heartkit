@@ -1,11 +1,5 @@
 exclude: ^(evb/includes/|docs/)
 repos:
-  - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: v16.0.0
-    hooks:
-      - id: clang-format
-        files: evb/src/
-        types_or: [c++, c]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
     hooks:
@@ -20,16 +14,13 @@ repos:
       - id: no-commit-to-branch
       - id: trailing-whitespace
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    # Ruff version.
     rev: v0.5.1
     hooks:
-      # Run the linter.
       - id: ruff
         args: [ --config=pyproject.toml ]
-      # Run the formatter.
       - id: ruff-format
         args: [ --config=pyproject.toml ]
   - repo: https://github.com/python-poetry/poetry
-    rev: 1.8.2
+    rev: 1.8.3
     hooks:
       - id: poetry-check

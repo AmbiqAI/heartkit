@@ -3,7 +3,6 @@ import hashlib
 import logging
 import os
 import pickle
-import random
 from pathlib import Path
 from string import Template
 from typing import Any
@@ -37,7 +36,7 @@ logger = setup_logger(__name__)
 
 
 def set_random_seed(seed: int | None = None) -> int:
-    """Set random seed across libraries: TF, Numpy, Python
+    """Set random seed across libraries: Keras, Numpy, Python
 
     Args:
         seed (int | None, optional): Random seed state to use. Defaults to None.
@@ -46,14 +45,12 @@ def set_random_seed(seed: int | None = None) -> int:
         int: Random seed
     """
     seed = seed or np.random.randint(2**16)
-    random.seed(seed)
-    np.random.seed(seed)
     try:
-        import tensorflow as tf  # pylint: disable=import-outside-toplevel
+        import keras  # pylint: disable=import-outside-toplevel
     except ImportError:
         pass
     else:
-        tf.random.set_seed(seed)
+        keras.utils.set_random_seed(seed)
     return seed
 
 

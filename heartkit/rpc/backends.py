@@ -167,7 +167,7 @@ class PcBackend(DemoBackend):
         else:
             with open(self.params.model_file, "rb") as fp:
                 model_content = fp.read()
-            self._model = kedge.converters.tflite.TfLiteKerasInterpreter(model_content=model_content)
+            self._model = kedge.interpreters.tflite.TfLiteKerasInterpreter(model_content=model_content)
 
     def close(self):
         self._model = None
