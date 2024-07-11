@@ -22,7 +22,7 @@
         "8": 1
     },
     "class_names": [
-        "NONE", "AFIB/AFL"
+        "NORMAL", "AFIB/AFL"
     ],
     "sampling_rate": 100,
     "frame_size": 512,
@@ -48,15 +48,14 @@
     "tflm_var_name": "g_rhythm_model",
     "tflm_file": "rhythm_model_buffer.h",
     "backend": "pc",
-    "demo_size": 800,
+    "demo_size": 896,
     "display_report": true,
     "quantization": {
-        "enabled": false,
         "qat": false,
-        "ptq": false,
-        "input_type": "int8",
-        "output_type": "int8",
-        "supported_ops": null
+        "mode": "FP32",
+        "io_type": "float32",
+        "concrete": true,
+        "debug": false
     },
     "preprocesses": [
         {

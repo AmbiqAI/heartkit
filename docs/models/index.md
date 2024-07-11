@@ -1,23 +1,8 @@
 # :factory: Model Factory
 
-HeartKit provides a model factory that allows you to easily create and train customized models. The model factory is a wrapper around the [TensorFlow Keras API](https://www.tensorflow.org/api_docs/python/tf/keras) that allows you to create functional-based models using high-level parameters. Most of the models are based on state-of-the-art architectures that have been modified to allow for more fine-grain customization. We also provide 1D variants to allow for training on time-series data. The included models are well suited for efficient, real-time edge applications.
+HeartKit provides a model factory that allows you to easily create and train customized models via [KerasEdge](). KerasEdge includes a growing number of state-of-the-art models that can be easily configured and trained using high-level parameters. The models are designed to be efficient and well-suited for real-time edge applications. Most of the models are based on state-of-the-art architectures that have been modified to allow for more fine-grain customization. The also support 1D variants to allow for training on time-series data. The included models are well suited for efficient, real-time edge applications.
 
-<!-- * Seperable (depthwise + pointwise) Convolutions
-* MBConv Blocks w/ Squeeze & Excitation
-* Over-Parameterized Convolutional Branches
-* Dilated Convolutions
-* Quantization Aware Training (QAT) and Post-Training Quantization (PTQ) -->
-
----
-
-## <span class="sk-h2-span">Available Models</span>
-
-- **[TCN](./tcn.md)**: A CNN leveraging dilated convolutions
-- **[U-Net](./unet.md)**: A CNN with encoder-decoder architecture for segmentation tasks
-- **[U-NeXt](./unext.md)**: A U-Net variant leveraging MBConv blocks
-- **[EfficientNetV2](./efficientnet.md)**: A CNN leveraging MBConv blocks
-- **[MobileOne](./mobileone.md)**: A CNN aimed at sub-1ms inference
-- **[ResNet](./resnet.md)**: A popular CNN often used for vision tasks
+Please check [KerasEdge]() for list of available models and their configurations.
 
 ---
 

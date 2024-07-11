@@ -25,8 +25,8 @@
     "model_file": "model.keras",
     "use_logits": false,
     "samples_per_patient": [5, 5, 5, 10],
-    "val_file": "./results/${task}-class-4-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
-    "test_file": "./results/${task}-class-4-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
+    "val_file": "./results/${task}-class-4-${dataset}-${sampling_rate}fs-${frame_size}sz-noaug.pkl",
+    "test_file": "./results/${task}-class-4-${dataset}-${sampling_rate}fs-${frame_size}sz-noaug.pkl",
     "val_samples_per_patient": [5, 5, 5, 10],
     "val_patients": 0.20,
     "test_samples_per_patient": [5, 5, 5, 10],
@@ -45,14 +45,13 @@
     "tflm_file": "rhythm_model_buffer.h",
     "backend": "pc",
     "demo_size": 800,
-    "display_report": false,
+    "display_report": true,
     "quantization": {
-        "enabled": false,
         "qat": false,
-        "ptq": false,
-        "input_type": "int8",
-        "output_type": "int8",
-        "supported_ops": null
+        "mode": "FP32",
+        "io_type": "float32",
+        "concrete": true,
+        "debug": false
     },
     "preprocesses": [
         {
@@ -91,7 +90,7 @@
             "use_logits": true
         }
     },
-    "augmentations": [
+    "augmentations-dis": [
         {
             "name": "baseline_wander",
             "params": {

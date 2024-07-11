@@ -38,8 +38,8 @@ def demo(params: HKDemoParams):
     class_shape = (params.demo_size, 1)
 
     ds_spec = (
-        tf.TensorSpec(shape=feat_shape, dtype=tf.float32),
-        tf.TensorSpec(shape=class_shape, dtype=tf.float32),
+        tf.TensorSpec(shape=feat_shape, dtype="float32"),
+        tf.TensorSpec(shape=class_shape, dtype="float32"),
     )
 
     # Load data

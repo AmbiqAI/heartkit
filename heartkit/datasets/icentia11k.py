@@ -237,7 +237,10 @@ class IcentiaDataset(HKDataset):
         )
 
     def filter_patients_for_labels(
-        self, patient_ids: npt.NDArray, label_map: dict[int, int] | None = None, label_type: str | None = None
+        self,
+        patient_ids: npt.NDArray,
+        label_map: dict[int, int] | None = None,
+        label_type: str | None = None,
     ) -> npt.NDArray:
         """Filter patients based on labels.
         Useful to remove patients w/o labels for task to speed up data loading.
@@ -263,7 +266,10 @@ class IcentiaDataset(HKDataset):
         return patient_ids[~neg_mask]
 
     def get_patients_labels(
-        self, patient_ids: npt.NDArray, label_map: dict[int, int], label_type: str = "rhythm"
+        self,
+        patient_ids: npt.NDArray,
+        label_map: dict[int, int],
+        label_type: str = "rhythm",
     ) -> list[list[int]]:
         """Get class labels for each patient
 
@@ -303,7 +309,7 @@ class IcentiaDataset(HKDataset):
                     continue
                 slabels = slabels[:, 1]
                 slabels = np.unique(slabels)
-                slabels: list[int] = [label_map[l] for l in slabels if label_map.get(l, -1) != -1]
+                slabels: list[int] = [label_map[lbl] for lbl in slabels if label_map.get(lbl, -1) != -1]
                 labels.update(labels, slabels)
             # END FOR
         # END WITH

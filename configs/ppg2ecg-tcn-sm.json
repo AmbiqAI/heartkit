@@ -12,7 +12,7 @@
     "class_map": {},
     "class_names": ["CLEAN"],
     "sampling_rate": 100,
-    "frame_size": 512,
+    "frame_size": 800,
     "model_file": "model.keras",
     "samples_per_patient": 100,
     "val_samples_per_patient": 100,
@@ -33,23 +33,40 @@
     "demo_size": 1024,
     "display_report": true,
     "quantization": {
-        "enabled": false,
         "qat": false,
-        "ptq": false,
-        "input_type": "int8",
-        "output_type": "int8",
-        "supported_ops": null
+        "mode": "FP32",
+        "io_type": "float32",
+        "concrete": true,
+        "debug": false
     },
     "architecture": {
+        "name": "efficientnetv2",
+        "params": {
+            "input_filters": 24,
+            "input_kernel_size": [1, 9],
+            "input_strides": [1, 2],
+            "blocks": [
+                {"filters": 32, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer"},
+                {"filters": 48, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer"},
+                {"filters": 64, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer"},
+                {"filters": 80, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer"},
+                {"filters": 96, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer"}
+            ],
+            "output_filters": 128,
+            "include_top": true,
+            "norm": "layer"
+        }
+    },
+    "architecture-dis": {
         "name": "tcn",
         "params": {
             "input_kernel": [1, 9],
             "input_norm": "batch",
             "blocks": [
-                {"depth": 1, "branch": 1, "filters": 24, "kernel": [1, 9], "dilation": [1, 1], "dropout": 0, "ex_ratio": 1, "se_ratio": 0, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 32, "kernel": [1, 9], "dilation": [1, 2], "dropout": 0, "ex_ratio": 1, "se_ratio": 4, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 48, "kernel": [1, 9], "dilation": [1, 4], "dropout": 0, "ex_ratio": 1, "se_ratio": 4, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 64, "kernel": [1, 9], "dilation": [1, 8], "dropout": 0, "ex_ratio": 1, "se_ratio": 4, "norm": "batch"}
+                {"depth": 1, "branch": 1, "filters": 24, "kernel": [1, 9], "dilation": [1, 1], "dropout": 0, "ex_ratio": 1, "se_ratio": 0, "norm": "layer"},
+                {"depth": 1, "branch": 1, "filters": 32, "kernel": [1, 9], "dilation": [1, 2], "dropout": 0, "ex_ratio": 1, "se_ratio": 4, "norm": "layer"},
+                {"depth": 1, "branch": 1, "filters": 48, "kernel": [1, 9], "dilation": [1, 4], "dropout": 0, "ex_ratio": 1, "se_ratio": 4, "norm": "layer"},
+                {"depth": 1, "branch": 1, "filters": 64, "kernel": [1, 9], "dilation": [1, 8], "dropout": 0, "ex_ratio": 1, "se_ratio": 4, "norm": "layer"}
             ],
             "output_kernel": [1, 9],
             "include_top": true,
@@ -76,7 +93,7 @@
             }
         }
     ],
-    "augmentations": [
+    "augmentations-dis": [
         {
             "name": "baseline_wander",
             "params": {

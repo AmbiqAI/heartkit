@@ -1,18 +1,18 @@
 import keras
-import tensorflow as tf
+from keras_edge.models.tcn import Tcn, TcnBlockParams, TcnParams
 from rich.console import Console
 
 from ...defines import ModelArchitecture
-from ...models import ModelFactory, Tcn, TcnBlockParams, TcnParams
+from ...models import ModelFactory
 
 console = Console()
 
 
-def create_model(inputs: tf.Tensor, num_classes: int, architecture: ModelArchitecture | None) -> keras.Model:
+def create_model(inputs: keras.KerasTensor, num_classes: int, architecture: ModelArchitecture | None) -> keras.Model:
     """Generate model or use default
 
     Args:
-        inputs (tf.Tensor): Model inputs
+        inputs (keras.KerasTensor): Model inputs
         num_classes (int): Number of classes
         architecture (ModelArchitecture|None): Model
 
@@ -31,13 +31,13 @@ def create_model(inputs: tf.Tensor, num_classes: int, architecture: ModelArchite
 
 
 def _default_model(
-    inputs: tf.Tensor,
+    inputs: keras.KerasTensor,
     num_classes: int,
 ) -> keras.Model:
     """Reference model
 
     Args:
-        inputs (tf.Tensor): Model inputs
+        inputs (keras.KerasTensor): Model inputs
         num_classes (int): Number of classes
 
     Returns:
@@ -46,11 +46,51 @@ def _default_model(
     # Default model
 
     blocks = [
-        TcnBlockParams(filters=8, kernel=(1, 7), dilation=(1, 1), dropout=0.1, ex_ratio=1, se_ratio=0, norm="batch"),
-        TcnBlockParams(filters=12, kernel=(1, 7), dilation=(1, 1), dropout=0.1, ex_ratio=1, se_ratio=2, norm="batch"),
-        TcnBlockParams(filters=16, kernel=(1, 7), dilation=(1, 2), dropout=0.1, ex_ratio=1, se_ratio=2, norm="batch"),
-        TcnBlockParams(filters=24, kernel=(1, 7), dilation=(1, 4), dropout=0.1, ex_ratio=1, se_ratio=2, norm="batch"),
-        TcnBlockParams(filters=32, kernel=(1, 7), dilation=(1, 8), dropout=0.1, ex_ratio=1, se_ratio=2, norm="batch"),
+        TcnBlockParams(
+            filters=8,
+            kernel=(1, 7),
+            dilation=(1, 1),
+            dropout=0.1,
+            ex_ratio=1,
+            se_ratio=0,
+            norm="batch",
+        ),
+        TcnBlockParams(
+            filters=12,
+            kernel=(1, 7),
+            dilation=(1, 1),
+            dropout=0.1,
+            ex_ratio=1,
+            se_ratio=2,
+            norm="batch",
+        ),
+        TcnBlockParams(
+            filters=16,
+            kernel=(1, 7),
+            dilation=(1, 2),
+            dropout=0.1,
+            ex_ratio=1,
+            se_ratio=2,
+            norm="batch",
+        ),
+        TcnBlockParams(
+            filters=24,
+            kernel=(1, 7),
+            dilation=(1, 4),
+            dropout=0.1,
+            ex_ratio=1,
+            se_ratio=2,
+            norm="batch",
+        ),
+        TcnBlockParams(
+            filters=32,
+            kernel=(1, 7),
+            dilation=(1, 8),
+            dropout=0.1,
+            ex_ratio=1,
+            se_ratio=2,
+            norm="batch",
+        ),
     ]
 
     return Tcn(

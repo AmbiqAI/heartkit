@@ -9,7 +9,7 @@ from plotly.subplots import make_subplots
 from rich.console import Console
 from tqdm import tqdm
 
-from ...datasets import PtbxlDataset, uniform_id_generator
+from ...datasets import IcentiaDataset, PtbxlDataset, uniform_id_generator
 from ...defines import HKDemoParams
 from ...rpc import BackendFactory
 from ...utils import setup_logger
@@ -20,7 +20,7 @@ console = Console()
 logger = setup_logger(__name__)
 
 
-def get_patient_data(
+def get_ptbxl_patient_data(
     ds: PtbxlDataset, patient_id: str, frame_size: int, target_rate: int | None = None
 ) -> tuple[npt.NDArray, npt.NDArray]:
     """Get patient data from PTB-XL dataset.
@@ -49,6 +49,48 @@ def get_patient_data(
         x = pk.signal.resample_signal(x, ds.sampling_rate, target_rate, axis=0)
         y = (y * ratio).astype(np.int32)
     # END IF
+    return x, y
+
+
+def get_icentia11k_patient_data(
+    ds: IcentiaDataset, patient_id: str, frame_size: int, target_rate: int | None = None
+) -> tuple[npt.NDArray, npt.NDArray]:
+    """Get patient data from Icentia11k dataset.
+
+    Args:
+        ds (IcentiaDataset): Icentia11k dataset
+        patient_id (str): Patient ID
+        frame_size (int): Frame size
+        target_rate (int, optional): Target rate. Defaults to None.
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: ECG data and beat labels
+    """
+
+    if target_rate is None:
+        target_rate = ds.sampling_rate
+
+    input_size = int(np.round((ds.sampling_rate / target_rate) * frame_size))
+    label_key = ds.label_key("beat")
+
+    with ds.patient_data(patient_id) as segments:
+        segment = segments[np.random.choice(list(segments.keys()))]
+        segment_size = segment["data"].shape[0]
+        frame_start = np.random.randint(segment_size - input_size)
+        frame_end = frame_start + input_size
+        x = segment["data"][frame_start:frame_end].squeeze()
+        x = np.nan_to_num(x).astype(np.float32)
+
+        labels = segment[label_key]
+        labels = labels[(labels[:, 0] >= frame_start) & (labels[:, 0] < frame_end) & (labels[:, 1] != 0)]
+        y = labels[:, 0] - frame_start
+        if ds.sampling_rate != target_rate:
+            ratio = target_rate / ds.sampling_rate
+            x = pk.signal.resample_signal(x, ds.sampling_rate, target_rate, axis=0)
+            y = (y * ratio).astype(np.int32)
+        # END IF
+
+    # END WITH
     return x, y
 
 
@@ -88,8 +130,20 @@ def demo(params: HKDemoParams):
     ds = random.choice(dsets)
     if ds.name == "ptbxl":
         pt_id = random.choice(ds.get_test_patient_ids())
-        x, peaks = get_patient_data(ds, patient_id=pt_id, frame_size=params.demo_size, target_rate=params.sampling_rate)
-
+        x, peaks = get_ptbxl_patient_data(
+            ds,
+            patient_id=pt_id,
+            frame_size=params.demo_size,
+            target_rate=params.sampling_rate,
+        )
+    elif ds.name == "icentia11k":
+        pt_id = random.choice(ds.get_test_patient_ids())
+        x, peaks = get_icentia11k_patient_data(
+            ds,
+            patient_id=pt_id,
+            frame_size=params.demo_size,
+            target_rate=params.sampling_rate,
+        )
     else:
         # Need to manually locate peaks, compute
         ds_gen = ds.signal_generator(
@@ -120,7 +174,11 @@ def demo(params: HKDemoParams):
             y_prob[i] = 0.0
             continue
         xx = x[start:stop]
-        xx = preprocess(x[start:stop], sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
+        xx = preprocess(
+            x[start:stop],
+            sample_rate=params.sampling_rate,
+            preprocesses=params.preprocesses,
+        )
         xx = xx.reshape(feat_shape)
         runner.set_inputs(xx)
         runner.perform_inference()
@@ -181,7 +239,15 @@ def demo(params: HKDemoParams):
             col=1,
             secondary_y=False,
         )
-    fig.update_xaxes(title_text="Time (s)", row=1, col=1)
+    fig.update_xaxes(
+        title_text="Time (s)",
+        row=1,
+        col=1,
+        autorangeoptions=dict(
+            minallowed=0.5 * params.frame_size / params.sampling_rate,
+            maxallowed=ts[-1] - 0.5 * params.frame_size / params.sampling_rate,
+        ),
+    )
     fig.update_yaxes(title_text="ECG", row=1, col=1)
 
     # Plot normal beats overlayed
@@ -203,7 +269,10 @@ def demo(params: HKDemoParams):
         col=1,
         secondary_y=False,
     )
-    rr_min, rr_max = np.nanmin(rri_ms) - 20, np.nanmax(rri_ms) + 20
+    if rri_ms.size:
+        rr_min, rr_max = np.nanmin(rri_ms) - 20, np.nanmax(rri_ms) + 20
+    else:
+        rr_min, rr_max = 0, 1000
     fig.add_shape(
         type="line",
         layer="below",

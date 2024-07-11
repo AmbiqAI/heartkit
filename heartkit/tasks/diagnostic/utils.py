@@ -1,18 +1,22 @@
 import keras
-import tensorflow as tf
+from keras_edge.models.efficientnet import (
+    EfficientNetV2,
+    EfficientNetParams,
+    MBConvParams,
+)
 from rich.console import Console
 
 from ...defines import ModelArchitecture
-from ...models import EfficientNetParams, EfficientNetV2, MBConvParams, ModelFactory
+from ...models import ModelFactory
 
 console = Console()
 
 
-def create_model(inputs: tf.Tensor, num_classes: int, architecture: ModelArchitecture | None) -> keras.Model:
+def create_model(inputs: keras.KerasTensor, num_classes: int, architecture: ModelArchitecture | None) -> keras.Model:
     """Generate model or use default
 
     Args:
-        inputs (tf.Tensor): Model inputs
+        inputs (keras.KerasTensor): Model inputs
         num_classes (int): Number of classes
         architecture (ModelArchitecture|None): Model
 
@@ -31,13 +35,13 @@ def create_model(inputs: tf.Tensor, num_classes: int, architecture: ModelArchite
 
 
 def default_model(
-    inputs: tf.Tensor,
+    inputs: keras.KerasTensor,
     num_classes: int,
 ) -> keras.Model:
     """Reference model
 
     Args:
-        inputs (tf.Tensor): Model inputs
+        inputs (keras.KerasTensor): Model inputs
         num_classes (int): Number of classes
 
     Returns:

@@ -44,12 +44,11 @@
     "demo_size": 1024,
     "display_report": false,
     "quantization": {
-        "enabled": false,
         "qat": false,
-        "ptq": false,
-        "input_type": "int8",
-        "output_type": "int8",
-        "supported_ops": null
+        "mode": "FP32",
+        "io_type": "float32",
+        "concrete": true,
+        "debug": false
     },
     "preprocesses": [
         {

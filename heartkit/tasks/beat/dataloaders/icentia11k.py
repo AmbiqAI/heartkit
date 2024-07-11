@@ -1,4 +1,5 @@
 import random
+import functools
 from typing import Generator, Iterable
 
 import numpy as np
@@ -61,6 +62,7 @@ def icentia11k_data_generator(
     target_rate: int | None = None,
     label_map: dict[int, int] | None = None,
     label_type: str = "beat",
+    filter: bool = False,
 ) -> Generator[tuple[npt.NDArray, int], None, None]:
     """Generate frames w/ rhythm labels (e.g. afib) using patient generator.
 
@@ -72,7 +74,7 @@ def icentia11k_data_generator(
         target_rate (int|None, optional): Target rate. Defaults to None.
         label_map (dict[int, int] | None, optional): Label map. Defaults to None.
         label_type (str, optional): Label type. Defaults to "beat".
-
+        filter (bool, optional): Filter beats. Defaults to False.
     Returns:
         Generator[tuple[npt.NDArray, int], None, None]: Sample generator
     """
@@ -132,9 +134,10 @@ def icentia11k_data_generator(
                     # Get all beat type indices
                     beat_idxs = np.where(blabels[blabel_padding:-blabel_padding, 1] == beat.value)[0] + blabel_padding
 
-                    # Filter indices
-                    # fn = functools.partial(beat_filter_func, blabels=blabels, beat=beat)
-                    # beat_idxs = filter(fn, beat_idxs)
+                    if filter:  # Filter indices
+                        fn = functools.partial(beat_filter_func, blabels=blabels, beat=beat)
+                        beat_idxs = filter(fn, beat_idxs)
+                    # END IF
                     pt_beat_map[beat_class] += [(seg_idx, blabels[i, 0]) for i in beat_idxs]
                 # END FOR
             # END FOR

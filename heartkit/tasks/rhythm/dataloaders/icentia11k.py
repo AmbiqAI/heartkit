@@ -75,7 +75,6 @@ def icentia11k_data_generator(
 
     # Group patient rhythms by type (segment, start, stop, delta)
     for pt in patient_generator:
-
         with ds.patient_data(pt) as segments:
             # This maps segment index to segment key
             seg_map: list[str] = list(segments.keys())

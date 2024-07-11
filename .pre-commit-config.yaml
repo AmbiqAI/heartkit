@@ -6,11 +6,6 @@ repos:
       - id: clang-format
         files: evb/src/
         types_or: [c++, c]
-  - repo: https://github.com/psf/black
-    rev: 24.1.1
-    hooks:
-      - id: black
-        language_version: python3.11
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
     hooks:
@@ -24,18 +19,16 @@ repos:
       - id: name-tests-test
       - id: no-commit-to-branch
       - id: trailing-whitespace
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.5.1
     hooks:
-      - id: isort
-        args: ["--profile", "black", "--filter-files"]
-  - repo: local
-    hooks:
-      - id: pylint
-        name: pylint
-        entry: bash -c 'poetry run task lint'
-        language: system
-        types: [python]
+      # Run the linter.
+      - id: ruff
+        args: [ --config=pyproject.toml ]
+      # Run the formatter.
+      - id: ruff-format
+        args: [ --config=pyproject.toml ]
   - repo: https://github.com/python-poetry/poetry
     rev: 1.8.2
     hooks:

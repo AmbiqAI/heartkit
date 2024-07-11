@@ -3,14 +3,12 @@ import os
 import shutil
 
 import keras
+import keras_edge as kedge
 import numpy as np
 import tensorflow as tf
-import tensorflow_model_optimization as tfmot
 from sklearn.metrics import f1_score
 
-from ... import tflite as tfa
 from ...defines import HKExportParams
-from ...metrics import f1_score
 from ...utils import setup_logger
 from ..utils import load_datasets
 from .datasets import load_test_dataset
@@ -39,8 +37,8 @@ def export(params: HKExportParams):
     class_shape = (params.num_classes,)
 
     ds_spec = (
-        tf.TensorSpec(shape=feat_shape, dtype=tf.float32),
-        tf.TensorSpec(shape=class_shape, dtype=tf.int32),
+        tf.TensorSpec(shape=feat_shape, dtype="float32"),
+        tf.TensorSpec(shape=class_shape, dtype="int32"),
     )
 
     datasets = load_datasets(datasets=params.datasets)
@@ -50,10 +48,9 @@ def export(params: HKExportParams):
 
     # Load model and set fixed batch size of 1
     logger.info("Loading trained model")
-    with tfmot.quantization.keras.quantize_scope():
-        model = tfa.load_model(params.model_file)
+    model = kedge.models.load_model(params.model_file)
 
-    inputs = keras.Input(shape=ds_spec[0].shape, batch_size=1, name="input", dtype=ds_spec[0].dtype)
+    inputs = keras.Input(shape=ds_spec[0].shape, batch_size=1, name="input", dtype=ds_spec[0].dtype.name)
     outputs = model(inputs)
 
     if not params.use_logits and not isinstance(model.layers[-1], keras.layers.Softmax):
@@ -62,51 +59,37 @@ def export(params: HKExportParams):
         outputs = model(inputs)
     # END IF
 
-    flops = tfa.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
+    flops = kedge.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
     model.summary(print_fn=logger.info)
     logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
-    logger.info(f"Converting model to TFLite (quantization={params.quantization.enabled})")
-
-    converter = tfa.create_tflite_converter(
-        model=model,
-        quantize=params.quantization.enabled,
+    logger.info(f"Converting model to TFLite (quantization={params.quantization.mode})")
+    tflite = kedge.converters.tflite.TfLiteKerasConverter(model=model)
+    tflite.convert(
         test_x=test_x,
-        input_type=params.quantization.input_type,
-        output_type=params.quantization.output_type,
-        supported_ops=params.quantization.supported_ops,
-        use_concrete=True,
-        feat_shape=feat_shape,
+        quantization=params.quantization.mode,
+        io_type=params.quantization.io_type,
+        use_concrete=params.quantization.concrete,
+        strict=not params.quantization.fallback,
     )
-    tflite_model = converter.convert()
 
-    # if params.quantization.enabled:
-    #     _, quant_df = tfa.debug_quant_tflite(
-    #        converter=converter
-    #     )
-    #     quant_df.to_csv(params.job_dir / "quant.csv")
-    # # END IF
+    if params.quantization.debug:
+        quant_df = tflite.debug_quantization()
+        quant_df.to_csv(params.job_dir / "quant.csv")
 
     # Save TFLite model
     logger.info(f"Saving TFLite model to {tfl_model_path}")
-    with open(tfl_model_path, "wb") as fp:
-        fp.write(tflite_model)
+    tflite.export(tfl_model_path)
 
     # Save TFLM model
     logger.info(f"Saving TFL micro model to {tflm_model_path}")
-    tfa.xxd_c_dump(
-        src_path=tfl_model_path,
-        dst_path=tflm_model_path,
-        var_name=params.tflm_var_name,
-        chunk_len=20,
-        is_header=True,
-    )
+    tflite.export_header(tflm_model_path, name=params.tflm_var_name)
 
     # Verify TFLite results match TF results on example data
     logger.info("Validating model results")
-    y_true = np.argmax(test_y, axis=1)
-    y_pred_tf = np.argmax(model.predict(test_x), axis=1)
-    y_pred_tfl = np.argmax(tfa.predict_tflite(model_content=tflite_model, test_x=test_x), axis=1)
+    y_true = np.argmax(test_y, axis=-1)
+    y_pred_tf = np.argmax(model.predict(test_x), axis=-1)
+    y_pred_tfl = np.argmax(tflite.predict(x=test_x), axis=-1)
 
     tf_acc = np.sum(y_true == y_pred_tf) / y_true.size
     tf_f1 = f1_score(y_true, y_pred_tf, average="weighted")
@@ -126,3 +109,5 @@ def export(params: HKExportParams):
     if params.tflm_file and tflm_model_path != params.tflm_file:
         logger.info(f"Copying TFLM header to {params.tflm_file}")
         shutil.copyfile(tflm_model_path, params.tflm_file)
+
+    tflite.cleanup()

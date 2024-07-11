@@ -1,7 +1,7 @@
 import os
 from importlib.metadata import version
 
-from . import cli, datasets, metrics, models, rpc, tasks, tflite
+from . import cli, datasets, metrics, models, rpc, tasks
 from .datasets import DatasetFactory, HKDataset
 from .defines import (
     AugmentationParams,

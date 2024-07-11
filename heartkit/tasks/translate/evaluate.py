@@ -4,9 +4,8 @@ import os
 import keras
 import numpy as np
 import tensorflow as tf
-import tensorflow_model_optimization as tfmot
 
-from ... import tflite as tfa
+import keras_edge as kedge
 from ...defines import HKTestParams
 from ...utils import set_random_seed, setup_logger
 from ..utils import load_datasets
@@ -36,8 +35,8 @@ def evaluate(params: HKTestParams):
     class_shape = (params.frame_size, 1)
 
     ds_spec = (
-        tf.TensorSpec(shape=feat_shape, dtype=tf.float32),
-        tf.TensorSpec(shape=class_shape, dtype=tf.float32),
+        tf.TensorSpec(shape=feat_shape, dtype="float32"),
+        tf.TensorSpec(shape=class_shape, dtype="float32"),
     )
 
     datasets = load_datasets(datasets=params.datasets)
@@ -45,19 +44,17 @@ def evaluate(params: HKTestParams):
     test_ds = load_test_dataset(datasets=datasets, params=params, ds_spec=ds_spec)
     test_x, test_y = next(test_ds.batch(params.test_size).as_numpy_iterator())
 
-    with tfmot.quantization.keras.quantize_scope():
-        logger.info("Loading model")
-        model = tfa.load_model(params.model_file)
-        flops = tfa.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
+    logger.info("Loading model")
+    model = kedge.models.load_model(params.model_file)
+    flops = kedge.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
 
-        model.summary(print_fn=logger.info)
-        logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
+    model.summary(print_fn=logger.info)
+    logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
-        logger.info("Performing inference")
-        y_true = test_y.squeeze()
-        y_prob = model.predict(test_x)
-        y_pred = y_prob.squeeze()
-    # END WITH
+    logger.info("Performing inference")
+    y_true = test_y.squeeze()
+    y_prob = model.predict(test_x)
+    y_pred = y_prob.squeeze()
 
     # Summarize results
     cossim = keras.metrics.CosineSimilarity()

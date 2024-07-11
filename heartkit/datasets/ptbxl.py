@@ -415,7 +415,6 @@ class PtbxlDataset(HKDataset):
         input_size = int(np.round((self.sampling_rate / target_rate) * frame_size))
 
         for pt in patient_generator:
-
             # 1. Grab patient scp label (fixed for all samples)
             with self.patient_data(pt) as h5:
                 data = h5["data"][:]
@@ -517,7 +516,10 @@ class PtbxlDataset(HKDataset):
         )
 
     def filter_patients_for_labels(
-        self, patient_ids: npt.NDArray, label_map: dict[int, int] | None = None, label_type: str | None = None
+        self,
+        patient_ids: npt.NDArray,
+        label_map: dict[int, int] | None = None,
+        label_type: str | None = None,
     ) -> npt.NDArray:
         """Filter patients based on labels.
         Useful to remove patients w/o labels for task to speed up data loading.
@@ -544,7 +546,10 @@ class PtbxlDataset(HKDataset):
         return patient_ids[~neg_mask]
 
     def get_patients_labels(
-        self, patient_ids: npt.NDArray, label_map: dict[int, int], label_type: str = "scp"
+        self,
+        patient_ids: npt.NDArray,
+        label_map: dict[int, int],
+        label_type: str = "scp",
     ) -> list[list[int]]:
         """Get class labels for each patient
 

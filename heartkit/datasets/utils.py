@@ -18,20 +18,6 @@ from ..utils import compute_checksum, setup_logger
 logger = setup_logger(__name__)
 
 
-def numpy_dataset_generator(x: npt.NDArray, y: npt.NDArray) -> Generator[tuple[npt.NDArray, npt.NDArray], None, None]:
-    """Create generator from numpy dataset where first axis is samples
-
-    Args:
-        x (npt.NDArray): X data
-        y (npt.NDArray): Y data
-
-    Yields:
-        Generator[tuple[npt.NDArray, npt.NDArray], None, None]: Samples
-    """
-    for i in range(x.shape[0]):
-        yield x[i], y[i]
-
-
 def create_dataset_from_data(x: npt.NDArray, y: npt.NDArray, spec: tuple[tf.TensorSpec]) -> tf.data.Dataset:
     """Helper function to create dataset from static data
 
@@ -42,9 +28,7 @@ def create_dataset_from_data(x: npt.NDArray, y: npt.NDArray, spec: tuple[tf.Tens
     Returns:
         tf.data.Dataset: Dataset
     """
-    gen = functools.partial(numpy_dataset_generator, x=x, y=y)
-    dataset = tf.data.Dataset.from_generator(generator=gen, output_signature=spec)
-    return dataset
+    return tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(x), tf.data.Dataset.from_tensor_slices(y)))
 
 
 T = TypeVar("T")

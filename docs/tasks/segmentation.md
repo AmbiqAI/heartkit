@@ -1,8 +1,8 @@
-# ECG Segmentation Task
+# Signal Segmentation Task
 
 ## <span class="sk-h2-span">Overview</span>
 
-The objective of ECG segmentation is to delineate key segments of the cardiac cycle, including the P-wave, QRS complex, and T-wave. These segments are used to compute a number of clinically relevant metrics, including heart rate, PR interval, QRS duration, QT interval, and QTc interval. They are also useful for a variety of downstream tasks, including rhythm classification and beat classification.
+The objective of segmentation is to delineate key segments of the signal. In the context of ECG signals, this involves identifying the different components of the cardiac cycle, including the P-wave, QRS complex, and T-wave. These segments are used to compute a number of clinically relevant metrics, including heart rate, PR interval, QRS duration, QT interval, and QTc interval. For PPG, the task involves segmenting the systolic and diastolic phases of the cardiac cycle. Segmentation models are useful for detecting arrhythmias, heart rate variability, and other cardiac abnormalities.
 
 
 <div class="sk-plotly-graph-div">
@@ -11,7 +11,7 @@ The objective of ECG segmentation is to delineate key segments of the cardiac cy
 
 ---
 
-## <span class="sk-h2-span">Characteristics</span>
+## <span class="sk-h2-span">ECG Characteristics</span>
 
 * __P-Wave__: Reflects atrial depolarization
 * __QRS Complex__: Reflects ventricular depolarization
@@ -25,9 +25,15 @@ The objective of ECG segmentation is to delineate key segments of the cardiac cy
 
 ---
 
+## <span class="sk-h2-span">PPG Characteristics</span>
+
+* __Systolic Phase__: Reflects the contraction of the heart
+* __Diastolic Phase__: Reflects the relaxation of the heart
+* __Dicrotic Notch__: Reflects the closure of the aortic valve
+
 ## <span class="sk-h2-span">Pre-Trained Models</span>
 
-The following table provides the latest performance and accuracy results for ECG segmentation models. Additional result details can be found in [Model Zoo → Segmentation](../zoo/segmentation.md).
+The following table provides the latest performance and accuracy results for segmentation models. Additional result details can be found in [Model Zoo → Segmentation](../zoo/segmentation.md).
 
 --8<-- "assets/zoo/segmentation/segmentation-model-zoo-table.md"
 
@@ -35,7 +41,7 @@ The following table provides the latest performance and accuracy results for ECG
 
 ## <span class="sk-h2-span">Target Classes</span>
 
-Below outlines the classes available for ECG segmentation. When training a model, the number of classes, mapping, and names must be provided. This allows for the most flexibility in the segmentation task.
+Below outlines the classes available for segmentation. When training a model, the number of classes, mapping, and names must be provided. This allows for the most flexibility in the segmentation task.
 
 --8<-- "assets/tasks/segmentation/segmentation-classes.md"
 

@@ -58,9 +58,7 @@ def icentia11k_data_generator(
 
     # For each patient
     for pt in patient_generator:
-
         with ds.patient_data(pt) as segments:
-
             for _ in range(samples_per_patient):
                 # Randomly pick a segment
                 seg_key = np.random.choice(list(segments.keys()))
@@ -112,7 +110,11 @@ def icentia11k_data_generator(
                         qrs_width = int(0.08 * target_rate)  # 80 ms
                         # Extract QRS segment
                         qrs = pk.signal.moving_gradient_filter(
-                            data, sample_rate=target_rate, sig_window=0.1, avg_window=1.0, sig_prom_weight=1.5
+                            data,
+                            sample_rate=target_rate,
+                            sig_window=0.1,
+                            avg_window=1.0,
+                            sig_prom_weight=1.5,
                         )
                         win_len = max(1, qrs_width)
                         b_left = max(0, bidx - win_len)

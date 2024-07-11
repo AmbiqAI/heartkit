@@ -6,10 +6,9 @@ import tensorflow as tf
 import wandb
 from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
 
-from ... import tflite as tfa
+import keras_edge as kedge
 from ...defines import HKTrainParams
 from ...models import ModelFactory
-from ...models.optimizers import SimCLR
 from ...utils import env_flag, set_random_seed, setup_logger
 from ..utils import load_datasets
 from .datasets import load_train_datasets
@@ -51,8 +50,8 @@ def train(params: HKTrainParams):
     # Currently we return positive pairs w/o labels
     feat_shape = (params.frame_size, 1)
     ds_spec = (
-        tf.TensorSpec(shape=feat_shape, dtype=tf.float32),
-        tf.TensorSpec(shape=feat_shape, dtype=tf.float32),
+        tf.TensorSpec(shape=feat_shape, dtype="float32"),
+        tf.TensorSpec(shape=feat_shape, dtype="float32"),
     )
 
     datasets = load_datasets(datasets=params.datasets)
@@ -65,7 +64,7 @@ def train(params: HKTrainParams):
 
     projection_width = params.num_classes
 
-    encoder_input = keras.Input(shape=feat_shape, dtype=tf.float32)
+    encoder_input = keras.Input(shape=feat_shape, dtype="float32")
 
     # Encoder
     encoder = ModelFactory.create(
@@ -76,7 +75,7 @@ def train(params: HKTrainParams):
     )
 
     encoder_output = encoder(encoder_input)
-    flops = tfa.get_flops(encoder, batch_size=1, fpath=params.job_dir / "encoder_flops.log")
+    flops = kedge.metrics.flops.get_flops(encoder, batch_size=1, fpath=params.job_dir / "encoder_flops.log")
     encoder.summary(print_fn=logger.info)
     logger.info(f"Encoder requires {flops/1e6:0.2f} MFLOPS")
 
@@ -85,14 +84,14 @@ def train(params: HKTrainParams):
     projector_output = keras.layers.Dense(projection_width, activation="relu6")(projector_input)
     projector_output = keras.layers.Dense(projection_width)(projector_output)
     projector = keras.Model(inputs=projector_input, outputs=projector_output, name="projector")
-    flops = tfa.get_flops(projector, batch_size=1, fpath=params.job_dir / "projector_flops.log")
+    flops = kedge.metrics.flops.get_flops(projector, batch_size=1, fpath=params.job_dir / "projector_flops.log")
     projector.summary(print_fn=logger.info)
     logger.info(f"Projector requires {flops/1e6:0.2f} MFLOPS")
 
     if params.model_file is None:
         params.model_file = params.job_dir / "model.keras"
 
-    model = SimCLR(
+    model = kedge.models.opimizers.simclr.SimCLR(
         contrastive_augmenter=lambda x: x,
         encoder=encoder,
         projector=projector,
@@ -110,7 +109,8 @@ def train(params: HKTrainParams):
                 m_mul=0.4,
             )
         return keras.optimizers.schedules.CosineDecay(
-            initial_learning_rate=params.lr_rate, decay_steps=params.steps_per_epoch * params.epochs
+            initial_learning_rate=params.lr_rate,
+            decay_steps=params.steps_per_epoch * params.epochs,
         )
 
     model.compile(

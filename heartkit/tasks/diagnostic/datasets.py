@@ -119,7 +119,11 @@ def get_ds_label_map(ds: HKDataset, label_map: dict[int, int] | None = None) -> 
 
 
 def get_ds_generator(
-    ds: HKDataset, frame_size: int, samples_per_patient: int, target_rate: int, label_map: dict[int, int] | None = None
+    ds: HKDataset,
+    frame_size: int,
+    samples_per_patient: int,
+    target_rate: int,
+    label_map: dict[int, int] | None = None,
 ):
     """Get task data generator for dataset
 
@@ -222,9 +226,12 @@ def load_train_datasets(
     train_datasets = []
     val_datasets = []
     for ds in datasets:
-
         val_file = resolve_ds_cache_path(
-            params.val_file, ds=ds, task="diagnostic", frame_size=params.frame_size, sample_rate=params.sampling_rate
+            params.val_file,
+            ds=ds,
+            task="diagnostic",
+            frame_size=params.frame_size,
+            sample_rate=params.sampling_rate,
         )
         data_generator = get_ds_generator(
             ds=ds,
@@ -307,7 +314,6 @@ def load_test_dataset(
     )
     test_datasets = []
     for ds in datasets:
-
         test_file = resolve_ds_cache_path(
             fpath=params.test_file,
             ds=ds,

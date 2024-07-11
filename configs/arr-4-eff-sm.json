@@ -45,14 +45,13 @@
     "tflm_file": "rhythm_model_buffer.h",
     "backend": "pc",
     "demo_size": 800,
-    "display_report": false,
+    "display_report": true,
     "quantization": {
-        "enabled": false,
         "qat": false,
-        "ptq": false,
-        "input_type": "int8",
-        "output_type": "int8",
-        "supported_ops": null
+        "mode": "FP32",
+        "io_type": "float32",
+        "concrete": true,
+        "debug": false
     },
     "preprocesses": [
         {

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+from keras_edge.converters.tflite import QuantizationType
 
 
 class QuantizationParams(BaseModel, extra="allow"):
@@ -12,10 +13,11 @@ class QuantizationParams(BaseModel, extra="allow"):
 
     enabled: bool = Field(False, description="Enable quantization")
     qat: bool = Field(False, description="Enable quantization aware training (QAT)")
-    ptq: bool = Field(False, description="Enable post training quantization (PTQ)")
-    input_type: str | None = Field(None, description="Input type")
-    output_type: str | None = Field(None, description="Output type")
-    supported_ops: list[str] | None = Field(None, description="Supported ops")
+    mode: QuantizationType = Field(QuantizationType.INT8, description="Quantization mode")
+    io_type: str = Field("int8", description="I/O type")
+    concrete: bool = Field(True, description="Use concrete function")
+    debug: bool = Field(False, description="Debug quantization")
+    fallback: bool = Field(False, description="Fallback to float32")
 
 
 class ModelArchitecture(BaseModel, extra="allow"):
@@ -61,7 +63,10 @@ class HKMode(StrEnum):
 class HKDownloadParams(BaseModel, extra="allow"):
     """Download command params"""
 
-    job_dir: Path = Field(default_factory=lambda: Path(tempfile.gettempdir()), description="Job output directory")
+    job_dir: Path = Field(
+        default_factory=lambda: Path(tempfile.gettempdir()),
+        description="Job output directory",
+    )
     datasets: list[DatasetParams] = Field(default_factory=list, description="Datasets")
     progress: bool = Field(True, description="Display progress bar")
     force: bool = Field(False, description="Force download dataset- overriding existing files")
@@ -76,7 +81,10 @@ class HKTrainParams(BaseModel, extra="allow"):
 
     name: str = Field("experiment", description="Experiment name")
     project: str = Field("heartkit", description="Project name")
-    job_dir: Path = Field(default_factory=lambda: Path(tempfile.gettempdir()), description="Job output directory")
+    job_dir: Path = Field(
+        default_factory=lambda: Path(tempfile.gettempdir()),
+        description="Job output directory",
+    )
     # Dataset arguments
     datasets: list[DatasetParams] = Field(default_factory=list, description="Datasets")
 
@@ -141,7 +149,10 @@ class HKTestParams(BaseModel, extra="allow"):
 
     name: str = Field("experiment", description="Experiment name")
     project: str = Field("heartkit", description="Project name")
-    job_dir: Path = Field(default_factory=lambda: Path(tempfile.gettempdir()), description="Job output directory")
+    job_dir: Path = Field(
+        default_factory=lambda: Path(tempfile.gettempdir()),
+        description="Job output directory",
+    )
     # Dataset arguments
     datasets: list[DatasetParams] = Field(default_factory=list, description="Datasets")
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
@@ -181,7 +192,10 @@ class HKExportParams(BaseModel, extra="allow"):
 
     name: str = Field("experiment", description="Experiment name")
     project: str = Field("heartkit", description="Project name")
-    job_dir: Path = Field(default_factory=lambda: Path(tempfile.gettempdir()), description="Job output directory")
+    job_dir: Path = Field(
+        default_factory=lambda: Path(tempfile.gettempdir()),
+        description="Job output directory",
+    )
     # Dataset arguments
     datasets: list[DatasetParams] = Field(default_factory=list, description="Datasets")
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
@@ -226,7 +240,10 @@ class HKDemoParams(BaseModel, extra="allow"):
 
     name: str = Field("experiment", description="Experiment name")
     project: str = Field("heartkit", description="Project name")
-    job_dir: Path = Field(default_factory=lambda: Path(tempfile.gettempdir()), description="Job output directory")
+    job_dir: Path = Field(
+        default_factory=lambda: Path(tempfile.gettempdir()),
+        description="Job output directory",
+    )
     # Dataset arguments
     datasets: list[DatasetParams] = Field(default_factory=list, description="Datasets")
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")

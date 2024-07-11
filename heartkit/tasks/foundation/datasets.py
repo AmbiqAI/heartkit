@@ -176,9 +176,12 @@ def load_train_datasets(
     train_datasets = []
     val_datasets = []
     for ds in datasets:
-
         val_file = resolve_ds_cache_path(
-            params.val_file, ds=ds, task="foundation", frame_size=params.frame_size, sample_rate=params.sampling_rate
+            params.val_file,
+            ds=ds,
+            task="foundation",
+            frame_size=params.frame_size,
+            sample_rate=params.sampling_rate,
         )
         data_generator = get_data_generator(
             ds=ds,
@@ -260,7 +263,6 @@ def load_test_dataset(
 
     test_datasets = []
     for ds in datasets:
-
         test_file = resolve_ds_cache_path(
             fpath=params.test_file,
             ds=ds,

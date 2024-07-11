@@ -1,21 +1,20 @@
 from typing import Callable
 
 import keras
-import tensorflow as tf
 
-_models: dict[str, Callable[[tf.Tensor, dict, int], keras.models.Model]] = {}
+_models: dict[str, Callable[[keras.KerasTensor, dict, int], keras.models.Model]] = {}
 
 
 class ModelFactory:
     """Model factory enables registering, creating, and listing models. It is a singleton class."""
 
     @staticmethod
-    def register(name: str, model: Callable[[tf.Tensor, dict, int], keras.models.Model]) -> None:
+    def register(name: str, model: Callable[[keras.KerasTensor, dict, int], keras.models.Model]) -> None:
         """Register a model
 
         Args:
             name (str): model name
-            model (Callable[[tf.Tensor, dict, int], keras.models.Model]): model
+            model (Callable[[keras.KerasTensor, dict, int], keras.models.Model]): model
         """
         _models[name] = model
 
@@ -29,13 +28,18 @@ class ModelFactory:
         _models.pop(name, None)
 
     @staticmethod
-    def create(name: str, params: dict, inputs: tf.Tensor, num_classes: int | None = None) -> keras.models.Model:
+    def create(
+        name: str,
+        params: dict,
+        inputs: keras.KerasTensor,
+        num_classes: int | None = None,
+    ) -> keras.models.Model:
         """Create a model
 
         Args:
             name (str): model name
             params (dict): model parameters
-            inputs (tf.Tensor): input tensor
+            inputs (keras.KerasTensor): input tensor
             num_classes (int): number of classes
 
         Returns:
@@ -53,14 +57,14 @@ class ModelFactory:
         return list(_models.keys())
 
     @staticmethod
-    def get(name: str) -> Callable[[tf.Tensor, dict, int], keras.models.Model]:
+    def get(name: str) -> Callable[[keras.KerasTensor, dict, int], keras.models.Model]:
         """Get a model
 
         Args:
             name (str): model name
 
         Returns:
-            Callable[[tf.Tensor, dict, int], keras.models.Model]: model
+            Callable[[keras.KerasTensor, dict, int], keras.models.Model]: model
         """
         return _models[name]
 

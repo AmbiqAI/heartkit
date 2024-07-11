@@ -26,6 +26,10 @@ def demo(params: HKDemoParams):
     bg_color = "rgba(38,42,50,1.0)"
     primary_color = "#11acd5"
     secondary_color = "#ce6cff"
+    tertiary_color = "rgb(234,52,36)"
+    quaternary_color = "rgb(92,201,154)"
+    colors = [primary_color, secondary_color, tertiary_color, quaternary_color]
+
     plotly_template = "plotly_dark"
 
     params.demo_size = params.demo_size or 2 * params.frame_size
@@ -59,21 +63,28 @@ def demo(params: HKDemoParams):
     # Run inference
     runner.open()
     logger.info("Running inference")
-    y_pred = np.zeros(x.shape[0], dtype=np.int32)
+    y_preds: list[tuple[int, int, int, float]] = []  # (start, stop, class, prob)
     for i in tqdm(range(0, x.shape[0], params.frame_size), desc="Inference"):
         if i + params.frame_size > x.shape[0]:
             start, stop = x.shape[0] - params.frame_size, x.shape[0]
         else:
             start, stop = i, i + params.frame_size
-        xx = preprocess(x[start:stop], sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
+        xx = preprocess(
+            x[start:stop],
+            sample_rate=params.sampling_rate,
+            preprocesses=params.preprocesses,
+        )
 
         xx = xx.reshape(feat_shape)
         runner.set_inputs(xx)
         runner.perform_inference()
         yy = runner.get_outputs()
-        y_probs = np.exp(yy) / np.sum(np.exp(yy), axis=-1, keepdims=True)
-        y_pred[start:stop] = np.argmax(y_probs, axis=-1)
-        print(f"Prediced {y_pred[start]} (prob {y_probs[y_pred[start]]})")
+        y_prob = np.exp(yy) / np.sum(np.exp(yy), axis=-1, keepdims=True)
+        y_pred = np.argmax(y_prob, axis=-1)
+        y_prob = y_prob[y_pred]
+        if y_prob < params.threshold:
+            y_pred = -1
+        y_preds.append((start, stop - 1, y_pred, y_prob))
     # END FOR
     runner.close()
 
@@ -81,8 +92,6 @@ def demo(params: HKDemoParams):
     logger.info("Generating report")
     tod = datetime.datetime(2025, 5, 24, random.randint(12, 23), 00)
     ts = np.array([tod + datetime.timedelta(seconds=i / params.sampling_rate) for i in range(x.shape[0])])
-
-    pred_bounds = np.concatenate(([0], np.diff(y_pred).nonzero()[0] + 1, [y_pred.size - 1]))
 
     fig = make_subplots(
         rows=1,
@@ -109,19 +118,22 @@ def demo(params: HKDemoParams):
         secondary_y=False,
     )
 
-    for i in range(1, len(pred_bounds)):
-        start, stop = pred_bounds[i - 1], pred_bounds[i]
-        pred_class = y_pred[start]
-        if pred_class < 0:
-            continue
+    for i, (start, stop, pred, prob) in enumerate(y_preds):
+        if pred < 0:
+            label = f"Inconclusive ({prob:0.0%})"
+        else:
+            label = f"{class_names[pred]} ({prob:0.0%})"
+        color = colors[pred % len(colors)]
+        if i > 0 and y_preds[i - 1][1] >= start:
+            start = y_preds[i - 1][1] + 1
         fig.add_vrect(
             x0=ts[start],
             x1=ts[stop],
-            annotation_text=class_names[pred_class],
-            fillcolor=secondary_color,
+            annotation_text=label,
+            fillcolor=color,
             opacity=0.25,
             line_width=2,
-            line_color=secondary_color,
+            line_color=color,
             row=1,
             col=1,
             secondary_y=False,

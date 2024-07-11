@@ -1,7 +1,7 @@
 {
-    "name": "beat-3-eff-sm",
+    "name": "beat-3-eff-lg-layer-att",
     "project": "hk-beat-3",
-    "job_dir": "./results/beat-3-eff-sm",
+    "job_dir": "./results/beat-3-eff-lg-layer-att",
     "datasets": [{
         "name": "icentia11k",
         "path": "./datasets/icentia11k",
@@ -44,12 +44,11 @@
     "demo_size": 900,
     "display_report": true,
     "quantization": {
-        "enabled": false,
         "qat": false,
-        "ptq": false,
-        "input_type": "int8",
-        "output_type": "int8",
-        "supported_ops": null
+        "mode": "FP32",
+        "io_type": "float32",
+        "concrete": true,
+        "debug": false
     },
     "preprocesses": [
         {
@@ -77,11 +76,14 @@
             "input_kernel_size": [1, 9],
             "input_strides": [1, 2],
             "blocks": [
-                {"filters": 32, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
-                {"filters": 40, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
-                {"filters": 48, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
-                {"filters": 64, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2}
+                {"filters": 32, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer"},
+                {"filters": 48, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer"},
+                {"filters": 56, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer"},
+                {"filters": 64, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer", "att_ratio": 16},
+                {"filters": 72, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer", "att_ratio": 18},
+                {"filters": 96, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer", "att_ratio": 24}
             ],
+            "norm": "layer",
             "output_filters": 0,
             "include_top": true,
             "use_logits": true
