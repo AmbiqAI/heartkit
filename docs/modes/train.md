@@ -33,10 +33,7 @@ Each task provides a mode to train a model on the specified datasets. The traini
 
 ## <span class="sk-h2-span">Arguments </span>
 
-The following tables lists the parameters that can be used to configure the training mode.
-
-
---8<-- "assets/modes/train-params.md"
+Please refer to [HKTrainParams](../modes/configuration.md#hktrainparams) for the list of arguments that can be used with the `train` command.
 
 ---
 

@@ -14,8 +14,6 @@ from ..utils import load_datasets
 from .datasets import augment, preprocess
 from .defines import HKSegment
 
-logger = setup_logger(__name__)
-
 
 def demo(params: HKDemoParams):
     """Run segmentation demo.
@@ -23,6 +21,8 @@ def demo(params: HKDemoParams):
     Args:
         params (HKDemoParams): Demo parameters
     """
+    logger = setup_logger(__name__, level=params.verbose)
+
     bg_color = "rgba(38,42,50,1.0)"
     primary_color = "#11acd5"
     secondary_color = "#ce6cff"
@@ -60,7 +60,7 @@ def demo(params: HKDemoParams):
     x = next(ds_gen)
     # Run inference
     runner.open()
-    logger.info("Running inference")
+    logger.debug("Running inference")
     y_pred = np.zeros(x.size, dtype=np.int32)
     for i in tqdm(range(0, x.size, params.frame_size), desc="Inference"):
         if i + params.frame_size > x.size:
@@ -80,7 +80,7 @@ def demo(params: HKDemoParams):
     runner.close()
 
     # Report
-    logger.info("Generating report")
+    logger.debug("Generating report")
     ts = np.arange(0, x.size) / params.sampling_rate
 
     fig = make_subplots(
@@ -274,7 +274,7 @@ def demo(params: HKDemoParams):
     )
 
     fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=False)
-    logger.info(f"Report saved to {params.job_dir / 'demo.html'}")
+    logger.debug(f"Report saved to {params.job_dir / 'demo.html'}")
 
     if params.display_report:
         fig.show()

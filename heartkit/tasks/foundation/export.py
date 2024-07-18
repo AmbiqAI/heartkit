@@ -5,7 +5,7 @@ import keras
 import numpy as np
 import tensorflow as tf
 
-import keras_edge as kedge
+import neuralspot_edge as nse
 from ...defines import HKExportParams
 from ...utils import setup_logger
 from ..utils import load_datasets
@@ -22,7 +22,7 @@ def export(params: HKExportParams):
     """
 
     os.makedirs(params.job_dir, exist_ok=True)
-    logger.info(f"Creating working directory in {params.job_dir}")
+    logger.debug(f"Creating working directory in {params.job_dir}")
 
     handler = logging.FileHandler(params.job_dir / "export.log", mode="w")
     handler.setLevel(logging.INFO)
@@ -44,43 +44,47 @@ def export(params: HKExportParams):
     test_x, _ = next(test_ds.batch(params.test_size).as_numpy_iterator())
 
     # Load model and set fixed batch size of 1
-    logger.info("Loading trained model")
-    model = kedge.models.load_model(params.model_file)
+    logger.debug("Loading trained model")
+    model = nse.models.load_model(params.model_file)
 
     inputs = keras.Input(shape=ds_spec[0].shape, batch_size=1, dtype=ds_spec[0].dtype)
     model(inputs)
 
-    flops = kedge.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
+    flops = nse.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
     model.summary(print_fn=logger.info)
-    logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
+    logger.debug(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
-    logger.info(f"Converting model to TFLite (quantization={params.quantization.mode})")
-    tflite = kedge.converters.tflite.TfLiteKerasConverter(model=model)
-    tflite.convert(
+    logger.debug(f"Converting model to TFLite (quantization={params.quantization.mode})")
+    converter = nse.converters.tflite.TfLiteKerasConverter(model=model)
+    tflite_content = converter.convert(
         test_x=test_x,
-        quantization=params.quantization.mode,
+        quantization=params.quantization.format,
         io_type=params.quantization.io_type,
-        use_concrete=params.quantization.concrete,
+        mode=params.quantization.conversion,
         strict=not params.quantization.fallback,
     )
 
     if params.quantization.debug:
-        quant_df = tflite.debug_quantization()
+        quant_df = converter.debug_quantization()
         quant_df.to_csv(params.job_dir / "quant.csv")
 
     # Save TFLite model
-    logger.info(f"Saving TFLite model to {tfl_model_path}")
-    tflite.export(tfl_model_path)
+    logger.debug(f"Saving TFLite model to {tfl_model_path}")
+    converter.export(tfl_model_path)
 
     # Save TFLM model
-    logger.info(f"Saving TFL micro model to {tflm_model_path}")
-    tflite.export_header(tflm_model_path, name=params.tflm_var_name)
+    logger.debug(f"Saving TFL micro model to {tflm_model_path}")
+    converter.export_header(tflm_model_path, name=params.tflm_var_name)
+    converter.cleanup()
 
+    tflite = nse.interpreters.tflite.TfLiteKerasInterpreter(tflite_content)
+    tflite.compile()
+
+    # Verify TFLite results match TF results
+    logger.debug("Validating model results")
     y_pred_tf = model.predict(test_x)
     y_pred_tfl = tflite.predict(x=test_x)
 
     # Compare error between TF and TFLite outputs
     error = np.abs(y_pred_tf - y_pred_tfl).max()
     logger.info(f"Max error between TF and TFLite outputs: {error}")
-
-    tflite.cleanup()

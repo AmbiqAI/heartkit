@@ -6,7 +6,7 @@ import tensorflow as tf
 import wandb
 from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
 
-import keras_edge as kedge
+import neuralspot_edge as nse
 from ...defines import HKTrainParams
 from ...models import ModelFactory
 from ...utils import env_flag, set_random_seed, setup_logger
@@ -26,10 +26,10 @@ def train(params: HKTrainParams):
     params.temperature = float(getattr(params, "temperature", 0.1))
 
     params.seed = set_random_seed(params.seed)
-    logger.info(f"Random seed {params.seed}")
+    logger.debug(f"Random seed {params.seed}")
 
     os.makedirs(params.job_dir, exist_ok=True)
-    logger.info(f"Creating working directory in {params.job_dir}")
+    logger.debug(f"Creating working directory in {params.job_dir}")
 
     handler = logging.FileHandler(params.job_dir / "train.log", mode="w")
     handler.setLevel(logging.INFO)
@@ -67,31 +67,30 @@ def train(params: HKTrainParams):
     encoder_input = keras.Input(shape=feat_shape, dtype="float32")
 
     # Encoder
-    encoder = ModelFactory.create(
-        name=params.architecture.name,
+    encoder = ModelFactory.get(params.architecture.name)(
+        x=encoder_input,
         params=params.architecture.params,
-        inputs=encoder_input,
         num_classes=None,
     )
 
     encoder_output = encoder(encoder_input)
-    flops = kedge.metrics.flops.get_flops(encoder, batch_size=1, fpath=params.job_dir / "encoder_flops.log")
+    flops = nse.metrics.flops.get_flops(encoder, batch_size=1, fpath=params.job_dir / "encoder_flops.log")
     encoder.summary(print_fn=logger.info)
-    logger.info(f"Encoder requires {flops/1e6:0.2f} MFLOPS")
+    logger.debug(f"Encoder requires {flops/1e6:0.2f} MFLOPS")
 
     # Projector
     projector_input = encoder_output
     projector_output = keras.layers.Dense(projection_width, activation="relu6")(projector_input)
     projector_output = keras.layers.Dense(projection_width)(projector_output)
     projector = keras.Model(inputs=projector_input, outputs=projector_output, name="projector")
-    flops = kedge.metrics.flops.get_flops(projector, batch_size=1, fpath=params.job_dir / "projector_flops.log")
+    flops = nse.metrics.flops.get_flops(projector, batch_size=1, fpath=params.job_dir / "projector_flops.log")
     projector.summary(print_fn=logger.info)
-    logger.info(f"Projector requires {flops/1e6:0.2f} MFLOPS")
+    logger.debug(f"Projector requires {flops/1e6:0.2f} MFLOPS")
 
     if params.model_file is None:
         params.model_file = params.job_dir / "model.keras"
 
-    model = kedge.models.opimizers.simclr.SimCLR(
+    model = nse.models.opimizers.simclr.SimCLR(
         contrastive_augmenter=lambda x: x,
         encoder=encoder,
         projector=projector,
@@ -159,4 +158,4 @@ def train(params: HKTrainParams):
     except KeyboardInterrupt:
         logger.warning("Stopping training due to keyboard interrupt")
 
-    logger.info(f"Model saved to {params.model_file}")
+    logger.debug(f"Model saved to {params.model_file}")

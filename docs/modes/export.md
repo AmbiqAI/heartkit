@@ -25,6 +25,4 @@ Export mode is used to convert the trained TensorFlow model into a format that c
 
 ## <span class="sk-h2-span">Arguments </span>
 
-The following table lists the parameters that can be used to configure the export mode. Once converted, the TFLM header file will be copied to location specified by `tflm_file`. The `threshold` flag can be used to set the model's output threshold.  The `use_logits` flag can be used to set the model's output to use logits or softmax.
-
---8<-- "assets/modes/export-params.md"
+Please refer to [HKExportParams](../modes/configuration.md#hkexportparams) for the list of arguments that can be used with the `evaluate` command.

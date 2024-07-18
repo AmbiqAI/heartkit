@@ -2,6 +2,7 @@ import contextlib
 import functools
 import logging
 import os
+import zipfile
 import random
 from collections.abc import Iterable
 from enum import IntEnum
@@ -18,7 +19,7 @@ from tqdm import tqdm
 from ..utils import download_file
 from .dataset import HKDataset
 from .defines import PatientGenerator
-from .utils import download_s3_objects
+from .utils import download_s3_file
 
 logger = logging.getLogger(__name__)
 
@@ -459,7 +460,6 @@ class PtbxlDataset(HKDataset):
 
             # 3. Generate samples based on samples_per_tgt
 
-            # print(f'{pt} creating {num_samples} samples')
             for _ in range(num_samples):
                 # select random lead and start index
                 lead = random.choice(self.leads)
@@ -504,7 +504,7 @@ class PtbxlDataset(HKDataset):
             patient_ids = patient_ids[~neg_mask]
             num_neg = neg_mask.sum()
             if num_neg > 0:
-                logger.warning(f"Removed {num_neg} patients w/ no target class")
+                logger.debug(f"Removed {num_neg} patients w/ no target class")
             # END IF
         # END IF
 
@@ -542,7 +542,7 @@ class PtbxlDataset(HKDataset):
         neg_mask = label_mask == -1
         num_neg = neg_mask.sum()
         if num_neg > 0:
-            logger.warning(f"Removed {num_neg} of {patient_ids.size} patients w/ no target class")
+            logger.debug(f"Removed {num_neg} of {patient_ids.size} patients w/ no target class")
         return patient_ids[~neg_mask]
 
     def get_patients_labels(
@@ -607,14 +607,18 @@ class PtbxlDataset(HKDataset):
             num_workers (int | None, optional): # parallel workers. Defaults to None.
             force (bool, optional): Force redownload. Defaults to False.
         """
-        download_s3_objects(
+        os.makedirs(self.ds_path, exist_ok=True)
+        zip_path = self.ds_path / f"{self.name}.zip"
+
+        did_download = download_s3_file(
+            key=f"{self.name}/{self.name}.zip",
+            dst=zip_path,
             bucket="ambiq-ai-datasets",
-            prefix=self.ds_path.stem,
-            dst=self.ds_path.parent,
             checksum="size",
-            progress=True,
-            num_workers=num_workers,
         )
+        if did_download:
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                zf.extractall(self.ds_path)
 
     def download_raw_dataset(self, num_workers: int | None = None, force: bool = False):
         """Downloads full dataset zipfile and converts into individial patient HDF5 files.
@@ -623,7 +627,7 @@ class PtbxlDataset(HKDataset):
             force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
             num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
         """
-        logger.info("Downloading PTB-XL dataset")
+        logger.debug("Downloading PTB-XL dataset")
         ds_url = (
             "https://www.physionet.org/static/published-projects/ptb-xl/"
             "ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.2.zip"
@@ -638,13 +642,13 @@ class PtbxlDataset(HKDataset):
             download_file(ds_url, ds_zip_path, progress=True)
 
         # 2. Extract and convert patient ECG data to H5 files
-        logger.info("Processing PTB-XL patient data")
+        logger.debug("Processing PTB-XL patient data")
         self._convert_dataset_zip_to_hdf5(
             zip_path=ds_zip_path,
             force=force,
             num_workers=num_workers,
         )
-        logger.info("Finished PTB-XL patient data")
+        logger.debug("Finished PTB-XL patient data")
 
     def _convert_dataset_zip_to_hdf5(
         self,
@@ -688,7 +692,7 @@ class PtbxlDataset(HKDataset):
         # diag_class = list(set(scp_df.diagnostic_class.to_list()))
         # list(filter(lambda v: isinstance(v, str) or not math.isnan(v), diag_class))
         for patient in tqdm(patient_ids, desc="Converting"):
-            # logger.info(f"Processing patient {patient}")
+            # logger.debug(f"Processing patient {patient}")
             pt_id = self._pt_key(patient)
             pt_path = self.ds_path / f"{pt_id}.h5"
 

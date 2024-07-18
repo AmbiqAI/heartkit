@@ -285,13 +285,12 @@ def load_train_datasets(
         train_ds.shuffle(
             buffer_size=params.buffer_size,
             reshuffle_each_iteration=True,
-        )
-        .batch(
+        ).batch(
             batch_size=params.batch_size,
-            drop_remainder=False,
+            drop_remainder=True,
             num_parallel_calls=tf.data.AUTOTUNE,
         )
-        .prefetch(buffer_size=tf.data.AUTOTUNE)
+        # .prefetch(buffer_size=tf.data.AUTOTUNE)
     )
     val_ds = val_ds.batch(
         batch_size=params.batch_size,

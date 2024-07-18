@@ -76,18 +76,18 @@ def train_val_dataloader(
     if train_patients is not None:
         num_pts = int(train_patients) if train_patients > 1 else int(train_patients * len(train_patient_ids))
         train_patient_ids = train_patient_ids[:num_pts]
-        logger.info(f"Using {len(train_patient_ids)} training patients")
+        logger.debug(f"Using {len(train_patient_ids)} training patients")
     # END IF
 
     if ds.cachable and val_file and os.path.isfile(val_file):
-        logger.info(f"Loading validation data from file {val_file}")
+        logger.debug(f"Loading validation data from file {val_file}")
         val = load_pkl(val_file)
         val_patient_ids = val["patient_ids"]
         train_patient_ids = np.setdiff1d(train_patient_ids, val_patient_ids)
         val_ds = create_dataset_from_data(val["x"], val["y"], spec)
 
     else:
-        logger.info("Splitting patients into train and validation")
+        logger.debug("Splitting patients into train and validation")
         train_patient_ids, val_patient_ids = ds.split_train_test_patients(
             patient_ids=train_patient_ids,
             test_size=val_patients,
@@ -98,7 +98,7 @@ def train_val_dataloader(
             num_samples = np.mean(val_pt_samples) if isinstance(val_pt_samples, list) else val_pt_samples
             val_size = math.ceil(num_samples * len(val_patient_ids))
 
-        logger.info(f"Collecting {val_size} validation samples")
+        logger.debug(f"Collecting {val_size} validation samples")
 
         val_ds = create_interleaved_dataset_from_generator(
             data_generator=data_generator,
@@ -114,13 +114,13 @@ def train_val_dataloader(
 
         # Cache validation set
         if ds.cachable and val_file:
-            logger.info(f"Caching the validation set in {val_file}")
+            logger.debug(f"Caching the validation set in {val_file}")
             os.makedirs(os.path.dirname(val_file), exist_ok=True)
             save_pkl(val_file, x=val_x, y=val_y, patient_ids=val_patient_ids)
         # END IF
     # END IF
 
-    logger.info("Building train dataset")
+    logger.debug("Building train dataset")
 
     train_ds = create_interleaved_dataset_from_generator(
         data_generator=data_generator,
@@ -175,7 +175,7 @@ def test_dataloader(
 
     # Use existing validation data
     if ds.cachable and test_file and os.path.isfile(test_file):
-        logger.info(f"Loading test data from file {test_file}")
+        logger.debug(f"Loading test data from file {test_file}")
         test = load_pkl(test_file)
         test_ds = create_dataset_from_data(test["x"], test["y"], spec)
         test_patient_ids = test["patient_ids"]

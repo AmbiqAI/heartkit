@@ -3,7 +3,6 @@ from .bidmc import BidmcDataset
 from .dataset import HKDataset
 from .defines import PatientGenerator, Preprocessor
 from .download import download_datasets
-from .factory import DatasetFactory
 from .icentia11k import IcentiaDataset
 from .lsad import LsadDataset
 from .ludb import LudbDataset
@@ -19,6 +18,9 @@ from .utils import (
     random_id_generator,
     uniform_id_generator,
 )
+from ..utils import create_factory
+
+DatasetFactory = create_factory(factory="HKDatasetFactory", type=HKDataset)
 
 DatasetFactory.register("bidmc", BidmcDataset)
 DatasetFactory.register("synthetic", SyntheticDataset)

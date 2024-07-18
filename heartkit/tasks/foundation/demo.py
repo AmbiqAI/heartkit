@@ -62,7 +62,7 @@ def demo(params: HKDemoParams):
 
     # Run inference
     runner.open()
-    logger.info("Running inference")
+    logger.debug("Running inference")
     x_p = []
     for i in tqdm(range(0, len(x)), desc="Inference"):
         x[i] = preprocess(x[i], sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
@@ -157,7 +157,7 @@ def demo(params: HKDemoParams):
         title="HeartKit: Foundation Demo",
     )
     fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=True)
-    logger.info(f"Report saved to {params.job_dir / 'demo.html'}")
+    logger.debug(f"Report saved to {params.job_dir / 'demo.html'}")
 
     if params.display_report:
         fig.show()

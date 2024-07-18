@@ -4,14 +4,12 @@ import os
 import numpy as np
 import tensorflow as tf
 
-import keras_edge as kedge
+import neuralspot_edge as nse
 from ...defines import HKTestParams
 from ...metrics import compute_iou
 from ...utils import set_random_seed, setup_logger
 from ..utils import load_datasets
 from .datasets import load_test_dataset
-
-logger = setup_logger(__name__)
 
 
 def evaluate(params: HKTestParams):
@@ -20,11 +18,13 @@ def evaluate(params: HKTestParams):
     Args:
         params (HKTestParams): Evaluation parameters
     """
+    logger = setup_logger(__name__, level=params.verbose)
+
     params.seed = set_random_seed(params.seed)
-    logger.info(f"Random seed {params.seed}")
+    logger.debug(f"Random seed {params.seed}")
 
     os.makedirs(params.job_dir, exist_ok=True)
-    logger.info(f"Creating working directory in {params.job_dir}")
+    logger.debug(f"Creating working directory in {params.job_dir}")
 
     handler = logging.FileHandler(params.job_dir / "test.log", mode="w")
     handler.setLevel(logging.INFO)
@@ -45,14 +45,14 @@ def evaluate(params: HKTestParams):
     test_ds = load_test_dataset(datasets=datasets, params=params, ds_spec=ds_spec)
     test_x, test_y = next(test_ds.batch(params.test_size).as_numpy_iterator())
 
-    logger.info("Loading model")
-    model = kedge.models.load_model(params.model_file)
-    flops = kedge.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
+    logger.debug("Loading model")
+    model = nse.models.load_model(params.model_file)
+    flops = nse.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
 
-    model.summary(print_fn=logger.info)
-    logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
+    model.summary(print_fn=logger.debug)
+    logger.debug(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
-    logger.info("Performing inference")
+    logger.debug("Performing inference")
     y_true = np.argmax(test_y, axis=-1)
     y_pred = np.argmax(model.predict(test_x), axis=-1)
 
@@ -64,8 +64,8 @@ def evaluate(params: HKTestParams):
     y_true = y_true.flatten()
     y_pred = y_pred.flatten()
     cm_path = params.job_dir / "confusion_matrix_test.png"
-    kedge.plotting.cm.confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
-    kedge.plotting.cm.px_plot_confusion_matrix(
+    nse.plotting.cm.confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
+    nse.plotting.cm.px_plot_confusion_matrix(
         y_true,
         y_pred,
         labels=class_names,

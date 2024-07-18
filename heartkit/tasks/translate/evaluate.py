@@ -5,7 +5,7 @@ import keras
 import numpy as np
 import tensorflow as tf
 
-import keras_edge as kedge
+import neuralspot_edge as nse
 from ...defines import HKTestParams
 from ...utils import set_random_seed, setup_logger
 from ..utils import load_datasets
@@ -22,10 +22,10 @@ def evaluate(params: HKTestParams):
     """
 
     params.seed = set_random_seed(params.seed)
-    logger.info(f"Random seed {params.seed}")
+    logger.debug(f"Random seed {params.seed}")
 
     os.makedirs(params.job_dir, exist_ok=True)
-    logger.info(f"Creating working directory in {params.job_dir}")
+    logger.debug(f"Creating working directory in {params.job_dir}")
 
     handler = logging.FileHandler(params.job_dir / "test.log", mode="w")
     handler.setLevel(logging.INFO)
@@ -44,14 +44,14 @@ def evaluate(params: HKTestParams):
     test_ds = load_test_dataset(datasets=datasets, params=params, ds_spec=ds_spec)
     test_x, test_y = next(test_ds.batch(params.test_size).as_numpy_iterator())
 
-    logger.info("Loading model")
-    model = kedge.models.load_model(params.model_file)
-    flops = kedge.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
+    logger.debug("Loading model")
+    model = nse.models.load_model(params.model_file)
+    flops = nse.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
 
     model.summary(print_fn=logger.info)
-    logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
+    logger.debug(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
-    logger.info("Performing inference")
+    logger.debug("Performing inference")
     y_true = test_y.squeeze()
     y_prob = model.predict(test_x)
     y_pred = y_prob.squeeze()
@@ -60,7 +60,7 @@ def evaluate(params: HKTestParams):
     cossim = keras.metrics.CosineSimilarity()
     cossim.update_state(y_true, y_pred)  # pylint: disable=E1102
     test_cossim = cossim.result().numpy()  # pylint: disable=E1102
-    logger.info("Testing Results")
+    logger.debug("Testing Results")
     mae = keras.metrics.MeanAbsoluteError()
     mae.update_state(y_true, y_pred)  # pylint: disable=E1102
     test_mae = mae.result().numpy()  # pylint: disable=E1102

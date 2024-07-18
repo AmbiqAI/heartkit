@@ -19,7 +19,7 @@ from tqdm import tqdm
 from ..utils import download_file
 from .dataset import HKDataset
 from .defines import PatientGenerator
-from .utils import download_s3_objects
+from .utils import download_s3_file
 
 logger = logging.getLogger(__name__)
 
@@ -183,7 +183,7 @@ class LudbDataset(HKDataset):
         """Get patient's entire data and segments
 
         Args:
-            patient (int): Patient ID (1-based)
+            patient_id (int): Patient ID (1-based)
 
         Returns:
             tuple[npt.NDArray, npt.NDArray]: (data, segment labels)
@@ -205,14 +205,18 @@ class LudbDataset(HKDataset):
             num_workers (int | None, optional): # parallel workers. Defaults to None.
             force (bool, optional): Force redownload. Defaults to False.
         """
-        download_s3_objects(
+        os.makedirs(self.ds_path, exist_ok=True)
+        zip_path = self.ds_path / f"{self.name}.zip"
+
+        did_download = download_s3_file(
+            key=f"{self.name}/{self.name}.zip",
+            dst=zip_path,
             bucket="ambiq-ai-datasets",
-            prefix=self.ds_path.stem,
-            dst=self.ds_path.parent,
             checksum="size",
-            progress=True,
-            num_workers=num_workers,
         )
+        if did_download:
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                zf.extractall(self.ds_path)
 
     def download_raw_dataset(self, num_workers: int | None = None, force: bool = False):
         """Downloads full dataset zipfile and converts into individial patient HDF5 files.
@@ -221,7 +225,7 @@ class LudbDataset(HKDataset):
             force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
             num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
         """
-        logger.info("Downloading LUDB dataset")
+        logger.debug("Downloading LUDB dataset")
         ds_url = (
             "https://physionet.org/static/published-projects/ludb/"
             "lobachevsky-university-electrocardiography-database-1.0.1.zip"
@@ -236,9 +240,9 @@ class LudbDataset(HKDataset):
             download_file(ds_url, ds_zip_path, progress=True)
 
         # 2. Extract and convert patient ECG data to H5 files
-        logger.info("Generating LUDB patient data")
+        logger.debug("Generating LUDB patient data")
         self.convert_dataset_zip_to_hdf5(zip_path=ds_zip_path, force=force, num_workers=num_workers)
-        logger.info("Finished LUDB patient data")
+        logger.debug("Finished LUDB patient data")
 
     def convert_dataset_zip_to_hdf5(
         self,

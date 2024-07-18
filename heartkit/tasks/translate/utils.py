@@ -1,5 +1,5 @@
 import keras
-from keras_edge.models.tcn import Tcn, TcnBlockParams, TcnParams
+from neuralspot_edge.models.tcn import Tcn, TcnBlockParams, TcnParams
 from rich.console import Console
 
 from ...defines import ModelArchitecture
@@ -20,10 +20,9 @@ def create_model(inputs: keras.KerasTensor, num_classes: int, architecture: Mode
         keras.Model: Model
     """
     if architecture:
-        return ModelFactory.create(
-            name=architecture.name,
+        return ModelFactory.get(architecture.name)(
+            x=inputs,
             params=architecture.params,
-            inputs=inputs,
             num_classes=num_classes,
         )
 

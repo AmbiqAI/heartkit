@@ -23,7 +23,7 @@
     "sampling_rate": 100,
     "frame_size": 800,
     "model_file": "model.keras",
-    "use_logits": false,
+    "use_logits": true,
     "samples_per_patient": [5, 5, 5, 10],
     "val_file": "./results/${task}-class-4-${dataset}-${sampling_rate}fs-${frame_size}sz-noaug.pkl",
     "test_file": "./results/${task}-class-4-${dataset}-${sampling_rate}fs-${frame_size}sz-noaug.pkl",

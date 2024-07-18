@@ -12,6 +12,7 @@ nav:
     - Quickstart: quickstart.md
     - Modes:
       - modes/index.md
+      - Configuration: modes/configuration.md
       - Download: modes/download.md
       - Train: modes/train.md
       - Evaluate: modes/evaluate.md
@@ -31,8 +32,6 @@ nav:
       - models/index.md
     - Datasets:
       - datasets/index.md
-    - Experiments:
-      - experiments/index.md
     - Guides:
       - guides/index.md
 
@@ -44,6 +43,7 @@ nav:
 
   - Modes:
     - modes/index.md
+    - Configuration: modes/configuration.md
     - Download: modes/download.md
     - Train: modes/train.md
     - Evaluate: modes/evaluate.md
@@ -81,14 +81,14 @@ nav:
     - MIT-BIH: datasets/mitbih.md
     - BYOD: datasets/byod.md
 
-  - Experiments:
-    - experiments/index.md
-
   - Guides:
     - guides/index.md
     - EVB Setup: guides/evb-setup.md
     - Rhythm Demo: guides/rhythm-demo.md
     - HeartKit Demo: guides/heartkit-demo.md
+    - Train Arrhythmia Model: guides/train-arrhythmia-model.ipynb
+    - Train ECG Denoiser: guides/train-ecg-denoiser.ipynb
+    - Train ECG Segmentation Model: guides/train-ecg-segmentation.ipynb
 
   - Reference:
     - HeartKit: api/heartkit.md
@@ -159,6 +159,8 @@ plugins:
             docstring_section_style: list
             line_length: 92
             show_root_heading: true
+  - mkdocs-jupyter:
+      include_requirejs: true
 
 extra_css:
   - css/mkdocstrings.css
@@ -168,6 +170,7 @@ extra_css:
 extra_javascript:
   - js/termynal.js
   - js/custom.js
+  - https://cdn.plot.ly/plotly-2.33.0.min.js
 
 markdown_extensions:
   - admonition
@@ -179,7 +182,9 @@ markdown_extensions:
       anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.snippets:
-      base_path: 'docs/'
+      base_path:
+        - 'docs/'
+        - 'heartkit/'
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid

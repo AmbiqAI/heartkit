@@ -2,6 +2,7 @@ import contextlib
 import functools
 import logging
 import os
+import zipfile
 import random
 from collections.abc import Iterable
 from enum import IntEnum
@@ -18,7 +19,7 @@ from tqdm import tqdm
 from ..utils import download_file
 from .dataset import HKDataset
 from .defines import PatientGenerator
-from .utils import download_s3_objects
+from .utils import download_s3_file
 
 logger = logging.getLogger(__name__)
 
@@ -428,7 +429,7 @@ class LsadDataset(HKDataset):
             patient_ids = patient_ids[~neg_mask]
             num_neg = neg_mask.sum()
             if num_neg > 0:
-                logger.warning(f"Removed {num_neg} patients w/ no target class")
+                logger.debug(f"Removed {num_neg} patients w/ no target class")
             # END IF
         # END IF
 
@@ -466,7 +467,7 @@ class LsadDataset(HKDataset):
         neg_mask = label_mask == -1
         num_neg = neg_mask.sum()
         if num_neg > 0:
-            logger.warning(f"Removed {num_neg} of {patient_ids.size} patients w/ no target class")
+            logger.debug(f"Removed {num_neg} of {patient_ids.size} patients w/ no target class")
         return patient_ids[~neg_mask]
 
     def get_patients_labels(
@@ -515,14 +516,18 @@ class LsadDataset(HKDataset):
             num_workers (int | None, optional): # parallel workers. Defaults to None.
             force (bool, optional): Force redownload. Defaults to False.
         """
-        download_s3_objects(
+        os.makedirs(self.ds_path, exist_ok=True)
+        zip_path = self.ds_path / f"{self.name}.zip"
+
+        did_download = download_s3_file(
+            key=f"{self.name}/{self.name}.zip",
+            dst=zip_path,
             bucket="ambiq-ai-datasets",
-            prefix=self.ds_path.stem,
-            dst=self.ds_path.parent,
             checksum="size",
-            progress=True,
-            num_workers=num_workers,
         )
+        if did_download:
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                zf.extractall(self.ds_path)
 
     def download_raw_dataset(self, num_workers: int | None = None, force: bool = False):
         """Downloads full dataset zipfile and converts into individial patient HDF5 files.
@@ -531,7 +536,7 @@ class LsadDataset(HKDataset):
             force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
             num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
         """
-        logger.info("Downloading LSAD dataset")
+        logger.debug("Downloading LSAD dataset")
         ds_url = (
             "https://www.physionet.org/static/published-projects/ecg-arrhythmia/"
             "a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0.zip"
@@ -546,13 +551,13 @@ class LsadDataset(HKDataset):
             download_file(ds_url, ds_zip_path, progress=True)
 
         # 2. Extract and convert patient ECG data to H5 files
-        logger.info("Processing LSAD patient data")
+        logger.debug("Processing LSAD patient data")
         self._convert_dataset_zip_to_hdf5(
             zip_path=ds_zip_path,
             force=force,
             num_workers=num_workers,
         )
-        logger.info("Finished LSAD patient data")
+        logger.debug("Finished LSAD patient data")
 
     def _convert_dataset_zip_to_hdf5(
         self,
@@ -612,7 +617,7 @@ class LsadDataset(HKDataset):
                 # END WITH
 
                 if "Dx" not in pt_info:
-                    print(f"Skipping {zp_rec_name} - no Dx")
+                    logger.debug(f"Skipping {zp_rec_name} - no Dx")
                     continue
 
                 scp_codes = np.array([int(x) for x in re.findall(r"\d+", pt_info["Dx"])])

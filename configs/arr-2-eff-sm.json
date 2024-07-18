@@ -36,7 +36,7 @@
     "test_samples_per_patient": [10, 10],
     "test_size": 40000,
     "batch_size": 256,
-    "buffer_size": 100000,
+    "buffer_size": 50000,
     "epochs": 150,
     "steps_per_epoch": 50,
     "val_metric": "loss",
@@ -52,9 +52,9 @@
     "display_report": true,
     "quantization": {
         "qat": false,
-        "mode": "FP32",
-        "io_type": "float32",
-        "concrete": true,
+        "format": "INT8",
+        "io_type": "int8",
+        "conversion": "CONCRETE",
         "debug": false
     },
     "preprocesses": [

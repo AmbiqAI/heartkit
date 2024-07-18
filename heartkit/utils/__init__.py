@@ -1,6 +1,7 @@
 import gzip
 import hashlib
 import logging
+
 import os
 import pickle
 from pathlib import Path
@@ -12,8 +13,10 @@ import requests
 from rich.logging import RichHandler
 from tqdm import tqdm
 
+from .factory import ItemFactory, create_factory
 
-def setup_logger(log_name: str) -> logging.Logger:
+
+def setup_logger(log_name: str, level: int | None = None) -> logging.Logger:
     """Setup logger with Rich
 
     Args:
@@ -23,12 +26,29 @@ def setup_logger(log_name: str) -> logging.Logger:
         logging.Logger: Logger
     """
     new_logger = logging.getLogger(log_name)
-    if new_logger.handlers:
-        return new_logger
-    logging.basicConfig(level=logging.ERROR, force=True, handlers=[RichHandler()])
-    new_logger.propagate = False
-    new_logger.setLevel(logging.INFO)
-    new_logger.handlers = [RichHandler()]
+    needs_init = not new_logger.handlers
+
+    match level:
+        case 0:
+            log_level = logging.ERROR
+        case 1:
+            log_level = logging.INFO
+        case 2 | 3 | 4:
+            log_level = logging.DEBUG
+        case None:
+            log_level = None
+        case _:
+            log_level = logging.INFO
+    # END MATCH
+
+    if needs_init:
+        logging.basicConfig(level=log_level, force=True, handlers=[RichHandler(rich_tracebacks=True)])
+        new_logger.propagate = False
+        new_logger.handlers = [RichHandler()]
+
+    if log_level is not None:
+        new_logger.setLevel(log_level)
+
     return new_logger
 
 
@@ -203,3 +223,24 @@ def resolve_template_path(fpath: Path, **kwargs: Any) -> Path:
         Path: Resolved file path
     """
     return Path(Template(str(fpath)).safe_substitute(**kwargs))
+
+
+def silence_tensorflow():
+    """Silence every unnecessary warning from tensorflow."""
+    logging.getLogger("tensorflow").setLevel(logging.ERROR)
+    os.environ["KMP_AFFINITY"] = "noverbose"
+    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+    os.environ["AUTOGRAPH_VERBOSITY"] = "5"
+    # We wrap this inside a try-except block
+    # because we do not want to be the one package
+    # that crashes when TensorFlow is not installed
+    # when we are the only package that requires it
+    # in a given Jupyter Notebook, such as when the
+    # package import is simply copy-pasted.
+    try:
+        import tensorflow as tf
+
+        tf.get_logger().setLevel("ERROR")
+        tf.autograph.set_verbosity(3)
+    except ModuleNotFoundError:
+        pass

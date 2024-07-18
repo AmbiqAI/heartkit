@@ -1,5 +1,5 @@
 import keras
-from keras_edge.models.efficientnet import (
+from neuralspot_edge.models.efficientnet import (
     EfficientNetParams,
     EfficientNetV2,
     MBConvParams,
@@ -24,10 +24,9 @@ def create_model(inputs: keras.KerasTensor, num_classes: int, architecture: Mode
         keras.Model: Model
     """
     if architecture:
-        return ModelFactory.create(
-            name=architecture.name,
+        return ModelFactory.get(architecture.name)(
+            x=inputs,
             params=architecture.params,
-            inputs=inputs,
             num_classes=num_classes,
         )
 

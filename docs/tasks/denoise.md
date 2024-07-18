@@ -1,8 +1,8 @@
-# ECG Denoising
+# Signal Denoising
 
 ## <span class="sk-h2-span">Overview</span>
 
-The objective of ECG denoising is to remove noise and artifacts from ECG signals while preserving the underlying cardiac information. The dominant noise sources include baseline wander (BW), muscle noise (EMG), electrode movement artifacts (EM), and powerline interference (PLI). While traditional signal processing techniques such as filtering and wavelet denoising have been used to remove noise, deep learning models have shown great promise in enhanced ECG denoising.
+The objective of denoising is to remove noise and artifacts from physiological signals while preserving the underlying signal information. The dominant noise sources include baseline wander (BW), muscle noise (EMG), electrode movement artifacts (EM), and powerline interference (PLI). For physiological signals such as ECG and PPG, removing the artifacts is difficult due to the non-stationary nature of the noise and overlapping frequency bands with the signal. While traditional signal processing techniques such as filtering and wavelet denoising have been used to remove noise, deep learning models have shown great promise in enhanced denoising.
 
 <div class="sk-plotly-graph-div">
 --8<-- "assets/tasks/denoise/denoise-example.html"
@@ -20,6 +20,14 @@ The following table summarizes the characteristics of common noise sources in EC
 | Powerline Interference (PLI) | Electrical equipment | 50-60 Hz | Distorts P and T waves |
 | Muscle Noise (EMG) | Muscle activity | 0-100 Hz | Distorts local waves |
 | Electrode Movement (EM) | Electrode motion, skinimpedance | 0-100 Hz | Distorts local waves |
+
+The following table summarizes the characteristics of common noise sources in PPG signals:
+
+| Type | Causes | Spectrum | Effects |
+| --- | --- | --- | --- |
+| Motion Artifacts | Movement, pressure | 0-10 Hz | Distorts signal |
+| Ambient Light | Sunlight, artificial light | 0-100 Hz | Distorts signal |
+| Blood Pressure | Blood flow, pressure | 0-10 Hz | Distorts signal |
 
 ---
 

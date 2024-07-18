@@ -6,7 +6,7 @@ import tensorflow as tf
 import wandb
 from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
 
-import keras_edge as kedge
+import neuralspot_edge as nse
 from ...defines import HKTrainParams
 from ...utils import env_flag, set_random_seed, setup_logger
 from ..utils import load_datasets
@@ -24,10 +24,10 @@ def train(params: HKTrainParams):
     """
 
     params.seed = set_random_seed(params.seed)
-    logger.info(f"Random seed {params.seed}")
+    logger.debug(f"Random seed {params.seed}")
 
     os.makedirs(params.job_dir, exist_ok=True)
-    logger.info(f"Creating working directory in {params.job_dir}")
+    logger.debug(f"Creating working directory in {params.job_dir}")
 
     handler = logging.FileHandler(params.job_dir / "train.log", mode="w")
     handler.setLevel(logging.INFO)
@@ -69,11 +69,11 @@ def train(params: HKTrainParams):
         dtype=ds_spec[0].dtype.name,
     )
     if params.resume and params.model_file:
-        logger.info(f"Loading model from file {params.model_file}")
-        model = kedge.models.load_model(params.model_file)
+        logger.debug(f"Loading model from file {params.model_file}")
+        model = nse.models.load_model(params.model_file)
         params.model_file = None
     else:
-        logger.info("Creating model from scratch")
+        logger.debug("Creating model from scratch")
         model = create_model(
             inputs,
             num_classes=params.num_classes,
@@ -105,17 +105,17 @@ def train(params: HKTrainParams):
     ]
 
     if params.resume and params.weights_file:
-        logger.info(f"Hydrating model weights from file {params.weights_file}")
+        logger.debug(f"Hydrating model weights from file {params.weights_file}")
         model.load_weights(params.weights_file)
 
     if params.model_file is None:
         params.model_file = params.job_dir / "model.keras"
 
     model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
-    flops = kedge.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
+    flops = nse.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
     model(inputs)
     model.summary(print_fn=logger.info)
-    logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
+    logger.debug(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
     ModelCheckpoint = keras.callbacks.ModelCheckpoint
     if env_flag("WANDB"):
@@ -159,8 +159,8 @@ def train(params: HKTrainParams):
     except KeyboardInterrupt:
         logger.warning("Stopping training due to keyboard interrupt")
 
-    logger.info(f"Model saved to {params.model_file}")
+    logger.debug(f"Model saved to {params.model_file}")
 
     # Get full validation results
     keras.models.load_model(params.model_file)
-    logger.info("Performing full validation")
+    logger.debug("Performing full validation")

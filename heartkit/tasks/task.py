@@ -7,6 +7,16 @@ class HKTask(abc.ABC):
     """HeartKit Task base class. All tasks should inherit from this class."""
 
     @staticmethod
+    def description() -> str:
+        """Get task description
+
+        Returns:
+            str: description
+
+        """
+        return ""
+
+    @staticmethod
     def train(params: HKTrainParams) -> None:
         """Train a model
 

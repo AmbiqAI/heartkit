@@ -67,7 +67,7 @@ The HeartKit command line interface (CLI) makes it easy to run a variety of sing
 
 !!! Note "Configuration File"
 
-    The configuration file is a JSON file that contains all the necessary parameters for the task. The configuration file can be passed as a file path or as a JSON string. In addition, a single configuration file can be used for all `modes`- only needed parameters will be extracted for the given `mode` running.  Please refer to the [Configuration](../usage/configuration.md) section for more details.
+    The configuration file is a JSON file that contains all the necessary parameters for the task. The configuration file can be passed as a file path or as a JSON string. In addition, a single configuration file can be used for all `modes`- only needed parameters will be extracted for the given `mode` running.  Please refer to the [Configuration](../modes/configuration.md) section for more details.
 
 ---
 

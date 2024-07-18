@@ -26,6 +26,4 @@ Evaluate mode is used to test the performance of the model on the reserved test 
 
 ## <span class="sk-h2-span">Arguments </span>
 
-The following tables lists the arguments that can be used with the `evaluate` command.
-
---8<-- "assets/modes/evaluate-params.md"
+Please refer to [HKTestParams](../modes/configuration.md#hktestparams) for the list of arguments that can be used with the `evaluate` command.

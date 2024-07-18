@@ -11,7 +11,7 @@ def load_datasets(
         datasets (list[DatasetParams]): List of datasets
 
     Returns:
-        HeartKitDataset: Dataset
+        HKDataset: Dataset
     """
     dsets = []
     for dset in datasets:

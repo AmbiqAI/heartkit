@@ -105,8 +105,6 @@ The following is an example of a task-level demo report for the segmentation tas
 
 ## <span class="sk-h2-span">Arguments </span>
 
-The following table lists the parameters that can be used to configure the demo mode. For argument `model_file`, the supported formats include `.keras` and `.tflite`.
-
---8<-- "assets/modes/demo-params.md"
+Please refer to [HKDemoParams](../modes/configuration.md#hkdemoparams) for the list of arguments that can be used with the `demo` command.
 
 ---

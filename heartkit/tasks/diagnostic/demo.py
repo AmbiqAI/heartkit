@@ -58,7 +58,7 @@ def demo(params: HKDemoParams):
 
     # Run inference
     runner.open()
-    logger.info("Running inference")
+    logger.debug("Running inference")
     y_pred = np.zeros(x.shape[0], dtype=np.int32)
     for i in tqdm(range(0, x.shape[0], params.frame_size), desc="Inference"):
         if i + params.frame_size > x.shape[0]:
@@ -75,7 +75,7 @@ def demo(params: HKDemoParams):
     runner.close()
 
     # Report
-    logger.info("Generating report")
+    logger.debug("Generating report")
     tod = datetime.datetime(2025, 5, 24, random.randint(12, 23), 00)
     ts = np.array([tod + datetime.timedelta(seconds=i / params.sampling_rate) for i in range(x.shape[0])])
 
@@ -135,7 +135,7 @@ def demo(params: HKDemoParams):
     )
 
     fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=True)
-    logger.info(f"Report saved to {params.job_dir / 'demo.html'}")
+    logger.debug(f"Report saved to {params.job_dir / 'demo.html'}")
 
     if params.display_report:
         fig.show()

@@ -64,5 +64,5 @@ def get_serial_transport(
             time.sleep(0.5)
     if port is None:
         raise TimeoutError("Unable to locate serial port. Please verify connection")
-    logger.info(f"Found serial device @ {port.device}")
+    logger.debug(f"Found serial device @ {port.device}")
     return SerialTransport(port.device, baudrate=baudrate)

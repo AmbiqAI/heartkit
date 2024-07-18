@@ -163,7 +163,7 @@ def demo(params: HKDemoParams):
 
     # Run inference
     runner.open()
-    logger.info("Running inference")
+    logger.debug("Running inference")
     y_prob = np.zeros_like(peaks, dtype=np.float32)
     y_pred = np.zeros_like(peaks, dtype=np.int32)
     for i in tqdm(range(0, len(peaks)), desc="Inference"):
@@ -193,7 +193,7 @@ def demo(params: HKDemoParams):
     runner.close()
 
     # Report
-    logger.info("Generating report")
+    logger.debug("Generating report")
 
     ts = np.arange(0, x.size) / params.sampling_rate
 
@@ -313,7 +313,7 @@ def demo(params: HKDemoParams):
     )
 
     fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=True)
-    logger.info(f"Report saved to {params.job_dir / 'demo.html'}")
+    logger.debug(f"Report saved to {params.job_dir / 'demo.html'}")
 
     if params.display_report:
         fig.show()

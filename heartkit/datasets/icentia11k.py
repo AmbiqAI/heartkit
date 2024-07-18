@@ -225,7 +225,7 @@ class IcentiaDataset(HKDataset):
             patient_ids = patient_ids[~neg_mask]
             num_neg = neg_mask.sum()
             if num_neg > 0:
-                logger.warning(f"Removed {num_neg} patients w/ no target class")
+                logger.debug(f"Removed {num_neg} patients w/ no target class")
             # END IF
         # END IF
 
@@ -262,7 +262,7 @@ class IcentiaDataset(HKDataset):
         neg_mask = label_mask == -1
         num_neg = neg_mask.sum()
         if num_neg > 0:
-            logger.warning(f"Removed {num_neg} of {patient_ids.size} patients w/ no target class")
+            logger.debug(f"Removed {num_neg} of {patient_ids.size} patients w/ no target class")
         return patient_ids[~neg_mask]
 
     def get_patients_labels(
@@ -323,7 +323,7 @@ class IcentiaDataset(HKDataset):
             force (bool, optional): Whether to force re-download if destination exists. Defaults to False.
             num_workers (int, optional): # parallel workers. Defaults to os.cpu_count().
         """
-        logger.info("Downloading icentia11k dataset")
+        logger.debug("Downloading icentia11k dataset")
         ds_url = (
             "https://physionet.org/static/published-projects/icentia11k-continuous-ecg/"
             "icentia11k-single-lead-continuous-raw-electrocardiogram-dataset-1.0.zip"
@@ -338,13 +338,13 @@ class IcentiaDataset(HKDataset):
             download_file(ds_url, ds_zip_path, progress=True)
 
         # 2. Extract and convert patient ECG data to H5 files
-        logger.info("Generating icentia11k patient data")
+        logger.debug("Generating icentia11k patient data")
         self._convert_dataset_zip_to_hdf5(
             zip_path=ds_zip_path,
             force=force,
             num_workers=num_workers,
         )
-        logger.info("Finished icentia11k patient data")
+        logger.debug("Finished icentia11k patient data")
 
     def _convert_dataset_pt_zip_to_hdf5(self, patient: int, zip_path: os.PathLike, force: bool = False):
         """Extract patient data from Icentia zipfile. Pulls out ECG data along with all labels.
@@ -374,7 +374,7 @@ class IcentiaDataset(HKDataset):
             "V": IcentiaBeat.pvc.value,
         }
 
-        logger.info(f"Processing patient {patient}")
+        logger.debug(f"Processing patient {patient}")
         pt_id = self._pt_key(patient)
         pt_path = self.ds_path / f"{pt_id}.h5"
         if not force and os.path.exists(pt_path):

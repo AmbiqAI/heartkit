@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-from keras_edge.converters.tflite import QuantizationType
+from neuralspot_edge.converters.tflite import QuantizationType, ConversionType
 
 
 class QuantizationParams(BaseModel, extra="allow"):
@@ -13,9 +13,9 @@ class QuantizationParams(BaseModel, extra="allow"):
 
     enabled: bool = Field(False, description="Enable quantization")
     qat: bool = Field(False, description="Enable quantization aware training (QAT)")
-    mode: QuantizationType = Field(QuantizationType.INT8, description="Quantization mode")
+    format: QuantizationType = Field(QuantizationType.INT8, description="Quantization mode")
     io_type: str = Field("int8", description="I/O type")
-    concrete: bool = Field(True, description="Use concrete function")
+    conversion: ConversionType = Field(ConversionType.KERAS, description="Conversion method")
     debug: bool = Field(False, description="Debug quantization")
     fallback: bool = Field(False, description="Fallback to float32")
 
@@ -130,6 +130,7 @@ class HKTrainParams(BaseModel, extra="allow"):
         description="# of data loaders running in parallel",
     )
     model_config = ConfigDict(protected_namespaces=())
+    verbose: int = Field(1, ge=0, le=2, description="Verbosity level")
 
     def model_post_init(self, __context: Any) -> None:
         """Post init hook"""
@@ -176,6 +177,7 @@ class HKTestParams(BaseModel, extra="allow"):
         description="# of data loaders running in parallel",
     )
     model_config = ConfigDict(protected_namespaces=())
+    verbose: int = Field(1, ge=0, le=2, description="Verbosity level")
 
     def model_post_init(self, __context: Any) -> None:
         """Post init hook"""
@@ -221,6 +223,7 @@ class HKExportParams(BaseModel, extra="allow"):
         description="# of data loaders running in parallel",
     )
     model_config = ConfigDict(protected_namespaces=())
+    verbose: int = Field(1, ge=0, le=2, description="Verbosity level")
 
     def model_post_init(self, __context: Any) -> None:
         """Post init hook"""
@@ -262,6 +265,7 @@ class HKDemoParams(BaseModel, extra="allow"):
     # Extra arguments
     seed: int | None = Field(None, description="Random state seed")
     model_config = ConfigDict(protected_namespaces=())
+    verbose: int = Field(1, ge=0, le=2, description="Verbosity level")
 
     def model_post_init(self, __context: Any) -> None:
         """Post init hook"""

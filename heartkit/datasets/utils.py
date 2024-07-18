@@ -179,7 +179,7 @@ def create_interleaved_dataset_from_generator(
 
     num_workers = min(num_workers, len(ids))
     split = len(ids) // num_workers
-    logger.info(f"Splitting {len(ids)} ids into {num_workers} workers with {split} ids each")
+    logger.debug(f"Splitting {len(ids)} ids into {num_workers} workers with {split} ids each")
     ds_splits = [split_generator(ids[i * split : (i + 1) * split]) for i in range(num_workers)]
 
     # Create TF datasets (interleave workers)
@@ -195,13 +195,76 @@ def create_interleaved_dataset_from_generator(
     return ds
 
 
+def _get_s3_client(config: Config | None = None) -> boto3.client:
+    """Get S3 client
+
+    Args:
+        config (Config | None, optional): Boto3 config. Defaults to None.
+
+    Returns:
+        boto3.client: S3 client
+    """
+    session = boto3.Session()
+    return session.client("s3", config=config)
+
+
+def download_s3_file(
+    key: str,
+    dst: Path,
+    bucket: str,
+    client: boto3.client = None,
+    checksum: str = "size",
+    config: Config | None = Config(signature_version=UNSIGNED),
+) -> bool:
+    """Download a file from S3
+
+    Args:
+        key (str): Object key
+        dst (Path): Destination path
+        bucket (str): Bucket name
+        client (boto3.client): S3 client
+        checksum (str, optional): Checksum type. Defaults to "size".
+        config (Config, optional): Boto3 config. Defaults to Config(signature_version=UNSIGNED).
+
+    Returns:
+        bool: True if file was downloaded, False if already exists
+    """
+
+    if client is None:
+        client = _get_s3_client(config)
+
+    if not dst.is_file():
+        pass
+    elif checksum == "size":
+        obj = client.head_object(Bucket=bucket, Key=key)
+        if dst.stat().st_size == obj["ContentLength"]:
+            return False
+    elif checksum == "md5":
+        obj = client.head_object(Bucket=bucket, Key=key)
+        etag = obj["ETag"]
+        checksum_type = obj.get("ChecksumAlgorithm", ["md5"])[0]
+        calculated_checksum = compute_checksum(dst, checksum)
+        if etag == calculated_checksum and checksum_type.lower() == "md5":
+            return False
+    # END IF
+
+    client.download_file(
+        Bucket=bucket,
+        Key=key,
+        Filename=str(dst),
+    )
+
+    return True
+
+
 def download_s3_object(
     item: dict[str, str],
     dst: Path,
     bucket: str,
-    client: boto3.client,
+    client: boto3.client = None,
     checksum: str = "size",
-):
+    config: Config | None = Config(signature_version=UNSIGNED),
+) -> bool:
     """Download an object from S3
 
     Args:
@@ -210,33 +273,40 @@ def download_s3_object(
         bucket (str): Bucket name
         client (boto3.client): S3 client
         checksum (str, optional): Checksum type. Defaults to "size".
+        config (Config, optional): Boto3 config. Defaults to Config(signature_version=UNSIGNED).
+
+    Returns:
+        bool: True if file was downloaded, False if already exists
     """
 
     # Is a directory, skip
     if item["Key"].endswith("/"):
-        print(f"Creating dir {dst}")
         os.makedirs(dst, exist_ok=True)
-        return
+        return False
 
     if not dst.is_file():
         pass
     elif checksum == "size":
         if dst.stat().st_size == item["Size"]:
-            print(".", end="")
-            return
+            return False
     elif checksum == "md5":
         etag = item["ETag"]
         checksum_type = item.get("ChecksumAlgorithm", ["md5"])[0]
         calculated_checksum = compute_checksum(dst, checksum)
         if etag == calculated_checksum and checksum_type.lower() == "md5":
-            return
+            return False
     # END IF
+
+    if client is None:
+        client = _get_s3_client()
 
     client.download_file(
         Bucket=bucket,
         Key=item["Key"],
         Filename=str(dst),
     )
+
+    return True
 
 
 def download_s3_objects(
@@ -261,8 +331,7 @@ def download_s3_objects(
 
     """
 
-    session = boto3.Session()
-    client = session.client("s3", config=config)
+    client = _get_s3_client(config)
 
     # Fetch all objects in the bucket with the given prefix
     items = []
@@ -278,7 +347,7 @@ def download_s3_objects(
         fetching = next_token is not None
     # END WHILE
 
-    logger.info(f"Found {len(items)} objects in {bucket}/{prefix}")
+    logger.debug(f"Found {len(items)} objects in {bucket}/{prefix}")
 
     os.makedirs(dst, exist_ok=True)
 

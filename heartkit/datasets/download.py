@@ -16,7 +16,7 @@ def download_datasets(params: HKDownloadParams):
 
     """
     os.makedirs(params.job_dir, exist_ok=True)
-    logger.info(f"Creating working directory in {params.job_dir}")
+    logger.debug(f"Creating working directory in {params.job_dir}")
 
     handler = logging.FileHandler(params.job_dir / "download.log", mode="w")
     handler.setLevel(logging.INFO)

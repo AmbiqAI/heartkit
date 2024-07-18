@@ -11,6 +11,13 @@ class RhythmTask(HKTask):
     """HeartKit Rhythm Task"""
 
     @staticmethod
+    def description() -> str:
+        return (
+            "This task is used to train, evaluate, and export rhythm models."
+            "Rhythm includes sinus rhythm, atrial fibrillation, and other arrhythmias."
+        )
+
+    @staticmethod
     def train(params: HKTrainParams):
         train(params)
 

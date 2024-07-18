@@ -2,7 +2,7 @@ import abc
 import time
 from enum import IntEnum
 
-import keras_edge as kedge
+import neuralspot_edge as nse
 import numpy as np
 import numpy.typing as npt
 
@@ -128,7 +128,7 @@ class EvbBackend(DemoBackend):
 
         with open(self.params.model_file, "rb") as fp:
             model_content = fp.read()
-        self._interpreter = kedge.converters.tflite.TfLiteKerasInterpreter(model_content=model_content)
+        self._interpreter = nse.converters.tflite.TfLiteKerasInterpreter(model_content=model_content)
         self._interpreter.compile()
         self._send_binary("MODEL", RpcCommands.SEND_MODEL, model_content)
 
@@ -163,11 +163,11 @@ class PcBackend(DemoBackend):
 
     def open(self):
         if self._is_tf_model():
-            self._model = kedge.models.load_model(self.params.model_file)
+            self._model = nse.models.load_model(self.params.model_file)
         else:
             with open(self.params.model_file, "rb") as fp:
                 model_content = fp.read()
-            self._model = kedge.interpreters.tflite.TfLiteKerasInterpreter(model_content=model_content)
+            self._model = nse.interpreters.tflite.TfLiteKerasInterpreter(model_content=model_content)
 
     def close(self):
         self._model = None

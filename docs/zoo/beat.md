@@ -32,7 +32,7 @@ The following table provides the latest pre-trained models for beat classificati
 
     ### Datasets
 
-    - **[Icentia11k](../datasets/icentia.md)**
+    - **[Icentia11k](../datasets/icentia11k.md)**
 
 === "BEAT-3-EFF-SM"
 
@@ -57,7 +57,7 @@ The following table provides the latest pre-trained models for beat classificati
 
     ### Dataset
 
-    - **[Icentia11k](../datasets/icentia.md)**
+    - **[Icentia11k](../datasets/icentia11k.md)**
 
 ---
 

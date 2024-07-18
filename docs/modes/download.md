@@ -22,7 +22,4 @@ The `download` command is used to download all datasets specified. Please refer 
 
 ## <span class="sk-h2-span">Arguments </span>
 
-The following table lists the arguments that can be used with the `download` command. All datasets will be saved in their own subdirectory within the `ds_path` directory.
-
-
---8<-- "assets/modes/download-params.md"
+Please refer to [HKDownloadParams](../modes/configuration.md#hkdownloadparams) for the list of arguments that can be used with the `download` command.

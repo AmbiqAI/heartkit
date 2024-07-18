@@ -67,7 +67,7 @@ def demo(params: HKDemoParams):
 
     # Run inference
     runner.open()
-    logger.info("Running inference")
+    logger.debug("Running inference")
     y_pred = np.zeros(x.size, dtype=np.float32)
 
     cos_sim_diff = 0
@@ -90,7 +90,7 @@ def demo(params: HKDemoParams):
         cos_sim = np.dot(y, y_pred) / (np.linalg.norm(y) * np.linalg.norm(y_pred))
         cos_sim_diff = cos_sim - prev_cos_sim
         prev_cos_sim = cos_sim
-        logger.info(f"Trial {trial+1}: Cosine Similarity: {cos_sim:.2%} (diff: {cos_sim_diff:.2%})")
+        logger.debug(f"Trial {trial+1}: Cosine Similarity: {cos_sim:.2%} (diff: {cos_sim_diff:.2%})")
         if cos_sim_diff < 1e-3:
             break
     # END FOR
@@ -98,14 +98,14 @@ def demo(params: HKDemoParams):
     # END FOR
     runner.close()
     # Report
-    logger.info("Generating report")
+    logger.debug("Generating report")
     ts = np.arange(0, x.size) / params.sampling_rate
 
     # Compute cosine similarity
     cos_sim_orig = np.dot(y, x) / (np.linalg.norm(y) * np.linalg.norm(x))
     cos_sim = np.dot(y, y_pred) / (np.linalg.norm(y) * np.linalg.norm(y_pred))
-    logger.info(f"Before Cosine Similarity: {cos_sim_orig:.2%}")
-    logger.info(f"After Cosine Similarity: {cos_sim:.2%}")
+    logger.debug(f"Before Cosine Similarity: {cos_sim_orig:.2%}")
+    logger.debug(f"After Cosine Similarity: {cos_sim:.2%}")
 
     fig = make_subplots(
         rows=3,
@@ -196,7 +196,7 @@ def demo(params: HKDemoParams):
     )
 
     fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=False)
-    logger.info(f"Report saved to {params.job_dir / 'demo.html'}")
+    logger.debug(f"Report saved to {params.job_dir / 'demo.html'}")
 
     if params.display_report:
         fig.show()

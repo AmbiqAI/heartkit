@@ -1,11 +1,21 @@
-import keras_edge as kedge
+from typing import Protocol
 
-from .factory import ModelFactory
+import keras
+import neuralspot_edge as nse
 
-ModelFactory.register("unet", kedge.models.unet.unet_from_object)
-ModelFactory.register("unext", kedge.models.unext.unext_from_object)
-ModelFactory.register("resnet", kedge.models.resnet.resnet_from_object)
-ModelFactory.register("efficientnetv2", kedge.models.efficientnet.efficientnetv2_from_object)
-ModelFactory.register("mobileone", kedge.models.mobileone.mobileone_from_object)
-ModelFactory.register("tcn", kedge.models.tcn.tcn_from_object)
-ModelFactory.register("composer", kedge.models.composer.composer_from_object)
+from ..utils import ItemFactory
+
+
+class ModelFactoryItem(Protocol):
+    def __call__(self, x: keras.KerasTensor, params: dict, num_classes: int) -> keras.Model: ...
+
+
+ModelFactory = ItemFactory[ModelFactoryItem].shared("HKModelFactory")
+
+ModelFactory.register("unet", nse.models.unet.unet_from_object)
+ModelFactory.register("unext", nse.models.unext.unext_from_object)
+ModelFactory.register("resnet", nse.models.resnet.resnet_from_object)
+ModelFactory.register("efficientnetv2", nse.models.efficientnet.efficientnetv2_from_object)
+ModelFactory.register("mobileone", nse.models.mobileone.mobileone_from_object)
+ModelFactory.register("tcn", nse.models.tcn.tcn_from_object)
+ModelFactory.register("composer", nse.models.composer.composer_from_object)

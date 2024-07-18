@@ -13,8 +13,6 @@ from ...utils import setup_logger
 from ..utils import load_datasets
 from .datasets import preprocess
 
-logger = setup_logger(__name__)
-
 
 def demo(params: HKDemoParams):
     """Run demo for model
@@ -22,6 +20,7 @@ def demo(params: HKDemoParams):
     Args:
         params (HKDemoParams): Demo parameters
     """
+    logger = setup_logger(__name__, level=params.verbose)
 
     bg_color = "rgba(38,42,50,1.0)"
     primary_color = "#11acd5"
@@ -62,7 +61,7 @@ def demo(params: HKDemoParams):
 
     # Run inference
     runner.open()
-    logger.info("Running inference")
+    logger.debug("Running inference")
     y_preds: list[tuple[int, int, int, float]] = []  # (start, stop, class, prob)
     for i in tqdm(range(0, x.shape[0], params.frame_size), desc="Inference"):
         if i + params.frame_size > x.shape[0]:
@@ -89,7 +88,7 @@ def demo(params: HKDemoParams):
     runner.close()
 
     # Report
-    logger.info("Generating report")
+    logger.debug("Generating report")
     tod = datetime.datetime(2025, 5, 24, random.randint(12, 23), 00)
     ts = np.array([tod + datetime.timedelta(seconds=i / params.sampling_rate) for i in range(x.shape[0])])
 
@@ -148,8 +147,8 @@ def demo(params: HKDemoParams):
         legend=dict(groupclick="toggleitem"),
         title="HeartKit: Rhythm Demo",
     )
-    fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=True)
-    logger.info(f"Report saved to {params.job_dir / 'demo.html'}")
+    fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=False)
+    logger.debug(f"Report saved to {params.job_dir / 'demo.html'}")
 
     if params.display_report:
         fig.show()

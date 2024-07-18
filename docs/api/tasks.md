@@ -1,7 +1,5 @@
 # HeartKit: Tasks
 
-::: heartkit.tasks.factory
-
 ::: heartkit.tasks.rhythm
 
 ::: heartkit.tasks.beat
