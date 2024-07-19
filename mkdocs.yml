@@ -100,6 +100,7 @@ theme:
   name: material
   favicon: assets/favicon.png
   logo: assets/logo-white.png
+  custom_dir: docs/overrides
   icon:
       repo: fontawesome/brands/github-alt
   font:
@@ -161,6 +162,7 @@ plugins:
             show_root_heading: true
   - mkdocs-jupyter:
       include_requirejs: true
+      include_source: true
 
 extra_css:
   - css/mkdocstrings.css

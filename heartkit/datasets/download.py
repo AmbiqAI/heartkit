@@ -3,7 +3,7 @@ import os
 
 from ..defines import HKDownloadParams
 from ..utils import setup_logger
-from .factory import DatasetFactory
+from . import DatasetFactory
 
 logger = setup_logger(__name__)
 
