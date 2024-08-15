@@ -2,10 +2,11 @@
     "name": "arr-4-eff-lg",
     "project": "hk-rhythm-4",
     "job_dir": "./results/arr-4-eff-lg",
+    "verbose": 2,
     "datasets": [{
         "name": "lsad",
-        "path": "./datasets/lsad",
         "params": {
+            "path": "./datasets/lsad"
         }
     }],
     "num_classes": 4,
@@ -20,27 +21,24 @@
     "class_names": [
         "SR", "SB", "AFIB", "GSVT"
     ],
+    "class_weights": "balanced",
     "sampling_rate": 100,
     "frame_size": 800,
-    "model_file": "model.keras",
-    "use_logits": true,
     "samples_per_patient": [5, 5, 5, 10],
-    "val_file": "./results/${task}-class-4-${dataset}-${sampling_rate}fs-${frame_size}sz-noaug.pkl",
-    "test_file": "./results/${task}-class-4-${dataset}-${sampling_rate}fs-${frame_size}sz-noaug.pkl",
     "val_samples_per_patient": [5, 5, 5, 10],
-    "val_patients": 0.20,
     "test_samples_per_patient": [5, 5, 5, 10],
+    "val_patients": 0.20,
+    "val_size": 40000,
     "test_size": 50000,
     "batch_size": 256,
     "buffer_size": 50000,
-    "epochs": 100,
+    "epochs": 150,
     "steps_per_epoch": 50,
     "val_metric": "loss",
     "lr_rate": 1e-3,
     "lr_cycles": 1,
-    "class_weights": "balanced",
     "threshold": 0.5,
-    "val_acc_threshold": 0.98,
+    "val_metric_threshold": 0.98,
     "tflm_var_name": "g_rhythm_model",
     "tflm_file": "rhythm_model_buffer.h",
     "backend": "pc",
@@ -55,23 +53,58 @@
     },
     "preprocesses": [
         {
-            "name": "filter",
+            "name": "layer_norm",
             "params": {
-                "lowcut": 1.0,
-                "highcut": 30,
-                "order": 3,
-                "forward_backward": true,
-                "axis": 0
-            }
-        },
-        {
-            "name": "znorm",
-            "params": {
-                "eps": 0.01,
-                "axis": null
+                "epsilon": 0.01,
+                "name": "znorm"
             }
         }
     ],
+    "augmentations-dis": [{
+        "name": "random_noise_distortion",
+        "params": {
+            "amplitude": [0.01, 0.5],
+            "frequency": [0.5, 1.5],
+            "name": "baseline_wander"
+        }
+    },{
+        "name": "random_sine_wave",
+        "params": {
+            "amplitude": [0.01, 0.05],
+            "frequency": [45, 50],
+            "auto_vectorize": false,
+            "name": "powerline_noise"
+        }
+    },{
+        "name": "amplitude_warp",
+        "params": {
+            "amplitude": [0.99, 1.01],
+            "frequency": [0.5, 1.5],
+            "name": "amplitude_warp"
+        }
+    }, {
+        "name": "random_noise",
+        "params": {
+            "factor": [0.005, 0.05],
+            "name": "random_noise"
+        }
+    }, {
+        "name": "random_background_noise",
+        "params": {
+            "amplitude": [0.005, 0.1],
+            "num_noises": 1,
+            "name": "nstdb"
+        }
+    },{
+        "name": "random_cutout",
+        "params": {
+            "cutouts": 2,
+            "factor": [0.005, 0.01],
+            "name": "cutout"
+        }
+    }],
+    "model_file": "model.keras",
+    "use_logits": true,
     "architecture": {
         "name": "efficientnetv2",
         "params": {
@@ -89,43 +122,5 @@
             "include_top": true,
             "use_logits": true
         }
-    },
-    "augmentations-dis": [
-        {
-            "name": "baseline_wander",
-            "params": {
-                "amplitude": [0.0, 0.2],
-                "frequency": [0.5, 1.5]
-            }
-        },
-        {
-            "name": "powerline_noise",
-            "params": {
-                "amplitude": [0.0, 0.15],
-                "frequency": [45, 50]
-            }
-        },
-        {
-            "name": "burst_noise",
-            "params": {
-                "burst_number": [0, 4],
-                "amplitude": [0.0, 0.1],
-                "frequency": [20, 49]
-            }
-        },
-        {
-            "name": "noise_sources",
-            "params": {
-                "num_sources": [1, 2],
-                "amplitude": [0.0, 0.1],
-                "frequency": [10, 40]
-            }
-        },
-        {
-            "name": "lead_noise",
-            "params": {
-                "scale": [0.05, 0.2]
-            }
-        }
-    ]
+    }
 }

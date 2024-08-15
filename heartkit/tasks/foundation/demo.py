@@ -7,23 +7,21 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from sklearn.manifold import TSNE
 from tqdm import tqdm
+import neuralspot_edge as nse
 
-from ...datasets.utils import uniform_id_generator
-from ...defines import HKDemoParams
+from ...defines import HKTaskParams
 from ...rpc import BackendFactory
-from ...utils import setup_logger
-from ..utils import load_datasets
-from .datasets import preprocess
-
-logger = setup_logger(__name__)
+from ...datasets import DatasetFactory
 
 
-def demo(params: HKDemoParams):
+def demo(params: HKTaskParams):
     """Run demo for model
 
     Args:
-        params (HKDemoParams): Demo parameters
+        params (HKTaskParams): Demo parameters
     """
+
+    logger = nse.utils.setup_logger(__name__, level=params.verbose)
 
     bg_color = "rgba(38,42,50,1.0)"
     # primary_color = "#11acd5"
@@ -35,10 +33,10 @@ def demo(params: HKDemoParams):
     TGT_LEN = 20
 
     # Load backend inference engine
-    runner = BackendFactory.create(params.backend, params=params)
+    runner = BackendFactory.get(params.backend)(params=params)
 
     # load datasets and randomly select one
-    datasets = load_datasets(datasets=params.datasets)
+    datasets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
     ds = random.choice(datasets)
 
     patients: npt.NDArray = ds.get_test_patient_ids()
@@ -49,7 +47,7 @@ def demo(params: HKDemoParams):
     # For each patient, generate TGT_LEN samples
     for i, patient in enumerate(patients):
         ds_gen = ds.signal_generator(
-            patient_generator=uniform_id_generator([patient], repeat=False),
+            patient_generator=nse.utils.uniform_id_generator([patient], repeat=False),
             frame_size=params.frame_size,
             samples_per_patient=TGT_LEN,
             target_rate=params.sampling_rate,
@@ -65,7 +63,7 @@ def demo(params: HKDemoParams):
     logger.debug("Running inference")
     x_p = []
     for i in tqdm(range(0, len(x)), desc="Inference"):
-        x[i] = preprocess(x[i], sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
+        # x[i] = preprocess(x[i], sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
         xx = x[i].copy()
         xx = xx.reshape(feat_shape)
         runner.set_inputs(xx)

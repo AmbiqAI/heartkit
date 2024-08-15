@@ -2,38 +2,57 @@
 
 ## <span class="sk-h2-span">Introduction </span>
 
-Each task provides a mode to train a model on the specified datasets. The training mode can be invoked either via CLI or within `heartkit` python package. At a high level, the training mode performs the following actions based on the provided configuration parameters:
+Each task provides a mode to train a model on the specified datasets and dataloaders. The training mode can be invoked either via CLI or within `heartkit` python package. At a high level, the training mode performs the following actions based on the provided configuration parameters:
 
-1. Load the configuration data (e.g. `rhythm-class-2.json`)
-1. Load the desired datasets (e.g. `icentia11k`)
+<div class="annotate" markdown>
+
+1. Load the configuration data (e.g. `configuration.json`) (1)
+1. Load the desired datasets and task-specific dataloaders (e.g. `icentia11k`)
 1. Load the custom model architecture (e.g. `tcn`)
 1. Train the model
 1. Save the trained model
 1. Generate training report
 
+</div>
+
+1. Configuration parameters:
+--8<-- "assets/usage/json-configuration.md"
+
 ---
 
 ## <span class="sk-h2-span">Usage</span>
 
-!!! Example
+### CLI
 
-    The following command will train a rhythm model using the reference configuration:
+The following command will train a rhythm model using the reference configuration.
 
-    === "CLI"
+```bash
+heartkit --task rhythm --mode train --config ./configuration.json
+```
 
-        ```bash
-        heartkit --task rhythm --mode train --config ./configs/rhythm-class-2.json
-        ```
+### Python
 
-    === "Python"
+The model can be trained using the following snippet:
 
-        --8<-- "assets/modes/python-train-snippet.md"
+```python
+
+task = hk.TaskFactory.get("rhythm")
+
+params = hk.HKTaskParams(...)  # (1)
+
+task.train(params)
+
+```
+
+1. Configuration parameters:
+--8<-- "assets/usage/python-configuration.md"
+
 
 ---
 
 ## <span class="sk-h2-span">Arguments </span>
 
-Please refer to [HKTrainParams](../modes/configuration.md#hktrainparams) for the list of arguments that can be used with the `train` command.
+Please refer to [HKTaskParams](../modes/configuration.md#hktaskparams) for the list of arguments that can be used with the `train` command.
 
 ---
 

@@ -5,23 +5,21 @@ import physiokit as pk
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from tqdm import tqdm
+import neuralspot_edge as nse
 
-from ...datasets.utils import uniform_id_generator
-from ...defines import HKDemoParams
+from ...defines import HKTaskParams
 from ...rpc import BackendFactory
-from ...utils import setup_logger
-from ..utils import load_datasets
-from .datasets import augment, preprocess
+from ...datasets import DatasetFactory, create_augmentation_pipeline
 from .defines import HKSegment
 
 
-def demo(params: HKDemoParams):
+def demo(params: HKTaskParams):
     """Run segmentation demo.
 
     Args:
-        params (HKDemoParams): Demo parameters
+        params (HKTaskParams): Demo parameters
     """
-    logger = setup_logger(__name__, level=params.verbose)
+    logger = nse.utils.setup_logger(__name__, level=params.verbose)
 
     bg_color = "rgba(38,42,50,1.0)"
     primary_color = "#11acd5"
@@ -35,30 +33,30 @@ def demo(params: HKDemoParams):
     params.demo_size = params.demo_size or params.frame_size
 
     # Load backend inference engine
-    runner = BackendFactory.create(params.backend, params=params)
+    runner = BackendFactory.get(params.backend)(params)
 
-    classes = sorted(list(set(params.class_map.values())))
+    classes = sorted(set(params.class_map.values()))
     class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
 
     feat_shape = (params.frame_size, 1)
     class_shape = (params.frame_size, params.num_classes)
 
-    # ds_spec = (
-    #     tf.TensorSpec(shape=feat_shape, dtype=tf.float32),
-    #     tf.TensorSpec(shape=class_shape, dtype=tf.int32),
-    # )
-
-    datasets = load_datasets(datasets=params.datasets)
+    datasets = [DatasetFactory.get(ds.name)(cacheable=False, **ds.params) for ds in params.datasets]
     ds = random.choice(datasets)
 
     ds_gen = ds.signal_generator(
-        patient_generator=uniform_id_generator(ds.get_test_patient_ids(), repeat=False),
+        patient_generator=nse.utils.uniform_id_generator(ds.get_test_patient_ids(), repeat=False),
         frame_size=params.demo_size,
         samples_per_patient=5,
         target_rate=params.sampling_rate,
     )
     x = next(ds_gen)
-    # Run inference
+
+    augmenter = create_augmentation_pipeline(
+        augmentations=params.augmentations + params.preprocesses,
+        sampling_rate=params.sampling_rate,
+    )
+
     runner.open()
     logger.debug("Running inference")
     y_pred = np.zeros(x.size, dtype=np.int32)
@@ -69,11 +67,11 @@ def demo(params: HKDemoParams):
             start, stop = i, i + params.frame_size
         xx = x[start:stop]
         yy = np.zeros(shape=class_shape, dtype=np.int32)
-        xx = augment(x=xx, augmentations=params.augmentations, sample_rate=params.sampling_rate)
-        xx = preprocess(xx, sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
         xx = xx.reshape(feat_shape)
+        xx = augmenter(xx, training=True)
         runner.set_inputs(xx)
         runner.perform_inference()
+        x[start:stop] = xx.numpy().squeeze()
         yy = runner.get_outputs()
         y_pred[start:stop] = np.argmax(yy, axis=-1).flatten()
     # END FOR

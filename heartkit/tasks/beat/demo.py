@@ -1,23 +1,19 @@
 import random
 
+import keras
 import numpy as np
 import numpy.typing as npt
 import physiokit as pk
 import plotly.graph_objects as go
-import tensorflow as tf
 from plotly.subplots import make_subplots
-from rich.console import Console
 from tqdm import tqdm
+import neuralspot_edge as nse
 
-from ...datasets import IcentiaDataset, PtbxlDataset, uniform_id_generator
-from ...defines import HKDemoParams
+from ...datasets import IcentiaDataset, PtbxlDataset, DatasetFactory, create_augmentation_pipeline
+from ...defines import HKTaskParams
 from ...rpc import BackendFactory
-from ...utils import setup_logger
-from ..utils import load_datasets
-from .datasets import preprocess
 
-console = Console()
-logger = setup_logger(__name__)
+logger = nse.utils.setup_logger(__name__)
 
 
 def get_ptbxl_patient_data(
@@ -38,7 +34,7 @@ def get_ptbxl_patient_data(
         data = h5["data"][:]
         blabels = h5[ds.label_key("beat")][:, 0] * 5  # Stored in 100Hz
     # END WITH
-    input_size = int(np.round((ds.sampling_rate / target_rate) * frame_size))
+    input_size = int(np.ceil((ds.sampling_rate / target_rate) * frame_size))
     lead = random.choice(ds.leads)
     start = np.random.randint(0, data.shape[1] - input_size)
     x = data[lead, start : start + input_size].squeeze()
@@ -47,6 +43,7 @@ def get_ptbxl_patient_data(
     if ds.sampling_rate != target_rate:
         ratio = target_rate / ds.sampling_rate
         x = pk.signal.resample_signal(x, ds.sampling_rate, target_rate, axis=0)
+        x = x[:frame_size]  # truncate to frame size
         y = (y * ratio).astype(np.int32)
     # END IF
     return x, y
@@ -70,7 +67,7 @@ def get_icentia11k_patient_data(
     if target_rate is None:
         target_rate = ds.sampling_rate
 
-    input_size = int(np.round((ds.sampling_rate / target_rate) * frame_size))
+    input_size = int(np.ceil((ds.sampling_rate / target_rate) * frame_size))
     label_key = ds.label_key("beat")
 
     with ds.patient_data(patient_id) as segments:
@@ -87,6 +84,7 @@ def get_icentia11k_patient_data(
         if ds.sampling_rate != target_rate:
             ratio = target_rate / ds.sampling_rate
             x = pk.signal.resample_signal(x, ds.sampling_rate, target_rate, axis=0)
+            x = x[:frame_size]  # truncate to frame size
             y = (y * ratio).astype(np.int32)
         # END IF
 
@@ -94,11 +92,11 @@ def get_icentia11k_patient_data(
     return x, y
 
 
-def demo(params: HKDemoParams):
+def demo(params: HKTaskParams):
     """Run demo on model.
 
     Args:
-        params (HKDemoParams): Demo parameters
+        params (HKTaskParams): Demo parameters
     """
 
     bg_color = "rgba(38,42,50,1.0)"
@@ -112,21 +110,15 @@ def demo(params: HKDemoParams):
     params.demo_size = params.demo_size or 20 * params.sampling_rate
 
     # Load backend inference engine
-    runner = BackendFactory.create(params.backend, params=params)
+    runner = BackendFactory.get(params.backend)(params=params)
 
     # Load data
-    # classes = sorted(list(set(params.class_map.values())))
     class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
 
     feat_shape = (params.frame_size, 1)
-    # class_shape = (params.num_classes,)
 
-    # ds_spec = (
-    #     tf.TensorSpec(shape=feat_shape, dtype=tf.float32),
-    #     tf.TensorSpec(shape=class_shape, dtype=tf.int32),
-    # )
+    dsets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
 
-    dsets = load_datasets(datasets=params.datasets)
     ds = random.choice(dsets)
     if ds.name == "ptbxl":
         pt_id = random.choice(ds.get_test_patient_ids())
@@ -147,7 +139,7 @@ def demo(params: HKDemoParams):
     else:
         # Need to manually locate peaks, compute
         ds_gen = ds.signal_generator(
-            patient_generator=uniform_id_generator(ds.get_test_patient_ids(), repeat=False),
+            patient_generator=nse.utils.uniform_id_generator(ds.get_test_patient_ids(), repeat=False),
             frame_size=params.demo_size,
             samples_per_patient=5,
             target_rate=params.sampling_rate,
@@ -159,7 +151,11 @@ def demo(params: HKDemoParams):
     # END IF
 
     rri = pk.ecg.compute_rr_intervals(peaks)
-    # mask = pk.ecg.filter_rr_intervals(rri, sample_rate=params.sampling_rate)
+
+    augmenter = create_augmentation_pipeline(
+        params.augmentations + params.preprocesses,
+        sampling_rate=params.sampling_rate,
+    )
 
     # Run inference
     runner.open()
@@ -174,16 +170,12 @@ def demo(params: HKDemoParams):
             y_prob[i] = 0.0
             continue
         xx = x[start:stop]
-        xx = preprocess(
-            x[start:stop],
-            sample_rate=params.sampling_rate,
-            preprocesses=params.preprocesses,
-        )
         xx = xx.reshape(feat_shape)
+        xx = augmenter(xx)
         runner.set_inputs(xx)
         runner.perform_inference()
         yy = runner.get_outputs()
-        yy = tf.nn.softmax(yy).numpy()
+        yy = keras.ops.softmax(yy).numpy()
         y_pred[i] = np.argmax(yy, axis=-1)
         y_prob[i] = yy[y_pred[i]]
         if y_prob[i] < params.threshold:

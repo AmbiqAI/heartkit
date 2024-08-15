@@ -31,6 +31,19 @@ The objective of segmentation is to delineate key segments of the signal. In the
 * __Diastolic Phase__: Reflects the relaxation of the heart
 * __Dicrotic Notch__: Reflects the closure of the aortic valve
 
+---
+
+## <span class="sk-h2-span">Dataloaders</span>
+
+Dataloaders are available for the following datasets:
+
+* **[LUDB](../datasets/ludb.md)**
+* **[QTDB](../datasets/qtdb.md)**
+* **[ECG Synthetic](../datasets/synthetic.md)**
+* **[PPG Synthetic](../datasets/synthetic.md)**
+
+---
+
 ## <span class="sk-h2-span">Pre-Trained Models</span>
 
 The following table provides the latest performance and accuracy results for segmentation models. Additional result details can be found in [Model Zoo → Segmentation](../zoo/segmentation.md).

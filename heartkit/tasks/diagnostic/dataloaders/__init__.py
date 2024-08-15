@@ -1,2 +1,10 @@
-from .lsad import lsad_data_generator, lsad_label_map
-from .ptbxl import ptbxl_data_generator, ptbxl_label_map
+import neuralspot_edge as nse
+
+from ....datasets import HKDataloader
+
+from .ptbxl import PtbxlDataloader
+from .lsad import LsadDataloader
+
+DiagnosticDataloaderFactory = nse.utils.create_factory(factory="HKDiagnosticDataloaderFactory", type=HKDataloader)
+DiagnosticDataloaderFactory.register("ptbxl", PtbxlDataloader)
+DiagnosticDataloaderFactory.register("lsad", LsadDataloader)

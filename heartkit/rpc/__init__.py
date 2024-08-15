@@ -1,11 +1,11 @@
+import neuralspot_edge as nse
+
 from . import GenericDataOperations_EvbToPc as evb2pc
 from . import GenericDataOperations_PcToEvb as pc2evb
 from . import utils
-from .backends import DemoBackend, EvbBackend, PcBackend
+from .backends import HKInferenceBackend, EvbBackend, PcBackend
 
-from ..utils import create_factory
-
-BackendFactory = create_factory("HKDemoBackend", DemoBackend)
+BackendFactory = nse.utils.create_factory("HKDemoBackend", HKInferenceBackend)
 
 BackendFactory.register("pc", PcBackend)
 BackendFactory.register("evb", EvbBackend)

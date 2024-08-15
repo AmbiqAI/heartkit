@@ -1,4 +1,4 @@
-from ...defines import HKDemoParams, HKExportParams, HKTestParams, HKTrainParams
+from ...defines import HKTaskParams
 from ..task import HKTask
 from .defines import HKBeat
 from .demo import demo
@@ -11,17 +11,24 @@ class BeatTask(HKTask):
     """HeartKit Beat Task"""
 
     @staticmethod
-    def train(params: HKTrainParams):
+    def description() -> str:
+        return (
+            "This task is used to train, evaluate, and export beat models."
+            "Beat includes normal, pac, pvc, and other beats."
+        )
+
+    @staticmethod
+    def train(params: HKTaskParams):
         train(params)
 
     @staticmethod
-    def evaluate(params: HKTestParams):
+    def evaluate(params: HKTaskParams):
         evaluate(params)
 
     @staticmethod
-    def export(params: HKExportParams):
+    def export(params: HKTaskParams):
         export(params)
 
     @staticmethod
-    def demo(params: HKDemoParams):
+    def demo(params: HKTaskParams):
         demo(params)

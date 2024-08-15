@@ -10,14 +10,6 @@ nav:
   - Home:
     - Home: index.md
     - Quickstart: quickstart.md
-    - Modes:
-      - modes/index.md
-      - Configuration: modes/configuration.md
-      - Download: modes/download.md
-      - Train: modes/train.md
-      - Evaluate: modes/evaluate.md
-      - Export: modes/export.md
-      - Demo: modes/demo.md
     - Tasks:
       - tasks/index.md
       - Denoise: tasks/denoise.md
@@ -26,29 +18,30 @@ nav:
       - Beat: tasks/beat.md
       # - Diagnostic: tasks/diagnostic.md
       - BYOT: tasks/byot.md
-    - Model Zoo:
-      - zoo/index.md
-    - Models:
-      - models/index.md
+    - Modes:
+      - modes/index.md
+      - Configuration: modes/configuration.md
+      - Download: modes/download.md
+      - Train: modes/train.md
+      - Evaluate: modes/evaluate.md
+      - Export: modes/export.md
+      - Demo: modes/demo.md
     - Datasets:
       - datasets/index.md
+    - Models:
+      - models/index.md
+    - Model Zoo:
+      - zoo/index.md
     - Guides:
       - guides/index.md
+    - API:
+      - api/index.md
 
   - Quickstart:
     - quickstart.md
     - Usage:
       - CLI: usage/cli.md
       - Python: usage/python.md
-
-  - Modes:
-    - modes/index.md
-    - Configuration: modes/configuration.md
-    - Download: modes/download.md
-    - Train: modes/train.md
-    - Evaluate: modes/evaluate.md
-    - Export: modes/export.md
-    - Demo: modes/demo.md
 
   - Tasks:
     - tasks/index.md
@@ -59,16 +52,14 @@ nav:
     # - Diagnostic: tasks/diagnostic.md
     - BYOT: tasks/byot.md
 
-  - Model Zoo:
-    - zoo/index.md
-    - Denoise: zoo/denoise.md
-    - Segmentation: zoo/segmentation.md
-    - Rhythm: zoo/rhythm.md
-    - Beat: zoo/beat.md
-    # - Diagnostic: zoo/diagnostic.md
-
-  - Models:
-    - models/index.md
+  - Modes:
+    - modes/index.md
+    - Configuration: modes/configuration.md
+    - Download: modes/download.md
+    - Train: modes/train.md
+    - Evaluate: modes/evaluate.md
+    - Export: modes/export.md
+    - Demo: modes/demo.md
 
   - Datasets:
     - datasets/index.md
@@ -81,6 +72,18 @@ nav:
     - MIT-BIH: datasets/mitbih.md
     - BYOD: datasets/byod.md
 
+  - Models:
+    - models/index.md
+    - BYOM: models/byom.md
+
+  - Model Zoo:
+    - zoo/index.md
+    - Denoise: zoo/denoise.md
+    - Segmentation: zoo/segmentation.md
+    - Rhythm: zoo/rhythm.md
+    - Beat: zoo/beat.md
+    # - Diagnostic: zoo/diagnostic.md
+
   - Guides:
     - guides/index.md
     - EVB Setup: guides/evb-setup.md
@@ -90,11 +93,31 @@ nav:
     - Train ECG Denoiser: guides/train-ecg-denoiser.ipynb
     - Train ECG Segmentation Model: guides/train-ecg-segmentation.ipynb
 
-  - Reference:
+  - API:
     - HeartKit: api/heartkit.md
-    - Datasets: api/datasets.md
-    - Models: api/models.md
-    - Tasks: api/tasks.md
+    - Datasets:
+      - Dataset: api/datasets/dataset.md
+      - DatasetFactory: api/datasets/factory.md
+      - Dataloader: api/datasets/dataloader.md
+      - Augmentations: api/datasets/augmentation.md
+      - Synthetic: api/datasets/synthetic.md
+      - Icentia11k: api/datasets/icentia11k.md
+      - QTDB: api/datasets/qtdb.md
+      - LUDB: api/datasets/ludb.md
+      - LSAD: api/datasets/lsad.md
+      - PTB-XL: api/datasets/ptbxl.md
+    - Models:
+      - Model: api/models/model.md
+      - ModelFactory: api/models/factory.md
+    - Tasks:
+      - Task: api/tasks/task.md
+      - TaskFactory: api/tasks/factory.md
+      - Beat: api/tasks/beat.md
+      - Denoise: api/tasks/denoise.md
+      - Foundation: api/tasks/foundation.md
+      - Segmentation: api/tasks/segmentation.md
+      - Rhythm: api/tasks/rhythm.md
+
 
 theme:
   name: material
@@ -139,12 +162,14 @@ theme:
     - navigation.tabs
     - navigation.tabs.sticky
     - navigation.prune
+    - navigation.path
+
     - navigation.footer
     - navigation.tracking
     - navigation.instant
     - navigation.instant.progress
     - navigation.indexes
-    - navigation.sections  # navigation.expand or navigation.sections
+    - navigation.expand  # navigation.expand or navigation.sections
     - content.tabs.link # all code tabs change simultaneously
 
 plugins:
@@ -156,10 +181,28 @@ plugins:
           - https://docs.python.org/3/objects.inv
           - https://numpy.org/doc/stable/objects.inv
           options:
+            show_bases: false
+            show_root_heading: false
+            parameter_headings: true
+            show_root_toc_entry: false
+            show_symbol_type_toc: false
+            group_by_category: true
+            show_category_heading: true
             docstring_style: google
-            docstring_section_style: list
-            line_length: 92
-            show_root_heading: true
+            docstring_section_style: table
+            members_order: source
+            filters: ["!^_", "^__init__$"]
+            line_length: 120
+            heading_level: 3
+            merge_init_into_class: true
+            show_root_full_path: false
+            show_symbol_type_heading: false
+            modernize_annotations: true
+            show_signature: true
+            show_signature_annotations: false
+            separate_signature: false
+            show_source: true
+
   - mkdocs-jupyter:
       include_requirejs: true
       include_source: true

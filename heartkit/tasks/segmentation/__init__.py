@@ -1,4 +1,4 @@
-from ...defines import HKDemoParams, HKExportParams, HKTestParams, HKTrainParams
+from ...defines import HKTaskParams
 from ..task import HKTask
 from .defines import HKSegment
 from .demo import demo
@@ -11,17 +11,17 @@ class SegmentationTask(HKTask):
     """HeartKit Segmentation Task"""
 
     @staticmethod
-    def train(params: HKTrainParams):
+    def train(params: HKTaskParams):
         train(params)
 
     @staticmethod
-    def evaluate(params: HKTestParams):
+    def evaluate(params: HKTaskParams):
         evaluate(params)
 
     @staticmethod
-    def export(params: HKExportParams):
+    def export(params: HKTaskParams):
         export(params)
 
     @staticmethod
-    def demo(params: HKDemoParams):
+    def demo(params: HKTaskParams):
         demo(params)

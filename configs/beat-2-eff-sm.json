@@ -1,11 +1,13 @@
 {
     "name": "beat-2-eff-sm",
     "project": "hk-beat-2",
+    "verbose": 2,
     "job_dir": "./results/beat-2-eff-sm",
     "datasets": [{
         "name": "icentia11k",
-        "path": "./datasets/icentia11k",
-        "params": {}
+        "params": {
+            "path": "./datasets/icentia11k"
+        }
     }],
     "num_classes": 2,
     "class_map": {
@@ -16,33 +18,29 @@
     "class_names": [
         "QRS", "PAC/PVC"
     ],
+    "class_weights": "balanced",
     "sampling_rate": 100,
     "frame_size": 512,
-    "model_file": "model.keras",
-    "use_logits": false,
     "samples_per_patient": [20, 20],
     "val_samples_per_patient": [20, 20],
-    "val_file": "./results/${task}-class-2-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
-    "test_file": "./results/${task}-class-2-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
-    "val_patients": 0.20,
-    "val_size": 24000,
     "test_samples_per_patient": [20, 20],
+    "val_patients": 0.20,
+    "val_size": 30000,
     "test_size": 30000,
     "batch_size": 256,
-    "buffer_size": 80000,
+    "buffer_size": 10000,
     "epochs": 150,
     "steps_per_epoch": 50,
     "val_metric": "loss",
     "lr_rate": 1e-3,
     "lr_cycles": 1,
-    "class_weights": "balanced",
     "threshold": 0.60,
     "val_acc_threshold": 0.98,
     "tflm_var_name": "g_beat_model",
     "tflm_file": "beat_model_buffer.h",
     "backend": "pc",
     "demo_size": 1024,
-    "display_report": false,
+    "display_report": true,
     "quantization": {
         "qat": false,
         "mode": "FP32",
@@ -52,23 +50,15 @@
     },
     "preprocesses": [
         {
-            "name": "filter",
+            "name": "layer_norm",
             "params": {
-                "lowcut": 1.0,
-                "highcut": 30,
-                "order": 3,
-                "forward_backward": true,
-                "axis": 0
-            }
-        },
-        {
-            "name": "znorm",
-            "params": {
-                "eps": 0.01,
-                "axis": null
+                "epsilon": 0.01,
+                "name": "znorm"
             }
         }
     ],
+    "model_file": "model.keras",
+    "use_logits": false,
     "architecture": {
         "name": "efficientnetv2",
         "params": {

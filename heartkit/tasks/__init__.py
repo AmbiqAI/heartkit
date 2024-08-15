@@ -1,3 +1,7 @@
+import neuralspot_edge as nse
+
+from . import beat, denoise, diagnostic, foundation, rhythm, segmentation
+
 from .beat import BeatTask, HKBeat
 from .denoise import DenoiseTask
 from .diagnostic import DiagnosticTask, HKDiagnostic
@@ -6,10 +10,8 @@ from .rhythm import HKRhythm, RhythmTask
 from .segmentation import HKSegment, SegmentationTask
 from .task import HKTask
 from .translate import HKTranslate, TranslateTask
-from .utils import load_datasets
-from ..utils import create_factory
 
-TaskFactory = create_factory(factory="HKTaskFactory", type=HKTask)
+TaskFactory = nse.utils.create_factory(factory="HKTaskFactory", type=HKTask)
 
 TaskFactory.register("rhythm", RhythmTask)
 TaskFactory.register("beat", BeatTask)

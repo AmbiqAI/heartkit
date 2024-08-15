@@ -1,12 +1,10 @@
 import contextlib
 import functools
-import logging
 import os
 import random
 import tempfile
 import zipfile
 from enum import IntEnum
-from multiprocessing import Pool
 from typing import Generator
 
 import h5py
@@ -15,14 +13,13 @@ import numpy.typing as npt
 import physiokit as pk
 import sklearn.model_selection
 import sklearn.preprocessing
-from tqdm import tqdm
+from tqdm.contrib.concurrent import process_map
+import neuralspot_edge as nse
 
-from ..utils import download_file
 from .dataset import HKDataset
 from .defines import PatientGenerator
-from .utils import download_s3_objects
 
-logger = logging.getLogger(__name__)
+logger = nse.utils.setup_logger(__name__)
 
 
 class IcentiaRhythm(IntEnum):
@@ -51,14 +48,17 @@ IcentiaLeadsMap = {
 
 
 class IcentiaDataset(HKDataset):
-    """Icentia dataset"""
-
     def __init__(
         self,
-        ds_path: os.PathLike,
         leads: list[int] | None = None,
+        **kwargs,
     ) -> None:
-        super().__init__(ds_path=ds_path)
+        """Icentia11kDataset consists of ECG recordings from 11,000 patients and 2 billion labelled beats.
+
+        Args:
+            leads (list[int] | None, optional): List of leads to include. Defaults to None.
+        """
+        super().__init__(**kwargs)
         self.leads = leads or list(IcentiaLeadsMap.values())
 
     @property
@@ -107,10 +107,11 @@ class IcentiaDataset(HKDataset):
         return self.patient_ids[10_000:]
 
     def _pt_key(self, patient_id: int):
+        """Get patient key for HDF5 file"""
         return f"p{patient_id:05d}"
 
     def label_key(self, label_type: str = "rhythm") -> str:
-        """Get label key
+        """Get local label key for HDF5 file
 
         Args:
             label_type (str, optional): Label type. Defaults to "rhythm".
@@ -128,13 +129,19 @@ class IcentiaDataset(HKDataset):
     def patient_data(self, patient_id: int) -> Generator[h5py.Group, None, None]:
         """Get patient data
 
+        Patient data is stored in HDF5 format with the following structure:
+            - {segment_id}/data: ECG data (1 x N)
+            - {segment_id}/rlabels: Rhythm labels (N x 2)
+            - {segment_id}/blabels: Beat labels (N x 2)
+        segment_id is sequential number for each segment in the patient data.
+
         Args:
             patient_id (int): Patient ID
 
         Returns:
             Generator[h5py.Group, None, None]: Patient data
         """
-        with h5py.File(self.ds_path / f"{self._pt_key(patient_id)}.h5", mode="r") as h5:
+        with h5py.File(self.path / f"{self._pt_key(patient_id)}.h5", mode="r") as h5:
             yield h5[self._pt_key(patient_id)]
 
     def signal_generator(
@@ -147,7 +154,7 @@ class IcentiaDataset(HKDataset):
         """Generate random frames.
 
         Args:
-            patient_generator (PatientGenerator): Patient generator
+            patient_generator (PatientGenerator): Generator that yields patient data.
             frame_size (int): Frame size
             samples_per_patient (int, optional): Samples per patient. Defaults to 1.
             target_rate (int | None, optional): Target rate. Defaults to None.
@@ -158,7 +165,7 @@ class IcentiaDataset(HKDataset):
         if target_rate is None:
             target_rate = self.sampling_rate
 
-        input_size = int(np.round((self.sampling_rate / target_rate) * frame_size))
+        input_size = int(np.ceil((self.sampling_rate / target_rate) * frame_size))
         for pt in patient_generator:
             with self.patient_data(pt) as segments:
                 for _ in range(samples_per_patient):
@@ -170,6 +177,7 @@ class IcentiaDataset(HKDataset):
                     x = np.nan_to_num(x).astype(np.float32)
                     if self.sampling_rate != target_rate:
                         x = pk.signal.resample_signal(x, self.sampling_rate, target_rate, axis=0)
+                        x = x[:frame_size]
                     # END IF
                     yield x
                 # END FOR
@@ -185,10 +193,10 @@ class IcentiaDataset(HKDataset):
             num_workers (int | None, optional): # parallel workers. Defaults to None.
             force (bool, optional): Force redownload. Defaults to False.
         """
-        download_s3_objects(
+        nse.utils.download_s3_objects(
             bucket="ambiq-ai-datasets",
-            prefix=self.ds_path.stem,
-            dst=self.ds_path.parent,
+            prefix=self.path.stem,
+            dst=self.path.parent,
             checksum="size",
             progress=True,
             num_workers=num_workers,
@@ -284,8 +292,7 @@ class IcentiaDataset(HKDataset):
         """
         ids = patient_ids.tolist()
         func = functools.partial(self.get_patient_labels, label_map=label_map, label_type=label_type)
-        with Pool() as pool:
-            pts_labels = list(pool.imap(func, ids))
+        pts_labels = process_map(func, ids)
         return pts_labels
 
     def get_patient_labels(self, patient_id: int, label_map: dict[int, int], label_type: str = "rhythm") -> list[int]:
@@ -328,14 +335,14 @@ class IcentiaDataset(HKDataset):
             "https://physionet.org/static/published-projects/icentia11k-continuous-ecg/"
             "icentia11k-single-lead-continuous-raw-electrocardiogram-dataset-1.0.zip"
         )
-        ds_zip_path = self.ds_path / "icentia11k.zip"
-        os.makedirs(self.ds_path, exist_ok=True)
+        ds_zip_path = self.path / "icentia11k.zip"
+        os.makedirs(self.path, exist_ok=True)
         if os.path.exists(ds_zip_path) and not force:
             logger.warning(
                 f"Zip file already exists. Please delete or set `force` flag to redownload. PATH={ds_zip_path}"
             )
         else:
-            download_file(ds_url, ds_zip_path, progress=True)
+            nse.utils.download_file(ds_url, ds_zip_path, progress=True)
 
         # 2. Extract and convert patient ECG data to H5 files
         logger.debug("Generating icentia11k patient data")
@@ -376,7 +383,7 @@ class IcentiaDataset(HKDataset):
 
         logger.debug(f"Processing patient {patient}")
         pt_id = self._pt_key(patient)
-        pt_path = self.ds_path / f"{pt_id}.h5"
+        pt_path = self.path / f"{pt_id}.h5"
         if not force and os.path.exists(pt_path):
             logger.debug(f"Skipping patient {pt_id}")
             return
@@ -450,5 +457,4 @@ class IcentiaDataset(HKDataset):
         if not patient_ids:
             patient_ids = self.patient_ids
         f = functools.partial(self._convert_dataset_pt_zip_to_hdf5, zip_path=zip_path, force=force)
-        with Pool(processes=num_workers) as pool:
-            _ = list(tqdm(pool.imap(f, patient_ids), total=len(patient_ids)))
+        _ = process_map(f, patient_ids)

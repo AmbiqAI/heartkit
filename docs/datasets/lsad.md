@@ -6,6 +6,35 @@ The large scale arrhythmia database (LSAD) is a large-scale, multi-center, multi
 
 Please visit [Physionet](https://physionet.org/content/ecg-arrhythmia/1.0.0/) for more details.
 
+## <span class="sk-h2-span">Usage</span>
+
+!!! Example Python
+
+    ```python
+    from pathlib import Path
+    import neuralspot_edge as nse
+    import heartkit as hk
+
+    ds = hk.DatasetFactory.get('lsad')(
+        path=Path("./datasets/lsad")
+    )
+
+    # Download dataset
+    ds.download(force=False)
+
+    # Create signal generator
+    data_gen = self.ds.signal_generator(
+        patient_generator=nse.utils.uniform_id_generator(ds.patient_ids, repeat=True, shuffle=True),
+        frame_size=256,
+        samples_per_patient=5,
+        target_rate=100,
+    )
+
+    # Grab single ECG sample
+    ecg = next(data_gen)
+
+    ```
+
 ## <span class="sk-h2-span">Statistics</span>
 
 | Acronym Name | Full Name | Frequency, n(%) | Age, Mean ± SD |Male,n(%) |
@@ -29,23 +58,3 @@ This dataset received funding from the Kay Family Foundation Data Analytic Grant
 ## <span class="sk-h2-span">License</span>
 
 The dataset is available under [Creative Commons Attribution 4.0 International Public License](https://physionet.org/content/ecg-arrhythmia/view-license/1.0.0/)
-
-## <span class="sk-h2-span">Supported Tasks</span>
-
-* [Rhythm](../tasks/rhythm.md)
-
-## <span class="sk-h2-span">Usage</span>
-
-!!! Example Python
-
-    ```python
-    from pathlib import Path
-    import heartkit as hk
-
-    # Download dataset
-    hk.datasets.download_datasets(hk.HKDownloadParams(
-        ds_path=Path("./datasets"),
-        datasets=["lsad"],
-        progress=True
-    ))
-    ```

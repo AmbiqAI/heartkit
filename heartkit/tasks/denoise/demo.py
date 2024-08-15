@@ -2,25 +2,22 @@ import random
 
 import numpy as np
 import plotly.graph_objects as go
-import tensorflow as tf
 from plotly.subplots import make_subplots
 from tqdm import tqdm
+import neuralspot_edge as nse
 
-from ...datasets.utils import uniform_id_generator
-from ...defines import HKDemoParams
+from ...defines import HKTaskParams
 from ...rpc import BackendFactory
-from ...utils import setup_logger
-from ..utils import load_datasets
-from .datasets import prepare
+from ...datasets import DatasetFactory, create_augmentation_pipeline
 
 
-def demo(params: HKDemoParams):
+def demo(params: HKTaskParams):
     """Run segmentation demo.
 
     Args:
-        params (HKDemoParams): Demo parameters
+        params (HKTaskParams): Demo parameters
     """
-    logger = setup_logger(__name__, level=params.verbose)
+    logger = nse.utils.setup_logger(__name__, level=params.verbose)
 
     bg_color = "rgba(38,42,50,1.0)"
     primary_color = "#11acd5"
@@ -32,36 +29,35 @@ def demo(params: HKDemoParams):
     params.demo_size = params.demo_size or 10 * params.sampling_rate
 
     # Load backend inference engine
-    runner = BackendFactory.create(params.backend, params=params)
-
-    feat_shape = (params.demo_size, 1)
-    class_shape = (params.demo_size, 1)
-
-    ds_spec = (
-        tf.TensorSpec(shape=feat_shape, dtype="float32"),
-        tf.TensorSpec(shape=class_shape, dtype="float32"),
-    )
+    runner = BackendFactory.get(params.backend)(params=params)
 
     # Load data
-    dsets = load_datasets(datasets=params.datasets)
-    ds = random.choice(dsets)
+    datasets = [DatasetFactory.get(ds.name)(cacheable=False, **ds.params) for ds in params.datasets]
+    ds = random.choice(datasets)
 
     ds_gen = ds.signal_generator(
-        patient_generator=uniform_id_generator(ds.get_test_patient_ids(), repeat=False),
+        patient_generator=nse.utils.uniform_id_generator(ds.get_test_patient_ids(), repeat=False),
         frame_size=params.demo_size,
         samples_per_patient=5,
         target_rate=params.sampling_rate,
     )
     x = next(ds_gen)
+    x = np.nan_to_num(x, neginf=0, posinf=0).astype(np.float32)
+    x = np.reshape(x, (-1, 1))
+    y_act = x.copy()
 
-    x, y_act = prepare(
-        (x, x),
-        sample_rate=params.sampling_rate,
-        preprocesses=params.preprocesses,
-        augmentations=params.augmentations,
-        spec=ds_spec,
-        num_classes=params.num_classes,
+    preprocessor = create_augmentation_pipeline(
+        params.preprocesses,
+        sampling_rate=params.sampling_rate,
     )
+    augmenter = create_augmentation_pipeline(
+        params.augmentations,
+        sampling_rate=params.sampling_rate,
+    )
+
+    x = preprocessor(augmenter(x)).numpy()
+    y_act = preprocessor(y_act).numpy()
+
     x = x.flatten()
     y_act = y_act.flatten()
 

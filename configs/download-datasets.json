@@ -1,23 +1,29 @@
 {
-    "ds_path": "./datasets",
     "datasets": [{
         "name": "icentia11k",
-        "path": "./datasets/icentia11k"
+        "params": {
+            "path": "./datasets/icentia11k"
+        }
     }, {
         "name": "ludb",
-        "path": "./datasets/ludb"
+        "path": {
+            "path": "./datasets/ludb"
+        }
     }, {
         "name": "qtdb",
-        "path": "./datasets/qtdb"
+        "params": {
+            "path": "./datasets/qtdb"
+        }
     }, {
         "name": "ptbxl",
-        "path": "./datasets/ptbxl"
+        "params": {
+            "path": "./datasets/ptbxl"
+        }
     }, {
         "name": "lsad",
-        "path": "./datasets/lsad"
-    }, {
-        "name": "synthetic",
-        "path": "./datasets/synthetic"
+        "params": {
+            "path": "./datasets/lsad"
+        }
     }],
     "progress": true
 }

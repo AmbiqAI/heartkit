@@ -13,7 +13,7 @@ HeartKit CLI Options:
 
 </div>
 
-The HeartKit command line interface (CLI) makes it easy to run a variety of single-line commands without the need for writing any code. You can run all tasks and modes from the terminal with the `heartkit` command.
+The HeartKit command line interface (CLI) makes it easy to run a variety of single-line commands without the need for writing any code. You can run all built-in tasks and modes from the terminal with the `heartkit` command. This is also useful to reproduce [Model Zoo](../zoo/index.md) results.
 
 !!! example
 
@@ -47,21 +47,21 @@ The HeartKit command line interface (CLI) makes it easy to run a variety of sing
         Train a rhythm model using the supplied configuration file.
 
         ```bash
-        heartkit -m train -t rhythm -c ./configs/rhythm-class-2.json
+        heartkit -m train -t rhythm -c ./configuration.json
         ```
 
     === "Evaluate"
         Evaluate the rhythm model using the supplied configuration file.
 
         ```bash
-        heartkit -m evaluate -t rhythm  -c ./configs/rhythm-class-2.json
+        heartkit -m evaluate -t rhythm  -c ./configuration.json
         ```
 
     === "Demo"
         Run demo on trained rhythm model using the supplied configuration file.
 
         ```bash
-        heartkit -m demo -t rhythm -c ./configs/rhythm-class-2.json
+        heartkit -m demo -t rhythm -c ./configuration.json
         ```
 
 
@@ -95,7 +95,7 @@ The `train` command is used to train a HeartKit model for the specified `task` a
     The following command will train a rhythm model using the reference configuration:
 
     ```bash
-    heartkit --task rhythm --mode train --config ./configs/rhythm-class-2.json
+    heartkit --task rhythm --mode train --config ./configuration.json
     ```
 
 ---
@@ -109,7 +109,7 @@ The `evaluate` command will test the performance of the model on the reserved te
     The following command will test the rhythm model using the reference configuration:
 
     ```bash
-    heartkit --task rhythm --mode evaluate --config ./configs/rhythm-class-2.json
+    heartkit --task rhythm --mode evaluate --config ./configuration.json
     ```
 
 ---
@@ -123,7 +123,7 @@ The `export` command will convert the trained TensorFlow model into both TensorF
     The following command will export the rhythm model to TF Lite and TFLM:
 
     ```bash
-    heartkit --task rhythm --mode export --config ./configs/rhythm-class-2.json
+    heartkit --task rhythm --mode export --config ./configuration.json
     ```
 
 ---
@@ -138,7 +138,7 @@ The `demo` command is used to run a task-level demonstration using either the PC
     The following command will run a demo on the trained rhythm model using the same supplied configuration file.
 
     ```bash
-    heartkit --task rhythm --mode demo --config ./configs/rhythm-class-2.json
+    heartkit --task rhythm --mode demo --config ./configuration.json
     ```
 
 ---

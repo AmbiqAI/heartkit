@@ -1,3 +1,14 @@
-from .icentia11k import icentia11k_data_generator, icentia11k_label_map
-from .lsad import lsad_data_generator, lsad_label_map
-from .ptbxl import ptbxl_data_generator, ptbxl_label_map
+import neuralspot_edge as nse
+
+from ....datasets import HKDataloader
+
+from .icentia11k import Icentia11kDataloader
+from .icentia_mini import IcentiaMiniDataloader
+from .ptbxl import PtbxlDataloader
+from .lsad import LsadDataloader
+
+RhythmDataloaderFactory = nse.utils.create_factory(factory="HKRhythmDataloaderFactory", type=HKDataloader)
+RhythmDataloaderFactory.register("icentia11k", Icentia11kDataloader)
+RhythmDataloaderFactory.register("icentia_mini", IcentiaMiniDataloader)
+RhythmDataloaderFactory.register("ptbxl", PtbxlDataloader)
+RhythmDataloaderFactory.register("lsad", LsadDataloader)

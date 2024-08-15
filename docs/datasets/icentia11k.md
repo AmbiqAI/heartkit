@@ -6,6 +6,39 @@ This dataset consists of ECG recordings from 11,000 patients and 2 billion label
 
 More info available on [PhysioNet website](https://physionet.org/content/icentia11k-continuous-ecg/1.0)
 
+## <span class="sk-h2-span">Usage</span>
+
+!!! Example Python
+
+    ```python
+    from pathlib import Path
+    import neuralspot_edge as nse
+    import heartkit as hk
+
+    ds = hk.DatasetFactory.get('icentia11k')(
+        path=Path("./datasets/icentia11k")
+    )
+
+    # Download dataset
+    ds.download(force=False)
+
+    # Create signal generator
+    data_gen = self.ds.signal_generator(
+        patient_generator=nse.utils.uniform_id_generator(ds.patient_ids, repeat=True, shuffle=True),
+        frame_size=256,
+        samples_per_patient=5,
+        target_rate=100,
+    )
+
+    # Grab single ECG sample
+    ecg = next(data_gen)
+
+    ```
+
+???+ note
+    The __Icentia11k dataset__ requires roughly 200 GB of disk space and can take around 2 hours to download.
+
+
 ## <span class="sk-h2-span">Funding</span>
 
 This work is partially funded by a grant from Icentia, Fonds de Recherche en Santé du Québec, and the Institute of Data Valorization (IVADO).
@@ -15,30 +48,11 @@ This work is partially funded by a grant from Icentia, Fonds de Recherche en San
 The Icentia11k dataset is available for non-commercial use only.
 [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](https://physionet.org/content/icentia11k-continuous-ecg/view-license/1.0/)
 
-## <span class="sk-h2-span">Supported Tasks</span>
+<!-- ## <span class="sk-h2-span">Supported Tasks</span>
 
 * [Rhythm](../tasks/rhythm.md)
 * [Beat](../tasks/beat.md)
-* [2-Class Segmentation](../tasks/segmentation.md)
+* [2-Class Segmentation](../tasks/segmentation.md) -->
 
 !!! warning
     The dataset is intended for evaluation purposes only and cannot be used for commercial use without permission. Please visit [Physionet](https://physionet.org/content/icentia11k-continuous-ecg/1.0) for more details.
-
-## <span class="sk-h2-span">Usage</span>
-
-!!! Example Python
-
-    ```python
-    from pathlib import Path
-    import heartkit as hk
-
-    # Download dataset
-    hk.datasets.download_datasets(hk.HKDownloadParams(
-        ds_path=Path("./datasets"),
-        datasets=["icentia11k"],
-        progress=True
-    ))
-    ```
-
-???+ note
-    The __Icentia11k dataset__ requires roughly 200 GB of disk space and can take around 2 hours to download.

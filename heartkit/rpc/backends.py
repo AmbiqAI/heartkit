@@ -6,13 +6,12 @@ import neuralspot_edge as nse
 import numpy as np
 import numpy.typing as npt
 
-from ..defines import HKDemoParams
-from ..utils import setup_logger
+from ..defines import HKTaskParams
 from . import GenericDataOperations_PcToEvb as pc2evb
 from . import erpc
 from .utils import get_serial_transport
 
-logger = setup_logger(__name__)
+logger = nse.utils.setup_logger(__name__)
 
 
 class RpcCommands(IntEnum):
@@ -25,10 +24,10 @@ class RpcCommands(IntEnum):
     PERFORM_INFERENCE = 4
 
 
-class DemoBackend(abc.ABC):
+class HKInferenceBackend(abc.ABC):
     """Demo backend base class"""
 
-    def __init__(self, params: HKDemoParams) -> None:
+    def __init__(self, params: HKTaskParams) -> None:
         self.params = params
 
     def open(self):
@@ -52,10 +51,10 @@ class DemoBackend(abc.ABC):
         raise NotImplementedError
 
 
-class EvbBackend(DemoBackend):
+class EvbBackend(HKInferenceBackend):
     """Demo backend for EVB"""
 
-    def __init__(self, params: HKDemoParams) -> None:
+    def __init__(self, params: HKTaskParams) -> None:
         super().__init__(params=params)
         self._interpreter = None
         self._transport = None
@@ -148,10 +147,10 @@ class EvbBackend(DemoBackend):
         return outputs
 
 
-class PcBackend(DemoBackend):
+class PcBackend(HKInferenceBackend):
     """Demo backend for PC"""
 
-    def __init__(self, params: HKDemoParams) -> None:
+    def __init__(self, params: HKTaskParams) -> None:
         super().__init__(params=params)
         self._inputs = None
         self._outputs = None

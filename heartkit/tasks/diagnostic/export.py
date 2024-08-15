@@ -1,59 +1,43 @@
-import logging
 import os
 import shutil
 
-import keras
 import numpy as np
-import tensorflow as tf
-from sklearn.metrics import f1_score
-
+import keras
 import neuralspot_edge as nse
-from ...defines import HKExportParams
-from ...utils import setup_logger
-from ..utils import load_datasets
+
+from ...defines import HKTaskParams
+from ...datasets import DatasetFactory
 from .datasets import load_test_dataset
 
-logger = setup_logger(__name__)
 
-
-def export(params: HKExportParams):
+def export(params: HKTaskParams):
     """Export model
 
     Args:
-        params (HKExportParams): Deployment parameters
+        params (HKTaskParams): Deployment parameters
     """
-    params.threshold = params.threshold or 0.5
-
     os.makedirs(params.job_dir, exist_ok=True)
+    logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "export.log")
     logger.debug(f"Creating working directory in {params.job_dir}")
 
-    handler = logging.FileHandler(params.job_dir / "export.log", mode="w")
-    handler.setLevel(logging.INFO)
-    logger.addHandler(handler)
+    params.threshold = params.threshold or 0.5
 
     tfl_model_path = params.job_dir / "model.tflite"
     tflm_model_path = params.job_dir / "model_buffer.h"
 
-    # classes = sorted(list(set(params.class_map.values())))
-    # class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
-
     feat_shape = (params.frame_size, 1)
-    class_shape = (params.num_classes,)
 
-    ds_spec = (
-        tf.TensorSpec(shape=feat_shape, dtype="float32"),
-        tf.TensorSpec(shape=class_shape, dtype="int32"),
-    )
+    datasets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
 
-    datasets = load_datasets(datasets=params.datasets)
-
-    test_ds = load_test_dataset(datasets=datasets, params=params, ds_spec=ds_spec)
-    test_x, test_y = next(test_ds.batch(params.test_size).as_numpy_iterator())
+    test_ds = load_test_dataset(datasets=datasets, params=params)
+    test_x = np.concatenate([x for x, _ in test_ds.as_numpy_iterator()])
+    test_y = np.concatenate([y for _, y in test_ds.as_numpy_iterator()])
 
     # Load model and set fixed batch size of 1
+    logger.debug("Loading trained model")
     model = nse.models.load_model(params.model_file)
 
-    inputs = keras.Input(shape=ds_spec[0].shape, batch_size=1, name="input", dtype=ds_spec[0].dtype)
+    inputs = keras.Input(shape=feat_shape, batch_size=1, name="input", dtype="float32")
     model(inputs)
 
     flops = nse.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
@@ -62,6 +46,7 @@ def export(params: HKExportParams):
 
     logger.debug(f"Converting model to TFLite (quantization={params.quantization.mode})")
     converter = nse.converters.tflite.TfLiteKerasConverter(model=model)
+
     tflite_content = converter.convert(
         test_x=test_x,
         quantization=params.quantization.format,
@@ -87,25 +72,28 @@ def export(params: HKExportParams):
     tflite.compile()
 
     # Verify TFLite results match TF results
-    logger.debug("Validating model results")
+    metrics = [keras.metrics.CategoricalAccuracy(name="acc"), keras.metrics.F1Score(name="f1", average="weighted")]
+
+    if params.val_metric not in [m.name for m in metrics]:
+        raise ValueError(f"Metric {params.val_metric} not supported")
+
+    logger.info("Validating model results")
     y_true = test_y
-    y_pred_tf = model.predict(test_x) >= params.threshold
-    y_pred_tfl = tflite.predict(x=test_x) >= params.threshold
+    y_pred_tf = model.predict(test_x)
+    y_pred_tfl = tflite.predict(x=test_x)
 
-    tf_acc = np.sum(y_true == y_pred_tf) / y_true.size
-    tf_f1 = f1_score(y_true, y_pred_tf, average="weighted")
-    logger.info(f"[TF SET] ACC={tf_acc:.2%}, F1={tf_f1:.2%}")
+    tf_rst = nse.metrics.compute_metrics(metrics, y_true, y_pred_tf)
+    tfl_rst = nse.metrics.compute_metrics(metrics, y_true, y_pred_tfl)
+    logger.info("[TF METRICS] " + " ".join([f"{k.upper()}={v:.2%}" for k, v in tf_rst.items()]))
+    logger.info("[TFL METRICS] " + " ".join([f"{k.upper()}={v:.2%}" for k, v in tfl_rst.items()]))
 
-    tfl_acc = np.sum(y_true == y_pred_tfl) / y_true.size
-    tfl_f1 = f1_score(y_true, y_pred_tfl, average="weighted")
-    logger.info(f"[TFL SET] ACC={tfl_acc:.2%}, F1={tfl_f1:.2%}")
+    metric_diff = abs(tf_rst[params.val_metric] - tfl_rst[params.val_metric])
 
     # Check accuracy hit
-    tfl_acc_drop = max(0, tf_acc - tfl_acc)
-    if params.val_acc_threshold is not None and (1 - tfl_acc_drop) < params.val_acc_threshold:
-        logger.warning(f"TFLite accuracy dropped by {tfl_acc_drop:0.2%}")
-    elif params.val_acc_threshold:
-        logger.info(f"Validation passed ({tfl_acc_drop:0.2%})")
+    if params.val_metric_threshold is not None and metric_diff > params.val_metric_threshold:
+        logger.warning(f"TFLite accuracy dropped by {metric_diff:0.2%}")
+    elif params.val_metric_threshold:
+        logger.info(f"Validation passed ({metric_diff:0.2%})")
 
     if params.tflm_file and tflm_model_path != params.tflm_file:
         logger.debug(f"Copying TFLM header to {params.tflm_file}")

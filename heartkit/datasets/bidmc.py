@@ -1,7 +1,6 @@
 import contextlib
 import functools
 import logging
-import os
 import random
 from typing import Generator
 
@@ -24,12 +23,10 @@ class BidmcDataset(HKDataset):
 
     def __init__(
         self,
-        ds_path: os.PathLike,
         leads: list[int] | None = None,
+        **kwargs,
     ) -> None:
-        super().__init__(
-            ds_path=ds_path,
-        )
+        super().__init__(**kwargs)
         self.leads = leads or list(BidmcLeadsMap.values())
 
     @property
@@ -94,7 +91,7 @@ class BidmcDataset(HKDataset):
         Returns:
             Generator[h5py.Group, None, None]: Patient data
         """
-        with h5py.File(self.ds_path / f"{self._pt_key(patient_id)}.h5", mode="r") as h5:
+        with h5py.File(self.path / f"{self._pt_key(patient_id)}.h5", mode="r") as h5:
             yield h5
 
     def signal_generator(
@@ -118,7 +115,7 @@ class BidmcDataset(HKDataset):
         if target_rate is None:
             target_rate = self.sampling_rate
 
-        input_size = int(np.round((self.sampling_rate / target_rate) * frame_size))
+        input_size = int(np.ceil((self.sampling_rate / target_rate) * frame_size))
         for pt in patient_generator:
             with self.patient_data(pt) as h5:
                 data: h5py.Dataset = h5["data"][:]
@@ -130,6 +127,7 @@ class BidmcDataset(HKDataset):
                 x = np.nan_to_num(x).astype(np.float32)
                 if self.sampling_rate != target_rate:
                     x = pk.signal.resample_signal(x, self.sampling_rate, target_rate, axis=0)
+                    x = x[:frame_size]
                 # END IF
                 yield x
             # END FOR

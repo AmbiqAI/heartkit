@@ -1,53 +1,37 @@
-import logging
 import os
 
 import numpy as np
 import pandas as pd
-import tensorflow as tf
 from sklearn.metrics import classification_report, f1_score
-
 import neuralspot_edge as nse
-from ...defines import HKTestParams
-from ...utils import set_random_seed, setup_logger
-from ..utils import load_datasets
+
+from ...defines import HKTaskParams
+from ...datasets import DatasetFactory
 from .datasets import load_test_dataset
 
-logger = setup_logger(__name__)
 
-
-def evaluate(params: HKTestParams):
+def evaluate(params: HKTaskParams):
     """Evaluate model
 
     Args:
-        params (HKTestParams): Evaluation parameters
+        params (HKTaskParams): Evaluation parameters
     """
-    params.threshold = params.threshold or 0.5
-
-    params.seed = set_random_seed(params.seed)
-    logger.debug(f"Random seed {params.seed}")
-
     os.makedirs(params.job_dir, exist_ok=True)
+    logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "test.log")
     logger.debug(f"Creating working directory in {params.job_dir}")
 
-    handler = logging.FileHandler(params.job_dir / "test.log", mode="w")
-    handler.setLevel(logging.INFO)
-    logger.addHandler(handler)
+    params.threshold = params.threshold or 0.5
 
-    # classes = sorted(list(set(params.class_map.values())))
+    params.seed = nse.utils.set_random_seed(params.seed)
+    logger.debug(f"Random seed {params.seed}")
+
     class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
 
-    feat_shape = (params.frame_size, 1)
-    class_shape = (params.num_classes,)
+    datasets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
 
-    ds_spec = (
-        tf.TensorSpec(shape=feat_shape, dtype=tf.float32),
-        tf.TensorSpec(shape=class_shape, dtype=tf.int32),
-    )
-
-    datasets = load_datasets(datasets=params.datasets)
-
-    test_ds = load_test_dataset(datasets=datasets, params=params, ds_spec=ds_spec)
-    test_x, test_y = next(test_ds.batch(params.test_size).as_numpy_iterator())
+    test_ds = load_test_dataset(datasets=datasets, params=params)
+    test_x = np.concatenate([x for x, _ in test_ds.as_numpy_iterator()])
+    test_y = np.concatenate([y for _, y in test_ds.as_numpy_iterator()])
 
     logger.debug("Loading model")
     model = nse.models.load_model(params.model_file)
@@ -62,7 +46,7 @@ def evaluate(params: HKTestParams):
     y_pred = y_prob >= params.threshold
 
     cm_path = params.job_dir / "confusion_matrix_test.png"
-    nse.plotting.cm.multilabel_confusion_matrix_plot(
+    nse.plotting.multilabel_confusion_matrix_plot(
         y_true=y_true,
         y_pred=y_pred,
         labels=class_names,

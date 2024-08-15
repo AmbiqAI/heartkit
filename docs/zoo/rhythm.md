@@ -89,7 +89,7 @@ The following table provides the latest pre-trained models for rhythm classifica
 
 ---
 
-## <span class="sk-h2-span">EVB Performance</span>
+<!-- ## <span class="sk-h2-span">EVB Performance</span>
 
 The following table provides the latest performance and accuracy results of all models when running on Apollo4 Plus EVB. These results are obtained using neuralSPOTs [Autodeploy tool](https://ambiqai.github.io/neuralSPOT/docs/From%20TF%20to%20EVB%20-%20testing%2C%20profiling%2C%20and%20deploying%20AI%20models.html). From neuralSPOT repo, the following command can be used to capture EVB results via Autodeploy:
 
@@ -104,23 +104,6 @@ python -m ns_autodeploy \
 ```
 
 --8<-- "assets/zoo/rhythm/rhythm-model-hw-table.md"
-
+ -->
 
 ---
-
-<!--
-## <span class="sk-h2-span">Ablation Studies</span>
-
-### Confidence Level
-
-=== "2-Class"
-
-    | Metric   | Baseline | 75% Confidence |
-    | -------- | -------- | -------------- |
-    | Accuracy | 96.5%    | 99.1%          |
-    | F1 Score | 96.4%    | 99.0%          |
-    | Drop     |  0.0%    | 12.0%          |
-
-!!! Note "Note"
-
-    The baseline model is simply selecting the argmax of model outputs (e.g. `AFIB/AFL`). A confidence level is used such that a label of inconclusive is assigned when the softmax output is below this threshold. -->

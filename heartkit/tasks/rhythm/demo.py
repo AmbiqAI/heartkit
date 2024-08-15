@@ -5,22 +5,20 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from tqdm import tqdm
+import neuralspot_edge as nse
 
-from ...datasets.utils import uniform_id_generator
-from ...defines import HKDemoParams
+from ...defines import HKTaskParams
 from ...rpc import BackendFactory
-from ...utils import setup_logger
-from ..utils import load_datasets
-from .datasets import preprocess
+from ...datasets import DatasetFactory, create_augmentation_pipeline
 
 
-def demo(params: HKDemoParams):
+def demo(params: HKTaskParams):
     """Run demo for model
 
     Args:
-        params (HKDemoParams): Demo parameters
+        params (HKTaskParams): Demo parameters
     """
-    logger = setup_logger(__name__, level=params.verbose)
+    logger = nse.utils.setup_logger(__name__, level=params.verbose)
 
     bg_color = "rgba(38,42,50,1.0)"
     primary_color = "#11acd5"
@@ -34,30 +32,28 @@ def demo(params: HKDemoParams):
     params.demo_size = params.demo_size or 2 * params.frame_size
 
     # Load backend inference engine
-    runner = BackendFactory.create(params.backend, params=params)
+    runner = BackendFactory.get(params.backend)(params=params)
 
     # Load data
     # classes = sorted(list(set(params.class_map.values())))
     class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
 
     feat_shape = (params.frame_size, 1)
-    # class_shape = (params.num_classes,)
 
-    # input_spec = (
-    #     tf.TensorSpec(shape=feat_shape, dtype=tf.float32),
-    #     tf.TensorSpec(shape=class_shape, dtype=tf.int32),
-    # )
-
-    dsets = load_datasets(datasets=params.datasets)
-    ds = random.choice(dsets)
+    datasets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
+    ds = random.choice(datasets)
 
     ds_gen = ds.signal_generator(
-        patient_generator=uniform_id_generator(ds.get_test_patient_ids(), repeat=False),
+        patient_generator=nse.utils.uniform_id_generator(ds.get_test_patient_ids(), repeat=False),
         frame_size=params.demo_size,
         samples_per_patient=5,
         target_rate=params.sampling_rate,
     )
     x = next(ds_gen)
+
+    augmenter = create_augmentation_pipeline(
+        params.preprocesses + params.augmentations, sampling_rate=params.sampling_rate
+    )
 
     # Run inference
     runner.open()
@@ -68,13 +64,9 @@ def demo(params: HKDemoParams):
             start, stop = x.shape[0] - params.frame_size, x.shape[0]
         else:
             start, stop = i, i + params.frame_size
-        xx = preprocess(
-            x[start:stop],
-            sample_rate=params.sampling_rate,
-            preprocesses=params.preprocesses,
-        )
-
+        xx = x[start:stop]
         xx = xx.reshape(feat_shape)
+        xx = augmenter(xx, training=False)
         runner.set_inputs(xx)
         runner.perform_inference()
         yy = runner.get_outputs()

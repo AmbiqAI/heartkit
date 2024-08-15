@@ -1,7 +1,16 @@
-from .icentia11k import icentia11k_data_generator, icentia11k_label_map
-from .ludb import ludb_data_generator, ludb_label_map
-from .ptbxl import ptbxl_data_generator, ptbxl_label_map
+import neuralspot_edge as nse
 
-# from .qtdb import qtdb_data_generator
-from .synthetic import synthetic_data_generator, synthetic_label_map
-from .syntheticppg import syntheticppg_data_generator, syntheticppg_label_map
+from ....datasets import HKDataloader
+
+from .icentia11k import Icentia11kDataloader
+from .ludb import LudbDataloader
+from .ptbxl import PtbxlDataloader
+from .ecg_synthetic import EcgSyntheticDataloader
+from .ppg_synthetic import PPgSyntheticDataloader
+
+SegmentationDataloaderFactory = nse.utils.create_factory(factory="HKSegmentationDataloaderFactory", type=HKDataloader)
+SegmentationDataloaderFactory.register("icentia11k", Icentia11kDataloader)
+SegmentationDataloaderFactory.register("ludb", LudbDataloader)
+SegmentationDataloaderFactory.register("ptbxl", PtbxlDataloader)
+SegmentationDataloaderFactory.register("ecg-synthetic", EcgSyntheticDataloader)
+SegmentationDataloaderFactory.register("ppg-synthetic", PPgSyntheticDataloader)

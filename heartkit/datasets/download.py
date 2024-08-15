@@ -1,19 +1,37 @@
 import logging
 import os
+import neuralspot_edge as nse
 
 from ..defines import HKDownloadParams
-from ..utils import setup_logger
-from . import DatasetFactory
+from . import HKDataset
+from .factory import DatasetFactory
 
-logger = setup_logger(__name__)
+
+logger = nse.utils.setup_logger(__name__)
 
 
 def download_datasets(params: HKDownloadParams):
     """Download specified datasets.
 
     Args:
-        params (HeartDownloadParams): Download parameters
+        params (HKDownloadParams): Download parameters
 
+    Example:
+    ```python
+    import heartkit as hk
+
+    # Download datasets
+    params = hk.HKDownloadParams(
+        datasets=[
+            hk.NamedParams(name="ptbxl", params={
+                "path": "./datasets/ptbxl",
+            }),
+        ],
+        data_parallelism=4,
+        force=False,
+    )
+    hk.datasets.download_datasets(params)
+    ```
     """
     os.makedirs(params.job_dir, exist_ok=True)
     logger.debug(f"Creating working directory in {params.job_dir}")
@@ -24,9 +42,8 @@ def download_datasets(params: HKDownloadParams):
 
     for ds in params.datasets:
         if DatasetFactory.has(ds.name):
-            os.makedirs(ds.path, exist_ok=True)
             Dataset = DatasetFactory.get(ds.name)
-            ds = Dataset(ds_path=ds.path, **ds.params)
+            ds: HKDataset = Dataset(**ds.params)
             ds.download(
                 num_workers=params.data_parallelism,
                 force=params.force,

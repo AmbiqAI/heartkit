@@ -1,42 +1,34 @@
-import logging
 import os
 
 import keras
-import tensorflow as tf
+import neuralspot_edge as nse
+import numpy as np
 import wandb
 from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
 
-import neuralspot_edge as nse
-from ...defines import HKTrainParams
-from ...utils import env_flag, set_random_seed, setup_logger
-from ..utils import load_datasets
+from ...defines import HKTaskParams
+from ...datasets import DatasetFactory
+from ...models import ModelFactory
 from .datasets import load_train_datasets
-from .utils import create_model
-
-logger = setup_logger(__name__)
 
 
-def train(params: HKTrainParams):
+def train(params: HKTaskParams):
     """Train model
 
     Args:
-        params (HKTrainParams): Training parameters
+        params (HKTaskParams): Training parameters
     """
-
-    params.seed = set_random_seed(params.seed)
-    logger.debug(f"Random seed {params.seed}")
-
     os.makedirs(params.job_dir, exist_ok=True)
+    logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "train.log")
     logger.debug(f"Creating working directory in {params.job_dir}")
 
-    handler = logging.FileHandler(params.job_dir / "train.log", mode="w")
-    handler.setLevel(logging.INFO)
-    logger.addHandler(handler)
+    params.seed = nse.utils.set_random_seed(params.seed)
+    logger.debug(f"Random seed {params.seed}")
 
     with open(params.job_dir / "train_config.json", "w", encoding="utf-8") as fp:
         fp.write(params.model_dump_json(indent=2))
 
-    if env_flag("WANDB"):
+    if nse.utils.env_flag("WANDB"):
         wandb.init(
             project=params.project,
             entity="ambiq",
@@ -46,54 +38,36 @@ def train(params: HKTrainParams):
     # END IF
 
     feat_shape = (params.frame_size, 1)
-    class_shape = (params.frame_size, 1)
-    class_shape = (128, 1)
 
-    ds_spec = (
-        tf.TensorSpec(shape=feat_shape, dtype="float32"),
-        tf.TensorSpec(shape=class_shape, dtype="float32"),
-    )
-
-    datasets = load_datasets(datasets=params.datasets)
+    datasets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
 
     train_ds, val_ds = load_train_datasets(
         datasets=datasets,
         params=params,
-        ds_spec=ds_spec,
     )
 
-    inputs = keras.Input(
-        shape=ds_spec[0].shape,
-        batch_size=None,
-        name="input",
-        dtype=ds_spec[0].dtype.name,
-    )
+    inputs = keras.Input(shape=feat_shape, name="input", dtype="float32")
     if params.resume and params.model_file:
         logger.debug(f"Loading model from file {params.model_file}")
         model = nse.models.load_model(params.model_file)
         params.model_file = None
     else:
         logger.debug("Creating model from scratch")
-        model = create_model(
-            inputs,
+        model = ModelFactory.get(params.architecture.name)(
+            x=inputs,
+            params=params.architecture.params,
             num_classes=params.num_classes,
-            architecture=params.architecture,
         )
     # END IF
 
-    if params.lr_cycles > 1:
-        scheduler = keras.optimizers.schedules.CosineDecayRestarts(
-            initial_learning_rate=params.lr_rate,
-            first_decay_steps=int(0.1 * params.steps_per_epoch * params.epochs),
-            t_mul=1.65 / (0.1 * params.lr_cycles * (params.lr_cycles - 1)),
-            m_mul=0.4,
-        )
-    else:
-        scheduler = keras.optimizers.schedules.CosineDecay(
-            initial_learning_rate=params.lr_rate,
-            decay_steps=params.steps_per_epoch * params.epochs,
-        )
-    # END IF
+    t_mul = 1
+    first_steps = (params.steps_per_epoch * params.epochs) / (np.power(params.lr_cycles, t_mul) - t_mul + 1)
+    scheduler = keras.optimizers.schedules.CosineDecayRestarts(
+        initial_learning_rate=params.lr_rate,
+        first_decay_steps=np.ceil(first_steps),
+        t_mul=t_mul,
+        m_mul=0.5,
+    )
 
     optimizer = keras.optimizers.Adam(scheduler)
     loss = keras.losses.MeanSquaredError()
@@ -118,7 +92,7 @@ def train(params: HKTrainParams):
     logger.debug(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
     ModelCheckpoint = keras.callbacks.ModelCheckpoint
-    if env_flag("WANDB"):
+    if nse.utils.env_flag("WANDB"):
         ModelCheckpoint = WandbModelCheckpoint
     model_callbacks = [
         keras.callbacks.EarlyStopping(
@@ -126,6 +100,7 @@ def train(params: HKTrainParams):
             patience=max(int(0.25 * params.epochs), 1),
             mode="max" if params.val_metric == "f1" else "auto",
             restore_best_weights=True,
+            verbose=params.verbose - 1,
         ),
         ModelCheckpoint(
             filepath=str(params.model_file),
@@ -133,25 +108,25 @@ def train(params: HKTrainParams):
             save_best_only=True,
             save_weights_only=False,
             mode="max" if params.val_metric == "f1" else "auto",
-            verbose=1,
+            verbose=params.verbose - 1,
         ),
         keras.callbacks.CSVLogger(params.job_dir / "history.csv"),
     ]
-    if env_flag("TENSORBOARD"):
+    if nse.utils.env_flag("TENSORBOARD"):
         model_callbacks.append(
             keras.callbacks.TensorBoard(
                 log_dir=params.job_dir,
                 write_steps_per_second=True,
             )
         )
-    if env_flag("WANDB"):
+    if nse.utils.env_flag("WANDB"):
         model_callbacks.append(WandbMetricsLogger())
 
     try:
         model.fit(
             train_ds,
             steps_per_epoch=params.steps_per_epoch,
-            verbose=2,
+            verbose=params.verbose,
             epochs=params.epochs,
             validation_data=val_ds,
             callbacks=model_callbacks,
@@ -162,5 +137,4 @@ def train(params: HKTrainParams):
     logger.debug(f"Model saved to {params.model_file}")
 
     # Get full validation results
-    keras.models.load_model(params.model_file)
     logger.debug("Performing full validation")

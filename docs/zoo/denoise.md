@@ -68,15 +68,15 @@ The following table provides the latest pre-trained models for ECG denoising. Be
     | MSE          | 4.4%  |
     | COSSIM       | 97.4% |
 
-## <span class="sk-h2-span">EVB Performance</span>
+<!-- ## <span class="sk-h2-span">EVB Performance</span>
 
 The following table provides the latest hardware performance results when running on Apollo4 Plus EVB.
 
 --8<-- "assets/zoo/denoise/denoise-model-hw-table.md"
 
----
+--- -->
 
-## <span class="sk-h2-span">EVB Performance</span>
+<!-- ## <span class="sk-h2-span">EVB Performance</span>
 
 The following table provides the latest performance and accuracy results of all models when running on Apollo4 Plus EVB. These results are obtained using neuralSPOTs [Autodeploy tool](https://ambiqai.github.io/neuralSPOT/docs/From%20TF%20to%20EVB%20-%20testing%2C%20profiling%2C%20and%20deploying%20AI%20models.html). From neuralSPOT repo, the following command can be used to capture EVB results via Autodeploy:
 
@@ -90,4 +90,4 @@ python -m ns_autodeploy \
 
 ```
 
---8<-- "assets/zoo/denoise/denoise-model-hw-table.md"
+--8<-- "assets/zoo/denoise/denoise-model-hw-table.md" -->

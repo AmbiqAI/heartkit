@@ -3,20 +3,14 @@ from typing import Type, TypeVar
 
 from argdantic import ArgField, ArgParser
 from pydantic import BaseModel
+import neuralspot_edge as nse
 
 from .datasets import download_datasets
-from .defines import (
-    HKDemoParams,
-    HKDownloadParams,
-    HKExportParams,
-    HKMode,
-    HKTestParams,
-    HKTrainParams,
-)
+from .defines import HKDownloadParams, HKMode, HKTaskParams
 from .tasks import TaskFactory
-from .utils import setup_logger
 
-logger = setup_logger(__name__)
+
+logger = nse.utils.setup_logger(__name__)
 
 cli = ArgParser()
 
@@ -60,18 +54,19 @@ def _run(
 
     task_handler = TaskFactory.get(task)
 
+    params = parse_content(HKTaskParams, config)
     match mode:
         case HKMode.train:
-            task_handler.train(parse_content(HKTrainParams, config))
+            task_handler.train(params)
 
         case HKMode.evaluate:
-            task_handler.evaluate(parse_content(HKTestParams, config))
+            task_handler.evaluate(params)
 
         case HKMode.export:
-            task_handler.export(parse_content(HKExportParams, config))
+            task_handler.export(params)
 
         case HKMode.demo:
-            task_handler.demo(parse_content(HKDemoParams, config))
+            task_handler.demo(params)
 
         case _:
             logger.error("Error: Unknown command")

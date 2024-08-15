@@ -2,25 +2,22 @@ import random
 
 import numpy as np
 import plotly.graph_objects as go
-import tensorflow as tf
 from plotly.subplots import make_subplots
 from tqdm import tqdm
+import neuralspot_edge as nse
 
-from ...datasets.utils import uniform_id_generator
-from ...defines import HKDemoParams
+from ...defines import HKTaskParams
 from ...rpc import BackendFactory
-from ...utils import setup_logger
-from ..utils import load_datasets
-from .datasets import get_data_generator, prepare
+from ...datasets import DatasetFactory
 
-logger = setup_logger(__name__)
+logger = nse.utils.setup_logger(__name__)
 
 
-def demo(params: HKDemoParams):
+def demo(params: HKTaskParams):
     """Run task demo.
 
     Args:
-        params (HKDemoParams): Demo parameters
+        params (HKTaskParams): Demo parameters
     """
     bg_color = "rgba(38,42,50,1.0)"
     primary_color = "#11acd5"
@@ -32,36 +29,33 @@ def demo(params: HKDemoParams):
     params.demo_size = params.demo_size or 10 * params.sampling_rate
 
     # Load backend inference engine
-    runner = BackendFactory.create(params.backend, params=params)
+    runner = BackendFactory.get(params.backend)(params=params)
 
-    feat_shape = (params.demo_size, 1)
-    class_shape = (params.demo_size, 1)
-
-    ds_spec = (
-        tf.TensorSpec(shape=feat_shape, dtype=tf.float32),
-        tf.TensorSpec(shape=class_shape, dtype=tf.float32),
-    )
+    # feat_shape = (params.demo_size, 1)
+    # class_shape = (params.demo_size, 1)
 
     # Load data
-    dsets = load_datasets(datasets=params.datasets)
-    ds = random.choice(dsets)
+    datasets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
+    ds = random.choice(datasets)
+    print(ds)
 
-    ds_gen = get_data_generator(
-        ds, frame_size=params.demo_size, samples_per_patient=5, target_rate=params.sampling_rate
-    )
+    # ds_gen = get_data_generator(
+    #     ds, frame_size=params.demo_size, samples_per_patient=5, target_rate=params.sampling_rate
+    # )
 
-    ds_gen = ds_gen(patient_generator=uniform_id_generator(ds.get_test_patient_ids(), repeat=False))
+    # ds_gen = ds_gen(patient_generator=nse.utils.uniform_id_generator(ds.get_test_patient_ids(), repeat=False))
 
-    x, y = next(ds_gen)
+    # x, y = next(ds_gen)
 
-    x, y = prepare(
-        (x, y),
-        sample_rate=params.sampling_rate,
-        preprocesses=params.preprocesses,
-        augmentations=params.augmentations,
-        spec=ds_spec,
-        num_classes=params.num_classes,
-    )
+    # x, y = prepare(
+    #     (x, y),
+    #     sample_rate=params.sampling_rate,
+    #     preprocesses=params.preprocesses,
+    #     augmentations=params.augmentations,
+    #     spec=ds_spec,
+    #     num_classes=params.num_classes,
+    # )
+    x, y = None, None
     x = x.flatten()
     y = y.flatten()
 

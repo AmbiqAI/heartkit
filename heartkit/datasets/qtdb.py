@@ -1,25 +1,22 @@
 import contextlib
 import functools
-import logging
 import os
 import random
 import tempfile
 import zipfile
-from multiprocessing import Pool
 from typing import Generator
 
 import h5py
 import numpy as np
 import numpy.typing as npt
 import physiokit as pk
-from tqdm import tqdm
+from tqdm.contrib.concurrent import process_map
+import neuralspot_edge as nse
 
-from ..utils import download_file
 from .dataset import HKDataset
-from .defines import PatientGenerator
-from .utils import download_s3_file
+from .defines import PatientGenerator, PatientData
 
-logger = logging.getLogger(__name__)
+logger = nse.utils.setup_logger(__name__)
 
 QtdbSymbolMap = {
     "o": 0,  # Other
@@ -42,9 +39,9 @@ class QtdbDataset(HKDataset):
 
     def __init__(
         self,
-        ds_path: os.PathLike,
+        **kwargs,
     ) -> None:
-        super().__init__(ds_path=ds_path)
+        super().__init__(**kwargs)
 
     @property
     def name(self) -> str:
@@ -204,17 +201,33 @@ class QtdbDataset(HKDataset):
         return f"{patient_id}"
 
     @contextlib.contextmanager
-    def patient_data(self, patient_id: int) -> Generator[h5py.Group, None, None]:
+    def patient_data(self, patient_id: int) -> Generator[PatientData, None, None]:
         """Get patient data
 
         Args:
             patient_id (int): Patient ID
 
         Returns:
-            Generator[h5py.Group, None, None]: Patient data
+            Generator[PatientData, None, None]: Patient data
         """
-        with h5py.File(self.ds_path / f"{self._pt_key(patient_id)}.h5", mode="r") as h5:
-            yield h5
+        pt_key = self._pt_key(patient_id)
+        pt_path = self.path / f"{pt_key}.h5"
+        if self.cacheable:
+            if pt_key not in self._cached_data:
+                pt_data = {}
+                with h5py.File(pt_path, mode="r") as h5:
+                    pt_data["data"] = h5["data"][:]
+                    pt_data["segmentations"] = h5["segmentations"][:]
+                    pt_data["fiducials"] = h5["fiducials"][:]
+                # END WITH
+                self._cached_data[pt_key] = pt_data
+            # END IF
+            yield self._cached_data[pt_key]
+        else:
+            with h5py.File(pt_path, mode="r") as h5:
+                yield h5
+            # END WITH
+        # END IF
 
     def signal_generator(
         self,
@@ -226,9 +239,10 @@ class QtdbDataset(HKDataset):
         """Generate random frames.
 
         Args:
-            patient_generator (PatientGenerator): Generator that yields a tuple of patient id and patient data.
-                    Patient data may contain only signals, since labels are not used.
-            samples_per_patient (int): Samples per patient.
+            patient_generator (PatientGenerator): Generator that yields patient data.
+            frame_size (int): Frame size
+            samples_per_patient (int, optional): Samples per patient. Defaults to 1.
+            target_rate (int | None, optional): Target rate. Defaults to None.
 
         Returns:
             Generator[npt.NDArray, None, None]: Generator of input data of shape (frame_size, 1)
@@ -236,7 +250,7 @@ class QtdbDataset(HKDataset):
         if target_rate is None:
             target_rate = self.sampling_rate
 
-        input_size = int(np.round((self.sampling_rate / target_rate) * frame_size))
+        input_size = int(np.ceil((self.sampling_rate / target_rate) * frame_size))
 
         for pt in patient_generator:
             with self.patient_data(pt) as h5:
@@ -249,6 +263,7 @@ class QtdbDataset(HKDataset):
                 x = np.nan_to_num(x).astype(np.float32)
                 if self.sampling_rate != target_rate:
                     x = pk.signal.resample_signal(x, self.sampling_rate, target_rate, axis=0)
+                    x = x[:frame_size]
                 # END IF
                 yield x
             # END FOR
@@ -279,10 +294,10 @@ class QtdbDataset(HKDataset):
             num_workers (int | None, optional): # parallel workers. Defaults to None.
             force (bool, optional): Force redownload. Defaults to False.
         """
-        os.makedirs(self.ds_path, exist_ok=True)
-        zip_path = self.ds_path / f"{self.name}.zip"
+        os.makedirs(self.path, exist_ok=True)
+        zip_path = self.path / f"{self.name}.zip"
 
-        did_download = download_s3_file(
+        did_download = nse.utils.download_s3_file(
             key=f"{self.name}/{self.name}.zip",
             dst=zip_path,
             bucket="ambiq-ai-datasets",
@@ -290,7 +305,7 @@ class QtdbDataset(HKDataset):
         )
         if did_download:
             with zipfile.ZipFile(zip_path, "r") as zf:
-                zf.extractall(self.ds_path)
+                zf.extractall(self.path)
 
     def download_raw_dataset(self, num_workers: int | None = None, force: bool = False):
         """Downloads full dataset zipfile and converts into individial patient HDF5 files.
@@ -301,14 +316,14 @@ class QtdbDataset(HKDataset):
         """
         logger.debug("Downloading QTDB dataset")
         ds_url = "https://physionet.org/static/published-projects/qtdb/qt-database-1.0.0.zip"
-        ds_zip_path = self.ds_path / "qtdb.zip"
-        os.makedirs(self.ds_path, exist_ok=True)
+        ds_zip_path = self.path / "qtdb.zip"
+        os.makedirs(self.path, exist_ok=True)
         if os.path.exists(ds_zip_path) and not force:
             logger.warning(
                 f"Zip file already exists. Please delete or set `force` flag to redownload. PATH={ds_zip_path}"
             )
         else:
-            download_file(ds_url, ds_zip_path, progress=True)
+            nse.utils.download_file(ds_url, ds_zip_path, progress=True)
 
         # 2. Extract and convert patient ECG data to H5 files
         logger.debug("Generating QT patient data")
@@ -396,17 +411,15 @@ class QtdbDataset(HKDataset):
             patient_ids = self.patient_ids
 
         subdir = "qt-database-1.0.0"
-        with Pool(processes=num_workers) as pool, tempfile.TemporaryDirectory() as tmpdir, zipfile.ZipFile(
-            zip_path, mode="r"
-        ) as zp:
+        with tempfile.TemporaryDirectory() as tmpdir, zipfile.ZipFile(zip_path, mode="r") as zp:
             qtdb_dir = tmpdir / "qtdb"
             zp.extractall(qtdb_dir)
 
             f = functools.partial(
                 self.convert_pt_wfdb_to_hdf5,
                 src_path=qtdb_dir / subdir,
-                dst_path=self.ds_path,
+                dst_path=self.path,
                 force=force,
             )
-            _ = list(tqdm(pool.imap(f, patient_ids), total=len(patient_ids)))
+            _ = process_map(f, patient_ids)
         # END WITH

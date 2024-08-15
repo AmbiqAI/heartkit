@@ -1,11 +1,13 @@
 {
-    "name": "beat-3-eff-lg-layer-att",
+    "name": "beat-3-eff-lg",
     "project": "hk-beat-3",
-    "job_dir": "./results/beat-3-eff-lg-layer-att",
+    "job_dir": "./results/beat-3-eff-lg",
+    "verbose": 2,
     "datasets": [{
         "name": "icentia11k",
-        "path": "./datasets/icentia11k",
-        "params": {}
+        "params": {
+            "path": "./datasets/icentia11k"
+        }
     }],
     "num_classes": 3,
     "class_map": {
@@ -16,28 +18,24 @@
     "class_names": [
         "QRS", "PAC", "PVC"
     ],
+    "class_weights": "balanced",
     "sampling_rate": 100,
     "frame_size": 512,
-    "model_file": "model.keras",
-    "use_logits": false,
     "samples_per_patient": [10, 40, 40],
     "val_samples_per_patient": [10, 40, 40],
-    "val_file": "./results/${task}-class-3-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
-    "test_file": "./results/${task}-class-3-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
+    "test_samples_per_patient": [10, 40, 40],
     "val_patients": 0.20,
     "val_size": 30000,
-    "test_samples_per_patient": [10, 40, 40],
     "test_size": 30000,
     "batch_size": 256,
-    "buffer_size": 80000,
+    "buffer_size": 50000,
     "epochs": 150,
     "steps_per_epoch": 50,
     "val_metric": "loss",
+    "val_metric_threshold": 0.98,
     "lr_rate": 1e-3,
     "lr_cycles": 1,
-    "class_weights": "balanced",
     "threshold": 0.5,
-    "val_acc_threshold": 0.98,
     "tflm_var_name": "g_beat_model",
     "tflm_file": "beat_model_buffer.h",
     "backend": "pc",
@@ -52,23 +50,15 @@
     },
     "preprocesses": [
         {
-            "name": "filter",
+            "name": "layer_norm",
             "params": {
-                "lowcut": 1.0,
-                "highcut": 30,
-                "order": 3,
-                "forward_backward": true,
-                "axis": 0
-            }
-        },
-        {
-            "name": "znorm",
-            "params": {
-                "eps": 0.01,
-                "axis": null
+                "epsilon": 0.01,
+                "name": "znorm"
             }
         }
     ],
+    "model_file": "model.keras",
+    "use_logits": false,
     "architecture": {
         "name": "efficientnetv2",
         "params": {
@@ -79,9 +69,9 @@
                 {"filters": 32, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer"},
                 {"filters": 48, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer"},
                 {"filters": 56, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer"},
-                {"filters": 64, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer", "att_ratio": 16},
-                {"filters": 72, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer", "att_ratio": 18},
-                {"filters": 96, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer", "att_ratio": 24}
+                {"filters": 64, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer"},
+                {"filters": 72, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer"},
+                {"filters": 96, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1, "se_ratio": 4, "norm": "layer"}
             ],
             "norm": "layer",
             "output_filters": 0,

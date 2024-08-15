@@ -1,7 +1,8 @@
-from typing import Callable, Generator
+from typing import Generator, TypeAlias
 
 import numpy.typing as npt
-
-Preprocessor = Callable[[tuple[npt.NDArray, npt.NDArray]], tuple[npt.NDArray, npt.NDArray]]
+import h5py
 
 PatientGenerator = Generator[int, None, None]
+
+PatientData: TypeAlias = dict[str, npt.NDArray] | h5py.Group

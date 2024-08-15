@@ -1,46 +1,36 @@
-import logging
 import os
 
 import keras
 import numpy as np
 import sklearn.utils
-import tensorflow as tf
 import wandb
 from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
-from sklearn.metrics import f1_score
-
 import neuralspot_edge as nse
-from ...defines import HKTrainParams
-from ...metrics import compute_iou
-from ...utils import env_flag, set_random_seed, setup_logger
-from ..utils import load_datasets
+
+from ...defines import HKTaskParams
+from ...datasets import DatasetFactory
 from .datasets import load_train_datasets
-from .utils import create_model
+from ...models import ModelFactory
 
 
-def train(params: HKTrainParams):
+def train(params: HKTaskParams):
     """Train model
 
     Args:
-        params (HKTrainParams): Training parameters
+        params (HKTaskParams): Training parameters
     """
-    logger = setup_logger(__name__, level=params.verbose)
-
-    params.finetune = bool(getattr(params, "finetune", False))
-    params.seed = set_random_seed(params.seed)
-    logger.debug(f"Random seed {params.seed}")
-
     os.makedirs(params.job_dir, exist_ok=True)
+    logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "train.log")
     logger.debug(f"Creating working directory in {params.job_dir}")
 
-    handler = logging.FileHandler(params.job_dir / "train.log", mode="w")
-    handler.setLevel(logging.INFO)
-    logger.addHandler(handler)
+    params.finetune = bool(getattr(params, "finetune", False))
+    params.seed = nse.utils.set_random_seed(params.seed)
+    logger.debug(f"Random seed {params.seed}")
 
     with open(params.job_dir / "train_config.json", "w", encoding="utf-8") as fp:
         fp.write(params.model_dump_json(indent=2))
 
-    if env_flag("WANDB"):
+    if nse.utils.env_flag("WANDB"):
         wandb.init(
             project=f"hk-segmentation-{params.num_classes}",
             entity="ambiq",
@@ -49,96 +39,61 @@ def train(params: HKTrainParams):
         wandb.config.update(params.model_dump())
     # END IF
 
-    classes = sorted(list(set(params.class_map.values())))
+    classes = sorted(set(params.class_map.values()))
     class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
 
     feat_shape = (params.frame_size, 1)
-    class_shape = (params.frame_size, params.num_classes)
 
-    ds_spec = (
-        tf.TensorSpec(shape=feat_shape, dtype=tf.float32),
-        tf.TensorSpec(shape=class_shape, dtype=tf.int32),
-    )
-
-    datasets = load_datasets(datasets=params.datasets)
+    datasets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
 
     train_ds, val_ds = load_train_datasets(
         datasets=datasets,
         params=params,
-        ds_spec=ds_spec,
     )
 
-    test_labels = [label.numpy() for _, label in val_ds]
-    # Where test_labels is all zeros, we assume it is a dummy label and should be ignored
-    y_mask = np.any(test_labels, axis=-1).flatten()
-    y_true = np.argmax(np.concatenate(test_labels).squeeze(), axis=-1).flatten()
+    y_true = np.concatenate([xy[1] for xy in val_ds.as_numpy_iterator()])
+    y_true = np.argmax(y_true, axis=-1).flatten()
 
     class_weights = 0.25
     if params.class_weights == "balanced":
         class_weights = sklearn.utils.compute_class_weight("balanced", classes=np.array(classes), y=y_true)
         class_weights = (class_weights + class_weights.mean()) / 2  # Smooth out
+        class_weights = class_weights.tolist()
     # END IF
     logger.debug(f"Class weights: {class_weights}")
 
-    inputs = keras.Input(
-        shape=ds_spec[0].shape,
-        batch_size=None,
-        name="input",
-        dtype=ds_spec[0].dtype.name,
-    )
+    inputs = keras.Input(shape=feat_shape, name="input", dtype="float32")
+
     if params.resume and params.model_file:
         logger.debug(f"Loading model from file {params.model_file}")
         model = nse.models.load_model(params.model_file)
         params.model_file = None
     else:
         logger.debug("Creating model from scratch")
-        model = create_model(
-            inputs,
+        model = ModelFactory.get(params.architecture.name)(
+            x=inputs,
+            params=params.architecture.params,
             num_classes=params.num_classes,
-            architecture=params.architecture,
         )
-    # END IF
-
-    # If fine-tune, freeze model encoder weights
-    if params.finetune:
-        for layer in model.layers:
-            if layer.name.startswith("ENC"):
-                logger.debug(f"Freezing {layer.name}")
-                layer.trainable = False
-            # END IF
-        # END FOR
     # END IF
 
     flops = nse.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
 
-    if params.lr_cycles > 1:
-        scheduler = keras.optimizers.schedules.CosineDecayRestarts(
-            initial_learning_rate=params.lr_rate,
-            first_decay_steps=int(0.1 * params.steps_per_epoch * params.epochs),
-            t_mul=1.65 / (0.1 * params.lr_cycles * (params.lr_cycles - 1)),
-            m_mul=0.4,
-        )
-    else:
-        scheduler = keras.optimizers.schedules.CosineDecay(
-            initial_learning_rate=params.lr_rate,
-            decay_steps=params.steps_per_epoch * params.epochs,
-        )
-    # END IF
+    t_mul = 1
+    first_steps = (params.steps_per_epoch * params.epochs) / (np.power(params.lr_cycles, t_mul) - t_mul + 1)
+    scheduler = keras.optimizers.schedules.CosineDecayRestarts(
+        initial_learning_rate=params.lr_rate,
+        first_decay_steps=np.ceil(first_steps),
+        t_mul=t_mul,
+        m_mul=0.5,
+    )
 
     optimizer = keras.optimizers.Adam(scheduler)
     loss = keras.losses.CategoricalFocalCrossentropy(
         from_logits=True,
         alpha=class_weights,
     )
-    metrics = [
-        keras.metrics.CategoricalAccuracy(name="acc"),
-        # tfa.MultiF1Score(name="f1", average="weighted"),
-        keras.metrics.OneHotIoU(
-            num_classes=params.num_classes,
-            target_class_ids=classes,
-            name="iou",
-        ),
-    ]
+    metrics = [keras.metrics.CategoricalAccuracy(name="acc"), nse.metrics.MultiF1Score(name="f1", average="weighted")]
 
     if params.resume and params.weights_file:
         logger.debug(f"Hydrating model weights from file {params.weights_file}")
@@ -153,7 +108,7 @@ def train(params: HKTrainParams):
     logger.debug(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
     ModelCheckpoint = keras.callbacks.ModelCheckpoint
-    if env_flag("WANDB"):
+    if nse.utils.env_flag("WANDB"):
         ModelCheckpoint = WandbModelCheckpoint
     model_callbacks = [
         keras.callbacks.EarlyStopping(
@@ -173,14 +128,14 @@ def train(params: HKTrainParams):
         ),
         keras.callbacks.CSVLogger(params.job_dir / "history.csv"),
     ]
-    if env_flag("TENSORBOARD"):
+    if nse.utils.env_flag("TENSORBOARD"):
         model_callbacks.append(
             keras.callbacks.TensorBoard(
                 log_dir=params.job_dir,
                 write_steps_per_second=True,
             )
         )
-    if env_flag("WANDB"):
+    if nse.utils.env_flag("WANDB"):
         model_callbacks.append(WandbMetricsLogger())
 
     try:
@@ -198,23 +153,18 @@ def train(params: HKTrainParams):
     logger.debug(f"Model saved to {params.model_file}")
 
     # Get full validation results
-    keras.models.load_model(params.model_file)
     logger.debug("Performing full validation")
-    y_pred = np.argmax(model.predict(val_ds), axis=-1).flatten()
-
-    # Keep only valid labels
-    y_true = y_true[y_mask]
-    y_pred = y_pred[y_mask]
+    y_pred = model.predict(val_ds)
+    y_pred = np.argmax(y_pred, axis=-1).flatten()
 
     cm_path = params.job_dir / "confusion_matrix.png"
-    nse.plotting.cm.confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
-    if env_flag("WANDB"):
+    nse.plotting.confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
+    if nse.utils.env_flag("WANDB"):
         conf_mat = wandb.plot.confusion_matrix(preds=y_pred, y_true=y_true, class_names=class_names)
         wandb.log({"conf_mat": conf_mat})
     # END IF
 
     # Summarize results
-    test_acc = np.sum(y_pred == y_true) / y_true.size
-    test_f1 = f1_score(y_true=y_true, y_pred=y_pred, average="weighted")
-    test_iou = compute_iou(y_true, y_pred, average="weighted")
-    logger.info(f"[TEST SET] ACC={test_acc:.2%}, F1={test_f1:.2%} IoU={test_iou:0.2%}")
+    rst = model.evaluate(val_ds, verbose=params.verbose, return_dict=True)
+    msg = "[VAL SET] " + ", ".join([f"{k.upper()}={v:.2%}" for k, v in rst.items()])
+    logger.info(msg)

@@ -29,8 +29,12 @@ This database is available for commercial use. [Open Data Commons Attribution Li
 
     # Download dataset
     hk.datasets.download_datasets(hk.HKDownloadParams(
-        ds_path=Path("./datasets"),
-        datasets=["mitbih"],
+        datasets=[{
+            "name": "mitbih",
+            "params": {
+                "path": "./datasets/mitbih"
+            }
+        }],
         progress=True
     ))
     ```

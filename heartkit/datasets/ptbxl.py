@@ -1,12 +1,10 @@
 import contextlib
 import functools
-import logging
 import os
 import zipfile
 import random
 from collections.abc import Iterable
 from enum import IntEnum
-from multiprocessing import Pool
 from typing import Generator
 
 import h5py
@@ -15,13 +13,13 @@ import numpy.typing as npt
 import physiokit as pk
 import sklearn.model_selection
 from tqdm import tqdm
+from tqdm.contrib.concurrent import process_map
+import neuralspot_edge as nse
 
-from ..utils import download_file
 from .dataset import HKDataset
-from .defines import PatientGenerator
-from .utils import download_s3_file
+from .defines import PatientGenerator, PatientData
 
-logger = logging.getLogger(__name__)
+logger = nse.utils.setup_logger(__name__)
 
 
 class PtbxlScpCode(IntEnum):
@@ -199,16 +197,14 @@ PtbxlLeadsMap = {
 
 
 class PtbxlDataset(HKDataset):
-    """PTBXL dataset"""
+    def __init__(self, leads: list[int] | None = None, **kwargs) -> None:
+        """PTBXL dataset consists of 21837 clinical 12-lead ECGs from 18885 patients.
 
-    def __init__(
-        self,
-        ds_path: os.PathLike,
-        leads: list[int] | None = None,
-    ) -> None:
-        super().__init__(
-            ds_path=ds_path,
-        )
+        Args:
+            leads (list[int] | None, optional): Leads to use. Defaults to None.
+
+        """
+        super().__init__(**kwargs)
         self.leads = leads or list(range(12))
         self._data_cache: dict[str, np.ndarray] = {}
 
@@ -319,17 +315,40 @@ class PtbxlDataset(HKDataset):
         raise ValueError(f"Invalid label type: {label_type}")
 
     @contextlib.contextmanager
-    def patient_data(self, patient_id: int) -> Generator[h5py.Group, None, None]:
+    def patient_data(self, patient_id: int) -> Generator[PatientData, None, None]:
         """Get patient data
+
+        !!! note
+            If cacheable, data is cached in memory and returned as dict
+            Otherwise, data is provided as HDF5 objects
+
+        Patient Data Format:
+            - data: ECG data of shape (12, N)
+            - slabels: SCP labels of shape (N, 2)
+            - blabels: Beat labels of shape (N, 2)
 
         Args:
             patient_id (int): Patient ID
 
         Returns:
-            Generator[h5py.Group, None, None]: Patient data
+            Generator[PatientData, None, None]: Patient data
         """
-        with h5py.File(self.ds_path / f"{self._pt_key(patient_id)}.h5", mode="r") as h5:
-            yield h5
+        pt_path = self.path / f"{self._pt_key(patient_id)}.h5"
+        if self.cacheable:
+            if patient_id not in self._cached_data:
+                pt_data = {}
+                with h5py.File(pt_path, mode="r") as h5:
+                    pt_data["data"] = h5["data"][:]
+                    pt_data["slabels"] = h5["slabels"][:]
+                    pt_data["blabels"] = h5["blabels"][:]
+                self._cached_data[patient_id] = pt_data
+            # END IF
+            yield self._cached_data[patient_id]
+        else:
+            with h5py.File(pt_path, mode="r") as h5:
+                yield h5
+            # END WITH
+        # END IF
 
     def signal_generator(
         self,
@@ -341,9 +360,10 @@ class PtbxlDataset(HKDataset):
         """Generate random frames.
 
         Args:
-            patient_generator (PatientGenerator): Generator that yields a tuple of patient id and patient data.
-                    Patient data may contain only signals, since labels are not used.
-            samples_per_patient (int): Samples per patient.
+            patient_generator (PatientGenerator): Generator that yields patient data.
+            frame_size (int): Frame size
+            samples_per_patient (int, optional): Samples per patient. Defaults to 1.
+            target_rate (int | None, optional): Target rate. Defaults to None.
 
         Returns:
             Generator[npt.NDArray, None, None]: Generator of input data of shape (frame_size, 1)
@@ -351,7 +371,7 @@ class PtbxlDataset(HKDataset):
         if target_rate is None:
             target_rate = self.sampling_rate
 
-        input_size = int(np.round((self.sampling_rate / target_rate) * frame_size))
+        input_size = int(np.ceil((self.sampling_rate / target_rate) * frame_size))
 
         for pt in patient_generator:
             with self.patient_data(pt) as h5:
@@ -364,6 +384,7 @@ class PtbxlDataset(HKDataset):
                 x = np.nan_to_num(x).astype(np.float32)
                 if self.sampling_rate != target_rate:
                     x = pk.signal.resample_signal(x, self.sampling_rate, target_rate, axis=0)
+                    x = x[:frame_size]  # truncate to frame size
                 # END IF
                 yield x
             # END FOR
@@ -413,7 +434,7 @@ class PtbxlDataset(HKDataset):
             samples_per_tgt = num_classes * [num_per_tgt]
         # END IF
 
-        input_size = int(np.round((self.sampling_rate / target_rate) * frame_size))
+        input_size = int(np.ceil((self.sampling_rate / target_rate) * frame_size))
 
         for pt in patient_generator:
             # 1. Grab patient scp label (fixed for all samples)
@@ -470,6 +491,8 @@ class PtbxlDataset(HKDataset):
                 # Resample if needed
                 if self.sampling_rate != target_rate:
                     x = pk.signal.resample_signal(x, self.sampling_rate, target_rate, axis=0)
+                    x = x[:frame_size]  # truncate to frame size
+                x = np.reshape(x, (frame_size, 1))
                 yield x, y
             # END FOR
         # END FOR
@@ -564,8 +587,7 @@ class PtbxlDataset(HKDataset):
         """
         ids = patient_ids.tolist()
         func = functools.partial(self.get_patient_labels, label_map=label_map, label_type=label_type)
-        with Pool() as pool:
-            pts_labels = list(pool.imap(func, ids))
+        pts_labels = process_map(func, ids)
         return pts_labels
 
     def get_patient_scp_codes(self, patient_id: int) -> list[int]:
@@ -607,10 +629,10 @@ class PtbxlDataset(HKDataset):
             num_workers (int | None, optional): # parallel workers. Defaults to None.
             force (bool, optional): Force redownload. Defaults to False.
         """
-        os.makedirs(self.ds_path, exist_ok=True)
-        zip_path = self.ds_path / f"{self.name}.zip"
+        os.makedirs(self.path, exist_ok=True)
+        zip_path = self.path / f"{self.name}.zip"
 
-        did_download = download_s3_file(
+        did_download = nse.utils.download_s3_file(
             key=f"{self.name}/{self.name}.zip",
             dst=zip_path,
             bucket="ambiq-ai-datasets",
@@ -618,7 +640,7 @@ class PtbxlDataset(HKDataset):
         )
         if did_download:
             with zipfile.ZipFile(zip_path, "r") as zf:
-                zf.extractall(self.ds_path)
+                zf.extractall(self.path)
 
     def download_raw_dataset(self, num_workers: int | None = None, force: bool = False):
         """Downloads full dataset zipfile and converts into individial patient HDF5 files.
@@ -632,14 +654,14 @@ class PtbxlDataset(HKDataset):
             "https://www.physionet.org/static/published-projects/ptb-xl/"
             "ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.2.zip"
         )
-        ds_zip_path = self.ds_path / "ptbxl.zip"
-        os.makedirs(self.ds_path, exist_ok=True)
+        ds_zip_path = self.path / "ptbxl.zip"
+        os.makedirs(self.path, exist_ok=True)
         if os.path.exists(ds_zip_path) and not force:
             logger.warning(
                 f"Zip file already exists. Please delete or set `force` flag to redownload. PATH={ds_zip_path}"
             )
         else:
-            download_file(ds_url, ds_zip_path, progress=True)
+            nse.utils.download_file(ds_url, ds_zip_path, progress=True)
 
         # 2. Extract and convert patient ECG data to H5 files
         logger.debug("Processing PTB-XL patient data")
@@ -683,7 +705,7 @@ class PtbxlDataset(HKDataset):
         zp_root = "ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.2"
 
         # scp_df = pd.read_csv(io.BytesIO(zp.read(os.path.join(zp_root, "scp_statements.csv"))))
-        with open(self.ds_path / "scp_statements.csv", "wb") as fp:
+        with open(self.path / "scp_statements.csv", "wb") as fp:
             fp.write(zp.read(os.path.join(zp_root, "scp_statements.csv")))
 
         db_df = pd.read_csv(io.BytesIO(zp.read(os.path.join(zp_root, "ptbxl_database.csv"))))
@@ -694,7 +716,7 @@ class PtbxlDataset(HKDataset):
         for patient in tqdm(patient_ids, desc="Converting"):
             # logger.debug(f"Processing patient {patient}")
             pt_id = self._pt_key(patient)
-            pt_path = self.ds_path / f"{pt_id}.h5"
+            pt_path = self.path / f"{pt_id}.h5"
 
             pt_info = db_df[db_df.ecg_id == patient]
             if len(pt_info) == 0:

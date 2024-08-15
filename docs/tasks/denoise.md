@@ -1,4 +1,4 @@
-# Signal Denoising
+# Signal Denoising Task
 
 ## <span class="sk-h2-span">Overview</span>
 
@@ -28,6 +28,17 @@ The following table summarizes the characteristics of common noise sources in PP
 | Motion Artifacts | Movement, pressure | 0-10 Hz | Distorts signal |
 | Ambient Light | Sunlight, artificial light | 0-100 Hz | Distorts signal |
 | Blood Pressure | Blood flow, pressure | 0-10 Hz | Distorts signal |
+
+---
+
+## <span class="sk-h2-span">Dataloaders</span>
+
+Dataloaders are available for the following datasets:
+
+* **[LUDB](../datasets/ludb.md)**
+* **[PTB-XL](../datasets/ptbxl.md)**
+* **[ECG Synthetic](../datasets/synthetic.md)**
+* **[PPG Synthetic](../datasets/synthetic.md)**
 
 ---
 

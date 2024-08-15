@@ -4,7 +4,7 @@ import heartkit as hk
 
 task = hk.TaskFactory.get("rhythm")
 
-task.train(hk.HKTrainParams(
+params = hk.HKTaskParams(
     job_dir=Path("./results/rhythm-class-2"),
     ds_path=Path("./datasets"),
     datasets=[{
@@ -32,5 +32,8 @@ task.train(hk.HKTrainParams(
     epochs=100,
     steps_per_epoch=20,
     val_metric="loss",
-))
+)
+
+task.train(params)
+
 ```

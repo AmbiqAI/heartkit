@@ -4,6 +4,6 @@
 
 ::: heartkit.defines
 
-::: heartkit.metrics
-
 ::: heartkit.utils
+
+::: heartkit.utils.plotting

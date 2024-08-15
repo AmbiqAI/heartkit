@@ -1,12 +1,10 @@
 import contextlib
 import functools
-import logging
 import os
 import zipfile
 import random
 from collections.abc import Iterable
 from enum import IntEnum
-from multiprocessing import Pool
 from typing import Generator
 
 import h5py
@@ -15,13 +13,13 @@ import numpy.typing as npt
 import physiokit as pk
 import sklearn.model_selection
 from tqdm import tqdm
+from tqdm.contrib.concurrent import process_map
+import neuralspot_edge as nse
 
-from ..utils import download_file
 from .dataset import HKDataset
-from .defines import PatientGenerator
-from .utils import download_s3_file
+from .defines import PatientGenerator, PatientData
 
-logger = logging.getLogger(__name__)
+logger = nse.utils.setup_logger(__name__)
 
 
 class LsadScpCode(IntEnum):
@@ -174,12 +172,10 @@ class LsadDataset(HKDataset):
 
     def __init__(
         self,
-        ds_path: os.PathLike,
         leads: list[int] | None = None,
+        **kwargs,
     ) -> None:
-        super().__init__(
-            ds_path=ds_path,
-        )
+        super().__init__(**kwargs)
         self.leads = leads or list(LsadLeadsMap.values())
 
     @property
@@ -209,7 +205,7 @@ class LsadDataset(HKDataset):
         Returns:
             npt.NDArray: patient IDs
         """
-        pts = np.array([int(p.stem) for p in self.ds_path.glob("*.h5")])
+        pts = np.array([int(p.stem) for p in self.path.glob("*.h5")])
         pts.sort()
         return pts
 
@@ -249,17 +245,31 @@ class LsadDataset(HKDataset):
         raise ValueError(f"Invalid label type: {label_type}")
 
     @contextlib.contextmanager
-    def patient_data(self, patient_id: int) -> Generator[h5py.Group, None, None]:
+    def patient_data(self, patient_id: int) -> Generator[PatientData, None, None]:
         """Get patient data
 
         Args:
             patient_id (int): Patient ID
 
         Returns:
-            Generator[h5py.Group, None, None]: Patient data
+            Generator[PatientData, None, None]: Patient data
         """
-        with h5py.File(self.ds_path / f"{self._pt_key(patient_id)}.h5", mode="r") as h5:
-            yield h5
+        pt_key = self._pt_key(patient_id)
+        pt_path = self.path / f"{pt_key}.h5"
+        if self.cacheable:
+            if pt_key not in self._cached_data:
+                pt_data = {}
+                with h5py.File(pt_path, mode="r") as h5:
+                    pt_data["data"] = h5["data"][:]
+                    pt_data[self.label_key("scp")] = h5[self.label_key("scp")][:]
+                self._cached_data[pt_key] = pt_data
+            # END IF
+            yield self._cached_data[pt_key]
+        else:
+            with h5py.File(pt_path, mode="r") as h5:
+                yield h5
+            # END WITH
+        # END IF
 
     def signal_generator(
         self,
@@ -271,10 +281,10 @@ class LsadDataset(HKDataset):
         """Generate random frames.
 
         Args:
-            patient_generator (PatientGenerator): Patient Generator
+            patient_generator (PatientGenerator): Generator that yields patient data.
             frame_size (int): Frame size
             samples_per_patient (int, optional): Samples per patient. Defaults to 1.
-            target_rate (int, optional): Target rate. Defaults to None.
+            target_rate (int | None, optional): Target rate. Defaults to None.
 
         Returns:
             Generator[npt.NDArray, None, None]: Generator of input data
@@ -282,10 +292,10 @@ class LsadDataset(HKDataset):
         if target_rate is None:
             target_rate = self.sampling_rate
 
-        input_size = int(np.round((self.sampling_rate / target_rate) * frame_size))
+        input_size = int(np.ceil((self.sampling_rate / target_rate) * frame_size))
         for pt in patient_generator:
             with self.patient_data(pt) as h5:
-                data: h5py.Dataset = h5["data"][:]
+                data = h5["data"][:]
             # END WITH
             for _ in range(samples_per_patient):
                 lead = random.choice(self.leads)
@@ -294,6 +304,7 @@ class LsadDataset(HKDataset):
                 x = np.nan_to_num(x).astype(np.float32)
                 if self.sampling_rate != target_rate:
                     x = pk.signal.resample_signal(x, self.sampling_rate, target_rate, axis=0)
+                    x = x[:frame_size]
                 # END IF
                 yield x
             # END FOR
@@ -342,7 +353,7 @@ class LsadDataset(HKDataset):
             num_per_tgt = int(max(1, samples_per_patient / num_classes))
             samples_per_tgt = num_classes * [num_per_tgt]
 
-        input_size = int(np.round((self.sampling_rate / target_rate) * frame_size))
+        input_size = int(np.ceil((self.sampling_rate / target_rate) * frame_size))
 
         for pt in patient_generator:
             # 1. Grab patient scp label (fixed for all samples)
@@ -395,6 +406,8 @@ class LsadDataset(HKDataset):
                 # Resample if needed
                 if self.sampling_rate != target_rate:
                     x = pk.signal.resample_signal(x, self.sampling_rate, target_rate, axis=0)
+                    x = x[:frame_size]  # truncate to frame size
+                x = np.reshape(x, (frame_size, 1))
                 yield x, y
             # END FOR
         # END FOR
@@ -480,6 +493,8 @@ class LsadDataset(HKDataset):
 
         Args:
             patient_ids (npt.NDArray): Patient ids
+            label_map (dict[int, int]): Label map
+            label_type (str, optional): Label type. Defaults to "scp".
 
         Returns:
             list[list[int]]: List of class labels per patient
@@ -487,8 +502,7 @@ class LsadDataset(HKDataset):
         """
         ids = patient_ids.tolist()
         func = functools.partial(self.get_patient_labels, label_map=label_map, label_type=label_type)
-        with Pool() as pool:
-            pts_labels = list(pool.imap(func, ids))
+        pts_labels = process_map(func, ids)
         return pts_labels
 
     def get_patient_labels(self, patient_id: int, label_map: dict[int, int], label_type: str = "scp") -> list[int]:
@@ -496,6 +510,8 @@ class LsadDataset(HKDataset):
 
         Args:
             patient_id (int): Patient id
+            label_map (dict[int, int]): Label map
+            label_type (str, optional): Label type. Defaults to "scp".
 
         Returns:
             list[int]: List of class labels
@@ -516,10 +532,10 @@ class LsadDataset(HKDataset):
             num_workers (int | None, optional): # parallel workers. Defaults to None.
             force (bool, optional): Force redownload. Defaults to False.
         """
-        os.makedirs(self.ds_path, exist_ok=True)
-        zip_path = self.ds_path / f"{self.name}.zip"
+        os.makedirs(self.path, exist_ok=True)
+        zip_path = self.path / f"{self.name}.zip"
 
-        did_download = download_s3_file(
+        did_download = nse.utils.download_s3_file(
             key=f"{self.name}/{self.name}.zip",
             dst=zip_path,
             bucket="ambiq-ai-datasets",
@@ -527,7 +543,7 @@ class LsadDataset(HKDataset):
         )
         if did_download:
             with zipfile.ZipFile(zip_path, "r") as zf:
-                zf.extractall(self.ds_path)
+                zf.extractall(self.path)
 
     def download_raw_dataset(self, num_workers: int | None = None, force: bool = False):
         """Downloads full dataset zipfile and converts into individial patient HDF5 files.
@@ -541,14 +557,14 @@ class LsadDataset(HKDataset):
             "https://www.physionet.org/static/published-projects/ecg-arrhythmia/"
             "a-large-scale-12-lead-electrocardiogram-database-for-arrhythmia-study-1.0.0.zip"
         )
-        ds_zip_path = self.ds_path / "lsad.zip"
-        os.makedirs(self.ds_path, exist_ok=True)
+        ds_zip_path = self.path / "lsad.zip"
+        os.makedirs(self.path, exist_ok=True)
         if os.path.exists(ds_zip_path) and not force:
             logger.warning(
                 f"Zip file already exists. Please delete or set `force` flag to redownload. PATH={ds_zip_path}"
             )
         else:
-            download_file(ds_url, ds_zip_path, progress=True)
+            nse.utils.download_file(ds_url, ds_zip_path, progress=True)
 
         # 2. Extract and convert patient ECG data to H5 files
         logger.debug("Processing LSAD patient data")
@@ -600,7 +616,7 @@ class LsadDataset(HKDataset):
             try:
                 # Extract patient ID by remove JS prefix and .mat suffix
                 pt_id = os.path.basename(zp_rec_name).removeprefix("JS").removesuffix(".mat")
-                pt_path = self.ds_path / f"{pt_id}.h5"
+                pt_path = self.path / f"{pt_id}.h5"
                 with tempfile.TemporaryDirectory() as tmpdir:
                     rec_fpath = os.path.join(tmpdir, f"JS{pt_id}")
 

@@ -1,6 +1,6 @@
 import abc
 
-from ..defines import HKDemoParams, HKExportParams, HKTestParams, HKTrainParams
+from ..defines import HKTaskParams
 
 
 class HKTask(abc.ABC):
@@ -17,41 +17,41 @@ class HKTask(abc.ABC):
         return ""
 
     @staticmethod
-    def train(params: HKTrainParams) -> None:
+    def train(params: HKTaskParams) -> None:
         """Train a model
 
         Args:
-            params (HKTrainParams): train parameters
+            params (HKTaskParams): train parameters
 
         """
         raise NotImplementedError
 
     @staticmethod
-    def evaluate(params: HKTestParams) -> None:
+    def evaluate(params: HKTaskParams) -> None:
         """Evaluate a model
 
         Args:
-            params (HKTestParams): test parameters
+            params (HKTaskParams): test parameters
 
         """
         raise NotImplementedError
 
     @staticmethod
-    def export(params: HKExportParams) -> None:
+    def export(params: HKTaskParams) -> None:
         """Export a model
 
         Args:
-            params (HKExportParams): export parameters
+            params (HKTaskParams): export parameters
 
         """
         raise NotImplementedError
 
     @staticmethod
-    def demo(params: HKDemoParams) -> None:
+    def demo(params: HKTaskParams) -> None:
         """Run a demo
 
         Args:
-            params (HKDemoParams): demo parameters
+            params (HKTaskParams): demo parameters
 
         """
         raise NotImplementedError

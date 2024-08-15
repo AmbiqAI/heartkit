@@ -82,7 +82,7 @@ The following table provides the latest pre-trained models for beat classificati
 
 ---
 
-## <span class="sk-h2-span">EVB Performance</span>
+<!-- ## <span class="sk-h2-span">EVB Performance</span>
 
 The following table provides the latest performance and accuracy results of all models when running on Apollo4 Plus EVB. These results are obtained using neuralSPOTs [Autodeploy tool](https://ambiqai.github.io/neuralSPOT/docs/From%20TF%20to%20EVB%20-%20testing%2C%20profiling%2C%20and%20deploying%20AI%20models.html). From neuralSPOT repo, the following command can be used to capture EVB results via Autodeploy:
 
@@ -98,9 +98,4 @@ python -m ns_autodeploy \
 
 --8<-- "assets/zoo/beat/beat-model-hw-table.md"
 
----
-<!-- - **Training Procedure**:
-- **[Focal loss function](https://arxiv.org/pdf/1708.02002.pdf)**
-- **[Adam optimizer](https://arxiv.org/pdf/1412.6980.pdf)**
-- **[Cosine decay learning rate scheduler w/ restarts](https://arxiv.org/pdf/1608.03983.pdf)**
-- **Early stopping** -->
+--- -->

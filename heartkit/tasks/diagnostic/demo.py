@@ -5,22 +5,21 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from tqdm import tqdm
+import neuralspot_edge as nse
 
-from ...datasets.utils import uniform_id_generator
-from ...defines import HKDemoParams
+from ...defines import HKTaskParams
 from ...rpc import BackendFactory
-from ...utils import setup_logger
-from ..utils import load_datasets
-from .datasets import preprocess
-
-logger = setup_logger(__name__)
+from ...datasets import DatasetFactory
 
 
-def demo(params: HKDemoParams):
+logger = nse.utils.setup_logger(__name__)
+
+
+def demo(params: HKTaskParams):
     """Run demo for model
 
     Args:
-        params (HKDemoParams): Demo parameters
+        params (HKTaskParams): Demo parameters
     """
 
     bg_color = "rgba(38,42,50,1.0)"
@@ -31,7 +30,7 @@ def demo(params: HKDemoParams):
     params.demo_size = params.demo_size or 2 * params.frame_size
 
     # Load backend inference engine
-    runner = BackendFactory.create(params.backend, params=params)
+    runner = BackendFactory.get(params.backend)(params=params)
 
     # classes = sorted(list(set(params.class_map.values())))
     class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
@@ -45,11 +44,11 @@ def demo(params: HKDemoParams):
     # )
 
     # Load data
-    dsets = load_datasets(datasets=params.datasets)
-    ds = random.choice(dsets)
+    datasets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
+    ds = random.choice(datasets)
 
     ds_gen = ds.signal_generator(
-        patient_generator=uniform_id_generator(ds.get_test_patient_ids(), repeat=False),
+        patient_generator=nse.utils.uniform_id_generator(ds.get_test_patient_ids(), repeat=False),
         frame_size=params.demo_size,
         samples_per_patient=5,
         target_rate=params.sampling_rate,
@@ -65,7 +64,8 @@ def demo(params: HKDemoParams):
             start, stop = x.shape[0] - params.frame_size, x.shape[0]
         else:
             start, stop = i, i + params.frame_size
-        xx = preprocess(x[start:stop], sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
+        # xx = preprocess(x[start:stop], sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
+        xx = x[start:stop]
         xx = xx.reshape(feat_shape)
         runner.set_inputs(xx)
         runner.perform_inference()

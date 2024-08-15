@@ -1,15 +1,71 @@
-from ...defines import HKTestParams
-from ...utils import setup_logger
+import os
 
-logger = setup_logger(__name__)
+import keras
+import numpy as np
+import matplotlib.pyplot as plt
+import neuralspot_edge as nse
+from sklearn.manifold import TSNE
+
+from ...defines import HKTaskParams
+from ...datasets import DatasetFactory
+from .datasets import load_test_dataset
+from ...utils import setup_plotting
 
 
-def evaluate(params: HKTestParams):
+def evaluate(params: HKTaskParams):
     """Evaluate model
 
     Args:
-        params (HKTestParams): Evaluation parameters
+        params (HKTaskParams): Evaluation parameters
     """
-    # Would need encoder along with either projector or classifier to evaluate
+    os.makedirs(params.job_dir, exist_ok=True)
+    logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "test.log")
+    logger.debug(f"Creating working directory in {params.job_dir}")
 
-    return
+    params.seed = nse.utils.set_random_seed(params.seed)
+    logger.debug(f"Random seed {params.seed}")
+
+    datasets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
+
+    # Grab sets of augmented samples
+    test_ds = load_test_dataset(datasets=datasets, params=params)
+    test_x1, test_x2 = [], []
+    for inputs in test_ds.as_numpy_iterator():
+        test_x1.append(inputs[nse.trainers.SimCLRTrainer.AUG_SAMPLES_0])
+        test_x2.append(inputs[nse.trainers.SimCLRTrainer.AUG_SAMPLES_1])
+    test_x1 = np.concatenate(test_x1)
+    test_x2 = np.concatenate(test_x2)
+
+    logger.debug("Loading model")
+    model = nse.models.load_model(params.model_file)
+    flops = nse.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
+
+    model.summary(print_fn=logger.debug)
+    logger.debug(f"Model requires {flops/1e6:0.2f} MFLOPS")
+
+    logger.debug("Performing inference")
+    test_y1 = model.predict(test_x1)
+    test_y2 = model.predict(test_x2)
+
+    metrics = [
+        keras.metrics.CosineSimilarity(name="cos"),
+        keras.metrics.MeanSquaredError(name="mse"),
+    ]
+
+    setup_plotting()
+
+    tf_rst = nse.metrics.compute_metrics(metrics, test_y1, test_y2)
+    logger.info("[TEST SET] " + ", ".join([f"{k.upper()}={v:.2%}" for k, v in tf_rst.items()]))
+
+    # Compute t-SNE
+    logger.debug("Computing t-SNE")
+    tsne = TSNE(n_components=2, random_state=0, n_iter=1000, perplexity=75)
+    x_tsne = tsne.fit_transform(test_y1)
+
+    # Plot t-SNE in matplotlib
+    fig, ax = plt.subplots(1, 1, figsize=(9, 9))
+    ax.scatter(x_tsne[:, 0], x_tsne[:, 1], c=x_tsne[:, 0] - x_tsne[:, 1], cmap="viridis")
+    fig.suptitle("HK Foundation: t-SNE")
+    ax.set_xlabel("Component 1")
+    ax.set_ylabel("Component 2")
+    fig.savefig(params.job_dir / "tsne.png")

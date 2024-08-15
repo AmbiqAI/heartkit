@@ -4,7 +4,7 @@ import heartkit as hk
 
 task = hk.TaskFactory.get("rhythm")
 
-task.evaluate(hk.HKTestParams(
+params = hk.HKTaskParams(
     job_dir=Path("./results/rhythm-class-2"),
     ds_path=Path("./datasets"),
     datasets=[{
@@ -22,10 +22,17 @@ task.evaluate(hk.HKTestParams(
     ],
     sampling_rate=200,
     frame_size=800,
-    test_samples_per_patient=[100, 800],
-    test_patients=1000,
-    test_size=100000,
-    model_file=Path("./results/rhythm-class-2/model.keras"),
-    threshold=0.75
-))
+    samples_per_patient=[100, 800],
+    val_samples_per_patient=[100, 800],
+    train_patients=10000,
+    val_patients=0.10,
+    val_size=200000,
+    batch_size=256,
+    buffer_size=100000,
+    epochs=100,
+    steps_per_epoch=20,
+    val_metric="loss",
+)
+
+task.evaluate(params)
 ```

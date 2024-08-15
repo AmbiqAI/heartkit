@@ -2,36 +2,68 @@
 
 The Bring-Your-Own-Dataset (BYOD) feature allows users to add custom datasets for training and evaluating models. This feature is useful when working with proprietary or custom datasets that are not available in the HeartKit library.
 
-## How it Works
+## <span class="sk-h2-span">How it Works</span>
 
-1. **Create a Dataset**: Define a new dataset by creating a new Python file. The file should contain a class that inherits from the `HKDataset` base class and implements the required methods.
+1. **Create a Dataset**: Define a new dataset that inherits `HKDataset` and implements the required abstract methods.
 
-    ```python
-    import heartkit as hk
+```python
 
-    class CustomDataset(hk.HKDataset):
-        def __init__(self, config):
-            super().__init__(config)
+import numpy as np
+import heartkit as hk
 
-        def download(self):
-            pass
+class MyDataset(hk.HKDataset):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-        def generate(self):
-            pass
-    ```
+    @property
+    def name(self) -> str:
+        return 'my-dataset'
+
+    @property
+    def sampling_rate(self) -> int:
+        return 100
+
+    def get_train_patient_ids(self) -> npt.NDArray:
+        return np.arange(80)
+
+    def get_test_patient_ids(self) -> npt.NDArray:
+        return np.arange(80, 100)
+
+    @contextlib.contextmanager
+    def patient_data(self, patient_id: int) -> Generator[PatientData, None, None]:
+        data = np.random.randn(1000)
+        segs = np.random.randint(0, 1000, (10, 2))
+        yield {"data": data, "segmentations": segs}
+
+    def signal_generator(
+        self,
+        patient_generator: PatientGenerator,
+        frame_size: int,
+        samples_per_patient: int = 1,
+        target_rate: int | None = None,
+    ) -> Generator[npt.NDArray, None, None]:
+        for patient in patient_generator:
+            for _ in range(samples_per_patient):
+                with self.patient_data(patient) as pt:
+                    yield pt["data"]
+
+    def download(self, num_workers: int | None = None, force: bool = False):
+        pass
+
+```
 
 2. **Register the Dataset**: Register the new dataset with the `DatasetFactory` by calling the `register` method. This method takes the dataset name and the dataset class as arguments.
 
     ```python
     import heartkit as hk
 
-    hk.DatasetFactory.register("custom", CustomDataset)
+    hk.DatasetFactory.register("my-dataset", CustomDataset)
     ```
 
 3. **Use the Dataset**: The new dataset can now be used with the `DatasetFactory` to perform various operations such as downloading and generating data.
 
     ```python
     import heartkit as hk
-
-    dataset = hk.DatasetFactory.create("custom", config)
+    params = {}
+    dataset = hk.DatasetFactory.get("my-dataset")(**params)
     ```
