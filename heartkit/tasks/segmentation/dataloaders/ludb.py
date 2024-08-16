@@ -20,6 +20,7 @@ LudbSegmentationMap = {
 
 class LudbDataloader(HKDataloader):
     def __init__(self, ds: LudbDataset, **kwargs):
+        """Dataloader for ludb dataset"""
         super().__init__(ds=ds, **kwargs)
         if self.label_map:
             self.label_map = {k: self.label_map[v] for (k, v) in LudbSegmentationMap.items() if v in self.label_map}

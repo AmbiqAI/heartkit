@@ -11,7 +11,7 @@ import neuralspot_edge as nse
 
 from ...datasets import IcentiaDataset, PtbxlDataset, DatasetFactory, create_augmentation_pipeline
 from ...defines import HKTaskParams
-from ...rpc import BackendFactory
+from ...backends import BackendFactory
 
 logger = nse.utils.setup_logger(__name__)
 

@@ -11,6 +11,7 @@ from ..defines import HKSegment
 
 class Icentia11kDataloader(HKDataloader):
     def __init__(self, ds: IcentiaDataset, **kwargs):
+        """Dataloader for icentia11k dataset"""
         super().__init__(ds=ds, **kwargs)
 
     def patient_data_generator(

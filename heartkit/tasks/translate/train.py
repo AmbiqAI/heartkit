@@ -46,6 +46,12 @@ def train(params: HKTaskParams):
         params=params,
     )
 
+    # Save validation data
+    if params.val_file:
+        logger.info(f"Saving validation dataset to {params.val_file}")
+        os.makedirs(params.val_file, exist_ok=True)
+        val_ds.save(str(params.val_file))
+
     inputs = keras.Input(shape=feat_shape, name="input", dtype="float32")
     if params.resume and params.model_file:
         logger.debug(f"Loading model from file {params.model_file}")
@@ -100,7 +106,7 @@ def train(params: HKTaskParams):
             patience=max(int(0.25 * params.epochs), 1),
             mode="max" if params.val_metric == "f1" else "auto",
             restore_best_weights=True,
-            verbose=params.verbose - 1,
+            verbose=max(0, params.verbose - 1),
         ),
         ModelCheckpoint(
             filepath=str(params.model_file),
@@ -108,7 +114,7 @@ def train(params: HKTaskParams):
             save_best_only=True,
             save_weights_only=False,
             mode="max" if params.val_metric == "f1" else "auto",
-            verbose=params.verbose - 1,
+            verbose=max(0, params.verbose - 1),
         ),
         keras.callbacks.CSVLogger(params.job_dir / "history.csv"),
     ]
@@ -126,7 +132,7 @@ def train(params: HKTaskParams):
         model.fit(
             train_ds,
             steps_per_epoch=params.steps_per_epoch,
-            verbose=params.verbose,
+            verbose=max(0, params.verbose - 1),
             epochs=params.epochs,
             validation_data=val_ds,
             callbacks=model_callbacks,

@@ -2,7 +2,9 @@
     "name": "seg-2-tcn-sm",
     "project": "hk-segmentation-2",
     "job_dir": "./results/seg-2-tcn-sm",
+
     "verbose": 2,
+
     "dataset_weights": [0.32, 0.68],
     "datasets": [{
         "name": "icentia11k",
@@ -15,6 +17,7 @@
             "path": "./datasets/ptbxl"
         }
     }],
+
     "num_classes": 2,
     "class_map": {
         "0": 0,
@@ -26,15 +29,19 @@
     "class_names": [
         "NONE", "QRS"
     ],
-    "class_weights": "balanced",
+
     "sampling_rate": 100,
     "frame_size": 256,
+
     "samples_per_patient": 5,
     "val_samples_per_patient": 5,
     "test_samples_per_patient": 5,
-    "val_patients": 0.20,
+
     "val_size": 25000,
     "test_size": 25000,
+
+    "val_patients": 0.20,
+    "class_weights": "balanced",
     "batch_size": 256,
     "buffer_size": 50000,
     "epochs": 100,
@@ -42,12 +49,16 @@
     "val_metric": "loss",
     "lr_rate": 1e-3,
     "lr_cycles": 1,
-    "val_metric_threshold": 0.98,
+
+    "test_metric": "f1",
+    "test_metric_threshold": 0.02,
     "tflm_var_name": "g_segmentation_model",
     "tflm_file": "segmentation_model_buffer.h",
+
     "backend": "pc",
     "demo_size": 900,
     "display_report": false,
+
     "quantization": {
         "qat": false,
         "mode": "INT8",
@@ -55,6 +66,7 @@
         "concrete": true,
         "debug": false
     },
+
     "preprocesses": [
         {
             "name": "layer_norm",
@@ -64,6 +76,7 @@
             }
         }
     ],
+
     "model_file": "model.keras",
     "use_logits": true,
     "architecture": {

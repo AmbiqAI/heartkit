@@ -1,18 +1,17 @@
 import os
 from importlib.metadata import version
 
-from . import cli, datasets, models, rpc, tasks
+from . import cli, datasets, models, backends, tasks
 from .datasets import DatasetFactory, HKDataset, HKDataloader
 from .defines import (
     QuantizationParams,
-    HKDownloadParams,
     HKTaskParams,
     HKMode,
     NamedParams,
 )
 from .models import ModelFactory
 from .tasks import HKBeat, HKRhythm, HKSegment, HKTask, TaskFactory
-from .rpc import BackendFactory
+from .backends import BackendFactory
 import neuralspot_edge as nse
 
 __version__ = version(__name__)

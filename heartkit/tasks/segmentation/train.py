@@ -11,10 +11,11 @@ from ...defines import HKTaskParams
 from ...datasets import DatasetFactory
 from .datasets import load_train_datasets
 from ...models import ModelFactory
+from ...utils import dark_theme, setup_plotting
 
 
 def train(params: HKTaskParams):
-    """Train model
+    """Train model for segmentation task
 
     Args:
         params (HKTaskParams): Training parameters
@@ -23,7 +24,6 @@ def train(params: HKTaskParams):
     logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "train.log")
     logger.debug(f"Creating working directory in {params.job_dir}")
 
-    params.finetune = bool(getattr(params, "finetune", False))
     params.seed = nse.utils.set_random_seed(params.seed)
     logger.debug(f"Random seed {params.seed}")
 
@@ -53,6 +53,12 @@ def train(params: HKTaskParams):
 
     y_true = np.concatenate([xy[1] for xy in val_ds.as_numpy_iterator()])
     y_true = np.argmax(y_true, axis=-1).flatten()
+
+    # Save validation data
+    if params.val_file:
+        logger.info(f"Saving validation dataset to {params.val_file}")
+        os.makedirs(params.val_file, exist_ok=True)
+        val_ds.save(str(params.val_file))
 
     class_weights = 0.25
     if params.class_weights == "balanced":
@@ -116,7 +122,7 @@ def train(params: HKTaskParams):
             patience=max(int(0.25 * params.epochs), 1),
             mode="max" if params.val_metric == "f1" else "auto",
             restore_best_weights=True,
-            verbose=min(params.verbose - 1, 1),
+            verbose=max(0, params.verbose - 1),
         ),
         ModelCheckpoint(
             filepath=str(params.model_file),
@@ -124,7 +130,7 @@ def train(params: HKTaskParams):
             save_best_only=True,
             save_weights_only=False,
             mode="max" if params.val_metric == "f1" else "auto",
-            verbose=min(params.verbose - 1, 1),
+            verbose=max(0, params.verbose - 1),
         ),
         keras.callbacks.CSVLogger(params.job_dir / "history.csv"),
     ]
@@ -137,12 +143,18 @@ def train(params: HKTaskParams):
         )
     if nse.utils.env_flag("WANDB"):
         model_callbacks.append(WandbMetricsLogger())
-
+    # Use minimal progress bar
+    if params.verbose <= 1:
+        model_callbacks.append(
+            nse.callbacks.TQDMProgressBar(
+                show_epoch_progress=False,
+            )
+        )
     try:
-        model.fit(
+        history = model.fit(
             train_ds,
             steps_per_epoch=params.steps_per_epoch,
-            verbose=params.verbose,
+            verbose=max(0, params.verbose - 1),
             epochs=params.epochs,
             validation_data=val_ds,
             callbacks=model_callbacks,
@@ -151,6 +163,17 @@ def train(params: HKTaskParams):
         logger.warning("Stopping training due to keyboard interrupt")
 
     logger.debug(f"Model saved to {params.model_file}")
+
+    setup_plotting(dark_theme)
+    if history:
+        nse.plotting.plot_history_metrics(
+            history.history,
+            metrics=["loss", "acc"],
+            save_path=params.job_dir / "history.png",
+            title="Training History",
+            stack=True,
+            figsize=(9, 5),
+        )
 
     # Get full validation results
     logger.debug("Performing full validation")
@@ -166,5 +189,10 @@ def train(params: HKTaskParams):
 
     # Summarize results
     rst = model.evaluate(val_ds, verbose=params.verbose, return_dict=True)
-    msg = "[VAL SET] " + ", ".join([f"{k.upper()}={v:.2%}" for k, v in rst.items()])
+    msg = "[VAL SET] " + ", ".join([f"{k.upper()}={v:.4f}" for k, v in rst.items()])
     logger.info(msg)
+
+    # cleanup
+    keras.utils.clear_session()
+    for ds in datasets:
+        ds.close()

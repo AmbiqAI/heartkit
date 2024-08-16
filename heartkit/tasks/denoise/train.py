@@ -43,6 +43,12 @@ def train(params: HKTaskParams):
 
     train_ds, val_ds = load_train_datasets(datasets=datasets, params=params)
 
+    # Save validation data
+    if params.val_file:
+        logger.info(f"Saving validation dataset to {params.val_file}")
+        os.makedirs(params.val_file, exist_ok=True)
+        val_ds.save(str(params.val_file))
+
     inputs = keras.Input(shape=feat_shape, name="input", dtype="float32")
 
     # Load existing model
@@ -101,7 +107,7 @@ def train(params: HKTaskParams):
             patience=max(int(0.25 * params.epochs), 1),
             mode=val_mode,
             restore_best_weights=True,
-            verbose=min(params.verbose - 1, 1),
+            verbose=max(0, params.verbose - 1),
         ),
         ModelCheckpoint(
             filepath=str(params.model_file),
@@ -109,7 +115,7 @@ def train(params: HKTaskParams):
             save_best_only=True,
             save_weights_only=False,
             mode=val_mode,
-            verbose=min(params.verbose - 1, 1),
+            verbose=max(0, params.verbose - 1),
         ),
         keras.callbacks.CSVLogger(params.job_dir / "history.csv"),
     ]
@@ -122,12 +128,18 @@ def train(params: HKTaskParams):
         )
     if nse.utils.env_flag("WANDB"):
         model_callbacks.append(WandbMetricsLogger())
-
+    # Use minimal progress bar
+    if params.verbose <= 1:
+        model_callbacks.append(
+            nse.callbacks.TQDMProgressBar(
+                show_epoch_progress=False,
+            )
+        )
     try:
         model.fit(
             train_ds,
             steps_per_epoch=params.steps_per_epoch,
-            verbose=params.verbose,
+            verbose=max(0, params.verbose - 1),
             epochs=params.epochs,
             validation_data=val_ds,
             callbacks=model_callbacks,
@@ -142,4 +154,9 @@ def train(params: HKTaskParams):
 
     # Summarize results
     rst = model.evaluate(val_ds, return_dict=True)
-    logger.info("[VAL SET]" + ", ".join([f"{k.upper()}={v:.2%}" for k, v in rst.items()]))
+    logger.info("[VAL SET]" + ", ".join([f"{k.upper()}={v:.4f}" for k, v in rst.items()]))
+
+    # cleanup
+    keras.utils.clear_session()
+    for ds in datasets:
+        ds.close()

@@ -17,6 +17,7 @@ PpgSyntheticSegmentationMap = {
 
 class PPgSyntheticDataloader(HKDataloader):
     def __init__(self, ds: PpgSyntheticDataset, **kwargs):
+        """Dataloader for PPG synthetic dataset"""
         super().__init__(ds=ds, **kwargs)
         # Update label map
         if self.label_map:

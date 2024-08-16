@@ -1,4 +1,3 @@
-import abc
 import time
 from enum import IntEnum
 
@@ -9,9 +8,8 @@ import numpy.typing as npt
 from ..defines import HKTaskParams
 from . import GenericDataOperations_PcToEvb as pc2evb
 from . import erpc
+from .backend import HKInferenceBackend
 from .utils import get_serial_transport
-
-logger = nse.utils.setup_logger(__name__)
 
 
 class RpcCommands(IntEnum):
@@ -24,49 +22,44 @@ class RpcCommands(IntEnum):
     PERFORM_INFERENCE = 4
 
 
-class HKInferenceBackend(abc.ABC):
-    """Demo backend base class"""
-
-    def __init__(self, params: HKTaskParams) -> None:
-        self.params = params
-
-    def open(self):
-        """Open backend"""
-        raise NotImplementedError
-
-    def close(self):
-        """Close backend"""
-        raise NotImplementedError
-
-    def set_inputs(self, inputs: npt.NDArray):
-        """Set inputs"""
-        raise NotImplementedError
-
-    def perform_inference(self):
-        """Perform inference"""
-        raise NotImplementedError
-
-    def get_outputs(self) -> npt.NDArray:
-        """Get outputs"""
-        raise NotImplementedError
-
-
 class EvbBackend(HKInferenceBackend):
-    """Demo backend for EVB"""
-
     def __init__(self, params: HKTaskParams) -> None:
+        """EVB inference engine backend
+
+        This backend leverages Ambiq SoCs to run inference on the edge.
+        The model, inputs, and outputs are sent to the EVB using eRPC.
+
+        By default, the backend will scan serial ports looking for the EVB.
+        Therefore, the EVB must be connected and running prior to using this backend.
+
+        Args:
+            params (HKTaskParams): Task parameters
+        """
+
         super().__init__(params=params)
         self._interpreter = None
         self._transport = None
         self._client = None
 
     def open(self):
+        """Open connection to EVB
+
+        The following steps are performed:
+        1. Scan serial ports for EVB
+        2. Connect to EVB
+        3. Send model to EVB via eRPC
+
+        """
         self._transport = get_serial_transport(vid_pid="51966:16385", baudrate=115200)
         client_manager = erpc.client.ClientManager(self._transport, erpc.basic_codec.BasicCodec)
         self._client = pc2evb.client.pc_to_evbClient(client_manager)
         self.send_model()
 
     def close(self):
+        """Close connection to EVB
+
+        This method will close the connection to the EVB.
+        """
         self._transport.close()
         self._transport = None
         self._client = None
@@ -123,7 +116,11 @@ class EvbBackend(HKInferenceBackend):
         return status[0]
 
     def send_model(self):
-        """Send model to EVB"""
+        """Send model to EVB
+
+        This method sends the model to the EVB using eRPC. The TFLite flatbuffer will be read from disk
+        and sent to the EVB.
+        """
 
         with open(self.params.model_file, "rb") as fp:
             model_content = fp.read()
@@ -132,53 +129,34 @@ class EvbBackend(HKInferenceBackend):
         self._send_binary("MODEL", RpcCommands.SEND_MODEL, model_content)
 
     def set_inputs(self, inputs: npt.NDArray):
+        """Set inputs for inference
+
+        The inputs are flattened and sent to the EVB using eRPC.
+
+        Args:
+            inputs (npt.NDArray): Inputs for inference
+        """
         inputs = self._interpreter.convert_input(inputs)
         self._send_binary("INPUT", RpcCommands.SEND_INPUT, np.ascontiguousarray(inputs).tobytes("C"))
 
     def perform_inference(self):
+        """Perform inference
+
+        This method sends the inference command to the EVB and waits for the inference to complete.
+        """
         self._send_binary("INFER", RpcCommands.PERFORM_INFERENCE, bytes([0]))
         while self._get_status() != 0:
             time.sleep(0.2)
 
     def get_outputs(self) -> npt.NDArray:
+        """Get outputs from inference
+
+        The outputs are fetched from the EVB and converted to a numpy array.
+
+        Returns:
+            npt.NDArray: Outputs from inference
+        """
         data = self._fetch_binary("OUTPUT", RpcCommands.FETCH_OUTPUT)
         outputs = np.frombuffer(data, dtype=self._interpreter._output_dtype)
         outputs = self._interpreter.convert_output(data)
         return outputs
-
-
-class PcBackend(HKInferenceBackend):
-    """Demo backend for PC"""
-
-    def __init__(self, params: HKTaskParams) -> None:
-        super().__init__(params=params)
-        self._inputs = None
-        self._outputs = None
-        self._model = None
-
-    def _is_tf_model(self) -> bool:
-        ext = self.params.model_file.suffix
-        return ext in [".h5", ".hdf5", ".keras", ".tf"]
-
-    def open(self):
-        if self._is_tf_model():
-            self._model = nse.models.load_model(self.params.model_file)
-        else:
-            with open(self.params.model_file, "rb") as fp:
-                model_content = fp.read()
-            self._model = nse.interpreters.tflite.TfLiteKerasInterpreter(model_content=model_content)
-
-    def close(self):
-        self._model = None
-
-    def set_inputs(self, inputs: npt.NDArray):
-        self._inputs = inputs
-
-    def perform_inference(self):
-        if self._is_tf_model():
-            self._outputs = self._model.predict(np.expand_dims(self._inputs, 0), verbose=0).squeeze(0)
-        else:
-            self._outputs = self._model.predict(self._inputs)
-
-    def get_outputs(self) -> npt.NDArray:
-        return self._outputs

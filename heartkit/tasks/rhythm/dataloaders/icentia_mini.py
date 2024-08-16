@@ -19,6 +19,7 @@ IcentiaMiniRhythmMap = {
 
 class IcentiaMiniDataloader(HKDataloader):
     def __init__(self, ds: IcentiaMiniDataset, **kwargs):
+        """Dataloader for icentia mini dataset"""
         super().__init__(ds=ds, **kwargs)
         # Update label map to map icentia mini label -> rhythm label -> user label
         if self.label_map:

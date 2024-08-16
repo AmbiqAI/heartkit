@@ -2,8 +2,10 @@
     "name": "seg-ppg-2-tcn-sm",
     "project": "hk-segmentation-2",
     "job_dir": "./results/seg-ppg-2-tcn-sm",
-    "verbose": 2,
+
     "signal_type": "PPG",
+    "verbose": 2,
+
     "datasets": [{
         "name": "ppg-synthetic",
         "params": {
@@ -18,6 +20,7 @@
             }
         }
     }],
+
     "num_classes": 2,
     "class_map": {
         "6": 0,
@@ -26,14 +29,18 @@
     "class_names": [
         "SYS", "DIA"
     ],
+
     "sampling_rate": 100,
     "frame_size": 256,
+
     "samples_per_patient": 5,
     "val_samples_per_patient": 10,
     "test_samples_per_patient": 10,
-    "val_patients": 0.20,
+
     "val_size": 20000,
     "test_size": 20000,
+
+    "val_patients": 0.20,
     "buffer_size": 25000,
     "batch_size": 256,
     "epochs": 200,
@@ -41,12 +48,15 @@
     "val_metric": "loss",
     "lr_rate": 1e-3,
     "lr_cycles": 1,
-    "val_metric_threshold": 0.98,
+
+    "test_metric": "f1",
+    "test_metric_threshold": 0.02,
     "tflm_var_name": "g_segmentation_model",
     "tflm_file": "segmentation_model_buffer.h",
     "backend": "pc",
     "demo_size": 900,
     "display_report": false,
+
     "quantization": {
         "qat": false,
         "mode": "INT8",
@@ -54,6 +64,7 @@
         "concrete": true,
         "debug": false
     },
+
     "preprocesses": [
         {
             "name": "layer_norm",
@@ -63,6 +74,7 @@
             }
         }
     ],
+
     "augmentations": [{
         "name": "random_noise_distortion",
         "params": {
@@ -98,6 +110,7 @@
             "name": "nstdb"
         }
     }],
+
     "model_file": "model.keras",
     "architecture": {
         "name": "tcn",

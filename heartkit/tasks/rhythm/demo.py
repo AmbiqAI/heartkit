@@ -1,15 +1,18 @@
 import datetime
 import random
 
+import keras
 import numpy as np
+import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from tqdm import tqdm
 import neuralspot_edge as nse
 
 from ...defines import HKTaskParams
-from ...rpc import BackendFactory
+from ...backends import BackendFactory
 from ...datasets import DatasetFactory, create_augmentation_pipeline
+from ...utils import setup_plotting
 
 
 def demo(params: HKTaskParams):
@@ -20,14 +23,7 @@ def demo(params: HKTaskParams):
     """
     logger = nse.utils.setup_logger(__name__, level=params.verbose)
 
-    bg_color = "rgba(38,42,50,1.0)"
-    primary_color = "#11acd5"
-    secondary_color = "#ce6cff"
-    tertiary_color = "rgb(234,52,36)"
-    quaternary_color = "rgb(92,201,154)"
-    colors = [primary_color, secondary_color, tertiary_color, quaternary_color]
-
-    plotly_template = "plotly_dark"
+    plot_theme = setup_plotting()
 
     params.demo_size = params.demo_size or 2 * params.frame_size
 
@@ -101,7 +97,7 @@ def demo(params: HKTaskParams):
             y=x,
             name="ECG",
             mode="lines",
-            line=dict(color=primary_color, width=2),
+            line=dict(color=plot_theme.primary_color, width=2),
             showlegend=False,
         ),
         row=1,
@@ -114,7 +110,7 @@ def demo(params: HKTaskParams):
             label = f"Inconclusive ({prob:0.0%})"
         else:
             label = f"{class_names[pred]} ({prob:0.0%})"
-        color = colors[pred % len(colors)]
+        color = plot_theme.colors[pred % len(plot_theme.colors)]
         if i > 0 and y_preds[i - 1][1] >= start:
             start = y_preds[i - 1][1] + 1
         fig.add_vrect(
@@ -131,10 +127,10 @@ def demo(params: HKTaskParams):
         )
 
     fig.update_layout(
-        template=plotly_template,
+        template=plot_theme.plotly_template,
         height=600,
-        plot_bgcolor=bg_color,
-        paper_bgcolor=bg_color,
+        plot_bgcolor=plot_theme.bg_color,
+        paper_bgcolor=plot_theme.bg_color,
         margin=dict(l=10, r=10, t=80, b=80),
         legend=dict(groupclick="toggleitem"),
         title="HeartKit: Rhythm Demo",
@@ -142,5 +138,29 @@ def demo(params: HKTaskParams):
     fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=False)
     logger.debug(f"Report saved to {params.job_dir / 'demo.html'}")
 
+    # Matplotlib version
+
+    # Make ts in seconds
+    ts = np.arange(x.shape[0]) / params.sampling_rate
+    fig, ax = plt.subplots(figsize=(9, 4))
+    ax.plot(ts, x, color=plot_theme.primary_color, linewidth=2)
+    for i, (start, stop, pred, prob) in enumerate(y_preds):
+        if pred < 0:
+            label = f"Inconclusive ({prob:0.0%})"
+        else:
+            label = f"{class_names[pred]} ({prob:0.0%})"
+        color = plot_theme.colors[pred % len(plot_theme.colors)]
+        ax.axvspan(ts[start], ts[stop], color=color, alpha=0.25, label=label)
+    ax.set_title("HeartKit: Rhythm Demo")
+    ax.set_xlabel("Time (sec)")
+    ax.set_ylabel("ECG")
+    ax.legend()
+    fig.savefig(params.job_dir / "demo.png")
+
     if params.display_report:
         fig.show()
+
+    # cleanup
+    keras.utils.clear_session()
+    for ds in datasets:
+        ds.close()

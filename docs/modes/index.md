@@ -4,7 +4,7 @@
 
 Rather than offering a handful of static models, HeartKit provides a complete framework designed to cover the entire design process of creating customized ML models well-suited for low-power, wearable applications. Each mode serves a specific purpose and is engineered to offer you the flexibility and efficiency required for different tasks and use-cases.
 
-Besides `download`, each `Task` implementes routines for each of the modes: `train`, `evaluate`, `export`, and `demo`. These modes are designed to streamline the process of training, evaluating, exporting, and running task-level demonstrations on the trained models.
+Each `Task` implementes routines for each of the modes: [train](#train), [evaluate](#evaluate), [export](#export), and [demo](#demo). These modes are designed to streamline the process of training, evaluating, exporting, and running task-level demonstrations on the trained models.
 
 ---
 

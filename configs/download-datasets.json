@@ -24,6 +24,5 @@
         "params": {
             "path": "./datasets/lsad"
         }
-    }],
-    "progress": true
+    }]
 }

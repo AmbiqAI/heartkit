@@ -23,6 +23,7 @@ class LsadDataloader(HKDataloader):
         patient_id: int,
         samples_per_patient: list[int],
     ):
+        """Generate data for given patient id"""
         input_size = int(np.ceil((self.ds.sampling_rate / self.sampling_rate) * self.frame_size))
 
         with self.ds.patient_data(patient_id) as pt:

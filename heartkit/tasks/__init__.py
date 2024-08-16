@@ -1,6 +1,6 @@
 import neuralspot_edge as nse
 
-from . import beat, denoise, diagnostic, foundation, rhythm, segmentation
+from . import beat, denoise, diagnostic, foundation, rhythm, segmentation, utils
 
 from .beat import BeatTask, HKBeat
 from .denoise import DenoiseTask

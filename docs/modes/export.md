@@ -6,17 +6,54 @@ Export mode is used to convert the trained TensorFlow model into a format that c
 
 <div class="annotate" markdown>
 
-1. Load the configuration data (e.g. `configuration.json`) (1)
-1. Load the desired datasets and task-specific dataloaders (e.g. `icentia11k`)
-1. Load the trained model
-1. Convert the model (e.g. TFL, TFLM)
+1. Load the configuration data (e.g. `configuration.json` (1))
+1. Load the test data (e.g. `test.pkl`)
+1. Load the trained model (e.g. `model.keras`)
+1. Quantize the model (e.g. `16x8`)
+1. Convert the model (e.g. `TFL`, `TFLM`)
 1. Verify the models' outputs match
-1. Save the converted model
+1. Save artifacts (e.g. `model.tflite`)
 
 </div>
 
-1. Configuration parameters:
+1. Example configuration:
 --8<-- "assets/usage/json-configuration.md"
+
+
+```mermaid
+graph LR
+A("`Load
+configuration
+__HKTaskParams__
+`")
+B("`Load test
+data
+`")
+C("`Load trained
+__model__
+`")
+D("`Quantize
+__model__
+`")
+E("`Convert
+__model__
+`")
+F("`Verify
+__outputs__
+`")
+G("`Save
+__artifacts__
+`")
+A ==> B
+B ==> C
+subgraph CF["Export"]
+    C ==> D
+    D ==> E
+    E ==> F
+end
+F ==> G
+
+```
 
 ---
 
@@ -44,7 +81,7 @@ task.export(params)
 
 ```
 
-1. Configuration parameters:
+1. Example configuration:
 --8<-- "assets/usage/python-configuration.md"
 
 ---

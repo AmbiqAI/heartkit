@@ -86,12 +86,18 @@ nav:
 
   - Guides:
     - guides/index.md
-    - EVB Setup: guides/evb-setup.md
-    - Rhythm Demo: guides/rhythm-demo.md
-    - HeartKit Demo: guides/heartkit-demo.md
-    - Train Arrhythmia Model: guides/train-arrhythmia-model.ipynb
-    - Train ECG Denoiser: guides/train-ecg-denoiser.ipynb
-    - Train ECG Segmentation Model: guides/train-ecg-segmentation.ipynb
+    - Core Concepts:
+      - Quickstart: quickstart.md
+      - BYOT: guides/byot.ipynb
+    - Notebook Examples:
+      - Train Arrhythmia Model: guides/train-arrhythmia-model.ipynb
+      - Train ECG Denoiser: guides/train-ecg-denoiser.ipynb
+      - ECG Foundation Model: guides/ecg-foundation-model.ipynb
+      - ECG Segmentation Model: guides/train-ecg-segmentation.ipynb
+    - Hardware Guides:
+      - EVB Setup: guides/evb-setup.md
+      - Rhythm Demo: guides/rhythm-demo.md
+      - HeartKit Demo: guides/heartkit-demo.md
 
   - API:
     - HeartKit: api/heartkit.md
@@ -117,7 +123,10 @@ nav:
       - Foundation: api/tasks/foundation.md
       - Segmentation: api/tasks/segmentation.md
       - Rhythm: api/tasks/rhythm.md
-
+    - Backends:
+      - Backend: api/backends/backend.md
+      - EVB: api/backends/evb.md
+      - PC: api/backends/pc.md
 
 theme:
   name: material
@@ -169,7 +178,7 @@ theme:
     - navigation.instant
     - navigation.instant.progress
     - navigation.indexes
-    - navigation.expand  # navigation.expand or navigation.sections
+    - navigation.sections  # navigation.expand or navigation.sections
     - content.tabs.link # all code tabs change simultaneously
 
 plugins:

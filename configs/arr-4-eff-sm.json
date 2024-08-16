@@ -2,13 +2,21 @@
     "name": "arr-4-eff-sm",
     "project": "hk-rhythm-4",
     "job_dir": "./results/arr-4-eff-sm",
-    "verbose": 2,
+
     "datasets": [{
         "name": "lsad",
         "params": {
             "path": "./datasets/lsad"
         }
     }],
+
+    "sampling_rate": 100,
+    "frame_size": 800,
+
+    "samples_per_patient": [5, 5, 5, 10],
+    "val_samples_per_patient": [5, 5, 5, 10],
+    "test_samples_per_patient": [5, 5, 5, 10],
+
     "num_classes": 4,
     "class_map": {
         "0": 0,
@@ -21,29 +29,34 @@
     "class_names": [
         "SR", "SB", "AFIB", "GSVT"
     ],
-    "class_weights": "balanced",
-    "sampling_rate": 100,
-    "frame_size": 800,
-    "samples_per_patient": [5, 5, 5, 10],
-    "val_samples_per_patient": [5, 5, 5, 10],
-    "test_samples_per_patient": [5, 5, 5, 10],
+
     "val_patients": 0.20,
+
     "val_size": 40000,
     "test_size": 50000,
+    "val_file": "val.tfds",
+    "test_file": "val.tfds",
+
+    "lr_rate": 1e-3,
+    "lr_cycles": 1,
     "batch_size": 256,
     "buffer_size": 50000,
     "epochs": 200,
     "steps_per_epoch": 50,
     "val_metric": "loss",
-    "lr_rate": 1e-3,
-    "lr_cycles": 1,
+    "class_weights": "balanced",
+
     "threshold": 0.5,
-    "val_metric_threshold": 0.98,
+    "test_metric": "f1",
+    "test_metric_threshold": 0.02,
+
     "tflm_var_name": "g_rhythm_model",
     "tflm_file": "rhythm_model_buffer.h",
+
     "backend": "pc",
     "demo_size": 800,
     "display_report": true,
+
     "quantization": {
         "qat": false,
         "mode": "FP32",
@@ -51,6 +64,7 @@
         "concrete": true,
         "debug": false
     },
+
     "preprocesses": [
         {
             "name": "layer_norm",
@@ -60,6 +74,7 @@
             }
         }
     ],
+
     "augmentations-dis": [{
         "name": "random_noise_distortion",
         "params": {
@@ -122,5 +137,7 @@
             "include_top": true,
             "use_logits": true
         }
-    }
+    },
+
+    "verbose": 2
 }

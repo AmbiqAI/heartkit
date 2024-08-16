@@ -10,14 +10,14 @@ from ...defines import HKTaskParams
 from ...models import ModelFactory
 from ...datasets import DatasetFactory
 from .datasets import load_train_datasets
-from ...utils import setup_plotting, dark_theme
+from ...utils import setup_plotting
 
 
 def train(params: HKTaskParams):
-    """Train  model
+    """Train model for foundation task using SimCLR
 
     Args:
-        params (HKTaskParams): Training parameters
+        params (HKTaskParams): Task parameters
     """
     os.makedirs(params.job_dir, exist_ok=True)
     logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "train.log")
@@ -41,6 +41,12 @@ def train(params: HKTaskParams):
     datasets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
 
     train_ds, val_ds = load_train_datasets(datasets=datasets, params=params)
+
+    # Save validation data
+    if params.val_file:
+        logger.info(f"Saving validation dataset to {params.val_file}")
+        os.makedirs(params.val_file, exist_ok=True)
+        val_ds.save(str(params.val_file))
 
     # Create encoder
     encoder_input = keras.Input(shape=feat_shape, dtype="float32")
@@ -93,20 +99,21 @@ def train(params: HKTaskParams):
     ModelCheckpoint = keras.callbacks.ModelCheckpoint
     if nse.utils.env_flag("WANDB"):
         ModelCheckpoint = WandbModelCheckpoint
+
     model_callbacks = [
         keras.callbacks.EarlyStopping(
             monitor=f"val_{params.val_metric}",
             patience=max(int(0.25 * params.epochs), 1),
             mode="max" if params.val_metric == "f1" else "auto",
             restore_best_weights=True,
-            verbose=params.verbose - 1,
+            verbose=max(0, params.verbose - 1),
         ),
         ModelCheckpoint(
             filepath=str(params.model_file),
             monitor=f"val_{params.val_metric}",
             save_best_only=True,
             mode="max" if params.val_metric == "f1" else "auto",
-            verbose=params.verbose - 1,
+            verbose=max(0, params.verbose - 1),
         ),
         keras.callbacks.CSVLogger(params.job_dir / "history.csv"),
     ]
@@ -119,12 +126,18 @@ def train(params: HKTaskParams):
         )
     if nse.utils.env_flag("WANDB"):
         model_callbacks.append(WandbMetricsLogger())
-
+    # Use minimal progress bar
+    if params.verbose <= 1:
+        model_callbacks.append(
+            nse.callbacks.TQDMProgressBar(
+                show_epoch_progress=False,
+            )
+        )
     try:
         history = model.fit(
             train_ds,
             steps_per_epoch=params.steps_per_epoch,
-            verbose=2,
+            verbose=max(0, params.verbose - 1),
             epochs=params.epochs,
             validation_data=val_ds,
             callbacks=model_callbacks,
@@ -134,17 +147,21 @@ def train(params: HKTaskParams):
 
     logger.debug(f"Model saved to {params.model_file}")
 
-    setup_plotting(dark_theme)
-    nse.plotting.plot_history_metrics(
-        history.history,
-        metrics=["loss", "cos"],
-        save_path=params.job_dir / "history.png",
-        stack=True,
-        figsize=(9, 5),
-    )
+    setup_plotting()
+    if history:
+        nse.plotting.plot_history_metrics(
+            history.history,
+            metrics=["loss", "cos"],
+            save_path=params.job_dir / "history.png",
+            title="Training History",
+            stack=True,
+            figsize=(9, 5),
+        )
 
     metrics = model.evaluate(val_ds, verbose=2, return_dict=True)
+    logger.info("[VAL SET] " + ", ".join(f"{k.upper()}: {v:.4f}" for k, v in metrics.items()))
 
-    logger.info(f"Loss: {metrics['loss']:.2f}")
-    logger.info(f"Mean Squared Error: {metrics['mse']:.2f}")
-    logger.info(f"Cosine Similarity: {metrics['cos']:.2%}")
+    # cleanup
+    keras.utils.clear_session()
+    for ds in datasets:
+        ds.close()

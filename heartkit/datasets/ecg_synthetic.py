@@ -157,7 +157,7 @@ class EcgSyntheticDataset(HKDataset):
     def build_cache(self):
         """Build in-memory cache to speed up data access"""
         logger.info(f"Creating synthetic dataset cache with {self._num_pts} patients")
-        pts_data = process_map(self.load_patient_data, self.patient_ids)
+        pts_data = process_map(self.load_patient_data, self.patient_ids, desc=f"Building {self.name} cache")
         self._cached_data = {self.pt_key(i): pt_data for i, pt_data in enumerate(pts_data)}
 
     @contextlib.contextmanager
@@ -240,7 +240,7 @@ class EcgSyntheticDataset(HKDataset):
         if self._noise_gen is not None:
             self._noise_gen.close()
         # END IF
-        self._cache.clear()
+        self._cached_data.clear()
 
     def add_noise(self, ecg: npt.NDArray):
         """Add noise to ECG signal."""

@@ -14,20 +14,11 @@ from ...models import ModelFactory
 from ...utils import dark_theme, setup_plotting
 
 
-class TermineTrainingError(Exception):
-    pass
-
-
-class TerminateTrainingCallback(keras.callbacks.Callback):
-    def on_train_end(self, epoch, logs=None):
-        raise TermineTrainingError("Training stopped by KillerCallBack")
-
-
 def train(params: HKTaskParams):
-    """Train  model
+    """Train model for rhythm task
 
     Args:
-        params (HKTaskParams): Training parameters
+        params (HKTaskParams): Task parameters
     """
     os.makedirs(params.job_dir, exist_ok=True)
 
@@ -60,6 +51,12 @@ def train(params: HKTaskParams):
 
     y_true = np.concatenate([y for _, y in val_ds.as_numpy_iterator()])
     y_true = np.argmax(y_true, axis=-1).flatten()
+
+    # Save validation data
+    if params.val_file:
+        logger.info(f"Saving validation dataset to {params.val_file}")
+        os.makedirs(params.val_file, exist_ok=True)
+        val_ds.save(str(params.val_file))
 
     class_weights = 0.25
     if params.class_weights == "balanced":
@@ -126,14 +123,14 @@ def train(params: HKTaskParams):
             patience=max(int(0.25 * params.epochs), 1),
             mode="max" if params.val_metric == "f1" else "auto",
             restore_best_weights=True,
-            verbose=min(params.verbose - 1, 1),
+            verbose=max(0, params.verbose - 1),
         ),
         ModelCheckpoint(
             filepath=str(params.model_file),
             monitor=f"val_{params.val_metric}",
             save_best_only=True,
             mode="max" if params.val_metric == "f1" else "auto",
-            verbose=min(params.verbose - 1, 1),
+            verbose=max(0, params.verbose - 1),
         ),
         keras.callbacks.CSVLogger(params.job_dir / "history.csv"),
     ]
@@ -146,23 +143,25 @@ def train(params: HKTaskParams):
         )
     if nse.utils.env_flag("WANDB"):
         model_callbacks.append(WandbMetricsLogger())
-
-    # NOTE: A bug w/ Keras/TF causes model.fit to hang on last epoch.
-    # This workaround terminates training on KeyboardInterrupt or last epoch.
-    # model_callbacks.append(TerminateTrainingCallback())
-
+    # Use minimal progress bar
+    if params.verbose <= 1:
+        model_callbacks.append(
+            nse.callbacks.TQDMProgressBar(
+                show_epoch_progress=False,
+            )
+        )
     try:
         history = model.fit(
             train_ds,
             steps_per_epoch=params.steps_per_epoch,
-            verbose=params.verbose,
+            verbose=max(0, params.verbose - 1),
             epochs=params.epochs,
             validation_data=val_ds,
             callbacks=model_callbacks,
         )
-
-    except (KeyboardInterrupt, TermineTrainingError):
+    except KeyboardInterrupt:
         logger.warning("Stopping training due to interrupt")
+    # END TRY
 
     logger.debug(f"Model saved to {params.model_file}")
 
@@ -172,6 +171,7 @@ def train(params: HKTaskParams):
             history.history,
             metrics=["loss", "acc"],
             save_path=params.job_dir / "history.png",
+            title="Training History",
             stack=True,
             figsize=(9, 5),
         )
@@ -189,7 +189,9 @@ def train(params: HKTaskParams):
 
     # Summarize results
     rst = model.evaluate(val_ds, return_dict=True)
-    logger.info("[VAL SET] " + ", ".join(f"{k.upper()}={v:.2%}" for k, v in rst.items()))
+    logger.info("[VAL SET] " + ", ".join(f"{k.upper()}={v:.4f}" for k, v in rst.items()))
 
-    # os.abort()
-    # END TRY
+    # cleanup
+    keras.utils.clear_session()
+    for ds in datasets:
+        ds.close()

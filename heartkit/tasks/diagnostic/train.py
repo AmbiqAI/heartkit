@@ -4,7 +4,7 @@ import keras
 import numpy as np
 import pandas as pd
 import wandb
-from sklearn.metrics import classification_report, f1_score
+from sklearn.metrics import classification_report
 from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
 
 import neuralspot_edge as nse
@@ -50,6 +50,12 @@ def train(params: HKTaskParams):
     )
 
     y_true = np.concatenate([y for _, y in val_ds.as_numpy_iterator()])
+
+    # Save validation data
+    if params.val_file:
+        logger.info(f"Saving validation dataset to {params.val_file}")
+        os.makedirs(params.val_file, exist_ok=True)
+        val_ds.save(str(params.val_file))
 
     class_weights = 0.25
     if params.class_weights == "balanced":
@@ -115,14 +121,14 @@ def train(params: HKTaskParams):
             patience=max(int(0.25 * params.epochs), 1),
             mode="max" if params.val_metric == "f1" else "auto",
             restore_best_weights=True,
-            verbose=params.verbose - 1,
+            verbose=max(0, params.verbose - 1),
         ),
         ModelCheckpoint(
             filepath=str(params.model_file),
             monitor=f"val_{params.val_metric}",
             save_best_only=True,
             mode="max" if params.val_metric == "f1" else "auto",
-            verbose=params.verbose - 1,
+            verbose=max(0, params.verbose - 1),
         ),
         keras.callbacks.CSVLogger(params.job_dir / "history.csv"),
     ]
@@ -135,12 +141,18 @@ def train(params: HKTaskParams):
         )
     if nse.utils.env_flag("WANDB"):
         model_callbacks.append(WandbMetricsLogger())
-
+    # Use minimal progress bar
+    if params.verbose <= 1:
+        model_callbacks.append(
+            nse.callbacks.TQDMProgressBar(
+                show_epoch_progress=False,
+            )
+        )
     try:
         model.fit(
             train_ds,
             steps_per_epoch=params.steps_per_epoch,
-            verbose=params.verbose,
+            verbose=max(0, params.verbose - 1),
             epochs=params.epochs,
             validation_data=val_ds,
             callbacks=model_callbacks,
@@ -169,6 +181,11 @@ def train(params: HKTaskParams):
     report = classification_report(y_true, y_pred, target_names=class_names, output_dict=True)
     df_report = pd.DataFrame(report).transpose()
     df_report.to_csv(params.job_dir / "classification_report.csv")
-    test_acc = np.sum(y_pred == y_true) / y_true.size
-    test_f1 = f1_score(y_true, y_pred, average="weighted")
-    logger.info(f"[VAL SET] ACC={test_acc:.2%}, F1={test_f1:.2%}")
+
+    rst = model.evaluate(val_ds, verbose=params.verbose, return_dict=True)
+    logger.info("[VAL SET] " + ", ".join([f"{k.upper()}={v:.4f}" for k, v in rst.items()]))
+
+    # cleanup
+    keras.utils.clear_session()
+    for ds in datasets:
+        ds.close()

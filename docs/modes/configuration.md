@@ -25,20 +25,6 @@ Named parameters are used to provide custom parameters for a given object or cal
 | name | str | Required |  | Named parameters name |
 | params | dict[str, Any] | Optional | {} | Named parameters |
 
-
-## <span class="sk-h2-span">HKDownloadParams</span>
-
-These parameters are used by `download` mode to download all supplied datasets.
-
-| Argument | Type | Opt/Req | Default | Description |
-| --- | --- | --- | --- | --- |
-| job_dir | Path | Optional | `tempfile.gettempdir` | Job output directory |
-| datasets | list[NamedParams] | Optional |  | Datasets |
-| progress | bool | Optional | True | Display progress bar |
-| force | bool | Optional | False | Force download dataset- overriding existing files |
-| data_parallelism | int | Optional | `os.cpu_count` | # of data loaders running in parallel |
-
-
 ## <span class="sk-h2-span">HKTaskParams</span>
 
 These parameters are supplied to a [Task](../tasks/index.md) when running a given mode such as `train`, `evaluate`, `export`, or `demo`. A single configuration object is used to simplify configuration files and heavy re-use of parameters between modes.
@@ -50,6 +36,7 @@ These parameters are supplied to a [Task](../tasks/index.md) when running a give
 | project | str | Required | heartkit | Project name |
 | job_dir | Path | Optional | `tempfile.gettempdir` | Job output directory |
 | datasets | list[NamedParams] | Optional |  | Datasets |
+| force_download | bool | Optional | False | Force download datasets |
 | dataset_weights | list[float]\|None | Optional | None | Dataset weights |
 | sampling_rate | int | Optional | 250 | Target sampling rate (Hz) |
 | frame_size | int | Optional | 1250 | Frame size in samples |

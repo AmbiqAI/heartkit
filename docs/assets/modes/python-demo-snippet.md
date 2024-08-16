@@ -3,12 +3,14 @@ from pathlib import Path
 import heartkit as hk
 
 task = hk.TaskFactory.get("segmentation")
-task.export(hk.HKDemoParams(
+task.export(hk.HKTaskParams(
     job_dir=Path("./results/segmentation-class-2"),
-    datasets=[{
-        "name": "icentia11k",
-        "params": {}
-    }],
+    datasets=[hk.NamedParams(
+        name="icentia11k",
+        params=dict(
+            path=Path("./datasets/icentia11k")
+        )
+    )],
     num_classes=2,
     class_map={
         0: 0,

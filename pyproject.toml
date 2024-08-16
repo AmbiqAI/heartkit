@@ -88,9 +88,9 @@ build-backend = "poetry.core.masonry.api"
 [tool.ruff]
 line-length = 120
 extend-exclude = [
-    "heartkit/rpc/GenericDataOperations_EvbToPc",
-    "heartkit/rpc/GenericDataOperations_PcToEvb",
-    "heartkit/rpc/erpc"
+    "heartkit/backends/GenericDataOperations_EvbToPc",
+    "heartkit/backends/GenericDataOperations_PcToEvb",
+    "heartkit/backends/erpc"
 ]
 
 [tool.ruff.lint]

@@ -2,6 +2,7 @@ import os
 
 import keras
 import numpy as np
+import tensorflow as tf
 import neuralspot_edge as nse
 
 from ...defines import HKTaskParams
@@ -10,10 +11,10 @@ from .datasets import load_test_dataset
 
 
 def export(params: HKTaskParams):
-    """Export model
+    """Export foundation model
 
     Args:
-        params (HKTaskParams): Deployment parameters
+        params (HKTaskParams): Task parameters
     """
     os.makedirs(params.job_dir, exist_ok=True)
     logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "export.log")
@@ -26,7 +27,13 @@ def export(params: HKTaskParams):
 
     datasets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
 
-    test_ds = load_test_dataset(datasets=datasets, params=params)
+    # Load validation data
+    if params.val_file:
+        logger.info(f"Loading validation dataset from {params.val_file}")
+        test_ds = tf.data.Dataset.load(str(params.val_file))
+    else:
+        test_ds = load_test_dataset(datasets=datasets, params=params)
+
     test_x = np.concatenate([x[nse.trainers.SimCLRTrainer.SAMPLES] for x in test_ds.as_numpy_iterator()])
 
     # Load model and set fixed batch size of 1
@@ -75,3 +82,8 @@ def export(params: HKTaskParams):
     # Compare error between TF and TFLite outputs
     error = np.abs(y_pred_tf - y_pred_tfl).max()
     logger.info(f"Max error between TF and TFLite outputs: {error}")
+
+    # cleanup
+    keras.utils.clear_session()
+    for ds in datasets:
+        ds.close()

@@ -206,7 +206,7 @@ class PtbxlDataset(HKDataset):
         """
         super().__init__(**kwargs)
         self.leads = leads or list(range(12))
-        self._data_cache: dict[str, np.ndarray] = {}
+        self._cached_data: dict[str, np.ndarray] = {}
 
     @property
     def name(self) -> str:
@@ -587,7 +587,7 @@ class PtbxlDataset(HKDataset):
         """
         ids = patient_ids.tolist()
         func = functools.partial(self.get_patient_labels, label_map=label_map, label_type=label_type)
-        pts_labels = process_map(func, ids)
+        pts_labels = process_map(func, ids, desc=f"Sorting {self.name} labels")
         return pts_labels
 
     def get_patient_scp_codes(self, patient_id: int) -> list[int]:
@@ -766,3 +766,7 @@ class PtbxlDataset(HKDataset):
                     h5.attrs[k] = v
                 # END FOR
             # END WITH
+
+    def close(self):
+        """Close dataset"""
+        self._cached_data.clear()

@@ -2,7 +2,7 @@
 
 ## <span class="sk-h2-span">Introduction</span>
 
-The `download` command is used to download all datasets specified. Please refer to [Datasets](../datasets/index.md) for details on the available datasets. Additional datasets can be added by creating a new dataset class and registering it with __HeartKit__ dataset factory.
+The `download` command is used to download specified datasets. Please refer to [Datasets](../datasets/index.md) for details on the available datasets. Additional datasets can be added by creating a new dataset class and registering it with __HeartKit__ dataset factory, [DatasetFactory](../datasets/index.md#dataset-factory).
 
 ## <span class="sk-h2-span">Usage</span>
 
@@ -16,35 +16,38 @@ heartkit -m download -c '{"datasets": [{"name": "ptbxl", "parameters": {"path": 
 
 ### Python
 
-Using HeartKit in Python, the `download` method can be used for a specific dataset.
+In code, the `download` method of a dataset can be used to download the dataset.
 
 ```python
 import heartkit as hk
 
-ds = hk.DatasetFactory.get("ptbxl")(path=".datasets/ptbxl")
+ds = hk.DatasetFactory.get("ptbxl")(path="./datasets/ptbxl")
 ds.download()
+
 ```
 
-To download multiple datasets, the high-level `download_datasets` function can be used.
+Similarly, to download multiple datasets, the `download` method of a task can be used.
 
 ```python
 import heartkit as hk
 
-params = hk.HKDownloadParams(
-    ds_path="./datasets",
+task = hk.TaskFactory.get("rhythm")
+
+params = hk.HKTaskParams(
     datasets=[hk.NamedParams(
         name="ptbxl",
-        parameters={"path": ".datasets/ptbxl"}
+        parameters={"path": "./datasets/ptbxl"}
     ), hk.NamedParams(
         name="lsad",
-        parameters={"path": ".datasets/lsad"}
-    )]
-    progress=True
+        parameters={"path": "./datasets/lsad"}
+    )],
+    force_download=False
 )
 
-hk.datasets.download_datasets(params)
+task.download(params)
+
 ```
 
 ## <span class="sk-h2-span">Arguments </span>
 
-Please refer to [HKDownloadParams](../modes/configuration.md#hkdownloadparams) for the list of arguments that can be used with the `download` command.
+Please refer to [HKTaskParams](../modes/configuration.md#hktaskparams) for the available configuration options for the `download` command.

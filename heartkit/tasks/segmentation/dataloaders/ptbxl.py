@@ -12,6 +12,7 @@ from ..defines import HKSegment
 
 class PtbxlDataloader(HKDataloader):
     def __init__(self, ds: PtbxlDataset, **kwargs):
+        """Dataloader for ptbxl dataset"""
         super().__init__(ds=ds, **kwargs)
 
     def patient_data_generator(

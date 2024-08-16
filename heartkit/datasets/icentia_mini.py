@@ -55,6 +55,7 @@ class IcentiaMiniDataset(HKDataset):
     ) -> None:
         super().__init__(**kwargs)
         self.leads = leads or list(IcentiaMiniLeadsMap.values())
+        self._cached_data = {}
 
     @property
     def name(self) -> str:
@@ -323,3 +324,7 @@ class IcentiaMiniDataset(HKDataset):
             labels: list[int] = [label_map[lbl] for lbl in labels if label_map.get(lbl, -1) != -1]
         # END WITH
         return list(labels)
+
+    def close(self):
+        """Close dataset"""
+        self._cached_data.clear()

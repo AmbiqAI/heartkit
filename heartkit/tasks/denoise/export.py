@@ -3,6 +3,7 @@ import shutil
 
 import keras
 import numpy as np
+import tensorflow as tf
 import neuralspot_edge as nse
 
 from ...defines import HKTaskParams
@@ -11,7 +12,7 @@ from .datasets import load_test_dataset
 
 
 def export(params: HKTaskParams):
-    """Export model
+    """Export model for denoise task with given parameters.
 
     Args:
         params (HKTaskParams): Deployment parameters
@@ -27,7 +28,13 @@ def export(params: HKTaskParams):
 
     datasets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
 
-    test_ds = load_test_dataset(datasets=datasets, params=params)
+    # Load validation data
+    if params.val_file:
+        logger.info(f"Loading validation dataset from {params.val_file}")
+        test_ds = tf.data.Dataset.load(str(params.val_file))
+    else:
+        test_ds = load_test_dataset(datasets=datasets, params=params)
+
     test_x = np.concatenate([x for x, _ in test_ds.as_numpy_iterator()])
     test_y = np.concatenate([y for _, y in test_ds.as_numpy_iterator()])
 
@@ -70,6 +77,7 @@ def export(params: HKTaskParams):
 
     # Verify TFLite results match TF results on example data
     metrics = [
+        keras.metrics.MeanSquaredError(name="loss"),
         keras.metrics.MeanAbsoluteError(name="mae"),
         keras.metrics.MeanSquaredError(name="mse"),
         keras.metrics.RootMeanSquaredError(name="rmse"),
@@ -86,17 +94,22 @@ def export(params: HKTaskParams):
 
     tf_rst = nse.metrics.compute_metrics(metrics, y_true, y_pred_tf)
     tfl_rst = nse.metrics.compute_metrics(metrics, y_true, y_pred_tfl)
-    logger.info("[TF METRICS] " + " ".join([f"{k.upper()}={v:.2%}" for k, v in tf_rst.items()]))
-    logger.info("[TFL METRICS] " + " ".join([f"{k.upper()}={v:.2%}" for k, v in tfl_rst.items()]))
+    logger.info("[TF METRICS] " + " ".join([f"{k.upper()}={v:.4f}" for k, v in tf_rst.items()]))
+    logger.info("[TFL METRICS] " + " ".join([f"{k.upper()}={v:.4f}" for k, v in tfl_rst.items()]))
 
     metric_diff = abs(tf_rst[params.val_metric] - tfl_rst[params.val_metric])
 
     # Check accuracy hit
-    if params.val_metric_threshold is not None and metric_diff > params.val_metric_threshold:
-        logger.warning(f"TFLite accuracy dropped by {metric_diff:0.2%}")
-    elif params.val_metric_threshold:
-        logger.info(f"Validation passed ({metric_diff:0.2%})")
+    if params.test_metric_threshold is not None and metric_diff > params.test_metric_threshold:
+        logger.warning(f"TFLite accuracy dropped by {metric_diff:0.4f}")
+    elif params.test_metric_threshold:
+        logger.info(f"Validation passed ({metric_diff:0.4f})")
 
     if params.tflm_file and tflm_model_path != params.tflm_file:
         logger.debug(f"Copying TFLM header to {params.tflm_file}")
         shutil.copyfile(tflm_model_path, params.tflm_file)
+
+    # cleanup
+    keras.utils.clear_session()
+    for ds in datasets:
+        ds.close()

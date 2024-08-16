@@ -4,7 +4,7 @@ from .demo import demo
 from .evaluate import evaluate
 from .export import export
 from .train import train
-from .dataloader import DenoiseDataloader
+from .dataloaders import DenoiseTaskFactory
 
 
 class DenoiseTask(HKTask):

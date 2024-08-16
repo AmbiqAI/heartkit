@@ -71,6 +71,7 @@ class LudbDataset(HKDataset):
     ) -> None:
         super().__init__(**kwargs)
         self.leads = leads or list(LudbLeadsMap.values())
+        self._cached_data = {}
 
     @property
     def name(self) -> str:
@@ -347,3 +348,7 @@ class LudbDataset(HKDataset):
         # END IF
 
         return data, segs, fids
+
+    def close(self):
+        """Close dataset"""
+        self._cached_data.clear()

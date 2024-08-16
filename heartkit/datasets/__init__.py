@@ -2,7 +2,6 @@ from .augmentation import create_augmentation_pipeline
 from .bidmc import BidmcDataset
 from .dataset import HKDataset
 from .defines import PatientGenerator
-from .download import download_datasets
 from .dataloader import HKDataloader
 from .icentia11k import IcentiaDataset, IcentiaBeat, IcentiaRhythm
 from .icentia_mini import IcentiaMiniDataset, IcentiaMiniRhythm, IcentiaMiniBeat

@@ -2,7 +2,7 @@ from enum import IntEnum
 
 
 class HKSegment(IntEnum):
-    """Heart segment labels"""
+    """Segmentation task labels"""
 
     normal = 0
     pwave = 1

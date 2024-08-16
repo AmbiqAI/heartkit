@@ -24,6 +24,7 @@ EcgSyntheticSegmentationMap = {
 
 class EcgSyntheticDataloader(HKDataloader):
     def __init__(self, ds: EcgSyntheticDataset, **kwargs):
+        """Dataloader for ECG synthetic dataset"""
         super().__init__(ds=ds, **kwargs)
         # Update label map
         if self.label_map:

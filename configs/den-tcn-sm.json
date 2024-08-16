@@ -3,6 +3,7 @@
     "project": "hk-denoise",
     "job_dir": "./results/den-tcn-sm",
     "verbose": 2,
+
     "dataset_weights": [0.9, 0.1],
     "datasets": [{
         "name": "ecg-synthetic",
@@ -27,14 +28,18 @@
             "path": "./datasets/ptbxl"
         }
     }],
+
     "sampling_rate": 100,
     "frame_size": 256,
+
     "samples_per_patient": 5,
     "val_samples_per_patient": 10,
     "test_samples_per_patient": 10,
-    "val_patients": 0.20,
+
     "val_size": 20000,
     "test_size": 20000,
+
+    "val_patients": 0.20,
     "batch_size": 256,
     "buffer_size": 25000,
     "epochs": 150,
@@ -42,11 +47,14 @@
     "val_metric": "loss",
     "lr_rate": 1e-3,
     "lr_cycles": 1,
+
     "tflm_var_name": "ecg_denoise_flatbuffer",
     "tflm_file": "ecg_denoise_flatbuffer.h",
+
     "backend": "pc",
     "demo_size": 768,
     "display_report": false,
+
     "quantization": {
         "qat": false,
         "mode": "FP32",
@@ -63,6 +71,7 @@
             }
         }
     ],
+
     "augmentations": [{
         "name": "random_noise_distortion",
         "params": {
@@ -98,6 +107,7 @@
             "name": "nstdb"
         }
     }],
+
     "model_file": "model.keras",
     "use_logits": true,
     "architecture": {

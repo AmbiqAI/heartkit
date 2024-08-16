@@ -4,6 +4,7 @@
     "job_dir": "./results/den-ppg-tcn-sm",
     "signal_type": "PPG",
     "verbose": 2,
+
     "datasets": [{
         "name": "ppg-synthetic",
         "params": {
@@ -18,14 +19,18 @@
             }
         }
     }],
+
     "sampling_rate": 100,
     "frame_size": 256,
+
     "samples_per_patient": 5,
     "val_samples_per_patient": 5,
     "test_samples_per_patient": 5,
-    "val_patients": 0.20,
+
     "val_size": 10000,
     "test_size": 10000,
+
+    "val_patients": 0.20,
     "batch_size": 128,
     "buffer_size": 50000,
     "epochs": 200,
@@ -33,11 +38,13 @@
     "val_metric": "loss",
     "lr_rate": 1e-3,
     "lr_cycles": 1,
+
     "tflm_var_name": "ppg_denoise_flatbuffer",
     "tflm_file": "ppg_denoise_flatbuffer.h",
     "backend": "pc",
     "demo_size": 768,
     "display_report": false,
+
     "quantization": {
         "qat": false,
         "mode": "FP32",
@@ -45,6 +52,7 @@
         "concrete": true,
         "debug": false
     },
+
     "preprocesses": [
         {
             "name": "layer_norm",
@@ -54,6 +62,7 @@
             }
         }
     ],
+
     "augmentations": [{
         "name": "random_noise_distortion",
         "params": {

@@ -25,12 +25,12 @@ class NamedParams(BaseModel, extra="allow"):
     Typically name refers to class/method name and params is provided as kwargs.
     """
 
-    name: str
+    name: str = Field(..., description="Name")
     params: dict[str, Any] = Field(default_factory=dict, description="Parameters")
 
 
 class HKMode(StrEnum):
-    """HeartKit Mode"""
+    """HeartKit task mode"""
 
     download = "download"
     train = "train"
@@ -39,24 +39,8 @@ class HKMode(StrEnum):
     demo = "demo"
 
 
-class HKDownloadParams(BaseModel, extra="allow"):
-    """Download command params"""
-
-    job_dir: Path = Field(
-        default_factory=lambda: Path(tempfile.gettempdir()),
-        description="Job output directory",
-    )
-    datasets: list[NamedParams] = Field(default_factory=list, description="Datasets")
-    progress: bool = Field(True, description="Display progress bar")
-    force: bool = Field(False, description="Force download dataset- overriding existing files")
-    data_parallelism: int = Field(
-        default_factory=lambda: os.cpu_count() or 1,
-        description="# of data loaders running in parallel",
-    )
-
-
 class HKTaskParams(BaseModel, extra="allow"):
-    """Task command params"""
+    """Task configuration params"""
 
     # Common arguments
     name: str = Field("experiment", description="Experiment name")
@@ -69,6 +53,7 @@ class HKTaskParams(BaseModel, extra="allow"):
     # Dataset arguments
     datasets: list[NamedParams] = Field(default_factory=list, description="Datasets")
     dataset_weights: list[float] | None = Field(None, description="Dataset weights")
+    force_download: bool = Field(False, description="Force download dataset- overriding existing files")
 
     # Signal arguments
     sampling_rate: int = Field(250, description="Target sampling rate (Hz)")
@@ -93,8 +78,9 @@ class HKTaskParams(BaseModel, extra="allow"):
     val_patients: float | None = Field(None, description="# or proportion of patients for validation")
     test_patients: float | None = Field(None, description="# or proportion of patients for testing")
 
-    val_file: Path | None = Field(None, description="Path to load/store pickled validation file")
-    test_file: Path | None = Field(None, description="Path to load/store pickled test file")
+    # Val/Test dataset arguments
+    val_file: Path | None = Field(None, description="Path to load/store TFDS validation data")
+    test_file: Path | None = Field(None, description="Path to load/store TFDS test data")
     val_size: int | None = Field(None, description="# samples for validation")
     test_size: int = Field(10000, description="# samples for testing")
 
@@ -121,7 +107,8 @@ class HKTaskParams(BaseModel, extra="allow"):
 
     # Evaluation arguments
     threshold: float | None = Field(None, description="Model output threshold")
-    val_metric_threshold: float | None = Field(0.98, description="Validation metric threshold")
+    test_metric: Literal["loss", "acc", "f1"] = Field("acc", description="Test metric")
+    test_metric_threshold: float | None = Field(0.98, description="Validation metric threshold")
 
     # Export arguments
     tflm_var_name: str = Field("g_model", description="TFLite Micro C variable name")

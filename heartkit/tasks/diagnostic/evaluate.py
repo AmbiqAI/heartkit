@@ -1,8 +1,11 @@
 import os
+import json
 
+import keras
+import tensorflow as tf
 import numpy as np
 import pandas as pd
-from sklearn.metrics import classification_report, f1_score
+from sklearn.metrics import classification_report
 import neuralspot_edge as nse
 
 from ...defines import HKTaskParams
@@ -29,7 +32,13 @@ def evaluate(params: HKTaskParams):
 
     datasets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
 
-    test_ds = load_test_dataset(datasets=datasets, params=params)
+    # Load validation data
+    if params.val_file:
+        logger.info(f"Loading validation dataset from {params.val_file}")
+        test_ds = tf.data.Dataset.load(str(params.val_file))
+    else:
+        test_ds = load_test_dataset(datasets=datasets, params=params)
+
     test_x = np.concatenate([x for x, _ in test_ds.as_numpy_iterator()])
     test_y = np.concatenate([y for _, y in test_ds.as_numpy_iterator()])
 
@@ -59,6 +68,16 @@ def evaluate(params: HKTaskParams):
     report = classification_report(y_true, y_pred, target_names=class_names, output_dict=True)
     df_report = pd.DataFrame(report).transpose()
     df_report.to_csv(params.job_dir / "classification_report_test.csv")
-    test_acc = np.sum(y_pred == y_true) / y_true.size
-    test_f1 = f1_score(y_true, y_pred, average="weighted")
-    logger.info(f"[TEST SET] ACC={test_acc:.2%}, F1={test_f1:.2%}")
+
+    rst = model.evaluate(test_ds, verbose=params.verbose, return_dict=True)
+    logger.info("[TEST SET] " + ", ".join([f"{k.upper()}={v:.4f}" for k, v in rst.items()]))
+
+    rst["flops"] = flops
+    rst["parameters"] = model.count_params()
+    with open(params.job_dir / "metrics.json", "w") as fp:
+        json.dump(rst, fp)
+
+    # cleanup
+    keras.utils.clear_session()
+    for ds in datasets:
+        ds.close()

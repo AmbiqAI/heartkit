@@ -7,16 +7,59 @@ Evaluate mode is used to test the performance of the model on the reserved test 
 <div class="annotate" markdown>
 
 
-1. Load the configuration data (e.g. `configuration.json`) (1)
-1. Load the desired datasets and task-specific dataloaders (e.g. `icentia11k`)
-1. Load the trained model
+1. Load the configuration data (e.g. `configuration.json` (1))
+1. Load the desired datasets (e.g. `PtbxlDataset`)
+1. Load the corresponding task dataloaders (e.g. `PtbxlDataLoader`)
+1. Load the trained model (e.g. `model.keras`)
+1. Define the metrics (e.g. `accuracy`)
 1. Evaluate the model
 1. Generate evaluation report
 
 </div>
 
-1. Configuration parameters:
+1. Example configuration:
 --8<-- "assets/usage/json-configuration.md"
+
+
+```mermaid
+graph LR
+A("`Load
+configuration
+__HKTaskParams__
+`")
+B("`Load
+datasets
+__DatasetFactory__
+`")
+C("`Load
+dataloaders
+__DataLoaderFactory__
+`")
+D("`Load trained
+__model__
+`")
+E("`Define
+__metrics__
+`")
+F("`Evaluate
+__model__
+`")
+G("`Generate
+__report__
+`")
+A ==> B
+subgraph AB["Preprocess"]
+    B ==> C
+end
+subgraph CF["Evaluate"]
+    C ==> D
+    D ==> E
+    E ==> F
+end
+F ==> G
+
+```
+
 
 ---
 
@@ -44,7 +87,7 @@ task.evaluate(params)
 
 ```
 
-1. Configuration parameters:
+1. Example configuration:
 --8<-- "assets/usage/python-configuration.md"
 
 ---

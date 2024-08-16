@@ -4,12 +4,13 @@ import heartkit as hk
 
 task = hk.TaskFactory.get("rhythm")
 
-task.demo(hk.HKDemoParams(
+task.demo(hk.HKTaskParams(
     job_dir=Path("./results/rhythm-class-2"),
-    ds_path=Path("./datasets"),
     datasets=[{
         "name": "icentia11k",
-        "params": {}
+        "params": dict(
+            path=Path("./datasets/icentia11k")
+        )
     }],
     num_classes=2,
     class_map={

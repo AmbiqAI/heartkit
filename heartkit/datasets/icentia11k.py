@@ -292,7 +292,7 @@ class IcentiaDataset(HKDataset):
         """
         ids = patient_ids.tolist()
         func = functools.partial(self.get_patient_labels, label_map=label_map, label_type=label_type)
-        pts_labels = process_map(func, ids)
+        pts_labels = process_map(func, ids, desc=f"Sorting {self.name} labels")
         return pts_labels
 
     def get_patient_labels(self, patient_id: int, label_map: dict[int, int], label_type: str = "rhythm") -> list[int]:

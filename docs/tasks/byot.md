@@ -2,6 +2,7 @@
 
 The Bring-Your-Own-Task (BYOT) feature allows users to create custom tasks for training, evaluating, and deploying heart-related AI models. This feature is useful for creating custom workflows for a given application with minimal coding.
 
+For an in-depth guide check out the [BYOT Notebook Guide](../guides/byot.ipynb).
 
 ## <span class="sk-h2-span">How it Works</span>
 

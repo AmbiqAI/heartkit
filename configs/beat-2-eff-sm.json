@@ -9,6 +9,7 @@
             "path": "./datasets/icentia11k"
         }
     }],
+
     "num_classes": 2,
     "class_map": {
         "0": 0,
@@ -18,29 +19,38 @@
     "class_names": [
         "QRS", "PAC/PVC"
     ],
-    "class_weights": "balanced",
+
     "sampling_rate": 100,
     "frame_size": 512,
+
     "samples_per_patient": [20, 20],
     "val_samples_per_patient": [20, 20],
     "test_samples_per_patient": [20, 20],
-    "val_patients": 0.20,
+
     "val_size": 30000,
     "test_size": 30000,
+
+    "val_patients": 0.20,
     "batch_size": 256,
     "buffer_size": 10000,
     "epochs": 150,
     "steps_per_epoch": 50,
+    "class_weights": "balanced",
     "val_metric": "loss",
     "lr_rate": 1e-3,
     "lr_cycles": 1,
+
     "threshold": 0.60,
-    "val_acc_threshold": 0.98,
+
+    "test_metric": "f1",
+    "test_metric_threshold": 0.02,
     "tflm_var_name": "g_beat_model",
     "tflm_file": "beat_model_buffer.h",
+
     "backend": "pc",
     "demo_size": 1024,
     "display_report": true,
+
     "quantization": {
         "qat": false,
         "mode": "FP32",
@@ -57,6 +67,7 @@
             }
         }
     ],
+
     "model_file": "model.keras",
     "use_logits": false,
     "architecture": {

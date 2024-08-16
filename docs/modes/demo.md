@@ -1,19 +1,57 @@
-# Task-Level Model Demo
+# Task-Level Demo
 
 ## <span class="sk-h2-span">Introduction </span>
 
 Each task in HeartKit has a corresponding demo mode that allows you to run a task-level demonstration using the specified backend inference engine (e.g. PC or EVB). This is useful to showcase the model's performance in real-time and to verify its accuracy in a real-world scenario. Similar to other modes, the demo can be invoked either via CLI or within `heartkit` python package. At a high level, the demo mode performs the following actions based on the provided configuration parameters:
 
-1. Load the configuration file (e.g. `configuration.json`)
-1. Load the desired dataset features (e.g. `icentia11k`)
+1. Load the configuration data (e.g. `configuration.json`)
+1. Load the desired datasets (e.g. `icentia11k`)
 1. Load the trained model (e.g. `model.keras`)
-1. Load random test subject's data
-1. Perform inference via backend engine (e.g. PC or EVB)
-1. Generate report
+1. Initialize inference engine backend (e.g. `pc` or `evb`)
+1. Generate input data (e.g. `x, y`)
+1. Perform inference on backend
+1. Generate report (e.g. `report.html`)
+
+```mermaid
+graph LR
+A("`Load
+configuration
+__HKTaskParams__
+`")
+B("`Load
+datasets
+__DatasetFactory__
+`")
+C("`Load trained
+__model__
+`")
+D("`Initialize
+inference engine
+__BackendFactory__
+`")
+E("`Generate
+input stimulus
+`")
+F("`Perform
+__inference(s)__
+`")
+G("`Generate
+__report__
+`")
+A ==> B
+B ==> C
+C ==> D
+subgraph CF["Inference Engine"]
+    D ==> E
+    E ==> F
+end
+F ==> G
+```
+
 
 ---
 
-## <span class="sk-h2-span">Inference Backends</span>
+## <span class="sk-h2-span">Backend Inference Engines</span>
 
 HeartKit includes two built-in backend inference engines: PC and EVB. Additional backends can be easily added to the HeartKit framework by creating a new backend class and registering it to the backend factory, `BackendFactory`.
 
@@ -92,12 +130,6 @@ Similar to datasets, dataloaders, tasks, and models, the demo mode can be custom
         backend="custom"
     ))
     ```
-    _OR_ by creating the backend directly:
-
-    ```python
-    import heartkit as hk
-    backend = hk.BackendFactory.create("custom", config)
-    ```
 
 ---
 
@@ -124,6 +156,6 @@ The following is an example of a task-level demo report for the segmentation tas
 
 ## <span class="sk-h2-span">Arguments </span>
 
-Please refer to [HKTaskParams](../modes/configuration.md) for the list of arguments that can be used with the `demi` command.
+Please refer to [HKTaskParams](../modes/configuration.md) for the list of arguments that can be used with the `demo` command.
 
 ---

@@ -5,6 +5,7 @@ This section contains guides to help with various aspects of HeartKit. The guide
 ## <span class="sk-h2-span">Core Concepts Guides</span>
 
 - **[Quickstart](../quickstart.md)**: A quick start guide to get you up and running with HeartKit.
+- **[Bring-Your-Own-Task](byot.ipynb)**: Demonstrate adding a new task end-to-end.
 
 ## <span class="sk-h2-span">Notebook Training Examples</span>
 

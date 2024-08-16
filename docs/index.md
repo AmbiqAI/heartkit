@@ -76,7 +76,7 @@ __HeartKit__ can be used as either a CLI-based tool or as a Python package to pe
 
 __HeartKit__ includes a number of built-in [tasks](./tasks/index.md). Each task provides reference routines for training, evaluating, and exporting the model. The routines can be customized by providing highly flexibile configuration files/objects. Additionally, new tasks can be added to the __HeartKit__ framework by defining a new [Task class](./tasks/byot.md) and registering it to the [__Task Factory__](./tasks/byot.md).
 
-- **[Denoise](./tasks/denoise.md)**: Remove noise and artifacts from ECG signals
+- **[Denoise](./tasks/denoise.md)**: Remove noise and artifacts from signals
 - **[Segmentation](./tasks/segmentation.md)**: Perform ECG/PPG based segmentation
 - **[Rhythm](./tasks/rhythm.md)**: Heart rhythm classification (AFIB, AFL)
 - **[Beat](./tasks/beat.md)**: Beat-level classification (NORM, PAC, PVC, NOISE)
@@ -124,7 +124,7 @@ __HeartKit__ provides a variety of model architectures geared towards efficient,
 - **[Conformer](https://ambiqai.github.io/neuralspot-edge/models/conformer)**: A transformer composed of both convolutional and self-attention blocks (key=`conformer`)
 - **[MetaFormer](https://ambiqai.github.io/neuralspot-edge/models/metaformer)**: A transformer composed of both spatial mixing and channel mixing blocks (key=`metaformer`)
 - **[TSMixer](https://ambiqai.github.io/neuralspot-edge/models/tsmixer)**: An All-MLP Architecture for Time Series Classification (key=`tsmixer`)
-- **[Bring-Your-Own-Model (BYOM)](https://ambiqai.github.io/neuralspot-edge/models/byom)**: Register new SoTA model architectures w/ custom configurations
+- **[Bring-Your-Own-Model (BYOM)](./models/byom.md)**: Register new SoTA model architectures w/ custom configurations
 
 ---
 

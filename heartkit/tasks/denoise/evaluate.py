@@ -1,5 +1,8 @@
 import os
+import json
 
+import keras
+import tensorflow as tf
 import neuralspot_edge as nse
 
 from ...defines import HKTaskParams
@@ -22,7 +25,12 @@ def evaluate(params: HKTaskParams):
 
     datasets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
 
-    test_ds = load_test_dataset(datasets=datasets, params=params)
+    # Load validation data
+    if params.val_file:
+        logger.info(f"Loading validation dataset from {params.val_file}")
+        test_ds = tf.data.Dataset.load(str(params.val_file))
+    else:
+        test_ds = load_test_dataset(datasets=datasets, params=params)
 
     logger.debug("Loading model")
     model = nse.models.load_model(params.model_file)
@@ -34,4 +42,14 @@ def evaluate(params: HKTaskParams):
     # Summarize results
     logger.debug("Performing inference")
     rst = model.evaluate(test_ds, verbose=params.verbose, return_dict=True)
-    logger.info("[TEST SET] " + ", ".join([f"{k.upper()}={v:.2%}" for k, v in rst.items()]))
+    logger.info("[TEST SET] " + ", ".join([f"{k.upper()}={v:.4f}" for k, v in rst.items()]))
+
+    rst["flops"] = flops
+    rst["parameters"] = model.count_params()
+    with open(params.job_dir / "metrics.json", "w") as fp:
+        json.dump(rst, fp)
+
+    # cleanup
+    keras.utils.clear_session()
+    for ds in datasets:
+        ds.close()

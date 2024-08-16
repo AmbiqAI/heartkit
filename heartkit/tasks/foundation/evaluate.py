@@ -1,7 +1,9 @@
 import os
+import json
 
 import keras
 import numpy as np
+import tensorflow as tf
 import matplotlib.pyplot as plt
 import neuralspot_edge as nse
 from sklearn.manifold import TSNE
@@ -13,10 +15,10 @@ from ...utils import setup_plotting
 
 
 def evaluate(params: HKTaskParams):
-    """Evaluate model
+    """Evaluate model for foundation task using SimCLR
 
     Args:
-        params (HKTaskParams): Evaluation parameters
+        params (HKTaskParams): Task parameters
     """
     os.makedirs(params.job_dir, exist_ok=True)
     logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "test.log")
@@ -27,8 +29,14 @@ def evaluate(params: HKTaskParams):
 
     datasets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
 
+    # Load validation data
+    if params.val_file:
+        logger.info(f"Loading validation dataset from {params.val_file}")
+        test_ds = tf.data.Dataset.load(str(params.val_file))
+    else:
+        test_ds = load_test_dataset(datasets=datasets, params=params)
+
     # Grab sets of augmented samples
-    test_ds = load_test_dataset(datasets=datasets, params=params)
     test_x1, test_x2 = [], []
     for inputs in test_ds.as_numpy_iterator():
         test_x1.append(inputs[nse.trainers.SimCLRTrainer.AUG_SAMPLES_0])
@@ -53,9 +61,13 @@ def evaluate(params: HKTaskParams):
     ]
 
     setup_plotting()
+    rst = nse.metrics.compute_metrics(metrics, test_y1, test_y2)
+    logger.info("[TEST SET] " + ", ".join([f"{k.upper()}={v:.4f}" for k, v in rst.items()]))
 
-    tf_rst = nse.metrics.compute_metrics(metrics, test_y1, test_y2)
-    logger.info("[TEST SET] " + ", ".join([f"{k.upper()}={v:.2%}" for k, v in tf_rst.items()]))
+    rst["flops"] = flops
+    rst["parameters"] = model.count_params()
+    with open(params.job_dir / "metrics.json", "w") as fp:
+        json.dump(rst, fp)
 
     # Compute t-SNE
     logger.debug("Computing t-SNE")
@@ -69,3 +81,8 @@ def evaluate(params: HKTaskParams):
     ax.set_xlabel("Component 1")
     ax.set_ylabel("Component 2")
     fig.savefig(params.job_dir / "tsne.png")
+
+    # cleanup
+    keras.utils.clear_session()
+    for ds in datasets:
+        ds.close()

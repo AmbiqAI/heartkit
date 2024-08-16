@@ -162,6 +162,27 @@ class HKDataloader:
 
         return test_patient_ids
 
+    def patient_data_generator(
+        self,
+        patient_id: int,
+        samples_per_patient: list[int],
+    ) -> Generator[tuple[npt.NDArray, ...], None, None]:
+        """Generate data for given patient id
+
+        Args:
+            patient_id (int): Patient ID
+            samples_per_patient (list[int]): Samples per patient
+
+        Returns:
+            Generator[tuple[npt.NDArray, ...], None, None]: Data generator
+
+
+        !!! note
+            This method should be implemented in the subclass
+
+        """
+        raise NotImplementedError()
+
     def data_generator(
         self,
         patient_ids: list[int],
@@ -170,15 +191,20 @@ class HKDataloader:
     ) -> Generator[tuple[npt.NDArray, ...], None, None]:
         """Generate data for given patient ids
 
-        !!! note
-            This method should be implemented in the subclass
-
         Args:
             patient_ids (list[int]): Patient IDs
             samples_per_patient (int | list[int]): Samples per patient
             shuffle (bool, optional): Shuffle data. Defaults to False.
+
+        Returns:
+            Generator[tuple[npt.NDArray, ...], None, None]: Data generator
+
         """
-        raise NotImplementedError()
+        for pt_id in nse.utils.uniform_id_generator(patient_ids, shuffle=shuffle):
+            for data in self.patient_data_generator(pt_id, samples_per_patient):
+                yield data
+            # END FOR
+        # END FOR
 
     def create_dataloader(
         self, patient_ids: list[int], samples_per_patient: int | list[int], shuffle: bool = False

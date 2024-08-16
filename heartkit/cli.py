@@ -5,8 +5,7 @@ from argdantic import ArgField, ArgParser
 from pydantic import BaseModel
 import neuralspot_edge as nse
 
-from .datasets import download_datasets
-from .defines import HKDownloadParams, HKMode, HKTaskParams
+from .defines import HKMode, HKTaskParams
 from .tasks import TaskFactory
 
 
@@ -38,16 +37,12 @@ def parse_content(cls: Type[B], content: str) -> B:
 @cli.command(name="run")
 def _run(
     mode: HKMode = ArgField("-m", description="Mode", default=HKMode.train),
-    task: str = ArgField("-t", description="Task", default=""),
+    task: str = ArgField("-t", description="Task", default="rhythm"),
     config: str = ArgField("-c", description="File path or JSON content", default="{}"),
 ):
     """HeartKit CLI"""
 
     logger.info(f"#STARTED MODE={mode} TASK={task}")
-
-    if mode == HKMode.download:
-        download_datasets(parse_content(HKDownloadParams, config))
-        return
 
     if not TaskFactory.has(task):
         raise ValueError(f"Unknown task {task}")
@@ -55,7 +50,11 @@ def _run(
     task_handler = TaskFactory.get(task)
 
     params = parse_content(HKTaskParams, config)
+
     match mode:
+        case HKMode.download:
+            task_handler.download(params)
+
         case HKMode.train:
             task_handler.train(params)
 

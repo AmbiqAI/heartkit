@@ -1,14 +1,9 @@
-import numpy as np
 import tensorflow as tf
 import neuralspot_edge as nse
 
-from ...datasets import (
-    HKDataset,
-    create_augmentation_pipeline,
-)
-from ...datasets.dataloader import HKDataloader
+from ...datasets import HKDataset, create_augmentation_pipeline
 from ...defines import HKTaskParams, NamedParams
-
+from ..utils import load_train_dataloader_split, load_test_dataloader_split
 from .dataloaders import BeatTaskFactory
 
 logger = nse.utils.setup_logger(__name__)
@@ -74,11 +69,6 @@ def load_train_datasets(
 ) -> tuple[tf.data.Dataset, tf.data.Dataset]:
     """Load training and validation tf.data.Datasets pipeline.
 
-    !!! note
-        if val_size or val_steps_per_epoch is given, then validation dataset will be
-        a fixed cached size. Otherwise, it will be a unbounded dataset generator. In
-        the latter case, a length will need to be passed to functions like `model.fit`.
-
     Args:
         datasets (list[HKDataset]): List of datasets.
         params (HKTaskParams): Training parameters.
@@ -86,38 +76,8 @@ def load_train_datasets(
     Returns:
         tuple[tf.data.Dataset, tf.data.Dataset]: Training and validation datasets
     """
-    train_datasets = []
-    val_datasets = []
-    for ds in datasets:
-        dataloader: HKDataloader = BeatTaskFactory.get(ds.name)(
-            ds=ds,
-            frame_size=params.frame_size,
-            sampling_rate=params.sampling_rate,
-            label_map=params.class_map,
-        )
-        train_patients, val_patients = dataloader.split_train_val_patients(
-            train_patients=params.train_patients,
-            val_patients=params.val_patients,
-        )
 
-        train_ds = dataloader.create_dataloader(
-            patient_ids=train_patients, samples_per_patient=params.samples_per_patient, shuffle=True
-        )
-
-        val_ds = dataloader.create_dataloader(
-            patient_ids=val_patients, samples_per_patient=params.val_samples_per_patient, shuffle=False
-        )
-        train_datasets.append(train_ds)
-        val_datasets.append(val_ds)
-    # END FOR
-
-    ds_weights = None
-    if params.dataset_weights:
-        ds_weights = np.array(params.dataset_weights)
-        ds_weights = ds_weights / ds_weights.sum()
-
-    train_ds = tf.data.Dataset.sample_from_datasets(train_datasets, weights=ds_weights)
-    val_ds = tf.data.Dataset.sample_from_datasets(val_datasets, weights=ds_weights)
+    train_ds, val_ds = load_train_dataloader_split(datasets, params, factory=BeatTaskFactory)
 
     # Shuffle and batch datasets for training
     train_ds = create_data_pipeline(
@@ -137,11 +97,10 @@ def load_train_datasets(
         num_classes=params.num_classes,
     )
 
-    # If given fixed val size or steps, then capture and cache
+    # Create cached validation dataset w/ fixed size
     val_steps_per_epoch = params.val_size // params.batch_size if params.val_size else params.val_steps_per_epoch
-    if val_steps_per_epoch:
-        logger.info(f"Validation steps per epoch: {val_steps_per_epoch}")
-        val_ds = val_ds.take(val_steps_per_epoch).cache()
+    logger.info(f"Validation steps per epoch: {val_steps_per_epoch}")
+    val_ds = val_ds.take(val_steps_per_epoch).cache()
 
     return train_ds, val_ds
 
@@ -159,29 +118,8 @@ def load_test_dataset(
     Returns:
         tf.data.Dataset: Test dataset
     """
-    test_datasets = []
-    for ds in datasets:
-        dataloader: HKDataloader = BeatTaskFactory.get(ds.name)(
-            ds=ds,
-            frame_size=params.frame_size,
-            sampling_rate=params.sampling_rate,
-            label_map=params.class_map,
-        )
-        test_patients = dataloader.test_patient_ids(params.test_patients)
-        test_ds = dataloader.create_dataloader(
-            patient_ids=test_patients,
-            samples_per_patient=params.test_samples_per_patient,
-            shuffle=False,
-        )
-        test_datasets.append(test_ds)
-    # END FOR
+    test_ds = load_test_dataloader_split(datasets, params, factory=BeatTaskFactory)
 
-    ds_weights = None
-    if params.dataset_weights:
-        ds_weights = np.array(params.dataset_weights)
-        ds_weights = ds_weights / ds_weights.sum()
-
-    test_ds = tf.data.Dataset.sample_from_datasets(test_datasets, weights=ds_weights)
     test_ds = create_data_pipeline(
         ds=test_ds,
         sampling_rate=params.sampling_rate,
@@ -190,8 +128,6 @@ def load_test_dataset(
         num_classes=params.num_classes,
     )
 
-    if params.test_size:
-        batch_size = getattr(params, "batch_size", 1)
-        test_ds = test_ds.take(params.test_size // batch_size).cache()
-
+    # Create cached test dataset w/ fixed size
+    test_ds = test_ds.take(params.test_size // params.batch_size).cache()
     return test_ds

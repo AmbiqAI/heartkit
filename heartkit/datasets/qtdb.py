@@ -42,6 +42,7 @@ class QtdbDataset(HKDataset):
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
+        self._cached_data = {}
 
     @property
     def name(self) -> str:
@@ -423,3 +424,7 @@ class QtdbDataset(HKDataset):
             )
             _ = process_map(f, patient_ids)
         # END WITH
+
+    def close(self):
+        """Close dataset"""
+        self._cached_data.clear()

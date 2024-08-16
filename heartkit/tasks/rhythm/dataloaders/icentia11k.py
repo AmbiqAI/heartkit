@@ -20,6 +20,7 @@ IcentiaRhythmMap = {
 
 class Icentia11kDataloader(HKDataloader):
     def __init__(self, ds: IcentiaDataset, **kwargs):
+        """Dataloader for icentia11k dataset"""
         super().__init__(ds=ds, **kwargs)
         # Update label map
         if self.label_map:

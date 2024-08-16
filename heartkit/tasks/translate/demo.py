@@ -7,7 +7,7 @@ from tqdm import tqdm
 import neuralspot_edge as nse
 
 from ...defines import HKTaskParams
-from ...rpc import BackendFactory
+from ...backends import BackendFactory
 from ...datasets import DatasetFactory
 
 logger = nse.utils.setup_logger(__name__)

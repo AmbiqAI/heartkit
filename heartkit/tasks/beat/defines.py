@@ -2,7 +2,7 @@ from enum import IntEnum
 
 
 class HKBeat(IntEnum):
-    """Heart beat labels"""
+    """Beat task labels"""
 
     normal = 0
     pac = 1

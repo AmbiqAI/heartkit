@@ -32,3 +32,13 @@ class DenoiseDataloader(HKDataloader):
             x = np.nan_to_num(x, neginf=0, posinf=0).astype(np.float32)
             x = np.reshape(x, (-1, 1))
             yield x
+
+
+DenoiseTaskFactory = nse.utils.create_factory(factory="HKBeatTaskFactory", type=HKDataloader)
+DenoiseTaskFactory.register("ecg-synthetic", DenoiseDataloader)
+DenoiseTaskFactory.register("ppg-synthetic", DenoiseDataloader)
+DenoiseTaskFactory.register("icentia11k", DenoiseDataloader)
+DenoiseTaskFactory.register("icentia_mini", DenoiseDataloader)
+DenoiseTaskFactory.register("ptbxl", DenoiseDataloader)
+DenoiseTaskFactory.register("lsad", DenoiseDataloader)
+DenoiseTaskFactory.register("qtdb", DenoiseDataloader)
