@@ -2,7 +2,6 @@
     "name": "seg-2-tcn-sm",
     "project": "hk-segmentation-2",
     "job_dir": "./results/seg-2-tcn-sm",
-
     "verbose": 2,
 
     "dataset_weights": [0.32, 0.68],

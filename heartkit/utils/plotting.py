@@ -45,7 +45,7 @@ dark_theme = PlotPallette(
 )
 
 
-def setup_plotting(theme: PlotPallette = dark_theme):
+def setup_plotting(theme: PlotPallette = dark_theme) -> PlotPallette:
     """Setup plotting environment for matplotlib and plotly
 
     Args:

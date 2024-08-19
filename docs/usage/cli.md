@@ -73,7 +73,7 @@ The HeartKit command line interface (CLI) makes it easy to run a variety of sing
 
 ## [Download](../modes/download.md)
 
-The `download` command is used to download all datasets specified in the configuration file. Please refer to [Datasets](../datasets/index.md) for details on the available datasets.
+The [download](../modes/download.md) command is used to download all datasets specified in the configuration file. Please refer to [Datasets](../datasets/index.md) for details on the available datasets.
 
 
 !!! Example "CLI"
@@ -81,14 +81,14 @@ The `download` command is used to download all datasets specified in the configu
     The following command will download and prepare all datasets specified in configuration JSON file.
 
     ```bash
-    heartkit --mode download --config ./configs/download-datasets.json
+    heartkit --task rhythm --mode download --config ./configs/download-datasets.json
     ```
 
 ---
 
 ## [Train](../modes/train.md)
 
-The `train` command is used to train a HeartKit model for the specified `task` and `dataset`. Each task provides a reference routine for training the model. The routine can be customized via the configuration file. Please refer to `heartkit/defines.py` to see supported options.
+The [train](../modes/train.md) command is used to train a HeartKit model for the specified `task` and `dataset`. Each task provides a reference routine for training the model. The routine can be customized via the configuration file. Please refer to [HKTaskParams](../modes/configuration.md#hktaskparams) to see supported options.
 
 !!! Example "CLI"
 
@@ -102,7 +102,7 @@ The `train` command is used to train a HeartKit model for the specified `task` a
 
 ## [Evaluate](../modes/evaluate.md)
 
-The `evaluate` command will test the performance of the model on the reserved test sets for the specified `task`. The routine can be customized via the configuration file. Please refer to `heartkit/defines.py` to see supported options.
+The [evaluate](../modes/evaluate.md) command will test the performance of the model on the reserved test sets for the specified `task`. The routine can be customized via the configuration file.Please refer to [HKTaskParams](../modes/configuration.md#hktaskparams) to see supported options.
 
 !!! example "CLI"
 
@@ -116,7 +116,7 @@ The `evaluate` command will test the performance of the model on the reserved te
 
 ## [Export](../modes/export.md)
 
-The `export` command will convert the trained TensorFlow model into both TensorFlow Lite (TFL) and TensorFlow Lite for micro-controller (TFLM) variants. The command will also verify the models' outputs match. The activations and weights can be quantized by configuring the `quantization` section in the configuration file. Once converted, the TFLM header file will be copied to location specified by `tflm_file`.
+The [export](../modes/export.md) command will convert the trained TensorFlow model into both TensorFlow Lite (TFL) and TensorFlow Lite for micro-controller (TFLM) variants. The command will also verify the models' outputs match. The activations and weights can be quantized by configuring the `quantization` section in the configuration file. Once converted, the TFLM header file will be copied to location specified by `tflm_file`.
 
 !!! example "CLI"
 
@@ -131,7 +131,7 @@ The `export` command will convert the trained TensorFlow model into both TensorF
 ## [Demo](../modes/demo.md)
 
 
-The `demo` command is used to run a task-level demonstration using either the PC or EVB as backend inference engine.
+The [demo](../modes/demo.md) command is used to run a task-level demonstration using either the PC or EVB as backend inference engine.
 
 !!! Example "CLI"
 

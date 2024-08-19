@@ -41,6 +41,7 @@
 
     "tflm_var_name": "ppg_denoise_flatbuffer",
     "tflm_file": "ppg_denoise_flatbuffer.h",
+
     "backend": "pc",
     "demo_size": 768,
     "display_report": false,
@@ -98,6 +99,7 @@
             "name": "nstdb"
         }
     }],
+
     "model_file": "model.keras",
     "use_logits": true,
     "architecture": {

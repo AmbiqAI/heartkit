@@ -10,9 +10,9 @@ Each task provides a mode to train a model on the specified datasets and dataloa
 1. Load the desired datasets (e.g. `PtbxlDataset`)
 1. Load the corresponding task dataloaders (e.g. `PtbxlDataLoader`)
 1. Initialize custom model architecture (e.g. `tcn`)
-1. Define the metrics, loss, and optimizer
-1. Train the model
-1. Save artifacts (e.g. model, metrics)
+1. Define the metrics, loss, and optimizer (e.g. `accuracy`, `categorical_crossentropy`, `adam`)
+1. Train the model (e.g. `model.fit`)
+1. Save artifacts (e.g. `model.keras`)
 
 </div>
 

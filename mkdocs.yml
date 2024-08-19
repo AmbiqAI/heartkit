@@ -87,7 +87,6 @@ nav:
   - Guides:
     - guides/index.md
     - Core Concepts:
-      - Quickstart: quickstart.md
       - BYOT: guides/byot.ipynb
     - Notebook Examples:
       - Train Arrhythmia Model: guides/train-arrhythmia-model.ipynb

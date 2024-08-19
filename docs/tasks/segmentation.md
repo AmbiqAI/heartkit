@@ -13,15 +13,25 @@ The objective of segmentation is to delineate key segments of the signal. In the
 
 ## <span class="sk-h2-span">ECG Characteristics</span>
 
-* __P-Wave__: Reflects atrial depolarization
-* __QRS Complex__: Reflects ventricular depolarization
-* __T-Wave__: Reflects ventricular repolarization
-* __U-Wave__: Reflects papillary muscle repolarization
+<div class="grid cards" markdown>
 
-<figure markdown>
-  ![Annotated ECG Signal](../assets/tasks/segmentation/ecg-annotated.svg){ width="380" }
-  <figcaption>Annotated ECG Signal</figcaption>
-</figure>
+- Annotated ECG Signal
+    <figure markdown>
+    ![Annotated ECG Signal](../assets/tasks/segmentation/ecg-annotated.svg){ width="380" }
+    </figure>
+
+
+- ECG Segments/Fiducials
+    * __P-Wave__: Reflects atrial depolarization
+    * __QRS Complex__: Reflects ventricular depolarization
+    * __T-Wave__: Reflects ventricular repolarization
+    * __U-Wave__: Reflects papillary muscle repolarization
+    * __PR Interval__: Time from atrial depolarization to ventricular depolarization
+    * __QT Interval__: Time from ventricular depolarization to repolarization
+    * __QTc Interval__: Corrected QT interval
+    * __ST Segment__: Time between ventricular depolarization and repolarization
+    * __J-Point__: Junction between QRS complex and ST segment
+</div>
 
 ---
 

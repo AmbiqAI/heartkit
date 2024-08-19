@@ -60,7 +60,7 @@ We provide several installation methods including pip, poetry, and Docker. Insta
 * [Python ^3.11+](https://www.python.org)
 * [Poetry ^1.6.1+](https://python-poetry.org/docs/#installation)
 
-Check the project's [pyproject.toml](https://github.com/AmbiqAI/heartkit/blob/main/pyproject.toml) file for a list of up-to-date Python dependencies. Note that the installation methods above install all required dependencies. The following are also required to compile and flash the binary to evaluate the demos running on Ambiq's evaluation boards (EVBs):
+Check the project's [pyproject.toml](https://github.com/AmbiqAI/heartkit/blob/main/pyproject.toml) file for a list of up-to-date Python dependencies. Note that the installation methods above install all required dependencies. The following are optional dependencies only needed when running `demo` command using Ambiq's evaluation board (`EVB`) backend:
 
 * [Arm GNU Toolchain ^12.2](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads)
 * [Segger J-Link ^7.92](https://www.segger.com/downloads/jlink/)
@@ -71,7 +71,7 @@ Once installed, __HeartKit__ can be used as either a CLI-based tool or as a Pyth
 
 ## <span class="sk-h2-span">Use HeartKit with CLI</span>
 
-The HeartKit command line interface (CLI) allows for simple single-line commands without the need for a Python environment. The CLI requires no customization or Python code. You can simply run all the built-in tasks from the terminal with the __heartkit__ command. Check out the [CLI Guide](./usage/cli.md) to learn more about available options.
+The HeartKit command line interface (CLI) allows for simple single-line commands to download datasets, train models, evaluate performance, and export models. The CLI requires no customization or Python code. You can simply run all the built-in tasks from the terminal with the __heartkit__ command. Check out the [CLI Guide](./usage/cli.md) to learn more about available options.
 
 !!! example
 
@@ -131,30 +131,20 @@ For example, you can create a custom task, train it, evaluate its performance on
 !!! Example
 
     ```python
+
     import heartkit as hk
 
-    ds_params = hk.HKDownloadParams(
-        ds_path="./datasets",
-        datasets=["ludb", "ecg-synthetic"],
-        progress=True
-    )
-
-    # Download datasets
-    hk.datasets.download_datasets(ds_params)
-
-    # Generate task parameters from configuration
     params = hk.HKTaskParams(...)  # Expand to see example (1)
 
     task = hk.TaskFactory.get("rhythm")
 
-    # Train rhythm model
-    task.train(params)
+    task.download(params)  # Download dataset(s)
 
-    # Evaluate rhythm model
-    task.evaluate(params)
+    task.train(params)  # Train the model
 
-    # Export rhythm model
-    task.export(params)
+    task.evaluate(params)  # Evaluate the model
+
+    task.export(params)  # Export to TFLite
 
     ```
 

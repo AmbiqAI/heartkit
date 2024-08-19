@@ -87,7 +87,7 @@ __HeartKit__ includes a number of built-in [tasks](./tasks/index.md). Each task 
 
 ## <span class="sk-h2-span">[Modes](./modes/index.md)</span>
 
-__HeartKit__ provides a number of [modes](./modes/index.md) that can be invoked for a given task. These modes can be accessed via the CLI or directly from a [Task](./tasks/index.md) within code. Each mode is accompanied by a set of [task parameters](./modes/configuration.md#hktaskparams) that can be customized to fit the user's needs.
+__HeartKit__ provides a number of [modes](./modes/index.md) that can be invoked for a given task. These modes can be accessed via the CLI or directly from a [Task](./tasks/index.md). Each mode is accompanied by a set of [task parameters](./modes/configuration.md#hktaskparams) that can be customized to fit the user's needs.
 
 - **[Download](./modes/download.md)**: Download specified datasets
 - **[Train](./modes/train.md)**: Train a model for specified task and datasets
@@ -99,7 +99,7 @@ __HeartKit__ provides a number of [modes](./modes/index.md) that can be invoked 
 
 ## <span class="sk-h2-span">[Datasets](./datasets/index.md)</span>
 
-The ADK includes several built-in [datasets](./datasets/index.md) for training __heart-monitoring__ related tasks. We also provide synthetic dataset generators for signals such as ECG, PPG, and RSP along with segmentation and fiducials. Each included dataset inherits from [HKDataset](./datasets/dataset.md) that provides consistent interface for downloading and accessing the data. Additional datasets can be added to the HeartKit framework by creating a new dataset class and registering it to the dataset factory, DatasetFactory. Check out the [Datasets Guide](./datasets/index.md) to learn more about the available datasets along with their corresponding licenses and limitations.
+The ADK includes several built-in [datasets](./datasets/index.md) for training __heart-monitoring__ related tasks. We also provide synthetic dataset generators for signals such as ECG, PPG, and RSP along with segmentation and fiducials. Each included dataset inherits from [HKDataset](./api/datasets/dataset.md) that provides consistent interface for downloading and accessing the data. Additional datasets can be added to the HeartKit framework by creating a new dataset class and registering it to the dataset factory, [DatasetFactory](./models/index.md#model-factory). Check out the [Datasets Guide](./datasets/index.md) to learn more about the available datasets along with their corresponding licenses and limitations.
 
 * **[Icentia11k](./datasets/icentia11k.md)**: 11-lead ECG data collected from 11,000 subjects captured continously over two weeks.
 * **[LUDB](./datasets/ludb.md)**: 200 ten-second 12-lead ECG records w/ annotated P-wave, QRS, and T-wave boundaries.
@@ -113,7 +113,7 @@ The ADK includes several built-in [datasets](./datasets/index.md) for training _
 
 ## <span class="sk-h2-span">[Models](./models/index.md)</span>
 
-__HeartKit__ provides a variety of model architectures geared towards efficient, real-time edge applications. These models are provided by Ambiq's [neuralspot-edge](https://ambiqai.github.io/neuralspot-edge/) and expose a set of parameters that can be used to fully customize the network for a given application. In addition, HeartKit includes a model factory, [ModelFactory](./models/index.md#model-factory) to register current models as well as allow new custom architectures to be added. Check out the [Models Guide](./models/index.md) to learn more about the available network architectures and model factory.
+__HeartKit__ provides a variety of model architectures geared towards efficient, real-time edge applications. These models are provided by Ambiq's [neuralspot-edge](https://ambiqai.github.io/neuralspot-edge/) and expose a set of parameters that can be used to fully customize the network for a given application. In addition, HeartKit includes a model factory, [ModelFactory](./models/index.md#model-factory), to register current models as well as allow new custom architectures to be added. Check out the [Models Guide](./models/index.md) to learn more about the available network architectures and model factory.
 
 - **[TCN](https://ambiqai.github.io/neuralspot-edge/models/tcn)**: A CNN leveraging dilated convolutions (key=`tcn`)
 - **[U-Net](https://ambiqai.github.io/neuralspot-edge/models/unet)**: A CNN with encoder-decoder architecture for segmentation tasks (key=`unet`)
@@ -136,6 +136,6 @@ The ADK includes a number of pre-trained models and configurationn recipes for t
 
 ## <span class="sk-h2-span">[Guides](./guides/index.md)</span>
 
-Checkout the [Guides](./guides/index.md) to see detailed examples and tutorials on how to use HeartKit for a variety of tasks. The guides provide step-by-step instructions on how to train, evaluate, and deploy models for a given task. In addition, the guides provide insights into the design choices and performance metrics for the models. The guides are designed to help you get up and running quickly and to provide a deeper understanding of the models and tasks available in HeartKit.
+Checkout the [Guides](./guides/index.md) to see detailed examples and tutorials on how to use HeartKit for a variety of tasks. The guides provide step-by-step instructions on how to train, evaluate, and deploy models for a given task. In addition, the guides provide insights into the design choices and performance metrics for the models. The guides are designed to help you get up and running quickly and to provide a deeper understanding of the capabilities provided by HeartKit.
 
 ---

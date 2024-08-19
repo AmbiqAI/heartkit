@@ -2,9 +2,9 @@
     "name": "fnd-eff-sm",
     "project": "foundation",
     "job_dir": "./results/fnd-eff-sm",
+    "verbose": 2,
 
     "temperature": 1.0,
-    "verbose": 2,
 
     "datasets": [{
         "name": "lsad",

@@ -2,7 +2,7 @@
 
 ## <span class="sk-h2-span">Overview</span>
 
-The following table provides the latest pre-trained models for ECG denoising. Below we also provide additional details including training configuration, accuracy metrics, and hardware performance results for the models.
+The following table provides the latest pre-trained models for signal denoising. Below we also provide additional details including training configuration, accuracy metrics, and hardware performance results for the models.
 
 
 --8<-- "assets/zoo/denoise/denoise-model-zoo-table.md"

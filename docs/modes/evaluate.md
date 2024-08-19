@@ -12,8 +12,8 @@ Evaluate mode is used to test the performance of the model on the reserved test 
 1. Load the corresponding task dataloaders (e.g. `PtbxlDataLoader`)
 1. Load the trained model (e.g. `model.keras`)
 1. Define the metrics (e.g. `accuracy`)
-1. Evaluate the model
-1. Generate evaluation report
+1. Evaluate the model (e.g. `model.evaluate`)
+1. Generate evaluation report (e.g. `report.json`)
 
 </div>
 

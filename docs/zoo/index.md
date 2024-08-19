@@ -5,16 +5,16 @@ hide:
 
 # Model Zoo
 
-A number of pre-trained models are available for download to use in your own project. These models are trained on the datasets listed below and are available in TensorFlow flatbuffer formats.
+A number of pre-trained models are available for download to use in your own project. These models are trained on the datasets listed below and are available in Keras and TensorFlow Lite flatbuffer formats.
 
-## <span class="sk-h2-span">[Denoising Task](./denoise.md)</span>
+## <span class="sk-h2-span">[Signal Denoising Task](./denoise.md)</span>
 
 The following table provides the latest performance and accuracy results for denoising models.
 
 --8<-- "assets/zoo/denoise/denoise-model-zoo-table.md"
 
 
-## <span class="sk-h2-span">[Segmentation Task](./segmentation.md)</span>
+## <span class="sk-h2-span">[Signal Segmentation Task](./segmentation.md)</span>
 
 The following table provides the latest performance and accuracy results for ECG segmentation models.
 
@@ -39,7 +39,7 @@ The following table provides the latest performance and accuracy results for mul
 --8<-- "assets/zoo/diagnostic/diagnostic-model-zoo-table.md" -->
 
 
-## <span class="sk-h2-span"> Reproducing results </span>
+## <span class="sk-h2-span"> Reproducing Results </span>
 
 Each pre-trained model has a corresponding `configuration.json` file that can be used to reproduce the model and results.
 

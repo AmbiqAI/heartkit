@@ -53,6 +53,7 @@
         "concrete": true,
         "debug": false
     },
+
     "preprocesses": [
         {
             "name": "layer_norm",
@@ -62,6 +63,7 @@
             }
         }
     ],
+
     "augmentations": [{
         "name": "random_noise_distortion",
         "params": {
@@ -97,6 +99,7 @@
             "name": "nstdb"
         }
     }],
+
     "model_file": "model.keras",
     "use_logits": true,
     "architecture": {

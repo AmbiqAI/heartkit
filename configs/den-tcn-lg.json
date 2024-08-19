@@ -4,6 +4,7 @@
     "job_dir": "./results/den-tcn-lg",
     "verbose": 2,
 
+    "dataset_weights": [0.9, 0.1],
     "datasets": [{
         "name": "ecg-synthetic",
         "params": {
@@ -27,7 +28,6 @@
             "path": "./datasets/ptbxl"
         }
     }],
-    "dataset_weights": [0.9, 0.1],
 
     "sampling_rate": 100,
     "frame_size": 256,

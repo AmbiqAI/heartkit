@@ -3,6 +3,7 @@
     "project": "hk-beat-2",
     "verbose": 2,
     "job_dir": "./results/beat-2-eff-sm",
+
     "datasets": [{
         "name": "icentia11k",
         "params": {
@@ -58,6 +59,7 @@
         "concrete": true,
         "debug": false
     },
+
     "preprocesses": [
         {
             "name": "layer_norm",

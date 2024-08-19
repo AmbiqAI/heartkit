@@ -53,6 +53,7 @@
     "test_metric_threshold": 0.02,
     "tflm_var_name": "g_segmentation_model",
     "tflm_file": "segmentation_model_buffer.h",
+
     "backend": "pc",
     "demo_size": 900,
     "display_report": false,
