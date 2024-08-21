@@ -78,18 +78,19 @@ if __name__ == "__main__":
     parser()
 
 """
-python ./scripts/upload_to_model_zoo.py -t rhythm -s ./results/arr-2-eff-sm -n arr-2-eff-sm -v latest
-python ./scripts/upload_to_model_zoo.py -t rhyhtm -s ./results/arr-4-eff-sm -n arr-4-eff-sm -v latest
+python ./scripts/upload_to_model_zoo.py -t rhythm -s ./results/arr-2-eff-sm -n arr-2-eff-sm -v v1.0
+python ./scripts/upload_to_model_zoo.py -t rhyhtm -s ./results/arr-4-eff-sm -n arr-4-eff-sm -v v1.0
 
-python ./scripts/upload_to_model_zoo.py -t beat -s ./results/beat-2-eff-sm -n beat-2-eff-sm -v latest
-python ./scripts/upload_to_model_zoo.py -t beat -s ./results/beat-3-eff-sm -n beat-3-eff-sm -v latest
+python ./scripts/upload_to_model_zoo.py -t beat -s ./results/beat-2-eff-sm -n beat-2-eff-sm -v v1.0
+python ./scripts/upload_to_model_zoo.py -t beat -s ./results/beat-3-eff-sm -n beat-3-eff-sm -v v1.0
 
-python ./scripts/upload_to_model_zoo.py -t denoise -s ./results/den-ppg-tcn-sm -n den-ppg-tcn-sm -v latest
-python ./scripts/upload_to_model_zoo.py -t denoise -s ./results/den-tcn-sm -n den-tcn-sm -v latest
+python ./scripts/upload_to_model_zoo.py -t denoise -s ./results/den-ppg-tcn-sm -n den-ppg-tcn-sm -v v1.0
+python ./scripts/upload_to_model_zoo.py -t denoise -s ./results/den-tcn-sm -n den-tcn-sm -v v1.0
 
-python ./scripts/upload_to_model_zoo.py -t foundation -s ./results/fnd-eff-sm -n fnd-eff-sm -v latest
+python ./scripts/upload_to_model_zoo.py -t foundation -s ./results/fnd-eff-sm -n fnd-eff-sm -v v1.0
 
-python ./scripts/upload_to_model_zoo.py -t segmentation -s ./results/seg-2-tcn-sm -n seg-2-tcn-sm -v latest
-python ./scripts/upload_to_model_zoo.py -t segmentation -s ./results/seg-4-tcn-sm -n seg-4-tcn-sm -v latest
-python ./scripts/upload_to_model_zoo.py -t segmentation -s ./results/seg-ppg-2-tcn-sm -n seg-ppg-2-tcn-sm -v latest
+python ./scripts/upload_to_model_zoo.py -t segmentation -s ./results/seg-2-tcn-sm -n seg-2-tcn-sm -v v1.0
+python ./scripts/upload_to_model_zoo.py -t segmentation -s ./results/seg-4-tcn-sm -n seg-4-tcn-sm -v v1.0
+python ./scripts/upload_to_model_zoo.py -t segmentation -s ./results/seg-4-tcn-lg -n seg-4-tcn-lg -v v1.0
+python ./scripts/upload_to_model_zoo.py -t segmentation -s ./results/seg-ppg-2-tcn-sm -n seg-ppg-2-tcn-sm -v v1.0
 """

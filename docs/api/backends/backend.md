@@ -14,4 +14,4 @@ for backend in hk.BackendFactory.list():
     print(f"Backend name: {backend} - {hk.BackendFactory.get(backend)}")
 ```
 
-::: neuralspot_edge.utils.ItemFactory
+<!-- ::: neuralspot_edge.utils.ItemFactory -->

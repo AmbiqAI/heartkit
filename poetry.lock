@@ -2519,6 +2519,31 @@ files = [
 ]
 
 [[package]]
+name = "neuralspot-edge"
+version = "0.1.5"
+description = ""
+optional = false
+python-versions = "<3.13,>=3.10"
+files = [
+    {file = "neuralspot_edge-0.1.5-py3-none-any.whl", hash = "sha256:6be9f01fbf97987b082fe452bd8e80ebc8d57a2fce6edd2f3443afaf6e21da61"},
+    {file = "neuralspot_edge-0.1.5.tar.gz", hash = "sha256:598dc8822f99d19b2910a54d75f490c820e1d5cc8b7b0bdc689f02cf400de0cd"},
+]
+
+[package.dependencies]
+boto3 = ">=1.34.151,<2.0.0"
+h5py = ">=3.10.0,<4.0.0"
+keras = ">=3.0.4,<4.0.0"
+matplotlib = ">=3.9.0,<4.0.0"
+pandas = ">=2.2.2,<3.0.0"
+plotly = ">=5.22.0,<6.0.0"
+pydantic = ">=2.6.1,<3.0.0"
+requests = ">=2.31.0,<3.0.0"
+scikit-learn = ">=1.5.1,<2.0.0"
+seaborn = ">=0.13.2,<0.14.0"
+tensorflow = ">=2.16.1,<3.0.0"
+tqdm = ">=4.66.4,<5.0.0"
+
+[[package]]
 name = "nodeenv"
 version = "1.9.1"
 description = "Node.js virtual environment builder"
@@ -5151,4 +5176,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "28f9571d81dcafc5f2bb370c439c19bd27dcdf538bdc1792678c8569a852fe3c"
+content-hash = "7a84e8e0e769fd400676192f5773bad99e6d9bf8a20a176971ed5aada44983fa"

@@ -13,4 +13,4 @@ for dataset in hk.DatasetFactory.list():
     print(f"Dataset name: {dataset} - {hk.DatasetFactory.get(dataset)}")
 ```
 
-::: neuralspot_edge.utils.ItemFactory
+<!-- ::: neuralspot_edge.utils.ItemFactory -->
