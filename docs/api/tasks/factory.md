@@ -11,4 +11,4 @@ for model in hk.TaskFactory.list():
     print(f"Task name: {model} - {hk.TaskFactory.get(model)}")
 ```
 
-::: neuralspot_edge.utils.ItemFactory
+<!-- ::: neuralspot_edge.utils.ItemFactory -->
