@@ -58,7 +58,6 @@ orjson = "^3.9.13"
 physiokit = "^0.8.1"
 requests = "^2.31.0"
 argdantic = {extras = ["all"], version = "^1.0.0"}
-neuralspot-edge = {git = "https://github.com/AmbiqAI/neuralspot-edge.git"}
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.21.0"
