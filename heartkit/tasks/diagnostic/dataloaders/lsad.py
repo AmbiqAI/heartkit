@@ -1,9 +1,9 @@
 from typing import Generator
 
 import numpy.typing as npt
+import neuralspot_edge as nse
 
-from ....datasets.defines import PatientGenerator
-from ....datasets.lsad import LsadDataset, LsadScpCode
+from ....datasets import LsadDataset, LsadScpCode, HKDataloader
 from ..defines import HKDiagnostic
 
 LsadDiagnosticMap = {
@@ -48,50 +48,26 @@ LsadDiagnosticMap = {
 }
 
 
-def lsad_label_map(
-    label_map: dict[int, int] | None = None,
-) -> dict[int, int]:
-    """Get label map
+class LsadDataloader(HKDataloader):
+    def __init__(self, ds: LsadDataset, **kwargs):
+        super().__init__(ds=ds, **kwargs)
+        if self.label_map:
+            self.label_map = {k: self.label_map[v] for (k, v) in LsadDiagnosticMap.items() if v in self.label_map}
 
-    Args:
-        label_map (dict[int, int]|None): Label map
+        self.label_type = "scp"
 
-    Returns:
-        dict[int, int]: Label map
-    """
-    return {k: label_map.get(v, -1) for (k, v) in LsadDiagnosticMap.items()}
-
-
-def lsad_data_generator(
-    patient_generator: PatientGenerator,
-    ds: LsadDataset,
-    frame_size: int,
-    samples_per_patient: int | list[int] = 1,
-    target_rate: int | None = None,
-    label_map: dict[int, int] | None = None,
-) -> Generator[tuple[npt.NDArray, npt.NDArray], None, None]:
-    """Generate frames w/ diagnostic labels using patient generator.
-
-    Args:
-        patient_generator (PatientGenerator): Patient Generator
-        ds: LsadDataset
-        frame_size (int): Frame size
-        samples_per_patient (int | list[int], optional): # samples per patient. Defaults to 1.
-        target_rate (int|None, optional): Target rate. Defaults to None.
-        label_map (dict[int, int] | None, optional): Label map. Defaults to None.
-
-    Returns:
-        Generator[tuple[npt.NDArray, npt.NDArray], None, None]: Sample generator
-
-    """
-    tgt_map = lsad_label_map(label_map=label_map)
-
-    return ds.signal_label_generator(
-        patient_generator=patient_generator,
-        frame_size=frame_size,
-        samples_per_patient=samples_per_patient,
-        target_rate=target_rate,
-        label_map=tgt_map,
-        label_type="scp",
-        label_format="multi_hot",
-    )
+    def data_generator(
+        self,
+        patient_ids: list[int],
+        samples_per_patient: int | list[int],
+        shuffle: bool = False,
+    ) -> Generator[tuple[npt.NDArray, npt.NDArray], None, None]:
+        return self.ds.signal_label_generator(
+            patient_generator=nse.utils.uniform_id_generator(patient_ids, repeat=True, shuffle=shuffle),
+            frame_size=self.frame_size,
+            samples_per_patient=samples_per_patient,
+            target_rate=self.sampling_rate,
+            label_map=self.label_map,
+            label_type=self.label_type,
+            label_format="multi_hot",
+        )

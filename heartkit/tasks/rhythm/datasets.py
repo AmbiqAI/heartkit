@@ -1,356 +1,137 @@
-import functools
-import logging
-from pathlib import Path
-
-import numpy as np
-import numpy.typing as npt
 import tensorflow as tf
+import neuralspot_edge as nse
 
 from ...datasets import (
     HKDataset,
-    augment_pipeline,
-    preprocess_pipeline,
-    uniform_id_generator,
+    create_augmentation_pipeline,
 )
-from ...datasets.dataloader import test_dataloader, train_val_dataloader
-from ...defines import (
-    AugmentationParams,
-    HKExportParams,
-    HKTestParams,
-    HKTrainParams,
-    PreprocessParams,
-)
-from ...utils import resolve_template_path
-from .dataloaders import (
-    icentia11k_data_generator,
-    icentia11k_label_map,
-    lsad_data_generator,
-    lsad_label_map,
-    ptbxl_data_generator,
-    ptbxl_label_map,
-)
+from ...defines import HKTaskParams, NamedParams
+from ..utils import load_train_dataloader_split, load_test_dataloader_split
+from .dataloaders import RhythmDataloaderFactory
 
-logger = logging.getLogger(__name__)
+logger = nse.utils.setup_logger(__name__)
 
 
-def preprocess(x: npt.NDArray, preprocesses: list[PreprocessParams], sample_rate: float) -> npt.NDArray:
-    """Preprocess data pipeline
+def create_data_pipeline(
+    ds: tf.data.Dataset,
+    sampling_rate: int,
+    batch_size: int,
+    buffer_size: int | None = None,
+    augmentations: list[NamedParams] | None = None,
+    num_classes: int = 2,
+) -> tf.data.Dataset:
+    """Create data pipeline for training
 
     Args:
-        x (npt.NDArray): Input data
-        preprocesses (list[PreprocessParams]): Preprocess parameters
-        sample_rate (float): Sample rate
+        ds (tf.data.Dataset): Dataset
+        sampling_rate (int): Sampling rate
+        batch_size (int): Batch size
+        buffer_size (int, optional): Buffer size. Defaults to None.
+        augmentations (list[NamedParams], optional): Augmentations. Defaults to None.
+        num_classes (int, optional): Number of classes. Defaults to 2.
 
     Returns:
-        npt.NDArray: Preprocessed data
+        tf.data.Dataset: Data pipeline
     """
-    return preprocess_pipeline(x, preprocesses=preprocesses, sample_rate=sample_rate)
+    if buffer_size:
+        ds = ds.shuffle(
+            buffer_size=buffer_size,
+            reshuffle_each_iteration=True,
+        )
+    if batch_size:
+        ds = ds.batch(
+            batch_size=batch_size,
+            drop_remainder=True,
+            num_parallel_calls=tf.data.AUTOTUNE,
+        )
+    augmenter = create_augmentation_pipeline(augmentations, sampling_rate=sampling_rate)
 
-
-def augment(x: npt.NDArray, augmentations: list[AugmentationParams], sample_rate: float) -> npt.NDArray:
-    """Augment data pipeline
-
-    Args:
-        x (npt.NDArray): Input data
-        augmentations (list[AugmentationParams]): Augmentation parameters
-        sample_rate (float): Sample rate
-
-    Returns:
-        npt.NDArray: Augmented data
-    """
-    return augment_pipeline(
-        x=x,
-        augmentations=augmentations,
-        sample_rate=sample_rate,
+    ds = (
+        ds.map(
+            lambda data, labels: {
+                "data": tf.cast(data, "float32"),
+                "labels": tf.one_hot(labels, num_classes),
+            },
+            num_parallel_calls=tf.data.AUTOTUNE,
+        )
+        .map(
+            augmenter,
+            num_parallel_calls=tf.data.AUTOTUNE,
+        )
+        .map(
+            lambda data: (data["data"], data["labels"]),
+            num_parallel_calls=tf.data.AUTOTUNE,
+        )
     )
-
-
-def prepare(
-    x_y: tuple[npt.NDArray, int],
-    sample_rate: float,
-    preprocesses: list[PreprocessParams],
-    augmentations: list[AugmentationParams],
-    spec: tuple[tf.TensorSpec, tf.TensorSpec],
-    num_classes: int,
-) -> tuple[npt.NDArray, npt.NDArray]:
-    """Prepare dataset
-
-    Args:
-        x_y (tuple[npt.NDArray, int]): Input data and label
-        sample_rate (float): Sample rate
-        preprocesses (list[PreprocessParams]|None): Preprocess parameters
-        augmentations (list[AugmentationParams]|None): Augmentation parameters
-        spec (tuple[tf.TensorSpec, tf.TensorSpec]): TensorSpec
-        num_classes (int): Number of classes
-
-    Returns:
-        tuple[npt.NDArray, npt.NDArray]: Prepared data
-    """
-    x, y = x_y[0].copy(), x_y[1]
-
-    if augmentations:
-        x = augment(x, augmentations, sample_rate)
-    # END IF
-
-    if preprocesses:
-        x = preprocess(x, preprocesses, sample_rate)
-    # END IF
-
-    x = x.reshape(spec[0].shape)
-    y = tf.one_hot(y, num_classes)
-
-    return x, y
-
-
-def get_ds_label_map(ds: HKDataset, label_map: dict[int, int] | None = None) -> dict[int, int]:
-    """Get label map for dataset
-
-    Args:
-        ds (HKDataset): Dataset
-        label_map (dict[int, int]|None): Label map
-
-    Returns:
-        dict[int, int]: Label map
-    """
-    match ds.name:
-        case "icentia11k":
-            return icentia11k_label_map(label_map=label_map)
-        case "lsad":
-            return lsad_label_map(label_map=label_map)
-        case "ptbxl":
-            return ptbxl_label_map(label_map=label_map)
-        case _:
-            raise ValueError(f"Dataset {ds.name} not supported")
-    # END MATCH
-
-
-def get_data_generator(
-    ds: HKDataset, frame_size: int, samples_per_patient: int, target_rate: int, label_map: dict[int, int] | None = None
-):
-    """Get task data generator for dataset
-
-    Args:
-        ds (HKDataset): Dataset
-        frame_size (int): Frame size
-        samples_per_patient (int): Samples per patient
-        target_rate (int): Target rate
-        label_map (dict[int, int] | None, optional): Label map. Defaults to None.
-
-    Returns:
-        callable: Data generator
-    """
-    match ds.name:
-        case "icentia11k":
-            data_generator = icentia11k_data_generator
-        case "lsad":
-            data_generator = lsad_data_generator
-        case "ptbxl":
-            data_generator = ptbxl_data_generator
-        case _:
-            raise ValueError(f"Dataset {ds.name} not supported")
-    # END MATCH
-    return functools.partial(
-        data_generator,
-        ds=ds,
-        frame_size=frame_size,
-        samples_per_patient=samples_per_patient,
-        target_rate=target_rate,
-        label_map=label_map,
-    )
-
-
-def get_label_type(ds: HKDataset) -> str:
-    """Get label type for dataset
-
-    Args:
-        ds (HKDataset): Dataset
-
-    Returns:
-        str: Label type
-    """
-    match ds.name:
-        case "icentia11k":
-            return "rhythm"
-        case _:
-            return "scp"
-    # END MATCH
-
-
-def resolve_ds_cache_path(fpath: Path | None, ds: HKDataset, task: str, frame_size: int, sample_rate: int):
-    """Resolve dataset cache path
-
-    Args:
-        fpath (Path|None): File path
-        ds (HKDataset): Dataset
-        task (str): Task
-        frame_size (int): Frame size
-        sample_rate (int): Sampling rate
-
-    Returns:
-        Path|None: Resolved path
-    """
-    if not fpath:
-        return None
-    return resolve_template_path(
-        fpath=fpath,
-        dataset=ds.name,
-        task=task,
-        frame_size=frame_size,
-        sampling_rate=sample_rate,
-    )
+    return ds.prefetch(tf.data.AUTOTUNE)
 
 
 def load_train_datasets(
     datasets: list[HKDataset],
-    params: HKTrainParams,
-    ds_spec: tuple[tf.TensorSpec, tf.TensorSpec],
+    params: HKTaskParams,
 ) -> tuple[tf.data.Dataset, tf.data.Dataset]:
     """Load training and validation datasets
 
     Args:
-        datasets (list[HKDataset]): Datasets
-        params (HKTrainParams): Training parameters
-        ds_spec (tuple[tf.TensorSpec, tf.TensorSpec]): TensorSpec
+        datasets (list[HKDataset]): List of datasets
+        params (HKTaskParams): Task parameters
 
     Returns:
-        tuple[tf.data.Dataset, tf.data.Dataset]: Train and validation datasets
+        tuple[tf.data.Dataset, tf.data.Dataset]: Training and validation datasets
     """
-    id_generator = functools.partial(uniform_id_generator, repeat=True)
-    train_prepare = functools.partial(
-        prepare,
-        sample_rate=params.sampling_rate,
-        preprocesses=params.preprocesses,
-        augmentations=params.augmentations,
-        spec=ds_spec,
-        num_classes=params.num_classes,
-    )
-    val_prepare = functools.partial(
-        prepare,
-        sample_rate=params.sampling_rate,
-        preprocesses=params.preprocesses,
-        augmentations=None,
-        spec=ds_spec,
-        num_classes=params.num_classes,
-    )
 
-    train_datasets = []
-    val_datasets = []
-    for ds in datasets:
-
-        val_file = resolve_ds_cache_path(
-            params.val_file, ds=ds, task="rhythm", frame_size=params.frame_size, sample_rate=params.sampling_rate
-        )
-        data_generator = get_data_generator(
-            ds=ds,
-            frame_size=params.frame_size,
-            samples_per_patient=params.samples_per_patient,
-            target_rate=params.sampling_rate,
-            label_map=params.class_map,
-        )
-        train_ds, val_ds = train_val_dataloader(
-            ds=ds,
-            spec=ds_spec,
-            data_generator=data_generator,
-            id_generator=id_generator,
-            train_patients=params.train_patients,
-            val_patients=params.val_patients,
-            val_pt_samples=params.val_samples_per_patient,
-            val_file=val_file,
-            val_size=params.val_size,
-            label_map=get_ds_label_map(ds, label_map=params.class_map),
-            label_type=get_label_type(ds),
-            preprocess=train_prepare,
-            val_preprocess=val_prepare,
-            num_workers=params.data_parallelism,
-        )
-        train_datasets.append(train_ds)
-        val_datasets.append(val_ds)
-    # END FOR
-
-    ds_weights = np.array([d.weight for d in params.datasets])
-    ds_weights = ds_weights / ds_weights.sum()
-
-    train_ds = tf.data.Dataset.sample_from_datasets(train_datasets, weights=ds_weights)
-    val_ds = tf.data.Dataset.sample_from_datasets(val_datasets, weights=ds_weights)
+    train_ds, val_ds = load_train_dataloader_split(datasets, params, factory=RhythmDataloaderFactory)
 
     # Shuffle and batch datasets for training
-    train_ds = (
-        train_ds.shuffle(
-            buffer_size=params.buffer_size,
-            reshuffle_each_iteration=True,
-        )
-        .batch(
-            batch_size=params.batch_size,
-            drop_remainder=False,
-            num_parallel_calls=tf.data.AUTOTUNE,
-        )
-        .prefetch(buffer_size=tf.data.AUTOTUNE)
-    )
-    val_ds = val_ds.batch(
+    train_ds = create_data_pipeline(
+        ds=train_ds,
+        sampling_rate=params.sampling_rate,
         batch_size=params.batch_size,
-        drop_remainder=True,
-        num_parallel_calls=tf.data.AUTOTUNE,
+        buffer_size=params.buffer_size,
+        augmentations=params.augmentations + params.preprocesses,
+        num_classes=params.num_classes,
     )
+
+    val_ds = create_data_pipeline(
+        ds=val_ds,
+        sampling_rate=params.sampling_rate,
+        batch_size=params.batch_size,
+        augmentations=params.preprocesses,
+        num_classes=params.num_classes,
+    )
+
+    # Cache validation dataset w/ fixed size
+    val_steps_per_epoch = params.val_size // params.batch_size if params.val_size else params.val_steps_per_epoch
+    logger.info(f"Validation steps per epoch: {val_steps_per_epoch}")
+    val_ds = val_ds.take(val_steps_per_epoch).cache()
+
     return train_ds, val_ds
 
 
 def load_test_dataset(
     datasets: list[HKDataset],
-    params: HKTestParams | HKExportParams,
-    ds_spec: tuple[tf.TensorSpec, tf.TensorSpec],
+    params: HKTaskParams,
 ) -> tf.data.Dataset:
     """Load test dataset
 
     Args:
-        datasets (list[HKDataset]): Datasets
-        params (HKTestParams|HKExportParams): Test parameters
-        ds_spec (tuple[tf.TensorSpec, tf.TensorSpec]): TensorSpec
+        datasets (list[HKDataset]): List of datasets
+        params (HKTaskParams): Task parameters
 
     Returns:
         tf.data.Dataset: Test dataset
     """
 
-    id_generator = functools.partial(uniform_id_generator, repeat=True)
-    test_prepare = functools.partial(
-        prepare,
-        sample_rate=params.sampling_rate,
-        preprocesses=params.preprocesses,
-        augmentations=None,  # params.augmentations,
-        spec=ds_spec,
+    test_ds = load_test_dataloader_split(datasets, params, factory=RhythmDataloaderFactory)
+
+    test_ds = create_data_pipeline(
+        ds=test_ds,
+        sampling_rate=params.sampling_rate,
+        batch_size=params.batch_size,
+        augmentations=params.preprocesses,
         num_classes=params.num_classes,
     )
-    test_datasets = []
-    for ds in datasets:
 
-        test_file = resolve_ds_cache_path(
-            fpath=params.test_file, ds=ds, task="rhythm", frame_size=params.frame_size, sample_rate=params.sampling_rate
-        )
-        data_generator = get_data_generator(
-            ds=ds,
-            frame_size=params.frame_size,
-            samples_per_patient=params.test_samples_per_patient,
-            target_rate=params.sampling_rate,
-            label_map=params.class_map,
-        )
-        test_ds = test_dataloader(
-            ds=ds,
-            spec=ds_spec,
-            data_generator=data_generator,
-            id_generator=id_generator,
-            test_patients=params.test_patients,
-            test_file=test_file,
-            label_map=get_ds_label_map(ds, label_map=params.class_map),
-            label_type=get_label_type(ds),
-            preprocess=test_prepare,
-            num_workers=params.data_parallelism,
-        )
-        test_datasets.append(test_ds)
-    # END FOR
+    test_ds = test_ds.take(params.test_size // params.batch_size).cache()
 
-    ds_weights = np.array([d.weight for d in params.datasets])
-    ds_weights = ds_weights / ds_weights.sum()
-
-    test_ds = tf.data.Dataset.sample_from_datasets(test_datasets, weights=ds_weights)
-
-    # END WITH
     return test_ds

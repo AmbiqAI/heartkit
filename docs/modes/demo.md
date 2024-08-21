@@ -1,65 +1,123 @@
-# Task-Level Model Demo
+# Task-Level Demo
 
 ## <span class="sk-h2-span">Introduction </span>
 
 Each task in HeartKit has a corresponding demo mode that allows you to run a task-level demonstration using the specified backend inference engine (e.g. PC or EVB). This is useful to showcase the model's performance in real-time and to verify its accuracy in a real-world scenario. Similar to other modes, the demo can be invoked either via CLI or within `heartkit` python package. At a high level, the demo mode performs the following actions based on the provided configuration parameters:
 
-1. Load the configuration file (e.g. `segmentation-class-2`)
-1. Load the desired dataset features (e.g. `icentia11k`)
+1. Load the configuration data (e.g. `configuration.json`)
+1. Load the desired datasets (e.g. `icentia11k`)
 1. Load the trained model (e.g. `model.keras`)
-1. Load random test subject's data
-1. Perform inference via backend engine (e.g. PC or EVB)
-1. Generate report
+1. Initialize inference engine backend (e.g. `pc` or `evb`)
+1. Generate input data (e.g. `x, y`)
+1. Perform inference on backend (e.g. `model.predict`)
+1. Generate report (e.g. `report.html`)
+
+```mermaid
+graph LR
+A("`Load
+configuration
+__HKTaskParams__
+`")
+B("`Load
+datasets
+__DatasetFactory__
+`")
+C("`Load trained
+__model__
+`")
+D("`Initialize
+inference engine
+__BackendFactory__
+`")
+E("`Generate
+input stimulus
+`")
+F("`Perform
+__inference(s)__
+`")
+G("`Generate
+__report__
+`")
+A ==> B
+B ==> C
+C ==> D
+subgraph CF["Inference Engine"]
+    D ==> E
+    E ==> F
+end
+F ==> G
+```
+
 
 ---
 
-## <span class="sk-h2-span">Inference Backends</span>
+## <span class="sk-h2-span">Backend Inference Engines</span>
 
-HeartKit includes two built-in backend inference engines: PC and EVB. Additional backends can be easily added to the HeartKit framework by creating a new backend class and registering it to the backend factory.
+HeartKit includes two built-in backend inference engines: PC and EVB. Additional backends can be easily added to the HeartKit framework by creating a new backend class and registering it to the backend factory, [BackendFactory](../api/backends/backend.md).
 
-### PC Backend
+### PC Backend Inference Engine
 
-The PC backend is used to run the task-level demo on the local machine. This is useful for quick testing and debugging of the model.
+The PC backend is used to run the task-level demo on the local machine via `Keras`. This is useful for quick testing and debugging of the model.
 
-1. Create / modify configuration file (e.g. `segmentation-class-2.json`)
+1. Create / modify configuration file (e.g. `configuration.json`)
 1. Ensure "pc" is selected as the backend in configuration file.
-1. Run demo `heartkit --mode demo --task segmentation --config ./configs/segmentation-class-2.json`
+1. Run demo `heartkit --mode demo --task segmentation --config ./configuration.json`
 1. HTML report will be saved to `${job_dir}/report.html`
 
-### EVB Backend
+### EVB Backend Inference Engine
 
-The EVB backend is used to run the task-level demo on an Ambiq EVB. This is useful to showcase the model's performance in real-time and to verify its accuracy in a real-world scenario.
+The EVB backend is used to run the task-level demo on an Ambiq EVB. This is useful to showcase the model's performance in real-time and to verify its accuracy on deployed hardware.
 
-1. Create / modify configuration file (e.g. `segmentation-class-2.json`)
-1. Ensure "evb" is selected as the backend in configuration file.
+1. Create / modify configuration file (e.g. `configuration.json`)
+1. Ensure "evb" is selected as the `backend` in configuration file.
 1. Plug EVB into PC via two USB-C cables.
-1. Build and flash firmware to EVB `cd evb && make && make deploy`
-1. Run demo `heartkit --mode demo --task beat --config ./configs/segmentation-class-2.json`
+1. Run demo `heartkit --mode demo --task beat --config ./configuration.json`
 1. HTML report will be saved to `${job_dir}/report.html`
 
-### Bring-Your-Own-Backend
+### Bring-Your-Own-Backend Engine
 
-Similar to datasets, tasks, and models, the demo mode can be customized to use your own backend inference engine. HeartKit includes a backend factory (`BackendFactory`) that is used to create and run the backend engine.
+Similar to datasets, dataloaders, tasks, and models, the demo mode can be customized to use your own backend inference engine. HeartKit includes a backend factory (`BackendFactory`) that is used to create and run the backend engine.
 
 #### How it Works
 
-1. **Create a Backend**: Define a new backend by creating a new Python file. The file should contain a class that inherits from the `DemoBackend` base class and implements the required methods.
+1. **Create a Backend**: Define a new backend class that inherits from the [HKInferenceBackend](../api/backends/backend.md) base class and implements the required abstract methods.
 
     ```python
     import heartkit as hk
 
-    class CustomBackend(hk.HKBackend):
-        def __init__(self, config):
-            super().__init__(config)
+    class CustomBackend(hk.HKInferenceBackend):
+        """Custom backend inference engine"""
 
-        def run(self, model, data):
+        def __init__(self, params: hk.HKTaskParams) -> None:
+            self.params = params
+
+        def open(self):
+            """Open backend"""
+            pass
+
+        def close(self):
+            """Close backend"""
+            pass
+
+        def set_inputs(self, inputs: npt.NDArray):
+            """Set inputs"""
+            pass
+
+        def perform_inference(self):
+            """Perform inference"""
+            pass
+
+        def get_outputs(self) -> npt.NDArray:
+            """Get outputs"""
             pass
     ```
 
-2. **Register the Backend**: Register the new backend with the `BackendFactory` by calling the `register` method. This method takes the backend name and the backend class as arguments.
+2. **Register the Backend**: Register the new backend with the [BackendFactory](../api/backends/backend.md) by calling the `register` method. This method takes the backend name and the backend class as arguments.
 
     ```python
     import heartkit as hk
+
+    # Register the custom backend
     hk.BackendFactory.register("custom", CustomBackend)
     ```
 
@@ -67,17 +125,16 @@ Similar to datasets, tasks, and models, the demo mode can be customized to use y
 
     ```python
     import heartkit as hk
-    task = hk.TaskFactory.get("rhythm")
-    task.demo(hk.HKDemoParams(
-        ...,
-        backend="custom"
-    ))
-    ```
-    _OR_ by creating the backend directly:
 
-    ```python
-    import heartkit as hk
-    backend = hk.BackendFactory.create("custom", config)
+    # Define demo parameters
+    params = hk.HKTaskParams(...)
+    params.backend = "custom"
+
+    # Load the desired task
+    task = hk.TaskFactory.get("rhythm")
+
+    # Run the task-level demo using the custom backend
+    task.demo(params=params)
     ```
 
 ---
@@ -89,7 +146,7 @@ The following is an example of a task-level demo report for the segmentation tas
 === "CLI"
 
     ```bash
-    heartkit -m export -t segmentation -c ./configs/segmentation-class-2.json
+    heartkit -m export -t segmentation -c ./configuration.json
     ```
 
 === "Python"
@@ -105,8 +162,6 @@ The following is an example of a task-level demo report for the segmentation tas
 
 ## <span class="sk-h2-span">Arguments </span>
 
-The following table lists the parameters that can be used to configure the demo mode. For argument `model_file`, the supported formats include `.keras` and `.tflite`.
-
---8<-- "assets/modes/demo-params.md"
+Please refer to [HKTaskParams](../modes/configuration.md) for the list of arguments that can be used with the `demo` command.
 
 ---

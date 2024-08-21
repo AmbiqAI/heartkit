@@ -2,41 +2,100 @@
 
 ## <span class="sk-h2-span">Introduction </span>
 
-Each task provides a mode to train a model on the specified datasets. The training mode can be invoked either via CLI or within `heartkit` python package. At a high level, the training mode performs the following actions based on the provided configuration parameters:
+Each task provides a mode to train a model on the specified datasets and dataloaders. The training mode can be invoked either via CLI or within `heartkit` python package. At a high level, the training mode performs the following actions based on the provided configuration parameters:
 
-1. Load the configuration data (e.g. `rhythm-class-2.json`)
-1. Load the desired datasets (e.g. `icentia11k`)
-1. Load the custom model architecture (e.g. `tcn`)
-1. Train the model
-1. Save the trained model
-1. Generate training report
+<div class="annotate" markdown>
+
+1. Load the configuration parameters (e.g. `configuration.json` (1))
+1. Load the desired datasets (e.g. `PtbxlDataset`)
+1. Load the corresponding task dataloaders (e.g. `PtbxlDataLoader`)
+1. Initialize custom model architecture (e.g. `tcn`)
+1. Define the metrics, loss, and optimizer (e.g. `accuracy`, `categorical_crossentropy`, `adam`)
+1. Train the model (e.g. `model.fit`)
+1. Save artifacts (e.g. `model.keras`)
+
+</div>
+
+1. Example configuration:
+--8<-- "assets/usage/json-configuration.md"
+
+<br/>
+
+```mermaid
+graph LR
+A("`Load
+configuration
+__HKTaskParams__
+`")
+B("`Load
+datasets
+__DatasetFactory__
+`")
+C("`Load
+dataloaders
+__DataLoaderFactory__
+`")
+D("`Initialize
+model
+__ModelFactory__
+`")
+E("`Define
+_metrics_, _loss_,
+_optimizer_
+`")
+F("`Train
+__model__
+`")
+G("`Save
+__artifacts__
+`")
+A ==> B
+subgraph "Preprocess"
+    B ==> C
+end
+subgraph "Model Training"
+    C ==> D
+    D ==> E
+    E ==> F
+end
+F ==> G
+```
 
 ---
 
 ## <span class="sk-h2-span">Usage</span>
 
-!!! Example
+### CLI
 
-    The following command will train a rhythm model using the reference configuration:
+The following command will train a rhythm model using the reference configuration.
 
-    === "CLI"
+```bash
+heartkit --task rhythm --mode train --config ./configuration.json
+```
 
-        ```bash
-        heartkit --task rhythm --mode train --config ./configs/rhythm-class-2.json
-        ```
+### Python
 
-    === "Python"
+The model can be trained using the following snippet:
 
-        --8<-- "assets/modes/python-train-snippet.md"
+```python
+
+task = hk.TaskFactory.get("rhythm")
+
+params = hk.HKTaskParams(...)  # (1)
+
+task.train(params)
+
+```
+
+1. Example configuration:
+--8<-- "assets/usage/python-configuration.md"
+
 
 ---
 
 ## <span class="sk-h2-span">Arguments </span>
 
-The following tables lists the parameters that can be used to configure the training mode.
-
-
---8<-- "assets/modes/train-params.md"
+Please refer to [HKTaskParams](../modes/configuration.md#hktaskparams) for the list of arguments that can be used with the `train` command.
 
 ---
 

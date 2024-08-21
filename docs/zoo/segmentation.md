@@ -30,6 +30,11 @@ The following table provides the latest pre-trained models for ECG segmentation.
     | 0-NONE        | 0            | NONE      |
     | 2-QRS         | 1            | QRS       |
 
+    ### Datasets
+
+    - **[Lobachevsky University Electrocardiography dataset (LUDB)](../datasets/ludb.md)**
+    - **[Synthetic](../datasets/synthetic.md)**
+
 === "SEG-4-TCN-SM"
 
     The __SEG-4-TCN-SM__ model is a 4-class ECG segmentation model that uses a Temporal Convolutional Network (TCN) architecture. The model is trained on raw ECG data and is able to delineate P-wave, QRS complexes, and T-wave.
@@ -54,8 +59,8 @@ The following table provides the latest pre-trained models for ECG segmentation.
 
     ### Datasets
 
-    - **[Icentia11k](../datasets/icentia11k.md)**
-    - **[PTB-XL](../datasets/ptbxl.md)**
+    - **[Lobachevsky University Electrocardiography dataset (LUDB)](../datasets/ludb.md)**
+    - **[Synthetic](../datasets/synthetic.md)**
 
 === "SEG-4-TCN-LG"
 
@@ -115,7 +120,39 @@ The following table provides the latest pre-trained models for ECG segmentation.
 
 ---
 
-## <span class="sk-h2-span">EVB Performance</span>
+## <span class="sk-h2-span">Downloads</span>
+
+=== "SEG-2-TCN-SM"
+
+    | Asset                                                                | Description                   |
+    | -------------------------------------------------------------------- | ----------------------------- |
+    | [configuration.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/segmentation/seg-2-tcn-sm/latest/configuration.json)   | Configuration file            |
+    | [model.keras](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/segmentation/seg-2-tcn-sm/latest/model.keras)            | Keras Model file              |
+    | [model.tflite](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/segmentation/seg-2-tcn-sm/latest/model.tflite)       | TFLite Model file             |
+    | [metrics.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/segmentation/seg-2-tcn-sm/latest/seg-2-tcn-sm/metrics.json)       | Metrics file                  |
+
+
+=== "SEG-4-TCN-SM"
+
+    | Asset                                                                | Description                   |
+    | -------------------------------------------------------------------- | ----------------------------- |
+    | [configuration.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/segmentation/seg-4-tcn-sm/latest/configuration.json)   | Configuration file            |
+    | [model.keras](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/segmentation/seg-4-tcn-sm/latest/model.keras)            | Keras Model file              |
+    | [model.tflite](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/segmentation/seg-4-tcn-sm/latest/model.tflite)       | TFLite Model file             |
+    | [metrics.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/segmentation/seg-4-tcn-sm/latest/seg-4-tcn-sm/metrics.json)       | Metrics file                  |
+
+=== "SEG-4-TCN-LG"
+
+    | Asset                                                                | Description                   |
+    | -------------------------------------------------------------------- | ----------------------------- |
+    | [configuration.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/segmentation/seg-4-tcn-lg/latest/configuration.json)   | Configuration file            |
+    | [model.keras](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/segmentation/seg-4-tcn-lg/latest/model.keras)            | Keras Model file              |
+    | [model.tflite](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/segmentation/seg-4-tcn-lg/latest/model.tflite)       | TFLite Model file             |
+    | [metrics.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/segmentation/seg-4-tcn-lg/latest/seg-4-tcn-lg/metrics.json)       | Metrics file                  |
+
+
+
+<!-- ## <span class="sk-h2-span">EVB Performance</span>
 
 The following table provides the latest performance and accuracy results of all models when running on Apollo4 Plus EVB. These results are obtained using neuralSPOTs [Autodeploy tool](https://ambiqai.github.io/neuralSPOT/docs/From%20TF%20to%20EVB%20-%20testing%2C%20profiling%2C%20and%20deploying%20AI%20models.html). From neuralSPOT repo, the following command can be used to capture EVB results via Autodeploy:
 
@@ -129,4 +166,4 @@ python -m ns_autodeploy \
 
 ```
 
---8<-- "assets/zoo/segmentation/segmentation-model-hw-table.md"
+--8<-- "assets/zoo/segmentation/segmentation-model-hw-table.md" -->

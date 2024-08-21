@@ -1,24 +1,21 @@
 import os
 from importlib.metadata import version
 
-from . import cli, datasets, metrics, models, rpc, tasks, tflite
-from .datasets import DatasetFactory, HKDataset
+from . import cli, datasets, models, backends, tasks
+from .datasets import DatasetFactory, HKDataset, HKDataloader
 from .defines import (
-    AugmentationParams,
-    DatasetParams,
-    HKDemoParams,
-    HKDownloadParams,
-    HKExportParams,
+    QuantizationParams,
+    HKTaskParams,
     HKMode,
-    HKTestParams,
-    HKTrainParams,
-    PreprocessParams,
+    NamedParams,
 )
 from .models import ModelFactory
 from .tasks import HKBeat, HKRhythm, HKSegment, HKTask, TaskFactory
-from .utils import setup_logger
+from .backends import BackendFactory
+import neuralspot_edge as nse
 
 __version__ = version(__name__)
 
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-setup_logger(__name__)
+if "TF_CPP_MIN_LOG_LEVEL" not in os.environ:
+    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+nse.utils.setup_logger(__name__)

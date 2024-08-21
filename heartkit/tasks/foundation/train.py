@@ -1,157 +1,143 @@
-import logging
 import os
 
 import keras
-import tensorflow as tf
 import wandb
+import numpy as np
 from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
+import neuralspot_edge as nse
 
-from ... import tflite as tfa
-from ...defines import HKTrainParams
+from ...defines import HKTaskParams
 from ...models import ModelFactory
-from ...models.optimizers import SimCLR
-from ...utils import env_flag, set_random_seed, setup_logger
-from ..utils import load_datasets
+from ...datasets import DatasetFactory
 from .datasets import load_train_datasets
+from ...utils import setup_plotting
 
-logger = setup_logger(__name__)
 
-
-def train(params: HKTrainParams):
-    """Train  model
+def train(params: HKTaskParams):
+    """Train model for foundation task using SimCLR
 
     Args:
-        params (HKTrainParams): Training parameters
+        params (HKTaskParams): Task parameters
     """
+    os.makedirs(params.job_dir, exist_ok=True)
+    logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "train.log")
+    logger.debug(f"Creating working directory in {params.job_dir}")
 
     params.temperature = float(getattr(params, "temperature", 0.1))
 
-    params.seed = set_random_seed(params.seed)
-    logger.info(f"Random seed {params.seed}")
+    params.seed = nse.utils.set_random_seed(params.seed)
+    logger.debug(f"Random seed {params.seed}")
 
-    os.makedirs(params.job_dir, exist_ok=True)
-    logger.info(f"Creating working directory in {params.job_dir}")
-
-    handler = logging.FileHandler(params.job_dir / "train.log", mode="w")
-    handler.setLevel(logging.INFO)
-    logger.addHandler(handler)
-
-    with open(params.job_dir / "train_config.json", "w", encoding="utf-8") as fp:
+    with open(params.job_dir / "configuration.json", "w", encoding="utf-8") as fp:
         fp.write(params.model_dump_json(indent=2))
 
-    if env_flag("WANDB"):
-        wandb.init(
-            project=params.project,
-            entity="ambiq",
-            dir=params.job_dir,
-        )
+    if nse.utils.env_flag("WANDB"):
+        wandb.init(project=params.project, entity="ambiq", dir=params.job_dir)
         wandb.config.update(params.model_dump())
     # END IF
 
-    # Currently we return positive pairs w/o labels
     feat_shape = (params.frame_size, 1)
-    ds_spec = (
-        tf.TensorSpec(shape=feat_shape, dtype=tf.float32),
-        tf.TensorSpec(shape=feat_shape, dtype=tf.float32),
-    )
 
-    datasets = load_datasets(datasets=params.datasets)
+    datasets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
 
-    train_ds, val_ds = load_train_datasets(
-        datasets=datasets,
-        params=params,
-        ds_spec=ds_spec,
-    )
+    train_ds, val_ds = load_train_datasets(datasets=datasets, params=params)
 
-    projection_width = params.num_classes
+    # Save validation data
+    if params.val_file:
+        logger.info(f"Saving validation dataset to {params.val_file}")
+        os.makedirs(params.val_file, exist_ok=True)
+        val_ds.save(str(params.val_file))
 
-    encoder_input = keras.Input(shape=feat_shape, dtype=tf.float32)
-
-    # Encoder
-    encoder = ModelFactory.create(
-        name=params.architecture.name,
+    # Create encoder
+    encoder_input = keras.Input(shape=feat_shape, dtype="float32")
+    encoder = ModelFactory.get(params.architecture.name)(
+        x=encoder_input,
         params=params.architecture.params,
-        inputs=encoder_input,
         num_classes=None,
     )
 
-    encoder_output = encoder(encoder_input)
-    flops = tfa.get_flops(encoder, batch_size=1, fpath=params.job_dir / "encoder_flops.log")
+    flops = nse.metrics.flops.get_flops(encoder, batch_size=1, fpath=params.job_dir / "encoder_flops.log")
     encoder.summary(print_fn=logger.info)
-    logger.info(f"Encoder requires {flops/1e6:0.2f} MFLOPS")
+    logger.debug(f"Encoder requires {flops/1e6:0.2f} MFLOPS")
 
-    # Projector
-    projector_input = encoder_output
-    projector_output = keras.layers.Dense(projection_width, activation="relu6")(projector_input)
-    projector_output = keras.layers.Dense(projection_width)(projector_output)
-    projector = keras.Model(inputs=projector_input, outputs=projector_output, name="projector")
-    flops = tfa.get_flops(projector, batch_size=1, fpath=params.job_dir / "projector_flops.log")
-    projector.summary(print_fn=logger.info)
-    logger.info(f"Projector requires {flops/1e6:0.2f} MFLOPS")
+    # Create  projector
+    # encoder_output = encoder(encoder_input)
+    # projection_width = params.num_classes
+    # projector_input = encoder_output
+    # projector_output = keras.layers.Dense(projection_width, activation="relu6")(projector_input)
+    # projector_output = keras.layers.Dense(projection_width)(projector_output)
+    # projector = keras.Model(inputs=projector_input, outputs=projector_output, name="projector")
+    # flops = nse.metrics.flops.get_flops(projector, batch_size=1, fpath=params.job_dir / "projector_flops.log")
+    # projector.summary(print_fn=logger.info)
+    # logger.debug(f"Projector requires {flops/1e6:0.2f} MFLOPS")
 
     if params.model_file is None:
         params.model_file = params.job_dir / "model.keras"
 
-    model = SimCLR(
-        contrastive_augmenter=lambda x: x,
+    model = nse.trainers.SimCLRTrainer(
         encoder=encoder,
-        projector=projector,
-        # momentum_coeff=0.999,
-        temperature=params.temperature,
-        # queue_size=65536,
+        projector=None,
     )
 
     def get_scheduler():
-        if params.lr_cycles > 1:
-            return keras.optimizers.schedules.CosineDecayRestarts(
-                initial_learning_rate=params.lr_rate,
-                first_decay_steps=int(0.1 * params.steps_per_epoch * params.epochs),
-                t_mul=1.65 / (0.1 * params.lr_cycles * (params.lr_cycles - 1)),
-                m_mul=0.4,
-            )
-        return keras.optimizers.schedules.CosineDecay(
-            initial_learning_rate=params.lr_rate, decay_steps=params.steps_per_epoch * params.epochs
+        t_mul = 1
+        first_steps = (params.steps_per_epoch * params.epochs) / (np.power(params.lr_cycles, t_mul) - t_mul + 1)
+        scheduler = keras.optimizers.schedules.CosineDecayRestarts(
+            initial_learning_rate=params.lr_rate,
+            first_decay_steps=np.ceil(first_steps),
+            t_mul=t_mul,
+            m_mul=0.5,
         )
+        return scheduler
 
     model.compile(
-        contrastive_optimizer=keras.optimizers.Adam(get_scheduler()),
-        probe_optimizer=keras.optimizers.Adam(get_scheduler()),
+        encoder_optimizer=keras.optimizers.Adam(get_scheduler()),
+        encoder_loss=nse.losses.simclr.SimCLRLoss(temperature=params.temperature),
+        encoder_metrics=[keras.metrics.MeanSquaredError(name="mse"), keras.metrics.CosineSimilarity(name="cos")],
     )
 
     ModelCheckpoint = keras.callbacks.ModelCheckpoint
-    if env_flag("WANDB"):
+    if nse.utils.env_flag("WANDB"):
         ModelCheckpoint = WandbModelCheckpoint
+
     model_callbacks = [
         keras.callbacks.EarlyStopping(
             monitor=f"val_{params.val_metric}",
             patience=max(int(0.25 * params.epochs), 1),
             mode="max" if params.val_metric == "f1" else "auto",
             restore_best_weights=True,
+            verbose=max(0, params.verbose - 1),
         ),
         ModelCheckpoint(
             filepath=str(params.model_file),
             monitor=f"val_{params.val_metric}",
             save_best_only=True,
             mode="max" if params.val_metric == "f1" else "auto",
-            verbose=1,
+            verbose=max(0, params.verbose - 1),
         ),
         keras.callbacks.CSVLogger(params.job_dir / "history.csv"),
     ]
-    if env_flag("TENSORBOARD"):
+    if nse.utils.env_flag("TENSORBOARD"):
         model_callbacks.append(
             keras.callbacks.TensorBoard(
                 log_dir=params.job_dir,
                 write_steps_per_second=True,
             )
         )
-    if env_flag("WANDB"):
+    if nse.utils.env_flag("WANDB"):
         model_callbacks.append(WandbMetricsLogger())
-
+    # Use minimal progress bar
+    if params.verbose <= 1:
+        model_callbacks.append(
+            nse.callbacks.TQDMProgressBar(
+                show_epoch_progress=False,
+            )
+        )
     try:
-        model.fit(
+        history = model.fit(
             train_ds,
             steps_per_epoch=params.steps_per_epoch,
-            verbose=2,
+            verbose=max(0, params.verbose - 1),
             epochs=params.epochs,
             validation_data=val_ds,
             callbacks=model_callbacks,
@@ -159,4 +145,23 @@ def train(params: HKTrainParams):
     except KeyboardInterrupt:
         logger.warning("Stopping training due to keyboard interrupt")
 
-    logger.info(f"Model saved to {params.model_file}")
+    logger.debug(f"Model saved to {params.model_file}")
+
+    setup_plotting()
+    if history:
+        nse.plotting.plot_history_metrics(
+            history.history,
+            metrics=["loss", "cos"],
+            save_path=params.job_dir / "history.png",
+            title="Training History",
+            stack=True,
+            figsize=(9, 5),
+        )
+
+    metrics = model.evaluate(val_ds, verbose=2, return_dict=True)
+    logger.info("[VAL SET] " + ", ".join(f"{k.upper()}: {v:.4f}" for k, v in metrics.items()))
+
+    # cleanup
+    keras.utils.clear_session()
+    for ds in datasets:
+        ds.close()

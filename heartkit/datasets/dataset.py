@@ -5,33 +5,95 @@ import os
 from pathlib import Path
 from typing import Generator
 
-import h5py
 import numpy.typing as npt
-import sklearn
+import sklearn.model_selection
 
-from .defines import PatientGenerator
+from .defines import PatientGenerator, PatientData
 
 logger = logging.getLogger(__name__)
 
 
 class HKDataset(abc.ABC):
-    """HeartKit dataset base class"""
+    path: Path
+    _cacheable: bool
+    _cached_data: dict[str, npt.NDArray]
 
-    ds_path: Path
+    def __init__(self, path: os.PathLike, cacheable: bool = True) -> None:
+        """HKDataset serves as a base class to download and provide unified access to datasets.
 
-    def __init__(self, ds_path: os.PathLike) -> None:
-        """HeartKit dataset base class"""
-        self.ds_path = Path(ds_path)
+        Args:
+            path (os.PathLike): Path to dataset
+            cacheable (bool, optional): If dataset supports file caching. Defaults
+
+        Example:
+        ```python
+        import numpy as np
+        import heartkit as hk
+
+        class MyDataset(hk.HKDataset):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+
+            @property
+            def name(self) -> str:
+                return 'my-dataset'
+
+            @property
+            def sampling_rate(self) -> int:
+                return 100
+
+            def get_train_patient_ids(self) -> npt.NDArray:
+                return np.arange(80)
+
+            def get_test_patient_ids(self) -> npt.NDArray:
+                return np.arange(80, 100)
+
+            @contextlib.contextmanager
+            def patient_data(self, patient_id: int) -> Generator[PatientData, None, None]:
+                data = np.random.randn(1000)
+                segs = np.random.randint(0, 1000, (10, 2))
+                yield {"data": data, "segmentations": segs}
+
+            def signal_generator(
+                self,
+                patient_generator: PatientGenerator,
+                frame_size: int,
+                samples_per_patient: int = 1,
+                target_rate: int | None = None,
+            ) -> Generator[npt.NDArray, None, None]:
+                for patient in patient_generator:
+                    for _ in range(samples_per_patient):
+                        with self.patient_data(patient) as pt:
+                            yield pt["data"]
+
+            def download(self, num_workers: int | None = None, force: bool = False):
+                pass
+
+        # Register dataset
+        hk.DatasetFactory.register("my-dataset", MyDataset)
+        ```
+        """
+        self.path = Path(path)
+        self._cacheable = cacheable
+        self._cached_data = {}
 
     @property
     def name(self) -> str:
         """Dataset name"""
-        return self.ds_path.stem
+        return self.path.stem
 
     @property
-    def cachable(self) -> bool:
-        """If dataset supports file caching."""
-        return True
+    def cacheable(self) -> bool:
+        """If dataset supports in-memory caching.
+
+        On smaller datasets, it is recommended to cache the entire dataset in memory.
+        """
+        return self._cacheable
+
+    @cacheable.setter
+    def cacheable(self, value: bool):
+        """Set if in-memory caching is enabled"""
+        self._cacheable = value
 
     @property
     def sampling_rate(self) -> int:
@@ -49,7 +111,7 @@ class HKDataset(abc.ABC):
         return 1
 
     def get_train_patient_ids(self) -> npt.NDArray:
-        """Get training patient IDs
+        """Get dataset's defined training patient IDs
 
         Returns:
             npt.NDArray: patient IDs
@@ -57,7 +119,7 @@ class HKDataset(abc.ABC):
         raise NotImplementedError()
 
     def get_test_patient_ids(self) -> npt.NDArray:
-        """Get patient IDs reserved for testing only
+        """Get dataset's patient IDs reserved for testing only
 
         Returns:
             npt.NDArray: patient IDs
@@ -65,14 +127,14 @@ class HKDataset(abc.ABC):
         raise NotImplementedError()
 
     @contextlib.contextmanager
-    def patient_data(self, patient_id: int) -> Generator[h5py.Group, None, None]:
+    def patient_data(self, patient_id: int) -> Generator[PatientData, None, None]:
         """Get patient data
 
         Args:
             patient_id (int): Patient ID
 
         Returns:
-            Generator[h5py.Group, None, None]: Patient data
+            Generator[PatientData, None, None]: Patient data
         """
         raise NotImplementedError()
 
@@ -86,12 +148,13 @@ class HKDataset(abc.ABC):
         """Generate random frames.
 
         Args:
-            patient_generator (PatientGenerator): Generator that yields a tuple of patient id and patient data.
-                    Patient data may contain only signals, since labels are not used.
-            samples_per_patient (int): Samples per patient.
+            patient_generator (PatientGenerator): Generator that yields patient data.
+            frame_size (int): Frame size
+            samples_per_patient (int, optional): Samples per patient. Defaults to 1.
+            target_rate (int | None, optional): Target rate. Defaults to None.
 
         Returns:
-            Generator[npt.NDArray, None, None]: Generator of input data of shape (frame_size, 1)
+            Generator[npt.NDArray, None, None]: Generator sample of data
         """
         raise NotImplementedError()
 

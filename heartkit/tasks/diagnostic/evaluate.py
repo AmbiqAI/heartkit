@@ -1,79 +1,83 @@
-import logging
 import os
+import json
 
+import keras
+import tensorflow as tf
 import numpy as np
 import pandas as pd
-import tensorflow as tf
-import tensorflow_model_optimization as tfmot
-from sklearn.metrics import classification_report, f1_score
+from sklearn.metrics import classification_report
+import neuralspot_edge as nse
 
-from ... import tflite as tfa
-from ...defines import HKTestParams
-from ...metrics import multilabel_confusion_matrix_plot
-from ...utils import set_random_seed, setup_logger
-from ..utils import load_datasets
+from ...defines import HKTaskParams
+from ...datasets import DatasetFactory
 from .datasets import load_test_dataset
 
-logger = setup_logger(__name__)
 
-
-def evaluate(params: HKTestParams):
+def evaluate(params: HKTaskParams):
     """Evaluate model
 
     Args:
-        params (HKTestParams): Evaluation parameters
+        params (HKTaskParams): Evaluation parameters
     """
+    os.makedirs(params.job_dir, exist_ok=True)
+    logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "test.log")
+    logger.debug(f"Creating working directory in {params.job_dir}")
+
     params.threshold = params.threshold or 0.5
 
-    params.seed = set_random_seed(params.seed)
-    logger.info(f"Random seed {params.seed}")
+    params.seed = nse.utils.set_random_seed(params.seed)
+    logger.debug(f"Random seed {params.seed}")
 
-    os.makedirs(params.job_dir, exist_ok=True)
-    logger.info(f"Creating working directory in {params.job_dir}")
-
-    handler = logging.FileHandler(params.job_dir / "test.log", mode="w")
-    handler.setLevel(logging.INFO)
-    logger.addHandler(handler)
-
-    # classes = sorted(list(set(params.class_map.values())))
     class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
 
-    feat_shape = (params.frame_size, 1)
-    class_shape = (params.num_classes,)
+    datasets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
 
-    ds_spec = (
-        tf.TensorSpec(shape=feat_shape, dtype=tf.float32),
-        tf.TensorSpec(shape=class_shape, dtype=tf.int32),
-    )
+    # Load validation data
+    if params.val_file:
+        logger.info(f"Loading validation dataset from {params.val_file}")
+        test_ds = tf.data.Dataset.load(str(params.val_file))
+    else:
+        test_ds = load_test_dataset(datasets=datasets, params=params)
 
-    datasets = load_datasets(datasets=params.datasets)
+    test_x = np.concatenate([x for x, _ in test_ds.as_numpy_iterator()])
+    test_y = np.concatenate([y for _, y in test_ds.as_numpy_iterator()])
 
-    test_ds = load_test_dataset(datasets=datasets, params=params, ds_spec=ds_spec)
-    test_x, test_y = next(test_ds.batch(params.test_size).as_numpy_iterator())
+    logger.debug("Loading model")
+    model = nse.models.load_model(params.model_file)
+    flops = nse.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
 
-    with tfmot.quantization.keras.quantize_scope():
-        logger.info("Loading model")
-        model = tfa.load_model(params.model_file)
-        flops = tfa.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
+    model.summary(print_fn=logger.info)
+    logger.debug(f"Model requires {flops/1e6:0.2f} MFLOPS")
 
-        model.summary(print_fn=logger.info)
-        logger.info(f"Model requires {flops/1e6:0.2f} MFLOPS")
-
-        logger.info("Performing inference")
-        y_true = test_y
-        y_prob = model.predict(test_x)
-        y_pred = y_prob >= params.threshold
-    # END WITH
+    logger.debug("Performing inference")
+    y_true = test_y
+    y_prob = model.predict(test_x)
+    y_pred = y_prob >= params.threshold
 
     cm_path = params.job_dir / "confusion_matrix_test.png"
-    multilabel_confusion_matrix_plot(
-        y_true=y_true, y_pred=y_pred, labels=class_names, save_path=cm_path, normalize="true", max_cols=3
+    nse.plotting.multilabel_confusion_matrix_plot(
+        y_true=y_true,
+        y_pred=y_pred,
+        labels=class_names,
+        save_path=cm_path,
+        normalize="true",
+        max_cols=3,
     )
 
     # Summarize results
     report = classification_report(y_true, y_pred, target_names=class_names, output_dict=True)
     df_report = pd.DataFrame(report).transpose()
     df_report.to_csv(params.job_dir / "classification_report_test.csv")
-    test_acc = np.sum(y_pred == y_true) / y_true.size
-    test_f1 = f1_score(y_true, y_pred, average="weighted")
-    logger.info(f"[TEST SET] ACC={test_acc:.2%}, F1={test_f1:.2%}")
+
+    rst = model.evaluate(test_ds, verbose=params.verbose, return_dict=True)
+    logger.info("[TEST SET] " + ", ".join([f"{k.upper()}={v:.4f}" for k, v in rst.items()]))
+
+    rst["flops"] = flops
+    rst["parameters"] = model.count_params()
+    with open(params.job_dir / "metrics.json", "w") as fp:
+        json.dump(rst, fp)
+
+    # cleanup
+    keras.utils.clear_session()
+    for ds in datasets:
+        ds.close()

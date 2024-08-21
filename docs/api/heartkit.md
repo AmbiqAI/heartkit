@@ -1,9 +1,13 @@
 # HeartKit
 
+## hk.cli
+
 ::: heartkit.cli
+
+## hk.defines
 
 ::: heartkit.defines
 
-::: heartkit.metrics
+## hk.utils
 
-::: heartkit.utils
+::: heartkit.utils.plotting

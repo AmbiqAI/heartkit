@@ -7,70 +7,66 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from sklearn.manifold import TSNE
 from tqdm import tqdm
+import neuralspot_edge as nse
 
-from ...datasets.utils import uniform_id_generator
-from ...defines import HKDemoParams
-from ...rpc import BackendFactory
-from ...utils import setup_logger
-from ..utils import load_datasets
-from .datasets import preprocess
-
-logger = setup_logger(__name__)
+from ...defines import HKTaskParams
+from ...backends import BackendFactory
+from ...datasets import DatasetFactory
+from .dataloaders import FoundationTaskFactory
+from ...utils import setup_plotting
 
 
-def demo(params: HKDemoParams):
+def demo(params: HKTaskParams):
     """Run demo for model
 
     Args:
-        params (HKDemoParams): Demo parameters
+        params (HKTaskParams): Task parameters
     """
-
-    bg_color = "rgba(38,42,50,1.0)"
-    # primary_color = "#11acd5"
-    # secondary_color = "#ce6cff"
-    plotly_template = "plotly_dark"
+    logger = nse.utils.setup_logger(__name__, level=params.verbose)
+    plot_theme = setup_plotting()
 
     feat_shape = (params.frame_size, 1)
-    NUM_PTS = 50
-    TGT_LEN = 20
+    num_pts = min(params.batch_size, 256)
 
     # Load backend inference engine
-    runner = BackendFactory.create(params.backend, params=params)
+    runner = BackendFactory.get(params.backend)(params=params)
 
     # load datasets and randomly select one
-    datasets = load_datasets(datasets=params.datasets)
-    ds = random.choice(datasets)
-
+    dataset = random.choice(params.datasets)
+    ds = DatasetFactory.get(dataset.name)(**dataset.params)
+    dataloader = FoundationTaskFactory.get(dataset.name)(
+        ds=ds,
+        frame_size=params.frame_size,
+        sampling_rate=params.sampling_rate,
+    )
     patients: npt.NDArray = ds.get_test_patient_ids()
-    patients = np.random.choice(patients, size=NUM_PTS, replace=False)
+    patients = np.random.choice(patients, size=num_pts, replace=False)
 
-    x = []
-    y = []
+    x1 = np.zeros((num_pts, *feat_shape), dtype=np.float32)
+    x2 = np.zeros((num_pts, *feat_shape), dtype=np.float32)
+
     # For each patient, generate TGT_LEN samples
-    for i, patient in enumerate(patients):
-        ds_gen = ds.signal_generator(
-            patient_generator=uniform_id_generator([patient], repeat=False),
-            frame_size=params.frame_size,
-            samples_per_patient=TGT_LEN,
-            target_rate=params.sampling_rate,
-        )
-        for _ in range(TGT_LEN):
-            x.append(next(ds_gen))
-            y.append(i)
+    i = 0
+    for patient in patients:
+        for xx1, xx2 in dataloader.patient_data_generator(patient, 1):
+            x1[i] = xx1
+            x2[i] = xx2
+            i += 1
         # END FOR
     # END FOR
 
     # Run inference
     runner.open()
-    logger.info("Running inference")
-    x_p = []
-    for i in tqdm(range(0, len(x)), desc="Inference"):
-        x[i] = preprocess(x[i], sample_rate=params.sampling_rate, preprocesses=params.preprocesses)
-        xx = x[i].copy()
-        xx = xx.reshape(feat_shape)
-        runner.set_inputs(xx)
+    logger.debug("Running inference")
+    y1 = np.zeros((num_pts, params.num_classes), dtype=np.float32)
+    y2 = np.zeros((num_pts, params.num_classes), dtype=np.float32)
+    for i in tqdm(range(0, num_pts), desc="Inference"):
+        runner.set_inputs(x1[i])
         runner.perform_inference()
-        x_p.append(runner.get_outputs())
+        y1[i] = runner.get_outputs()
+        runner.set_inputs(x2[i])
+        runner.perform_inference()
+        y2[i] = runner.get_outputs()
     # END FOR
     runner.close()
 
@@ -79,34 +75,24 @@ def demo(params: HKDemoParams):
 
     # END DEF
 
-    pts_cosim = np.zeros((NUM_PTS, NUM_PTS), dtype=np.float32)
+    pts_cosim = np.zeros((num_pts, num_pts), dtype=np.float32)
     # Compute cosine similarity between pairs of patients
-    for i, patient in enumerate(patients):
-        start_i = i * TGT_LEN
-        tgt_sample = x_p[start_i]
-        for j, _ in enumerate(patients):
-            start_j = j * TGT_LEN
-            stop_j = start_j + TGT_LEN
-            # Average cosine similarity between start_i and start_j
-            avg_cosim = np.mean([cossim(tgt_sample, x_p[k]) for k in range(start_j, stop_j)])
-            pts_cosim[i, j] = avg_cosim
+    for i in range(num_pts):
+        for j in range(num_pts):
+            pts_cosim[i, j] = cossim(y1[i], y1[j])
         # END FOR
     # END FOR
 
-    # # Get average cosine similarity for target and non-target samples
-    # tgt_avg_cosim = np.mean(x_cosim[1:TGT_LEN])
-    # rem_avg_cosim = np.mean(x_cosim[TGT_LEN:])
-    # tgt_avg_p_cosim = np.mean(x_p_cosim[1:TGT_LEN])
-    # rem_avg_p_cosim = np.mean(x_p_cosim[TGT_LEN:])
+    # Get average cosine similarity down the diagonal
+    mu_tgt_cos = np.mean(np.diag(pts_cosim))
+    mu_other = np.mean(pts_cosim[np.eye(num_pts) == 0])
 
-    # print(f"TARGET AVG PRE-COSSIM: {tgt_avg_cosim:0.2%}")
-    # print(f" OTHER AVG PRE-COSSIM: {rem_avg_cosim:0.2%}")
-    # print(f"TARGET AVG POST-COSSIM: {tgt_avg_p_cosim:0.2%}")
-    # print(f" OTHER AVG POST-COSSIM: {rem_avg_p_cosim:0.2%}")
+    logger.info(f"Average cosine similarity (target): {mu_tgt_cos:0.2%}")
+    logger.info(f"Average cosine similarity (other): {mu_other:0.2%}")
 
     # Compute t-SNE
     tsne = TSNE(n_components=2, random_state=0, n_iter=5000, perplexity=75)
-    x_tsne = tsne.fit_transform(np.array(x_p).reshape((len(x_p), -1)))
+    x_tsne = tsne.fit_transform(np.concatenate([y1, y2]))
 
     fig = make_subplots(
         rows=1,
@@ -117,14 +103,15 @@ def demo(params: HKDemoParams):
         subplot_titles=("t-SNE", "Cosine Similarity"),
     )
 
+    pts = np.concatenate([patients, patients]).tolist()
     fig.add_trace(
         go.Scatter(
             x=x_tsne[:, 0],
             y=x_tsne[:, 1],
             mode="markers",
-            customdata=[patients[i] for i in y],
+            customdata=pts,
             hovertemplate="Patient %{customdata}<extra></extra>",
-            marker_color=[px.colors.qualitative.Dark24[i % 24] for i in y],
+            marker_color=[px.colors.qualitative.Dark24[i % 24] for i in pts],
             marker_size=8,
             name="t-SNE",
         ),
@@ -136,8 +123,8 @@ def demo(params: HKDemoParams):
     fig.add_trace(
         go.Heatmap(
             z=pts_cosim,
-            x=list(range(NUM_PTS)),
-            y=list(range(NUM_PTS)),
+            x=list(range(num_pts)),
+            y=list(range(num_pts)),
             colorscale="Plotly3",
             showscale=True,
             zmin=0,
@@ -148,16 +135,16 @@ def demo(params: HKDemoParams):
     )
 
     fig.update_layout(
-        template=plotly_template,
+        template=plot_theme.plotly_template,
         height=600,
-        plot_bgcolor=bg_color,
-        paper_bgcolor=bg_color,
+        plot_bgcolor=plot_theme.bg_color,
+        paper_bgcolor=plot_theme.bg_color,
         margin=dict(l=10, r=10, t=80, b=80),
         legend=dict(groupclick="toggleitem"),
         title="HeartKit: Foundation Demo",
     )
     fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=True)
-    logger.info(f"Report saved to {params.job_dir / 'demo.html'}")
+    logger.debug(f"Report saved to {params.job_dir / 'demo.html'}")
 
     if params.display_report:
         fig.show()

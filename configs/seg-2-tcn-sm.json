@@ -2,15 +2,33 @@
     "name": "seg-2-tcn-sm",
     "project": "hk-segmentation-2",
     "job_dir": "./results/seg-2-tcn-sm",
+    "verbose": 2,
+
+    "dataset_weights": [0.2, 0.8],
     "datasets": [{
-        "name": "icentia11k",
-        "path": "./datasets/icentia11k",
-        "params": {}
+        "name": "ludb",
+        "params": {
+            "path": "./datasets/ludb"
+        }
     }, {
-        "name": "ptbxl",
-        "path": "./datasets/ptbxl",
-        "params": {}
+        "name": "ecg-synthetic",
+        "params": {
+            "num_pts": 20000,
+            "params": {
+                "presets": ["SR", "AFIB", "ant_STEMI", "LAHB", "LPHB", "high_take_off", "LBBB", "random_morphology"],
+                "preset_weights": [24, 8, 1, 1, 1, 1, 1, 0],
+                "duration": 10,
+                "sample_rate": 100,
+                "heart_rate": [40, 160],
+                "impedance": [1, 2],
+                "p_multiplier": [0.8, 1.2],
+                "t_multiplier": [0.8, 1.2],
+                "noise_multiplier": [0.05, 0.5],
+                "voltage_factor": [800, 1000]
+            }
+        }
     }],
+
     "num_classes": 2,
     "class_map": {
         "0": 0,
@@ -22,71 +40,110 @@
     "class_names": [
         "NONE", "QRS"
     ],
+
     "sampling_rate": 100,
     "frame_size": 256,
-    "model_file": "model.keras",
-    "samples_per_patient": 10,
-    "val_file": "./results/${task}-class-2-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
-    "test_file": "./results/${task}-class-2-${dataset}-${sampling_rate}fs-${frame_size}sz.pkl",
-    "val_samples_per_patient": 10,
+
+    "samples_per_patient": 5,
+    "val_samples_per_patient": 5,
+    "test_samples_per_patient": 5,
+
+    "val_size": 25000,
+    "test_size": 25000,
+    "val_file": "val.tfds",
+    "test_file": "val.tfds",
+
     "val_patients": 0.20,
-    "test_samples_per_patient": 10,
-    "test_size": 50000,
+    "class_weights": "fixed",
     "batch_size": 256,
-    "buffer_size": 100000,
-    "epochs": 125,
+    "buffer_size": 50000,
+    "epochs": 100,
     "steps_per_epoch": 50,
     "val_metric": "loss",
     "lr_rate": 1e-3,
     "lr_cycles": 1,
-    "val_acc_threshold": 0.98,
+
+    "test_metric": "f1",
+    "test_metric_threshold": 0.02,
     "tflm_var_name": "g_segmentation_model",
     "tflm_file": "segmentation_model_buffer.h",
+
     "backend": "pc",
     "demo_size": 900,
+    "display_report": false,
+
     "quantization": {
-        "enabled": true,
         "qat": false,
-        "ptq": true,
-        "input_type": "int8",
-        "output_type": "int8",
-        "supported_ops": null
+        "mode": "INT8",
+        "io_type": "int8",
+        "concrete": true,
+        "debug": false
     },
+
+    "preprocesses": [
+        {
+            "name": "layer_norm",
+            "params": {
+                "epsilon": 0.01,
+                "name": "znorm"
+            }
+        }
+    ],
+
+    "augmentations": [{
+        "name": "random_noise_distortion",
+        "params": {
+            "amplitude": [0, 0.5],
+            "frequency": [0.5, 1.5],
+            "name": "baseline_wander"
+        }
+    },{
+        "name": "random_sine_wave",
+        "params": {
+            "amplitude": [0, 0.05],
+            "frequency": [45, 50],
+            "auto_vectorize": false,
+            "name": "powerline_noise"
+        }
+    },{
+        "name": "amplitude_warp",
+        "params": {
+            "amplitude": [0.9, 1.1],
+            "frequency": [0.5, 1.5],
+            "name": "amplitude_warp"
+        }
+    }, {
+        "name": "random_noise",
+        "params": {
+            "factor": [0, 0.025],
+            "name": "random_noise"
+        }
+    }, {
+        "name": "random_background_noise",
+        "params": {
+            "amplitude": [0, 0.025],
+            "num_noises": 1,
+            "name": "nstdb"
+        }
+    }],
+
+    "model_file": "model.keras",
+    "use_logits": false,
     "architecture": {
         "name": "tcn",
         "params": {
             "input_kernel": [1, 7],
             "input_norm": "batch",
             "blocks": [
-                {"depth": 1, "branch": 1, "filters": 8, "kernel": [1, 7], "dilation": [1, 1], "dropout": 0, "ex_ratio": 1, "se_ratio": 0, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 12, "kernel": [1, 7], "dilation": [1, 1], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 16, "kernel": [1, 7], "dilation": [1, 2], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 24, "kernel": [1, 7], "dilation": [1, 4], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 32, "kernel": [1, 7], "dilation": [1, 8], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"}
+                {"depth": 1, "branch": 1, "filters": 4, "kernel": [1, 7], "dilation": [1, 1], "dropout": 0.2, "ex_ratio": 1, "se_ratio": 0, "norm": "batch"},
+                {"depth": 1, "branch": 1, "filters": 8, "kernel": [1, 7], "dilation": [1, 2], "dropout": 0.2, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
+                {"depth": 1, "branch": 1, "filters": 12, "kernel": [1, 7], "dilation": [1, 4], "dropout": 0.2, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
+                {"depth": 1, "branch": 1, "filters": 16, "kernel": [1, 7], "dilation": [1, 8], "dropout": 0.2, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"}
             ],
             "output_kernel": [1, 7],
             "include_top": true,
             "use_logits": true,
             "model_name": "tcn"
         }
-    },
-    "preprocesses": [
-        {
-            "name": "filter",
-            "params": {
-                "lowcut": 1.0,
-                "highcut": 30,
-                "order": 3,
-                "forward_backward": true,
-                "axis": 0
-            }
-        },
-        {
-            "name": "znorm",
-            "params": {
-                "eps": 0.01,
-                "axis": null
-            }
-        }
-    ]
+    }
 }

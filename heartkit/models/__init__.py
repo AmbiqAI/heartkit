@@ -1,26 +1,35 @@
-from .defines import MBConvParams
-from .efficientnet import EfficientNetParams, EfficientNetV2, efficientnetv2_from_object
-from .factory import ModelFactory
-from .mobileone import MobileOne, MobileOneU0, mobileone_from_object
-from .multiresnet import MultiresNet, MultiresNetParams, multiresnet_from_object
-from .resnet import ResNet, ResNetBlockParams, ResNetParams, resnet_from_object
-from .sequentialnet import (
-    SequentialLayerParams,
-    SequentialNetwork,
-    SequentialNetworkParams,
-    sequentialnet_from_object,
-)
-from .tcn import Tcn, TcnBlockParams, TcnParams, tcn_from_object
-from .tsmixer import TsBlockParams, TsMixer, TsMixerParams, tsmixer_from_object
-from .unet import UNet, UNetBlockParams, UNetParams, unet_from_object
-from .unext import UNext, UNextBlockParams, UNextParams, unext_from_object
+"""ModelFactory is used to store and retrieve model generators.
+key (str): Model name slug (e.g. "unet")
+value (ModelFactoryItem): Model generator
+"""
 
-ModelFactory.register("unet", unet_from_object)
-ModelFactory.register("unext", unext_from_object)
-ModelFactory.register("resnet", resnet_from_object)
-ModelFactory.register("multiresnet", multiresnet_from_object)
-ModelFactory.register("efficientnetv2", efficientnetv2_from_object)
-ModelFactory.register("mobileone", mobileone_from_object)
-ModelFactory.register("tsmixer", tsmixer_from_object)
-ModelFactory.register("tcn", tcn_from_object)
-ModelFactory.register("sequentialnet", sequentialnet_from_object)
+from typing import Protocol
+
+import keras
+import neuralspot_edge as nse
+
+
+class ModelFactoryItem(Protocol):
+    def __call__(self, x: keras.KerasTensor, params: dict, num_classes: int) -> keras.Model: ...
+
+    """ModelFactoryItem is a protocol for model factory items.
+
+    Args:
+        x (keras.KerasTensor): Input tensor
+        params (dict): Model parameters
+        num_classes (int): Number of classes
+
+    Returns:
+        keras.Model: Model
+    """
+
+
+ModelFactory = nse.utils.ItemFactory[ModelFactoryItem].shared("HKModelFactory")
+
+ModelFactory.register("unet", nse.models.unet.unet_from_object)
+ModelFactory.register("unext", nse.models.unext.unext_from_object)
+ModelFactory.register("resnet", nse.models.resnet.resnet_from_object)
+ModelFactory.register("efficientnetv2", nse.models.efficientnet.efficientnetv2_from_object)
+ModelFactory.register("mobileone", nse.models.mobileone.mobileone_from_object)
+ModelFactory.register("tcn", nse.models.tcn.tcn_from_object)
+ModelFactory.register("composer", nse.models.composer.composer_from_object)

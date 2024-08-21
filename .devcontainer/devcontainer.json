@@ -1,28 +1,14 @@
 {
     "name": "Python 3",
-    "image": "mcr.microsoft.com/devcontainers/python:1-3.11",
+    "image": "mcr.microsoft.com/devcontainers/python:1-3.12",
 
-    // Features: https://containers.dev/features.
     "features": {
         "ghcr.io/devcontainers/features/git:1": {
             "ppa": true,
             "version": "latest"
         },
-        "ghcr.io/devcontainers/features/nvidia-cuda:1": {
-            "installCudnn": true,
-            "installCudnnDev": true,
-            "installNvtx": true,
-            "installToolkit": true,
-            "cudaVersion": "12.2",
-            "cudnnVersion": "8.9.5.29"
-        },
         "ghcr.io/devcontainers-contrib/features/pipenv:2": {
             "version": "latest"
-        },
-        "ghcr.io/devcontainers-contrib/features/pipx-package:1": {
-            "package": "black",
-            "version": "latest",
-            "injections": "pylint pytest"
         }
     },
 
@@ -37,10 +23,11 @@
 
     "forwardPorts": [6006],
 
-    "postCreateCommand": "./.devcontainer/postCreateCommand.sh",
+    "postCreateCommand": "./.devcontainer/install.sh",
 
     "remoteEnv": {
         "LD_LIBRARY_PATH": "${containerEnv:LD_LIBRARY_PATH}:/usr/local/cuda/lib64",
+        "PATH": "${containerEnv:PATH}:/usr/local/cuda/bin",
         "TF_FORCE_GPU_ALLOW_GROWTH": "true"
     }
 }

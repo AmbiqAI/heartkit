@@ -6,3 +6,5 @@
 | 3       | T-wave          |
 | 4       | U-wave          |
 | 5       | Noise           |
+| 6       | Systolic        |
+| 7       | Diastolic       |

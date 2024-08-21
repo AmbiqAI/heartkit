@@ -2,9 +2,9 @@
 
 ## <span class="sk-h2-span">Overview</span>
 
-The HeartKit: AI Heart Analysis demo is a real-time, ECG-based heart analysis demonstrator that showcases several AI models trained using Ambiq's open-source HeartKit AI Development Kit. By leveraging a modern multi-head network architecture coupled with Ambiq's ultra low-power SoC, the demo is designed to be **efficient**, **explainable**, and **extensible**.
+The HeartKit: AI Heart Analysis demo is a real-time, ECG-based heart analysis demonstrator that showcases several AI models trained using Ambiq's open-source HeartKit ADK. By leveraging a modern multi-head network architecture coupled with Ambiq's ultra low-power SoC, the demo is designed to be **efficient**, **explainable**, and **extensible**.
 
-The architecture consists of 1-lead ECG data collected in real-time from a MAX86150 sensor. The data is preprocessed using an AI based denoising model followed by an ECG segmentation model. The segmentation model is used to annotate every sample as either P-wave, QRS, T-wave, or none. The resulting ECG data and segmentation mask is then fed into upstream “heads” to perform inference. The upstream heads include a HRV head, a rhythm head, and a beat head. The HRV head is used to calculate heart rate, rhythm, and heart rate variability from the segmented peaks. The rhythm head is used to detect the presence of arrhythmias including Atrial Fibrillation (AFIB) and Atrial Flutter (AFL). The beat model is used to classify individual irregular beats as either normal or ectopic.
+The architecture consists of 1-lead ECG data collected in real-time from a MAX86150 sensor. The data is preprocessed using an AI based denoising model followed by an ECG segmentation model. The segmentation model is used to annotate every sample as either P-wave, QRS, T-wave, or none. The resulting ECG data and segmentation mask is then fed into upstream “heads” to perform inference. The upstream heads include a HRV head, a rhythm head, and a beat head. The HRV head is used to calculate heart rate, rhythm, and heart rate variability from the segmented QRS peaks. The rhythm head is used to detect the presence of arrhythmias including Atrial Fibrillation (AFIB) and Atrial Flutter (AFL). The beat model is used to classify individual irregular beats as either normal or ectopic.
 
 ```mermaid
 flowchart LR
@@ -76,7 +76,6 @@ In order to connect the MAX86150 breakout board to the EVB, we leverage the Qwii
   ![max86150-5pin-header](../assets/guides/max86150-5pin-header.webp){ width="480" }
   <figcaption>MAX86150 Sensor Board</figcaption>
 </figure>
-
 
 ---
 

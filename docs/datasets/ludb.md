@@ -6,6 +6,35 @@ The Lobachevsky University Electrocardiography database (LUDB) consists of 200 1
 
 Please visit [Physionet](https://physionet.org/content/ludb/1.0.1/) for more details.
 
+## <span class="sk-h2-span">Usage</span>
+
+!!! Example Python
+
+    ```python
+    from pathlib import Path
+    import neuralspot_edge as nse
+    import heartkit as hk
+
+    ds = hk.DatasetFactory.get('ludb')(
+        path=Path("./datasets/ludb")
+    )
+
+    # Download dataset
+    ds.download(force=False)
+
+    # Create signal generator
+    data_gen = self.ds.signal_generator(
+        patient_generator=nse.utils.uniform_id_generator(ds.patient_ids, repeat=True, shuffle=True),
+        frame_size=256,
+        samples_per_patient=5,
+        target_rate=100,
+    )
+
+    # Grab single ECG sample
+    ecg = next(data_gen)
+
+    ```
+
 ## <span class="sk-h2-span">Funding</span>
 
 The study was supported by the Ministry of Education of the Russian Federation (contract No. 02.G25.31.0157 of 01.12.2015).
@@ -17,20 +46,3 @@ The LUDB is available for commercial use.
 ## <span class="sk-h2-span">Supported Tasks</span>
 
 * [Segmentation](../tasks/segmentation.md)
-
-
-## <span class="sk-h2-span">Usage</span>
-
-!!! Example Python
-
-    ```python
-    from pathlib import Path
-    import heartkit as hk
-
-    # Download dataset
-    hk.datasets.download_datasets(hk.HKDownloadParams(
-        ds_path=Path("./datasets"),
-        datasets=["ludb"],
-        progress=True
-    ))
-    ```

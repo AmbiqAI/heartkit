@@ -1,4 +1,3 @@
-import logging
 import os
 from pathlib import Path
 
@@ -6,17 +5,22 @@ import h5py
 import numpy as np
 import numpy.typing as npt
 import physiokit as pk
+import neuralspot_edge as nse
 
-logger = logging.getLogger(__name__)
+logger = nse.utils.setup_logger(__name__)
 
 
 class NstdbNoise:
-    """Noise stress test database (NSTDB) noise generator."""
-
     def __init__(
         self,
         target_rate: int,
     ):
+        """Noise stress test database (NSTDB) noise generator.
+
+        Args:
+            target_rate (int): Target rate in Hz
+        """
+
         self.target_rate = target_rate
         self._noises: dict[str, npt.NDArray] | None = None
 

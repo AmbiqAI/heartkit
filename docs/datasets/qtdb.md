@@ -6,6 +6,33 @@ Over 100 fifteen-minute two-lead ECG recordings with onset, peak, and end marker
 
 Please visit [Physionet](https://doi.org/10.13026/C24K53) for more details.
 
+!!! Example Python
+
+    ```python
+    from pathlib import Path
+    import neuralspot_edge as nse
+    import heartkit as hk
+
+    ds = hk.DatasetFactory.get('qtdb')(
+        path=Path("./datasets/qtdb")
+    )
+
+    # Download dataset
+    ds.download(force=False)
+
+    # Create signal generator
+    data_gen = self.ds.signal_generator(
+        patient_generator=nse.utils.uniform_id_generator(ds.patient_ids, repeat=True, shuffle=True),
+        frame_size=256,
+        samples_per_patient=5,
+        target_rate=100,
+    )
+
+    # Grab single ECG sample
+    ecg = next(data_gen)
+
+    ```
+
 ## <span class="sk-h2-span">Funding</span>
 
 The QT Database was created as part of a project funded by the National Library of Medicine.
@@ -17,19 +44,3 @@ The QT Database is available for commercial use. [Open Data Commons Attribution 
 ## <span class="sk-h2-span">Supported Tasks</span>
 
 * [Segmentation](../tasks/segmentation.md)
-
-## <span class="sk-h2-span">Usage</span>
-
-!!! Example Python
-
-    ```python
-    from pathlib import Path
-    import heartkit as hk
-
-    # Download dataset
-    hk.datasets.download_datasets(hk.HKDownloadParams(
-        ds_path=Path("./datasets"),
-        datasets=["qtdb"],
-        progress=True
-    ))
-    ```

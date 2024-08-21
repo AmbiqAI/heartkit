@@ -6,6 +6,35 @@ This dataset consists of 21837 clinical 12-lead ECGs from 18885 patients. The EC
 
 Please visit [Physionet](https://physionet.org/content/ptb-xl/1.0.3/) for more details.
 
+## <span class="sk-h2-span">Usage</span>
+
+!!! Example Python
+
+    ```python
+    from pathlib import Path
+    import neuralspot_edge as nse
+    import heartkit as hk
+
+    ds = hk.DatasetFactory.get('ptbxl')(
+        path=Path("./datasets/ptbxl")
+    )
+
+    # Download dataset
+    ds.download(force=False)
+
+    # Create signal generator
+    data_gen = self.ds.signal_generator(
+        patient_generator=nse.utils.uniform_id_generator(ds.patient_ids, repeat=True, shuffle=True),
+        frame_size=256,
+        samples_per_patient=5,
+        target_rate=100,
+    )
+
+    # Grab single ECG sample
+    ecg = next(data_gen)
+
+    ```
+
 ### <span class="sk-h2-span">Funding</span>
 
 This work was supported by BMBF (01IS14013A), Berlin Big Data Center, Berlin Center for Machine Learning, and EMPIR project 18HLT07 MedalCare.
@@ -14,25 +43,9 @@ This work was supported by BMBF (01IS14013A), Berlin Big Data Center, Berlin Cen
 
 This database is available under [Creative Commons Attribution 4.0 International Public License](https://physionet.org/content/ptb-xl/view-license/1.0.3/)
 
-### <span class="sk-h2-span">Supported Tasks</span>
+<!-- ### <span class="sk-h2-span">Supported Tasks</span>
 
-* [Rhythm](../tasks/rhythm.md)
-
-## <span class="sk-h2-span">Usage</span>
-
-!!! Example Python
-
-    ```python
-    from pathlib import Path
-    import heartkit as hk
-
-    # Download dataset
-    hk.datasets.download_datasets(hk.HKDownloadParams(
-        ds_path=Path("./datasets"),
-        datasets=["ptbxl"],
-        progress=True
-    ))
-    ```
+* [Rhythm](../tasks/rhythm.md) -->
 
 ## <span class="sk-h2-span">References</span>
 
