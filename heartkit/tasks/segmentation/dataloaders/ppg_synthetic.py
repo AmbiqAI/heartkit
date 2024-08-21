@@ -46,7 +46,6 @@ class PPgSyntheticDataloader(HKDataloader):
             x = np.nan_to_num(x).astype(np.float32)
             x = self.ds.add_noise(x)
             y = segs[start : start + input_size].squeeze()
-            y = y.astype(np.int32)
             y = np.vectorize(lambda v: self.label_map.get(v, 0), otypes=[int])(y)
 
             if self.ds.sampling_rate != self.sampling_rate:
@@ -59,7 +58,7 @@ class PPgSyntheticDataloader(HKDataloader):
                 for s, e in zip(start_idxs, end_idxs):
                     y_tgt[int(s * ratio) : int(e * ratio)] = y[s]
                 # END FOR
-                y = y_tgt
+                y = y_tgt.astype(np.int32)
             # END IF
             x = x.reshape(-1, 1)
             yield x, y

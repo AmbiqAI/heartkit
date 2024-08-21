@@ -1,4 +1,5 @@
 import os
+import shutil
 
 import keras
 import numpy as np
@@ -74,14 +75,21 @@ def export(params: HKTaskParams):
     tflite = nse.interpreters.tflite.TfLiteKerasInterpreter(tflite_content)
     tflite.compile()
 
-    # Verify TFLite results match TF results
     logger.debug("Validating model results")
     y_pred_tf = model.predict(test_x)
     y_pred_tfl = tflite.predict(x=test_x)
 
-    # Compare error between TF and TFLite outputs
-    error = np.abs(y_pred_tf - y_pred_tfl).max()
-    logger.info(f"Max error between TF and TFLite outputs: {error}")
+    metrics = [
+        keras.metrics.CosineSimilarity(name="cos"),
+        keras.metrics.MeanSquaredError(name="mse"),
+    ]
+
+    tfl_rst = nse.metrics.compute_metrics(metrics, y_pred_tf, y_pred_tfl)
+    logger.info("[TFL METRICS] " + " ".join([f"{k.upper()}={v:.4f}" for k, v in tfl_rst.items()]))
+
+    if params.tflm_file and tflm_model_path != params.tflm_file:
+        logger.debug(f"Copying TFLM header to {params.tflm_file}")
+        shutil.copyfile(tflm_model_path, params.tflm_file)
 
     # cleanup
     keras.utils.clear_session()

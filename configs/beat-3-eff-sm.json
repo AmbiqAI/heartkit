@@ -1,7 +1,7 @@
 {
-    "name": "beat-3-eff-lg",
+    "name": "beat-3-eff-sm",
     "project": "hk-beat-3",
-    "job_dir": "./results/beat-3-eff-lg",
+    "job_dir": "./results/beat-3-eff-sm",
     "verbose": 2,
 
     "datasets": [{
@@ -28,8 +28,10 @@
     "val_samples_per_patient": [10, 40, 40],
     "test_samples_per_patient": [10, 40, 40],
 
-    "val_size": 30000,
-    "test_size": 30000,
+    "val_size": 40000,
+    "test_size": 40000,
+    "val_file": "val.tfds",
+    "test_file": "val.tfds",
 
     "val_patients": 0.20,
     "batch_size": 256,

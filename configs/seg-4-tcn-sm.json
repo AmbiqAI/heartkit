@@ -14,7 +14,7 @@
     }, {
         "name": "ecg-synthetic",
         "params": {
-            "num_pts": 10000,
+            "num_pts": 20000,
             "params": {
                 "presets": ["SR", "AFIB", "ant_STEMI", "LAHB", "LPHB", "high_take_off", "LBBB", "random_morphology"],
                 "preset_weights": [24, 8, 1, 1, 1, 1, 1, 0],
@@ -52,6 +52,8 @@
 
     "val_size": 20000,
     "test_size": 20000,
+    "val_file": "val.tfds",
+    "test_file": "val.tfds",
 
     "class_weights": "balanced",
     "val_patients": 0.10,

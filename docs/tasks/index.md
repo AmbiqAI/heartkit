@@ -4,6 +4,11 @@
 
 HeartKit provides several built-in __heart-monitoring__ tasks. Each task is designed to address a unique aspect such as ECG denoising, segmentation, and rhythm/beat classification. The tasks are designed to be modular and can be used independently or in combination to address specific use cases. In addition to the built-in tasks, custom tasks can be created by extending the [HKTask](../api/tasks/task.md) base class and registering it with the task factory.
 
+<figure markdown="span">
+  ![Task Diagram](../assets/tasks/heartkit-task-diagram.svg){ width="600" }
+</figure>
+
+
 ## <span class="sk-h2-span">Available Tasks</span>
 
 ### <span class="sk-h2-span"> [Signal Denoise](./denoise.md)</span>

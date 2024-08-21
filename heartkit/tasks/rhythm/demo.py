@@ -154,7 +154,8 @@ def demo(params: HKTaskParams):
     ax.set_title("HeartKit: Rhythm Demo")
     ax.set_xlabel("Time (sec)")
     ax.set_ylabel("ECG")
-    ax.legend()
+    ax.legend(loc="upper right", bbox_to_anchor=(1, 1), frameon=False)
+    fig.tight_layout()
     fig.savefig(params.job_dir / "demo.png")
 
     if params.display_report:

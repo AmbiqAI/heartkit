@@ -34,7 +34,7 @@ class DenoiseDataloader(HKDataloader):
             yield x
 
 
-DenoiseTaskFactory = nse.utils.create_factory(factory="HKBeatTaskFactory", type=HKDataloader)
+DenoiseTaskFactory = nse.utils.create_factory(factory="HKDenoiseTaskFactory", type=HKDataloader)
 DenoiseTaskFactory.register("ecg-synthetic", DenoiseDataloader)
 DenoiseTaskFactory.register("ppg-synthetic", DenoiseDataloader)
 DenoiseTaskFactory.register("icentia11k", DenoiseDataloader)

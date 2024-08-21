@@ -3,12 +3,14 @@ import random
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 import neuralspot_edge as nse
 
 from ...defines import HKTaskParams
 from ...backends import BackendFactory
 from ...datasets import DatasetFactory, create_augmentation_pipeline
+from ...utils import setup_plotting
 
 
 def demo(params: HKTaskParams):
@@ -19,12 +21,7 @@ def demo(params: HKTaskParams):
     """
     logger = nse.utils.setup_logger(__name__, level=params.verbose)
 
-    bg_color = "rgba(38,42,50,1.0)"
-    primary_color = "#11acd5"
-    # secondary_color = "#ce6cff"
-    tertiary_color = "rgb(234,52,36)"
-    quaternary_color = "rgb(92,201,154)"
-    plotly_template = "plotly_dark"
+    plot_theme = setup_plotting()
 
     params.demo_size = params.demo_size or 10 * params.sampling_rate
 
@@ -117,7 +114,7 @@ def demo(params: HKTaskParams):
             y=y_act,
             name="REF",
             mode="lines",
-            line=dict(color=tertiary_color, width=3),
+            line=dict(color=plot_theme.tertiary_color, width=3),
         ),
         row=1,
         col=1,
@@ -130,7 +127,7 @@ def demo(params: HKTaskParams):
             y=x,
             name="NOISE",
             mode="lines",
-            line=dict(color=primary_color, width=3),
+            line=dict(color=plot_theme.primary_color, width=3),
         ),
         row=2,
         col=1,
@@ -143,7 +140,7 @@ def demo(params: HKTaskParams):
             y=y_pred,
             name="CLEAN",
             mode="lines",
-            line=dict(color=quaternary_color, width=3),
+            line=dict(color=plot_theme.quaternary_color, width=3),
         ),
         row=3,
         col=1,
@@ -179,14 +176,13 @@ def demo(params: HKTaskParams):
     )
 
     fig.update_xaxes(title_text="Time (s)", row=3, col=1)
-    # fig.update_yaxes(title_text="SIGNAL", row=1, col=1)
 
     fig.update_layout(
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        template=plotly_template,
+        template=plot_theme.plotly_template,
         height=800,
-        plot_bgcolor=bg_color,
-        paper_bgcolor=bg_color,
+        plot_bgcolor=plot_theme.bg_color,
+        paper_bgcolor=plot_theme.bg_color,
         margin=dict(l=10, r=10, t=80, b=60),
         title="HeartKit: Denoising Demo",
     )
@@ -196,3 +192,44 @@ def demo(params: HKTaskParams):
 
     if params.display_report:
         fig.show()
+
+    fig, ax = plt.subplots(3, 1, figsize=(10, 6), sharex=True)
+
+    ax[0].plot(ts, y_act, color=plot_theme.tertiary_color, linewidth=3)
+    ax[0].set_ylabel("REF")
+
+    ax[1].plot(ts, x, color=plot_theme.primary_color, linewidth=3)
+    ax[1].set_ylabel("NOISE")
+
+    ax[2].plot(ts, y_pred, color=plot_theme.quaternary_color, linewidth=3)
+    ax[2].set_ylabel("CLEAN")
+    ax[2].set_xlabel("Time (s)")
+
+    # Add annotations
+    ax[1].annotate(
+        f"COS: {cos_sim_orig:.0%}",
+        xy=(0.99, 0.05),
+        xycoords="axes fraction",
+        xytext=(0, 0),
+        textcoords="offset points",
+        ha="right",
+        va="bottom",
+        fontsize=14,
+        color=plot_theme.fg_color,
+        fontweight="bold",
+    )
+    ax[2].annotate(
+        f"COS: {cos_sim:.0%}",
+        xy=(0.99, 0.05),
+        xycoords="axes fraction",
+        xytext=(0, 0),
+        textcoords="offset points",
+        ha="right",
+        va="bottom",
+        fontsize=14,
+        color=plot_theme.fg_color,
+        fontweight="bold",
+    )
+
+    fig.tight_layout()
+    fig.savefig(params.job_dir / "demo.png")

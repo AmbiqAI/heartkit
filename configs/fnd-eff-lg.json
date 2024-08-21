@@ -2,7 +2,7 @@
     "name": "fnd-eff-lg",
     "project": "foundation",
     "job_dir": "./results/fnd-eff-lg",
-    "verbose": 1,
+    "verbose": 2,
 
     "temperature": 1.0,
 

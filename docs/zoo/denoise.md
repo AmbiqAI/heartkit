@@ -43,6 +43,19 @@ The following table provides the latest pre-trained models for signal denoising.
     - **[Synthetic](../datasets/synthetic.md)**
     - **[PTB-XL](../datasets/ptbxl.md)**
 
+=== "DEN-PPG-TCN-SM"
+
+    The __DEN-PPG-TCN-SM__ model is a small denoising model that uses a Temporal Convolutional Network (TCN). The model is trained on raw PPG data and is able to remove noise from the signal.
+
+    ### Input
+
+    - **Sensor**: PPG
+    - **Location**: Wrist
+    - **Sampling Rate**: 100 Hz
+    - **Frame Size**: 5 seconds
+
+    ### Datasets
+    - **[Synthetic](../datasets/synthetic.md)**
 
 ---
 
@@ -54,9 +67,9 @@ The following table provides the latest pre-trained models for signal denoising.
 
     | Metric       | Value |
     | ------------ | ----- |
-    | MAE          | 15.9% |
-    | MSE          | 5.7%  |
-    | COSSIM       | 96.7% |
+    | MAE          | 6.6%  |
+    | MSE          | 1.1%  |
+    | COSSIM       | 85.9% |
 
 === "DEN-TCN-LG"
 
@@ -64,9 +77,51 @@ The following table provides the latest pre-trained models for signal denoising.
 
     | Metric       | Value |
     | ------------ | ----- |
-    | MAE          | 14.0% |
-    | MSE          | 4.4%  |
-    | COSSIM       | 97.4% |
+    | MAE          | 5.0% |
+    | MSE          | 0.8%  |
+    | COSSIM       | 87.9% |
+
+=== "DEN-PPG-TCN-SM"
+
+    The following table provides the performance metrics for the __DEN-PPG-TCN-SM__ denoising model.
+
+    | Metric       | Value |
+    | ------------ | ----- |
+    | MAE          | 11.0% |
+    | MSE          | 2.2%  |
+    | COSSIM       | 92.1% |
+
+---
+
+## <span class="sk-h2-span">Downloads</span>
+
+=== "DEN-TCN-SM"
+
+    | Asset                                                                | Description                   |
+    | -------------------------------------------------------------------- | ----------------------------- |
+    | [configuration.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/denoise/denoise-tcn-sm/latest/configuration.json)   | Configuration file            |
+    | [model.keras](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/denoise/denoise-tcn-sm/latest/model.keras)            | Keras Model file              |
+    | [model.tflite](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/denoise/denoise-tcn-sm/latest/model.tflite)       | TFLite Model file             |
+    | [metrics.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/denoise/denoise-tcn-sm/latest/denoise-tcn-sm/metrics.json)       | Metrics file                  |
+
+=== "DEN-TCN-LG"
+
+    | Asset                                                                | Description                   |
+    | -------------------------------------------------------------------- | ----------------------------- |
+    | [configuration.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/denoise/denoise-tcn-lg/latest/configuration.json)   | Configuration file            |
+    | [model.keras](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/denoise/denoise-tcn-lg/latest/model.keras)            | Keras Model file              |
+    | [model.tflite](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/denoise/denoise-tcn-lg/latest/model.tflite)       | TFLite Model file             |
+    | [metrics.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/denoise/denoise-tcn-lg/latest/denoise-tcn-lg/metrics.json)       | Metrics file                  |
+
+=== "DEN-PPG-TCN-SM"
+
+    | Asset                                                                | Description                   |
+    | -------------------------------------------------------------------- | ----------------------------- |
+    | [configuration.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/denoise/denoise-ppg-tcn-sm/latest/configuration.json)   | Configuration file            |
+    | [model.keras](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/denoise/denoise-ppg-tcn-sm/latest/model.keras)            | Keras Model file              |
+    | [model.tflite](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/denoise/denoise-ppg-tcn-sm/latest/model.tflite)       | TFLite Model file             |
+    | [metrics.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/denoise/denoise-ppg-tcn-sm/latest/denoise-ppg-tcn-sm/metrics.json)       | Metrics file                  |
+
 
 <!-- ## <span class="sk-h2-span">EVB Performance</span>
 

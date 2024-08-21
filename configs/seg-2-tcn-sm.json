@@ -4,16 +4,28 @@
     "job_dir": "./results/seg-2-tcn-sm",
     "verbose": 2,
 
-    "dataset_weights": [0.32, 0.68],
+    "dataset_weights": [0.2, 0.8],
     "datasets": [{
-        "name": "icentia11k",
+        "name": "ludb",
         "params": {
-            "path": "./datasets/icentia11k"
+            "path": "./datasets/ludb"
         }
-    },{
-        "name": "ptbxl",
+    }, {
+        "name": "ecg-synthetic",
         "params": {
-            "path": "./datasets/ptbxl"
+            "num_pts": 20000,
+            "params": {
+                "presets": ["SR", "AFIB", "ant_STEMI", "LAHB", "LPHB", "high_take_off", "LBBB", "random_morphology"],
+                "preset_weights": [24, 8, 1, 1, 1, 1, 1, 0],
+                "duration": 10,
+                "sample_rate": 100,
+                "heart_rate": [40, 160],
+                "impedance": [1, 2],
+                "p_multiplier": [0.8, 1.2],
+                "t_multiplier": [0.8, 1.2],
+                "noise_multiplier": [0.05, 0.5],
+                "voltage_factor": [800, 1000]
+            }
         }
     }],
 
@@ -38,13 +50,15 @@
 
     "val_size": 25000,
     "test_size": 25000,
+    "val_file": "val.tfds",
+    "test_file": "val.tfds",
 
     "val_patients": 0.20,
-    "class_weights": "balanced",
+    "class_weights": "fixed",
     "batch_size": 256,
     "buffer_size": 50000,
     "epochs": 100,
-    "steps_per_epoch": 100,
+    "steps_per_epoch": 50,
     "val_metric": "loss",
     "lr_rate": 1e-3,
     "lr_cycles": 1,
@@ -76,19 +90,55 @@
         }
     ],
 
+    "augmentations": [{
+        "name": "random_noise_distortion",
+        "params": {
+            "amplitude": [0, 0.5],
+            "frequency": [0.5, 1.5],
+            "name": "baseline_wander"
+        }
+    },{
+        "name": "random_sine_wave",
+        "params": {
+            "amplitude": [0, 0.05],
+            "frequency": [45, 50],
+            "auto_vectorize": false,
+            "name": "powerline_noise"
+        }
+    },{
+        "name": "amplitude_warp",
+        "params": {
+            "amplitude": [0.9, 1.1],
+            "frequency": [0.5, 1.5],
+            "name": "amplitude_warp"
+        }
+    }, {
+        "name": "random_noise",
+        "params": {
+            "factor": [0, 0.025],
+            "name": "random_noise"
+        }
+    }, {
+        "name": "random_background_noise",
+        "params": {
+            "amplitude": [0, 0.025],
+            "num_noises": 1,
+            "name": "nstdb"
+        }
+    }],
+
     "model_file": "model.keras",
-    "use_logits": true,
+    "use_logits": false,
     "architecture": {
         "name": "tcn",
         "params": {
             "input_kernel": [1, 7],
             "input_norm": "batch",
             "blocks": [
-                {"depth": 1, "branch": 1, "filters": 8, "kernel": [1, 7], "dilation": [1, 1], "dropout": 0, "ex_ratio": 1, "se_ratio": 0, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 12, "kernel": [1, 7], "dilation": [1, 1], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 16, "kernel": [1, 7], "dilation": [1, 2], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 24, "kernel": [1, 7], "dilation": [1, 4], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
-                {"depth": 1, "branch": 1, "filters": 32, "kernel": [1, 7], "dilation": [1, 8], "dropout": 0, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"}
+                {"depth": 1, "branch": 1, "filters": 4, "kernel": [1, 7], "dilation": [1, 1], "dropout": 0.2, "ex_ratio": 1, "se_ratio": 0, "norm": "batch"},
+                {"depth": 1, "branch": 1, "filters": 8, "kernel": [1, 7], "dilation": [1, 2], "dropout": 0.2, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
+                {"depth": 1, "branch": 1, "filters": 12, "kernel": [1, 7], "dilation": [1, 4], "dropout": 0.2, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"},
+                {"depth": 1, "branch": 1, "filters": 16, "kernel": [1, 7], "dilation": [1, 8], "dropout": 0.2, "ex_ratio": 1, "se_ratio": 2, "norm": "batch"}
             ],
             "output_kernel": [1, 7],
             "include_top": true,

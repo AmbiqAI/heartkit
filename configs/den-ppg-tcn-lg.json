@@ -27,8 +27,8 @@
     "val_samples_per_patient": 5,
     "test_samples_per_patient": 5,
 
-    "val_size": 10000,
-    "test_size": 10000,
+    "val_size": 20000,
+    "test_size": 20000,
 
     "batch_size": 128,
     "buffer_size": 50000,
@@ -44,7 +44,7 @@
 
     "backend": "pc",
     "demo_size": 768,
-    "display_report": false,
+    "display_report": true,
 
     "quantization": {
         "qat": false,

@@ -61,8 +61,9 @@ class LudbDataloader(HKDataloader):
             x = data[frame_start:frame_end, lead]
             x = np.nan_to_num(x, neginf=0, posinf=0).astype(np.float32)
             x = np.reshape(x, (-1, 1))
-            y = labels[frame_start:frame_end, lead].astype(np.int32)
+            y = labels[frame_start:frame_end, lead]
             y = np.vectorize(lambda v: self.label_map.get(v, 0), otypes=[int])(y)
+            y = y.astype(np.int32)
             yield x, y
         # END FOR
 

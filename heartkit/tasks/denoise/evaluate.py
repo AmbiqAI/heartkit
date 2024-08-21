@@ -44,6 +44,7 @@ def evaluate(params: HKTaskParams):
     rst = model.evaluate(test_ds, verbose=params.verbose, return_dict=True)
     logger.info("[TEST SET] " + ", ".join([f"{k.upper()}={v:.4f}" for k, v in rst.items()]))
 
+    # Compute relative error reduction
     rst["flops"] = flops
     rst["parameters"] = model.count_params()
     with open(params.job_dir / "metrics.json", "w") as fp:

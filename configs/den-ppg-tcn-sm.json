@@ -27,8 +27,8 @@
     "val_samples_per_patient": 5,
     "test_samples_per_patient": 5,
 
-    "val_size": 10000,
-    "test_size": 10000,
+    "val_size": 20000,
+    "test_size": 20000,
 
     "val_patients": 0.20,
     "batch_size": 128,

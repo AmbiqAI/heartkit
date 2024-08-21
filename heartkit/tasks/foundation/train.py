@@ -28,7 +28,7 @@ def train(params: HKTaskParams):
     params.seed = nse.utils.set_random_seed(params.seed)
     logger.debug(f"Random seed {params.seed}")
 
-    with open(params.job_dir / "train_config.json", "w", encoding="utf-8") as fp:
+    with open(params.job_dir / "configuration.json", "w", encoding="utf-8") as fp:
         fp.write(params.model_dump_json(indent=2))
 
     if nse.utils.env_flag("WANDB"):

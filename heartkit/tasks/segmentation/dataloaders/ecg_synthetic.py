@@ -54,8 +54,8 @@ class EcgSyntheticDataloader(HKDataloader):
             x = np.nan_to_num(x).astype(np.float32)
             x = self.ds.add_noise(x)
             y = segs[lead, start : start + input_size].squeeze()
-            y = y.astype(np.int32)
             y = np.vectorize(lambda v: self.label_map.get(v, 0), otypes=[int])(y)
+            y = y.astype(np.int32)
 
             if self.ds.sampling_rate != self.sampling_rate:
                 ratio = self.sampling_rate / self.ds.sampling_rate

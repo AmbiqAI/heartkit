@@ -9,7 +9,7 @@
     "datasets": [{
         "name": "ppg-synthetic",
         "params": {
-            "num_pts": 20000,
+            "num_pts": 40000,
             "params": {
                 "duration": 20,
                 "sample_rate": 100,
@@ -113,6 +113,7 @@
     }],
 
     "model_file": "model.keras",
+    "use_logits": false,
     "architecture": {
         "name": "tcn",
         "params": {

@@ -62,10 +62,10 @@ def evaluate(params: HKTaskParams):
 
     setup_plotting()
     rst = nse.metrics.compute_metrics(metrics, test_y1, test_y2)
-    logger.info("[TEST SET] " + ", ".join([f"{k.upper()}={v:.4f}" for k, v in rst.items()]))
-
     rst["flops"] = flops
     rst["parameters"] = model.count_params()
+    rst = {k: float(v) for k, v in rst.items()}
+    logger.info("[TEST SET] " + ", ".join([f"{k.upper()}={v:.4f}" for k, v in rst.items()]))
     with open(params.job_dir / "metrics.json", "w") as fp:
         json.dump(rst, fp)
 

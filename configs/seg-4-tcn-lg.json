@@ -2,7 +2,6 @@
     "name": "seg-4-tcn-lg",
     "project": "hk-segmentation-4",
     "job_dir": "./results/seg-4-tcn-lg",
-
     "verbose": 2,
 
     "dataset_weights": [0.20, 0.80],
@@ -14,7 +13,7 @@
     }, {
         "name": "ecg-synthetic",
         "params": {
-            "num_pts": 10000,
+            "num_pts": 20000,
             "params": {
                 "presets": ["SR", "AFIB", "ant_STEMI", "LAHB", "LPHB", "high_take_off", "LBBB", "random_morphology"],
                 "preset_weights": [24, 8, 1, 1, 1, 1, 1, 0],
@@ -52,6 +51,8 @@
 
     "val_size": 20000,
     "test_size": 20000,
+    "val_file": "val.tfds",
+    "test_file": "val.tfds",
 
     "val_patients": 0.10,
     "batch_size": 256,
