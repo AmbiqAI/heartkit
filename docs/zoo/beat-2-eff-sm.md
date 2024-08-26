@@ -30,6 +30,8 @@ The model is trained on raw ECG data and is able to classify normal sinus rhythm
 
 ## <span class="sk-h2-span">Datasets</span>
 
+The model is trained on the following datasets:
+
 - **[Icentia11k](../datasets/icentia11k.md)**
 
 ---
