@@ -92,7 +92,7 @@ class Codec(object):
     def write_null_flag(self, flag):
         raise NotImplementedError()
 
-    def start_read_message(self):
+    def start_read_message(self) -> MessageInfo:
         """Returns MessageInfo object.
 
         Returns:
@@ -139,7 +139,7 @@ class Codec(object):
     def read_binary(self):
         raise NotImplementedError()
 
-    def start_read_list(self):
+    def start_read_list(self) -> int:
         """Function which should be called on list de-serialization.
 
         Returns:
@@ -147,7 +147,7 @@ class Codec(object):
         """
         raise NotImplementedError()
 
-    def start_read_union(self):
+    def start_read_union(self) -> int:
         """Function which should be called on union de-serialization.
 
         Returns:

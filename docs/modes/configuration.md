@@ -25,7 +25,7 @@ Named parameters are used to provide custom parameters for a given object or cal
 | name | str | Required |  | Named parameters name |
 | params | dict[str, Any] | Optional | {} | Named parameters |
 
-```python
+```py linenums="1"
 
 import heartkit as hk
 

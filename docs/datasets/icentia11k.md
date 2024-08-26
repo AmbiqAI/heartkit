@@ -10,7 +10,7 @@ More info available on [PhysioNet website](https://physionet.org/content/icentia
 
 !!! Example Python
 
-    ```python
+    ```py linenums="1"
     from pathlib import Path
     import neuralspot_edge as nse
     import heartkit as hk

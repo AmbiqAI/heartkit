@@ -1,0 +1,4 @@
+"""
+# :material-image: Assets API
+
+"""

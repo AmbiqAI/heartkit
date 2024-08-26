@@ -17,7 +17,7 @@ def export(params: HKTaskParams):
     """Export model
 
     Args:
-        params (HKTaskParams): Deployment parameters
+        params (HKTaskParams): Task parameters
     """
     logger = nse.utils.setup_logger(__name__, level=params.verbose)
 
@@ -95,8 +95,8 @@ def export(params: HKTaskParams):
         keras.metrics.F1Score(name="f1", average="weighted"),
     ]
 
-    if params.val_metric not in [m.name for m in metrics]:
-        raise ValueError(f"Metric {params.val_metric} not supported")
+    if params.test_metric not in [m.name for m in metrics]:
+        raise ValueError(f"Metric {params.test_metric} not supported")
 
     logger.info("Validating model results")
     y_true = test_y
@@ -108,7 +108,7 @@ def export(params: HKTaskParams):
     logger.info("[TF METRICS] " + " ".join([f"{k.upper()}={v:.4f}" for k, v in tf_rst.items()]))
     logger.info("[TFL METRICS] " + " ".join([f"{k.upper()}={v:.4f}" for k, v in tfl_rst.items()]))
 
-    metric_diff = abs(tf_rst[params.val_metric] - tfl_rst[params.val_metric])
+    metric_diff = abs(tf_rst[params.test_metric] - tfl_rst[params.test_metric])
 
     # Check accuracy hit
     if params.test_metric_threshold is not None and metric_diff > params.test_metric_threshold:

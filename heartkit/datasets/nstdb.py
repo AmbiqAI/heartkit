@@ -59,7 +59,7 @@ class NstdbNoise:
         # END IF
         return self._noises[noise_type]
 
-    def apply_noise(self, data: npt.NDArray, noise_level: float, axis: int = 0):
+    def apply_noise(self, data: npt.NDArray, noise_level: float, axis: int = 0) -> npt.NDArray:
         """Add noise to ECG signal.
 
         Args:

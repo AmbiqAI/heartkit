@@ -1,3 +1,15 @@
+"""
+# Segmentation Dataloaders API
+
+Classes:
+    Icentia11kDataloader: Icentia 11k dataloader
+    LudbDataloader: Ludb dataloader
+    PtbxlDataloader: PTB-XL dataloader
+    EcgSyntheticDataloader: ECG Synthetic dataloader
+    PPgSyntheticDataloader: PPG Synthetic dataloader
+
+"""
+
 import neuralspot_edge as nse
 
 from ....datasets import HKDataloader
@@ -14,3 +26,5 @@ SegmentationDataloaderFactory.register("ludb", LudbDataloader)
 SegmentationDataloaderFactory.register("ptbxl", PtbxlDataloader)
 SegmentationDataloaderFactory.register("ecg-synthetic", EcgSyntheticDataloader)
 SegmentationDataloaderFactory.register("ppg-synthetic", PPgSyntheticDataloader)
+
+__all__ = []

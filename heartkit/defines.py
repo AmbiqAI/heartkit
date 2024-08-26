@@ -9,7 +9,17 @@ from neuralspot_edge.converters.tflite import QuantizationType, ConversionType
 
 
 class QuantizationParams(BaseModel, extra="allow"):
-    """Quantization parameters"""
+    """Quantization parameters
+
+    Attributes:
+        enabled: Enable quantization
+        qat: Enable quantization aware training (QAT)
+        format: Quantization mode
+        io_type: I/O type
+        conversion: Conversion method
+        debug: Debug quantization
+        fallback: Fallback to float32
+    """
 
     enabled: bool = Field(False, description="Enable quantization")
     qat: bool = Field(False, description="Enable quantization aware training (QAT)")
@@ -21,8 +31,13 @@ class QuantizationParams(BaseModel, extra="allow"):
 
 
 class NamedParams(BaseModel, extra="allow"):
-    """Named parameters is used to store parameters for a specific model, preprocessing, or augmentation.
+    """
+    Named parameters is used to store parameters for a specific model, preprocessing, or augmentation.
     Typically name refers to class/method name and params is provided as kwargs.
+
+    Attributes:
+        name: Name
+        params: Parameters
     """
 
     name: str = Field(..., description="Name")
@@ -60,29 +75,29 @@ class HKTaskParams(BaseModel, extra="allow"):
     frame_size: int = Field(1250, description="Frame size in samples")
 
     # Dataloader arguments
-    samples_per_patient: int | list[int] = Field(1000, description="# train samples per patient")
-    val_samples_per_patient: int | list[int] = Field(1000, description="# validation samples per patient")
-    test_samples_per_patient: int | list[int] = Field(1000, description="# test samples per patient")
+    samples_per_patient: int | list[int] = Field(1000, description="Number of train samples per patient")
+    val_samples_per_patient: int | list[int] = Field(1000, description="Number of validation samples per patient")
+    test_samples_per_patient: int | list[int] = Field(1000, description="Number of test samples per patient")
 
     # Preprocessing/Augmentation arguments
     preprocesses: list[NamedParams] = Field(default_factory=list, description="Preprocesses")
     augmentations: list[NamedParams] = Field(default_factory=list, description="Augmentations")
 
     # Class arguments
-    num_classes: int = Field(1, description="# of classes")
+    num_classes: int = Field(1, description="Number of of classes")
     class_map: dict[int, int] = Field(default_factory=lambda: {1: 1}, description="Class/label mapping")
     class_names: list[str] | None = Field(default=None, description="Class names")
 
     # Split arguments
-    train_patients: float | None = Field(None, description="# or proportion of patients for training")
-    val_patients: float | None = Field(None, description="# or proportion of patients for validation")
-    test_patients: float | None = Field(None, description="# or proportion of patients for testing")
+    train_patients: float | None = Field(None, description="Number of or proportion of patients for training")
+    val_patients: float | None = Field(None, description="Number of or proportion of patients for validation")
+    test_patients: float | None = Field(None, description="Number of or proportion of patients for testing")
 
     # Val/Test dataset arguments
     val_file: Path | None = Field(None, description="Path to load/store TFDS validation data")
     test_file: Path | None = Field(None, description="Path to load/store TFDS test data")
-    val_size: int | None = Field(None, description="# samples for validation")
-    test_size: int = Field(10000, description="# samples for testing")
+    val_size: int | None = Field(None, description="Number of samples for validation")
+    test_size: int = Field(10000, description="Number of samples for testing")
 
     # Model arguments
     resume: bool = Field(False, description="Resume training")
@@ -116,14 +131,14 @@ class HKTaskParams(BaseModel, extra="allow"):
 
     # Demo arguments
     backend: str = Field("pc", description="Backend")
-    demo_size: int | None = Field(1000, description="# samples for demo")
+    demo_size: int | None = Field(1000, description="Number of samples for demo")
     display_report: bool = Field(True, description="Display report")
 
     # Extra arguments
     seed: int | None = Field(None, description="Random state seed")
     data_parallelism: int = Field(
         default_factory=lambda: os.cpu_count() or 1,
-        description="# of data loaders running in parallel",
+        description="Number of of data loaders running in parallel",
     )
     verbose: int = Field(1, ge=0, le=2, description="Verbosity level")
     model_config = ConfigDict(protected_namespaces=())

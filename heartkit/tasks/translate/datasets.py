@@ -15,7 +15,7 @@ def create_data_pipeline(
     batch_size: int,
     buffer_size: int | None = None,
     augmentations: list[NamedParams] | None = None,
-):
+) -> tf.data.Dataset:
     """Create a beat task data pipeline for given dataset.
 
     Args:

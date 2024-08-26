@@ -2,7 +2,7 @@
 
 ## <span class="sk-h2-span">Introduction</span>
 
-HeartKit provides several built-in __heart-monitoring__ tasks. Each task is designed to address a unique aspect such as ECG denoising, segmentation, and rhythm/beat classification. The tasks are designed to be modular and can be used independently or in combination to address specific use cases. In addition to the built-in tasks, custom tasks can be created by extending the [HKTask](../api/tasks/task.md) base class and registering it with the task factory.
+HeartKit provides several built-in __heart-monitoring__ tasks. Each task is designed to address a unique aspect such as ECG denoising, segmentation, and rhythm/beat classification. The tasks are designed to be modular and can be used independently or in combination to address specific use cases. In addition to the built-in tasks, custom tasks can be created by extending the [HKTask](/heartkit/api/heartkit/tasks/task) base class and registering it with the task factory.
 
 <figure markdown="span">
   ![Task Diagram](../assets/tasks/heartkit-task-diagram.svg){ width="600" }
@@ -33,11 +33,11 @@ Multi-label diagnostic classification is the process of assigning diagnostic lab
 
 ### <span class="sk-h2-span">[Bring-Your-Own-Task (BYOT)](./byot.md)</span>
 
-[Bring-Your-Own-Task (BYOT)](./byot.md) is a feature that allows users to create custom tasks by extending the [HKTask](../api/tasks/task.md) base class and registering it with the [TaskFactory](../api/tasks/factory.md). This feature is useful for addressing specific use cases that are not covered by the built-in tasks.
+[Bring-Your-Own-Task (BYOT)](./byot.md) is a feature that allows users to create custom tasks by extending the [HKTask](/heartkit/api/heartkit/tasks/task) base class and registering it with the `TaskFactory`. This feature is useful for addressing specific use cases that are not covered by the built-in tasks.
 
 ## <span class="sk-h2-span">Task Factory</span>
 
-The task factory, [TaskFactory](../api/tasks/factory.md), provides a convenient way to access the built-in tasks. The factory is a thread-safe singleton class that provides a single point of access to the tasks via the tasks' slug names. The benefit of using the factory is it allows registering custom tasks that can then be used just like built-in tasks.
+The task factory, `TaskFactory`, provides a convenient way to access the built-in tasks. The factory is a thread-safe singleton class that provides a single point of access to the tasks via the tasks' slug names. The benefit of using the factory is it allows registering custom tasks that can then be used just like built-in tasks.
 
 The dataset factory provides the following methods:
 
@@ -48,7 +48,7 @@ The dataset factory provides the following methods:
 * **hk.TaskFactory.list**: List all available tasks
 
 
-```python
+```py linenums="1"
 
 import heartkit as hk
 

@@ -1,3 +1,15 @@
+"""
+# Rhythm Dataloaders API
+
+Classes:
+    RhythmDataloaderFactory: Rhythm dataloader factory
+    Icentia11kDataloader: Icentia 11k dataloader
+    IcentiaMiniDataloader: Icentia Mini dataloader
+    PtbxlDataloader: PTB-XL dataloader
+    LsadDataloader: LSAD dataloader
+
+"""
+
 import neuralspot_edge as nse
 
 from ....datasets import HKDataloader

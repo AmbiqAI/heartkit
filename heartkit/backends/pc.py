@@ -7,9 +7,15 @@ from .backend import HKInferenceBackend
 
 
 class PcBackend(HKInferenceBackend):
-    """Demo backend for PC"""
-
     def __init__(self, params: HKTaskParams) -> None:
+        """PC inference engine backend.
+
+        This backend runs inference on a PC using Keras or TFLite models.
+
+        Args:
+            params (HKTaskParams): Task parameters
+        """
+
         super().__init__(params=params)
         self._inputs = None
         self._outputs = None

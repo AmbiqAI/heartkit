@@ -11,10 +11,10 @@ from .datasets import load_test_dataset
 
 
 def export(params: HKTaskParams):
-    """Export model
+    """Export translation task model with given parameters.
 
     Args:
-        params (HKTaskParams): Deployment parameters
+        params (HKTaskParams): Task parameters
     """
     os.makedirs(params.job_dir, exist_ok=True)
     logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "export.log")

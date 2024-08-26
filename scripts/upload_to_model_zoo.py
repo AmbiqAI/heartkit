@@ -86,6 +86,7 @@ python ./scripts/upload_to_model_zoo.py -t beat -s ./results/beat-3-eff-sm -n be
 
 python ./scripts/upload_to_model_zoo.py -t denoise -s ./results/den-ppg-tcn-sm -n den-ppg-tcn-sm -v v1.0
 python ./scripts/upload_to_model_zoo.py -t denoise -s ./results/den-tcn-sm -n den-tcn-sm -v v1.0
+python ./scripts/upload_to_model_zoo.py -t denoise -s ./results/den-tcn-lg -n den-tcn-lg -v v1.0
 
 python ./scripts/upload_to_model_zoo.py -t foundation -s ./results/fnd-eff-sm -n fnd-eff-sm -v v1.0
 

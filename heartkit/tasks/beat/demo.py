@@ -292,7 +292,7 @@ def demo(params: HKTaskParams):
         row=2,
         col=2,
     )
-    fig.update_xaxes(title_text="# Beats", row=2, col=2)
+    fig.update_xaxes(title_text="Number of Beats", row=2, col=2)
 
     fig.update_layout(
         template=plotly_template,

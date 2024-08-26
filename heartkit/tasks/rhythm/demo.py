@@ -19,7 +19,7 @@ def demo(params: HKTaskParams):
     """Run demo for model
 
     Args:
-        params (HKTaskParams): Demo parameters
+        params (HKTaskParams): Task parameters
     """
     logger = nse.utils.setup_logger(__name__, level=params.verbose)
 

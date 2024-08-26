@@ -77,7 +77,7 @@ heartkit --task rhythm --mode evaluate --config ./configuration.json
 
 The model can be evaluated using the following snippet:
 
-```python
+```py linenums="1"
 
 task = hk.TaskFactory.get("rhythm")
 

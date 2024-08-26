@@ -16,7 +16,7 @@ def create_data_pipeline(
     batch_size: int,
     buffer_size: int | None = None,
     augmentations: list[NamedParams] | None = None,
-):
+) -> tf.data.Dataset:
     """ "Create 'tf.data.Dataset' pipeline.
 
     Args:
@@ -24,7 +24,6 @@ def create_data_pipeline(
         sampling_rate (int): Sampling rate
         batch_size (int): Batch size
         buffer_size (int | None, optional): Buffer size. Defaults to None.
-        preprocesses (list[NamedParams] | None, optional): Preprocessing pipeline. Defaults to None.
         augmentations (list[NamedParams] | None, optional): Augmentation pipeline. Defaults to None.
 
     Returns:

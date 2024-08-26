@@ -55,6 +55,20 @@ def get_serial_transport(
 
     Returns:
         SerialTransport: Serial device
+
+    Examples:
+
+    ```python
+    import heartkit as hk
+    transport = hk.backends.utils.get_serial_transport(vid_pid="51966:16385", baudrate=115200)
+
+    transport.open()
+    transport.write(b"Hello, World!")
+    data = transport.read(13)
+    print(data)
+    transport.close()
+
+    ```
     """
     port = None
     tic = time.time()

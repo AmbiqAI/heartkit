@@ -53,7 +53,7 @@ F ==> G
 
 ## <span class="sk-h2-span">Backend Inference Engines</span>
 
-HeartKit includes two built-in backend inference engines: PC and EVB. Additional backends can be easily added to the HeartKit framework by creating a new backend class and registering it to the backend factory, [BackendFactory](../api/backends/backend.md).
+HeartKit includes two built-in backend inference engines: PC and EVB. Additional backends can be easily added to the HeartKit framework by creating a new backend class and registering it to the backend factory, `BackendFactory`.
 
 ### PC Backend Inference Engine
 
@@ -80,9 +80,9 @@ Similar to datasets, dataloaders, tasks, and models, the demo mode can be custom
 
 #### How it Works
 
-1. **Create a Backend**: Define a new backend class that inherits from the [HKInferenceBackend](../api/backends/backend.md) base class and implements the required abstract methods.
+1. **Create a Backend**: Define a new backend class that inherits from the [HKInferenceBackend](/heartkit/api/heartkit/backends/backend) base class and implements the required abstract methods.
 
-    ```python
+    ```py linenums="1"
     import heartkit as hk
 
     class CustomBackend(hk.HKInferenceBackend):
@@ -112,9 +112,9 @@ Similar to datasets, dataloaders, tasks, and models, the demo mode can be custom
             pass
     ```
 
-2. **Register the Backend**: Register the new backend with the [BackendFactory](../api/backends/backend.md) by calling the `register` method. This method takes the backend name and the backend class as arguments.
+2. **Register the Backend**: Register the new backend with the [BackendFactory](/heartkit/api/heartkit/backends/backend) by calling the `register` method. This method takes the backend name and the backend class as arguments.
 
-    ```python
+    ```py linenums="1"
     import heartkit as hk
 
     # Register the custom backend
@@ -123,7 +123,7 @@ Similar to datasets, dataloaders, tasks, and models, the demo mode can be custom
 
 3. **Use the Backend**: The new backend can now be used by setting the `backend` flag in the demo configuration settings.
 
-    ```python
+    ```py linenums="1"
     import heartkit as hk
 
     # Define demo parameters

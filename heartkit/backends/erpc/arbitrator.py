@@ -19,9 +19,6 @@ class ClientInfo:
 
 class TransportArbitrator(Transport):
     """Shares a transport between a server and multiple clients.
-
-    Args:
-        Transport (_type_): Inherit and define transport interface methods
     """
 
     def __init__(self, sharedTransport=None, codec=None):
@@ -83,7 +80,7 @@ class TransportArbitrator(Transport):
                 # No client was found, unexpected sequence number!
                 pass
 
-    def prepare_client_receive(self, requestContext: RequestContext):
+    def prepare_client_receive(self, requestContext: RequestContext) -> int:
         """Add a client request to the client list.
 
         This call is made by the client thread prior to sending the invocation to the server. It
@@ -110,7 +107,7 @@ class TransportArbitrator(Transport):
 
         return requestContext.sequence
 
-    def client_receive(self, token: int):
+    def client_receive(self, token: int) -> bytearray:
         """Receive method for the client.
 
         Blocks until the a reply message is received with the expected sequence number that is

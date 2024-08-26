@@ -42,6 +42,7 @@ class HKDataloader:
             label_type (str, optional): Label type. Defaults to None.
 
         Example:
+
         ```python
         from typing import Generator
         import numpy as np
@@ -78,6 +79,7 @@ class HKDataloader:
                     # Implement data generator
                     yield data
                 # END FOR
+        ```
 
         """
         self.ds = ds

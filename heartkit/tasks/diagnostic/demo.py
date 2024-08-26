@@ -16,10 +16,10 @@ logger = nse.utils.setup_logger(__name__)
 
 
 def demo(params: HKTaskParams):
-    """Run demo for model
+    """Run diagnostic demo.
 
     Args:
-        params (HKTaskParams): Demo parameters
+        params (HKTaskParams): Task parameters
     """
 
     bg_color = "rgba(38,42,50,1.0)"

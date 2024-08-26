@@ -6,7 +6,7 @@ The Bring-Your-Own-Dataset (BYOD) feature allows users to add custom datasets fo
 
 1. **Create a Dataset**: Define a new dataset that inherits `HKDataset` and implements the required abstract methods.
 
-```python
+```py linenums="1"
 
 import numpy as np
 import heartkit as hk
@@ -54,7 +54,7 @@ class MyDataset(hk.HKDataset):
 
 2. **Register the Dataset**: Register the new dataset with the `DatasetFactory` by calling the `register` method. This method takes the dataset name and the dataset class as arguments.
 
-    ```python
+    ```py linenums="1"
     import heartkit as hk
 
     hk.DatasetFactory.register("my-dataset", CustomDataset)
@@ -62,7 +62,7 @@ class MyDataset(hk.HKDataset):
 
 3. **Use the Dataset**: The new dataset can now be used with the `DatasetFactory` to perform various operations such as downloading and generating data.
 
-    ```python
+    ```py linenums="1"
     import heartkit as hk
     params = {}
     dataset = hk.DatasetFactory.get("my-dataset")(**params)

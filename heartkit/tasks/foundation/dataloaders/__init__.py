@@ -1,3 +1,13 @@
+"""
+# Foundation Dataloaders API
+
+Classes:
+    FoundationTaskFactory: Foundation task factory
+    LsadDataloader: LSAD dataloader
+    PtbxlDataloader: PTB-XL dataloader
+
+"""
+
 import neuralspot_edge as nse
 
 from ....datasets import HKDataloader

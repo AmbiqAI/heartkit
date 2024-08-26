@@ -75,7 +75,7 @@ heartkit --mode train --task rhythm --config config.json
 
 Alternatively, the model can be created directly in code using the following snippet:
 
-```python
+```py linenums="1"
 
 import keras
 import heartkit as hk

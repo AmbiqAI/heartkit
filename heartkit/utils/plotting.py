@@ -1,3 +1,12 @@
+"""
+# Plotting Utilities
+
+This module provides utilities for setting up plotting environment.
+
+
+
+"""
+
 import dataclasses
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -5,6 +14,20 @@ import matplotlib.pyplot as plt
 
 @dataclasses.dataclass
 class PlotPallette:
+    """Plotting color pallette
+
+    Attributes:
+        bg_rgba_color (str): Background color in rgba format
+        bg_color (str): Background color
+        fg_color (str): Foreground color
+        primary_color (str): Primary color
+        secondary_color (str): Secondary color
+        tertiary_color (str): Tertiary color
+        quaternary_color (str): Quaternary color
+        plotly_template (str): Plotly template
+        matplot_template (str): Matplotlib template
+    """
+
     bg_rgba_color: str = "rgba(38,42,50,1.0)"
     bg_color: str = "#262a32"
     fg_color: str = "#ffffff"
@@ -17,6 +40,7 @@ class PlotPallette:
 
     @property
     def colors(self):
+        """Get color pallette"""
         return [self.primary_color, self.secondary_color, self.tertiary_color, self.quaternary_color]
 
 
@@ -53,6 +77,13 @@ def setup_plotting(theme: PlotPallette = dark_theme) -> PlotPallette:
 
     Returns:
         PlotPallette: Plotting theme
+
+    Example:
+
+    ```python
+    import heartkit as hk
+
+    plot_theme = hk.util.ssetup_plotting(hk.utils.light_theme)
     """
     SMALL_SIZE = 12
     MEDIUM_SIZE = 14

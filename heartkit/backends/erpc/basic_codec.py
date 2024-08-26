@@ -13,9 +13,6 @@ from .codec import Codec, CodecError, MessageInfo, MessageType
 
 class BasicCodec(Codec):
     """Version of this codec.
-
-    Args:
-        Codec (code.Codec): Inherit and implement codec interface functions.
     """
 
     BASIC_CODEC_VERSION = 1
@@ -83,7 +80,7 @@ class BasicCodec(Codec):
     def write_null_flag(self, flag):
         self.write_uint8(1 if flag else 0)
 
-    def start_read_message(self):
+    def start_read_message(self) -> MessageInfo:
         """Returns 4-tuple of msgType, service, request, sequence.
 
         Raises:
@@ -149,7 +146,7 @@ class BasicCodec(Codec):
         self._cursor += length
         return data
 
-    def start_read_list(self):
+    def start_read_list(self) -> int:
         """Function which should be called on list de-serialization.
 
         Returns:
@@ -157,7 +154,7 @@ class BasicCodec(Codec):
         """
         return self.read_uint32()
 
-    def start_read_union(self):
+    def start_read_union(self) -> int:
         """Function which should be called on union de-serialization.
 
         Returns:

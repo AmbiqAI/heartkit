@@ -1,3 +1,13 @@
+"""
+# Task Dataloaders API
+
+Classes:
+    BeatTaskFactory: Beat task factory
+    Icentia11kDataloader: Icentia 11k dataloader
+    IcentiaMiniDataloader: Icentia Mini dataloader
+
+"""
+
 import neuralspot_edge as nse
 
 from ....datasets import HKDataloader
