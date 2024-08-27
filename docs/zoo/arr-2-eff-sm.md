@@ -53,6 +53,6 @@ The confusion matrix on the test set for the model is depicted below.
 | [configuration.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/rhythm/arr-2-eff-sm/latest/configuration.json)   | Configuration file            |
 | [model.keras](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/rhythm/arr-2-eff-sm/latest/model.keras)            | Keras Model file              |
 | [model.tflite](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/rhythm/arr-2-eff-sm/latest/model.tflite)       | TFLite Model file             |
-| [metrics.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/rhythm/arr-2-eff-sm/latest/arr-2-eff-sm/metrics.json)       | Metrics file                  |
+| [metrics.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/rhythm/arr-2-eff-sm/latest/metrics.json)       | Metrics file                  |
 
 ---

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "heartkit"
-version = "1.4.0"
+version = "1.5.0"
 description = "AI driven heart monitoring kit for ultra low-power wearables."
 license = "BSD-3-Clause"
 authors = ["Ambiq AI <support.aitg@ambiq.com>"]
