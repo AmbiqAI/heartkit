@@ -65,17 +65,17 @@ Given the following configuration file `configuration.json`:
 }
 ```
 
-### Defining a model in code
-
-The model can be created using the following command:
+The model can be then be created using the following command:
 
 ```bash
 heartkit --mode train --task rhythm --config config.json
 ```
 
+### Defining a model in code
+
 Alternatively, the model can be created directly in code using the following snippet:
 
-```python
+```py linenums="1"
 
 import keras
 import heartkit as hk
@@ -103,7 +103,7 @@ inputs = keras.Input(shape=(256,1), dtype="float32")
 num_classes = 5
 
 model = hk.ModelFactory.get(architecture["name"])(
-    x=inputs,
+    inputs=inputs,
     params=architecture["params"],
     num_classes=num_classes,
 )

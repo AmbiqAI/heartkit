@@ -1,7 +1,7 @@
 
 # :material-database: Datasets
 
-HeartKit provides support for a number of datasets to facilitate training the __heart-monitoring tasks__. Most of the datasets are readily available and can be downloaded and used for training and evaluation. The datasets inherit from [HKDataset](../api/datasets/dataset.md) and can be accessed either directly or through the factory singleton [`DatasetFactory`](#dataset-factory).
+HeartKit provides support for a number of datasets to facilitate training the __heart-monitoring tasks__. Most of the datasets are readily available and can be downloaded and used for training and evaluation. The datasets inherit from [HKDataset](/heartkit/api/heartkit/datasets/dataset) and can be accessed either directly or through the factory singleton [`DatasetFactory`](#dataset-factory).
 
 ## <span class="sk-h2-span">Available Datasets</span>
 
@@ -25,7 +25,7 @@ Below is a list of the currently available datasets in HeartKit. Please make sur
 
 ## <span class="sk-h2-span">Dataset Factory</span>
 
-The dataset factory, [DatasetFactory](../api/datasets/factory.md), provides a convenient way to access the datasets. The factory is a thread-safe singleton class that provides a single point of access to the datasets via the datasets' slug names. The benefit of using the factory is it allows registering new additional datasets that can then be leveraged by existing and new tasks.
+The dataset factory, `DatasetFactory`, provides a convenient way to access the datasets. The factory is a thread-safe singleton class that provides a single point of access to the datasets via the datasets' slug names. The benefit of using the factory is it allows registering new additional datasets that can then be leveraged by existing and new tasks.
 
 The dataset factory provides the following methods:
 
@@ -36,7 +36,7 @@ The dataset factory provides the following methods:
 * **hk.DatasetFactory.list**: List all available datasets
 
 
-```python
+```py linenums="1"
 
 import heartkit as hk
 

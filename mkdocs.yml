@@ -34,8 +34,7 @@ nav:
       - zoo/index.md
     - Guides:
       - guides/index.md
-    - API:
-      - api/index.md
+    - API: api/
 
   - Quickstart:
     - quickstart.md
@@ -78,11 +77,17 @@ nav:
 
   - Model Zoo:
     - zoo/index.md
-    - Denoise: zoo/denoise.md
-    - Segmentation: zoo/segmentation.md
-    - Rhythm: zoo/rhythm.md
-    - Beat: zoo/beat.md
-    # - Diagnostic: zoo/diagnostic.md
+    - ARR-2-EFF-SM: zoo/arr-2-eff-sm.md
+    - ARR-4-EFF-SM: zoo/arr-4-eff-sm.md
+    - BEAT-2-EFF-SM: zoo/beat-2-eff-sm.md
+    - BEAT-3-EFF-SM: zoo/beat-3-eff-sm.md
+    - DEN-TCN-LG: zoo/den-tcn-lg.md
+    - DEN-TCN-SM: zoo/den-tcn-sm.md
+    - DEN-PPG-TCN-SM: zoo/den-ppg-tcn-sm.md
+    - SEG-2-TCN-SM: zoo/seg-2-tcn-sm.md
+    - SEG-4-TCN-SM: zoo/seg-4-tcn-sm.md
+    - SEG-4-TCN-LG: zoo/seg-4-tcn-lg.md
+    - SEG-PPG-2-TCN-SM: zoo/seg-ppg-2-tcn-sm.md
 
   - Guides:
     - guides/index.md
@@ -98,34 +103,7 @@ nav:
       - Rhythm Demo: guides/rhythm-demo.md
       - HeartKit Demo: guides/heartkit-demo.md
 
-  - API:
-    - HeartKit: api/heartkit.md
-    - Datasets:
-      - Dataset: api/datasets/dataset.md
-      - DatasetFactory: api/datasets/factory.md
-      - Dataloader: api/datasets/dataloader.md
-      - Augmentations: api/datasets/augmentation.md
-      - Synthetic: api/datasets/synthetic.md
-      - Icentia11k: api/datasets/icentia11k.md
-      - QTDB: api/datasets/qtdb.md
-      - LUDB: api/datasets/ludb.md
-      - LSAD: api/datasets/lsad.md
-      - PTB-XL: api/datasets/ptbxl.md
-    - Models:
-      - Model: api/models/model.md
-      - ModelFactory: api/models/factory.md
-    - Tasks:
-      - Task: api/tasks/task.md
-      - TaskFactory: api/tasks/factory.md
-      - Beat: api/tasks/beat.md
-      - Denoise: api/tasks/denoise.md
-      - Foundation: api/tasks/foundation.md
-      - Segmentation: api/tasks/segmentation.md
-      - Rhythm: api/tasks/rhythm.md
-    - Backends:
-      - Backend: api/backends/backend.md
-      - EVB: api/backends/evb.md
-      - PC: api/backends/pc.md
+  - API: api/
 
 theme:
   name: material
@@ -182,6 +160,11 @@ theme:
 
 plugins:
   - search
+  - gen-files:
+      scripts:
+      - scripts/gen_ref_pages.py
+  - literate-nav:
+      nav_file: summary.md
   - mkdocstrings:
       handlers:
         python:
@@ -190,25 +173,24 @@ plugins:
           - https://numpy.org/doc/stable/objects.inv
           options:
             show_bases: false
-            show_root_heading: false
-            parameter_headings: true
-            show_root_toc_entry: false
-            show_symbol_type_toc: false
-            group_by_category: true
-            show_category_heading: true
             docstring_style: google
-            docstring_section_style: table
-            members_order: source
-            filters: ["!^_", "^__init__$"]
+            docstring_section_style: list
             line_length: 120
-            heading_level: 3
+            show_root_heading: false
+            heading_level: 2
             merge_init_into_class: true
             show_root_full_path: false
-            show_symbol_type_heading: false
+            parameter_headings: true
+            show_symbol_type_heading: true
+            group_by_category: true
+            show_category_heading: true
             modernize_annotations: true
+            members_order: source
+            filters: ["!^_", "^__init__$"]
+            separate_signature: true
             show_signature: true
-            show_signature_annotations: false
-            separate_signature: false
+            show_signature_annotations: true
+            show_docstring_attributes: true
             show_source: true
 
   - mkdocs-jupyter:

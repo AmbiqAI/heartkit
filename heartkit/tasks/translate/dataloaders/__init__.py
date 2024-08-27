@@ -1,3 +1,12 @@
+"""
+# Translate Dataloaders API
+
+Classes:
+    TranslateTaskFactory: Translate task factory
+    BidmcDataloader: BIDMC dataloader
+
+"""
+
 import neuralspot_edge as nse
 
 from ....datasets import HKDataloader

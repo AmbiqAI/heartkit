@@ -16,10 +16,10 @@ from ...models import ModelFactory
 
 
 def train(params: HKTaskParams):
-    """Train  model
+    """Train diagnostic task model with given parameters.
 
     Args:
-        params (HKTaskParams): Training parameters
+        params (HKTaskParams): Task parameters
     """
     os.makedirs(params.job_dir, exist_ok=True)
     logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "train.log")
@@ -77,7 +77,7 @@ def train(params: HKTaskParams):
         if params.architecture is None:
             raise ValueError("Model architecture must be specified")
         model = ModelFactory.get(params.architecture.name)(
-            x=inputs,
+            inputs=inputs,
             params=params.architecture.params,
             num_classes=params.num_classes,
         )

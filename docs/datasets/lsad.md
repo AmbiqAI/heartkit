@@ -10,7 +10,7 @@ Please visit [Physionet](https://physionet.org/content/ecg-arrhythmia/1.0.0/) fo
 
 !!! Example Python
 
-    ```python
+    ```py linenums="1"
     from pathlib import Path
     import neuralspot_edge as nse
     import heartkit as hk

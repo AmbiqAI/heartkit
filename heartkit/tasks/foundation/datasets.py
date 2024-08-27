@@ -17,7 +17,7 @@ def create_data_pipeline(
     buffer_size: int | None = None,
     preprocesses: list[NamedParams] | None = None,
     augmentations: list[NamedParams] | None = None,
-):
+) -> tf.data.Dataset:
     """Create a beat task data pipeline for given dataset.
 
     Args:
@@ -25,6 +25,7 @@ def create_data_pipeline(
         sampling_rate (int): Sampling rate of the dataset.
         batch_size (int): Batch size.
         buffer_size (int, optional): Buffer size for shuffling. Defaults to None.
+        preprocesses (list[NamedParams], optional): List of preprocesses. Defaults to None.
         augmentations (list[NamedParams], optional): List of augmentations. Defaults to None.
 
     Returns:
@@ -60,12 +61,8 @@ def load_train_datasets(
     """ "Create 'tf.data.Dataset' pipeline.
 
     Args:
-        ds (tf.data.Dataset): Input dataset
-        sampling_rate (int): Sampling rate
-        batch_size (int): Batch size
-        buffer_size (int | None, optional): Buffer size. Defaults to None.
-        preprocesses (list[NamedParams] | None, optional): Preprocessing pipeline. Defaults to None.
-        augmentations (list[NamedParams] | None, optional): Augmentation pipeline. Defaults to None.
+        datasets (list[HKDataset]): List of datasets.
+        params (HKTaskParams): Task parameters.
 
     Returns:
         tf.data.Dataset: Augmented dataset

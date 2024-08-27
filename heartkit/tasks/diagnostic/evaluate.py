@@ -14,10 +14,10 @@ from .datasets import load_test_dataset
 
 
 def evaluate(params: HKTaskParams):
-    """Evaluate model
+    """Evaluate diagnostic task model with given parameters.
 
     Args:
-        params (HKTaskParams): Evaluation parameters
+        params (HKTaskParams): Task parameters
     """
     os.makedirs(params.job_dir, exist_ok=True)
     logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "test.log")

@@ -1,4 +1,4 @@
-# Model Training
+# :material-chart-ppf: Model Training
 
 ## <span class="sk-h2-span">Introduction </span>
 
@@ -77,7 +77,7 @@ heartkit --task rhythm --mode train --config ./configuration.json
 
 The model can be trained using the following snippet:
 
-```python
+```py linenums="1"
 
 task = hk.TaskFactory.get("rhythm")
 

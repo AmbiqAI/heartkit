@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "heartkit"
-version = "1.4.0"
+version = "1.5.0"
 description = "AI driven heart monitoring kit for ultra low-power wearables."
 license = "BSD-3-Clause"
 authors = ["Ambiq AI <support.aitg@ambiq.com>"]
@@ -17,7 +17,7 @@ include = [
 ]
 
 [tool.poetry.scripts]
-heartkit = 'heartkit.cli:run'
+heartkit = 'heartkit.cli:main'
 
 [tool.taskipy.tasks]
 format = "ruff format"
@@ -58,7 +58,7 @@ orjson = "^3.9.13"
 physiokit = "^0.8.1"
 requests = "^2.31.0"
 argdantic = {extras = ["all"], version = "^1.0.0"}
-neuralspot-edge = "^0.1.5"
+neuralspot-edge = "~0.2.1"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.21.0"
@@ -80,6 +80,10 @@ mkdocstrings-python = "^1.8.0"
 markdown-include = "^0.8.1"
 mkdocs-exclude = "^1.0.2"
 mkdocs-jupyter = "^0.24.8"
+mkdocs-gen-files = "^0.5.0"
+mkdocs-section-index = "^0.3.9"
+mkdocs-literate-nav = "^0.6.1"
+black = "^24.8.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

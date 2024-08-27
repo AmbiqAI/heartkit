@@ -13,7 +13,17 @@ from .utils import get_serial_transport
 
 
 class RpcCommands(IntEnum):
-    """RPC commands"""
+    """RPC commands
+
+    These commands are used to send data to the EVB.
+
+    Attributes:
+        SEND_MODEL (int): Send model to EVB
+        SEND_INPUT (int): Send input data to EVB
+        FETCH_OUTPUT (int): Fetch output data from EVB
+        FETCH_STATUS (int): Fetch status from EVB
+        PERFORM_INFERENCE (int): Perform inference on
+    """
 
     SEND_MODEL = 0
     SEND_INPUT = 1

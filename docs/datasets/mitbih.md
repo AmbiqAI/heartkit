@@ -23,7 +23,7 @@ This database is available for commercial use. [Open Data Commons Attribution Li
 
 !!! Example Python
 
-    ```python
+    ```py linenums="1"
     from pathlib import Path
     import heartkit as hk
 

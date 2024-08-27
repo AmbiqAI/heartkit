@@ -1,4 +1,4 @@
-# Download Datasets
+# :material-download: Download Datasets
 
 ## <span class="sk-h2-span">Introduction</span>
 
@@ -18,7 +18,7 @@ heartkit -m download -c '{"datasets": [{"name": "ptbxl", "parameters": {"path": 
 
 In code, the `download` method of a dataset can be used to download the dataset.
 
-```python
+```py linenums="1"
 import heartkit as hk
 
 ds = hk.DatasetFactory.get("ptbxl")(path="./datasets/ptbxl")
@@ -28,7 +28,7 @@ ds.download()
 
 Similarly, to download multiple datasets, the `download` method of a task can be used.
 
-```python
+```py linenums="1"
 import heartkit as hk
 
 task = hk.TaskFactory.get("rhythm")

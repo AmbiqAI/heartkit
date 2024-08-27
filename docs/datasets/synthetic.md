@@ -18,7 +18,7 @@ A PPG synthetic dataset generated using PhysioKit. The dataset enables the gener
 
 !!! Example Python
 
-    ```python
+    ```py linenums="1"
     import heartkit as hk
 
     ds = hk.DatasetFactory.get('ecg-synthetic')(

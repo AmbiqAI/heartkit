@@ -130,7 +130,7 @@ For example, you can create a custom task, train it, evaluate its performance on
 
 !!! Example
 
-    ```python
+    ```py linenums="1"
 
     import heartkit as hk
 

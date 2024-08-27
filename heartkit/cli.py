@@ -1,3 +1,19 @@
+"""
+# :octicons-terminal-24: HeartKit CLI API
+
+The HeartKit CLI provides a command-line interface to interact with the HeartKit library.
+
+```bash
+$ heartkit --help
+
+HeartKit CLI Options:
+    --task [segmentation, rhythm, beat, denoise]
+    --mode [download, feature, train, evaluate, export, demo]
+    --config ["./path/to/config.json", or '{"raw: "json"}']
+```
+
+"""
+
 import os
 from typing import Type, TypeVar
 
@@ -8,13 +24,11 @@ import neuralspot_edge as nse
 from .defines import HKMode, HKTaskParams
 from .tasks import TaskFactory
 
+B = TypeVar("B", bound=BaseModel)
 
 logger = nse.utils.setup_logger(__name__)
 
-cli = ArgParser()
-
-
-B = TypeVar("B", bound=BaseModel)
+parser = ArgParser()
 
 
 def parse_content(cls: Type[B], content: str) -> B:
@@ -34,13 +48,19 @@ def parse_content(cls: Type[B], content: str) -> B:
     return cls.model_validate_json(json_data=content)
 
 
-@cli.command(name="run")
-def _run(
+@parser.command()
+def run(
     mode: HKMode = ArgField("-m", description="Mode", default=HKMode.train),
     task: str = ArgField("-t", description="Task", default="rhythm"),
     config: str = ArgField("-c", description="File path or JSON content", default="{}"),
 ):
-    """HeartKit CLI"""
+    """HeartKit CLI entry point.
+
+    Args:
+        mode (HKMode, optional): Mode. Defaults to HKMode.train.
+        task (str, optional): Task. Defaults to "rhythm".
+        config (str, optional): File path or JSON content. Defaults to "{}".
+    """
 
     logger.info(f"#STARTED MODE={mode} TASK={task}")
 
@@ -74,10 +94,9 @@ def _run(
     logger.info(f"#FINISHED MODE={mode} TASK={task}")
 
 
-def run():
-    """Run CLI."""
-    cli()
+def main():
+    parser()
 
 
 if __name__ == "__main__":
-    run()
+    main()

@@ -8,7 +8,7 @@ Please visit [Physionet](https://doi.org/10.13026/C24K53) for more details.
 
 !!! Example Python
 
-    ```python
+    ```py linenums="1"
     from pathlib import Path
     import neuralspot_edge as nse
     import heartkit as hk

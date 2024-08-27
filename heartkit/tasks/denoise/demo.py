@@ -14,10 +14,10 @@ from ...utils import setup_plotting
 
 
 def demo(params: HKTaskParams):
-    """Run segmentation demo.
+    """Run denoise demo.
 
     Args:
-        params (HKTaskParams): Demo parameters
+        params (HKTaskParams): Task parameters
     """
     logger = nse.utils.setup_logger(__name__, level=params.verbose)
 

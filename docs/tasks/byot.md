@@ -6,9 +6,9 @@ For an in-depth guide check out the [BYOT Notebook Guide](../guides/byot.ipynb).
 
 ## <span class="sk-h2-span">How it Works</span>
 
-1. **Create a Task**: Define a new task that inherits from the [HKTask](../api/tasks/task.md) base class and implements the required methods: `train`, `evaluate`, `export`, and `demo`.
+1. **Create a Task**: Define a new task that inherits from the [HKTask](/heartkit/api/heartkit/tasks/task) base class and implements the required methods: `train`, `evaluate`, `export`, and `demo`.
 
-    ```python
+    ```py linenums="1"
     import heartkit as hk
 
     class CustomTask(hk.HKTask):
@@ -31,16 +31,16 @@ For an in-depth guide check out the [BYOT Notebook Guide](../guides/byot.ipynb).
 
     ```
 
-2. **Register the Task**: Register the new task with the [TaskFactory](../api/tasks/factory.md) by calling the `register` method. This method takes the task name and the task class as arguments.
+2. **Register the Task**: Register the new task with the `TaskFactory` by calling the `register` method. This method takes the task name and the task class as arguments.
 
-    ```python
+    ```py linenums="1"
     # Register the custom task
     hk.TaskFactory.register("custom", CustomTask)
     ```
 
 3. **Use the Task**: The new task can now be used with the `TaskFactory` to perform various operations such as training, evaluating, and deploying models.
 
-    ```python
+    ```py linenums="1"
     # Define task parameters
     params = hk.HKTrainParams(...)
 

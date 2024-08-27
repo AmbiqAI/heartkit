@@ -10,7 +10,7 @@ Please visit [Physionet](https://physionet.org/content/ptb-xl/1.0.3/) for more d
 
 !!! Example Python
 
-    ```python
+    ```py linenums="1"
     from pathlib import Path
     import neuralspot_edge as nse
     import heartkit as hk

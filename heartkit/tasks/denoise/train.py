@@ -16,7 +16,7 @@ def train(params: HKTaskParams):
     """Train model for denoise task with given parameters.
 
     Args:
-        params (HKTaskParams): Training parameters
+        params (HKTaskParams): Task parameters
     """
     os.makedirs(params.job_dir, exist_ok=True)
     logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "train.log")
@@ -59,7 +59,7 @@ def train(params: HKTaskParams):
     else:
         logger.debug("Creating model from scratch")
         model = ModelFactory.get(params.architecture.name)(
-            x=inputs,
+            inputs=inputs,
             params=params.architecture.params,
             num_classes=params.num_classes,
         )

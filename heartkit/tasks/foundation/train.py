@@ -51,7 +51,7 @@ def train(params: HKTaskParams):
     # Create encoder
     encoder_input = keras.Input(shape=feat_shape, dtype="float32")
     encoder = ModelFactory.get(params.architecture.name)(
-        x=encoder_input,
+        inputs=encoder_input,
         params=params.architecture.params,
         num_classes=None,
     )

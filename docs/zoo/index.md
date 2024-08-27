@@ -1,42 +1,48 @@
----
-hide:
-  - toc
----
-
 # Model Zoo
 
 A number of pre-trained models are available for download to use in your own project. These models are trained on the datasets listed below and are available in Keras and TensorFlow Lite flatbuffer formats.
 
-## <span class="sk-h2-span">[Signal Denoising Task](./denoise.md)</span>
+## <span class="sk-h2-span">[Signal Denoising Task](../tasks/denoise.md)</span>
 
 The following table provides the latest performance and accuracy results for denoising models.
 
---8<-- "assets/zoo/denoise/denoise-model-zoo-table.md"
+| NAME                | DATASET           | FS    | DURATION | MODEL          | PARAMS | FLOPS   | METRIC      |
+| ------------------- | ----------------- | ----- | -------- | -------------- | ------ | ------- | ----------- |
+| __DEN-TCN-SM__      | Synthetic, PTB-XL | 100Hz | 2.5s     | TCN            | 3.3K   | 1.0M    | 18.1 SNR    |
+| __DEN-TCN-LG__      | Synthetic, PTB-XL | 100Hz | 2.5s     | TCN            | 6.3K   | 1.8M    | 19.5 SNR    |
+| __DEN-PPG-TCN-SM__  | Synthetic         | 100Hz | 2.5s     | TCN            | 3.5K   | 1.1M    | 92.1% COS   |
 
 
-## <span class="sk-h2-span">[Signal Segmentation Task](./segmentation.md)</span>
+## <span class="sk-h2-span">[Signal Segmentation Task](./tasks/segmentation.md)</span>
 
 The following table provides the latest performance and accuracy results for ECG segmentation models.
 
---8<-- "assets/zoo/segmentation/segmentation-model-zoo-table.md"
+| NAME                 | DATASET                  | FS    | DURATION | # CLASSES | MODEL         | PARAMS | FLOPS   | METRIC    |
+| -------------------- | ------------------------ | ----- | -------- | --------- | ------------- | ------ | ------- | --------- |
+| __SEG-2-TCN-SM__     | LUDB, Synthetic          | 100Hz | 2.5s     | 2         | TCN           | 2K     | 0.42M   | 96.6% F1  |
+| __SEG-4-TCN-SM__     | LUDB, Synthetic          | 100Hz | 2.5s     | 4         | TCN           | 7K     | 2.1M    | 86.3% F1  |
+| __SEG-4-TCN-LG__     | LUDB, Synthetic          | 100Hz | 2.5s     | 4         | TCN           | 10K    | 3.9M    | 89.4% F1  |
+| __SEG-PPG-2-TCN-SM__ | Synthetic                | 100Hz | 2.5s     | 2         | TCN           | 4K     | 1.43M   | 98.6% F1  |
 
-## <span class="sk-h2-span">[Rhythm Classification Task](./rhythm.md)</span>
+
+## <span class="sk-h2-span">[Rhythm Classification Task](./tasks/rhythm.md)</span>
 
 The following table provides the latest performance and accuracy results for rhythm classification models.
 
---8<-- "assets/zoo/rhythm/rhythm-model-zoo-table.md"
+| NAME             | DATASET                  | FS    | DURATION | # CLASSES | MODEL          | PARAMS | FLOPS   | METRIC   |
+| ---------------- | ------------------------ | ----- | -------- | --------- | -------------- | ------ | ------- | -------- |
+| __ARR-2-EFF-SM__ | Icentia11K, PTB-XL, LSAD | 100Hz | 5s       | 2         | EfficientNetV2 | 18K    |  1.2M   | 99.5% F1 |
+| __ARR-4-EFF-SM__ | LSAD                     | 100Hz | 5s       | 4         | EfficientNetV2 | 27K    |  1.6M   | 95.9% F1 |
 
-## <span class="sk-h2-span">[Beat Classification Task](./beat.md)</span>
+
+## <span class="sk-h2-span">[Beat Classification Task](./tasks/beat.md)</span>
 
 The following table provides the latest performance and accuracy results for beat classification models.
 
---8<-- "assets/zoo/beat/beat-model-zoo-table.md"
-
-<!-- ## <span class="sk-h2-span">Multi-Label Diagnostic Classification</span>
-
-The following table provides the latest performance and accuracy results for multi-label diagnostic classification models. Additional result details can be found in [Zoo → Diagnostic](./diagnostic.md).
-
---8<-- "assets/zoo/diagnostic/diagnostic-model-zoo-table.md" -->
+| NAME            | DATASET    | FS    | DURATION | # CLASSES | MODEL          | PARAMS | FLOPS   | METRIC   |
+| --------------- | ---------- | ----- | -------- | --------- | -------------- | ------ | ------- | -------- |
+| __BC-2-EFF-SM__ | Icentia11k | 100Hz | 5s       | 2         | EfficientNetV2 | 28K    | 1.8M    | 97.7% F1 |
+| __BC-3-EFF-SM__ | Icentia11k | 100Hz | 5s       | 3         | EfficientNetV2 | 41K    | 2.1M    | 92.0% F1 |
 
 
 ## <span class="sk-h2-span"> Reproducing Results </span>

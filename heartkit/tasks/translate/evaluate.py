@@ -11,10 +11,10 @@ from .datasets import load_test_dataset
 
 
 def evaluate(params: HKTaskParams):
-    """Evaluate model
+    """Evaluate translation task model with given parameters.
 
     Args:
-        params (HKTaskParams): Evaluation parameters
+        params (HKTaskParams): Task parameters
     """
     logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "test.log")
 

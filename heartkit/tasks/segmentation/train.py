@@ -77,7 +77,7 @@ def train(params: HKTaskParams):
     else:
         logger.debug("Creating model from scratch")
         model = ModelFactory.get(params.architecture.name)(
-            x=inputs,
+            inputs=inputs,
             params=params.architecture.params,
             num_classes=params.num_classes,
         )
