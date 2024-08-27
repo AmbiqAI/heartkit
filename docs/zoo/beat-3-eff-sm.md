@@ -1,14 +1,16 @@
-# BEAT-3-EFF-SM
+# 3-Clas Beat Classification (BEAT-3-EFF-SM)
 
 ## <span class="sk-h2-span">Overview</span>
 
-The following table provides the latest pre-trained models for 3-class beat classification. Below we also provide additional details including training configuration, accuracy metrics, and hardware performance results for the models.
+The following table provides the latest pre-trained model for 3-class beat classification. Below we also provide additional details including training configuration, performance metrics, and downloads.
 
 --8<-- "assets/zoo/beat-3-eff-sm/results.md"
 
 ---
 
 ## <span class="sk-h2-span">Input</span>
+
+The model is trained on 5-second, raw ECG frames sampled at 100 Hz.
 
 - **Sensor**: ECG
 - **Location**: Wrist
@@ -19,7 +21,7 @@ The following table provides the latest pre-trained models for 3-class beat clas
 
 ## <span class="sk-h2-span">Class Mapping</span>
 
-Distinguish between normal sinus rhythm (NSR), premature/ectopic atrial contractions (PAC), and premature/ectopic ventricular contractions (PVC).
+The model is able to distinguish between normal sinus rhythm (NSR), premature/ectopic atrial contractions (PAC), and premature/ectopic ventricular contractions (PVC). The class mapping is as follows:
 
 | Base Class    | Target Class | Label     |
 | ------------- | ------------ | --------- |

@@ -1,8 +1,8 @@
-# SEG-4-TCN-SM
+# 4-Stage ECG Segmentation (SEG-4-TCN-SM)
 
 ## <span class="sk-h2-span">Overview</span>
 
-The following table provides the latest pre-trained models for 4-class ECG segmentation. Below we also provide additional details including training configuration, accuracy metrics, and hardware performance results for the models.
+The following table provides the latest pre-trained model for 4-class ECG segmentation. Below we also provide additional details including training configuration, performance metrics, and downloads.
 
 --8<-- "assets/zoo/seg-4-tcn-sm/results.md"
 

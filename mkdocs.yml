@@ -87,6 +87,7 @@ nav:
     - SEG-2-TCN-SM: zoo/seg-2-tcn-sm.md
     - SEG-4-TCN-SM: zoo/seg-4-tcn-sm.md
     - SEG-4-TCN-LG: zoo/seg-4-tcn-lg.md
+    - SEG-PPG-2-TCN-SM: zoo/seg-ppg-2-tcn-sm.md
 
   - Guides:
     - guides/index.md

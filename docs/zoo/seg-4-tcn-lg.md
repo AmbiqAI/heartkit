@@ -1,14 +1,16 @@
-# SEG-4-TCN-LG
+# 4-Stage ECG Segmentation (SEG-4-TCN-LG)
 
 ## <span class="sk-h2-span">Overview</span>
 
-The following table provides the latest pre-trained models for 4-class ECG segmentation. Below we also provide additional details including training configuration, accuracy metrics, and hardware performance results for the models.
+The following table provides the latest pre-trained model for 4-class ECG segmentation. Below we also provide additional details including training configuration, performance metrics, and downloads.
 
 --8<-- "assets/zoo/seg-4-tcn-lg/results.md"
 
 ---
 
 ### <span class="sk-h2-span">Input</span>
+
+The model is trained on 2.5-second, raw ECG frames sampled at 100 Hz.
 
 - **Sensor**: ECG
 - **Location**: Wrist
@@ -19,7 +21,7 @@ The following table provides the latest pre-trained models for 4-class ECG segme
 
 ### <span class="sk-h2-span">Class Mapping</span>
 
-Identify each of the P-wave, QRS complex, and T-wave.
+The model is able to segment ECG signals into four classes: P-wave, QRS complex, T-wave, and none. The class mapping is as follows:
 
 | Base Class       | Target Class | Label        |
 | ---------------- | ------------ | ------------ |

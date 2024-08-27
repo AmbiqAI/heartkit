@@ -1,4 +1,4 @@
-# Python Usage
+# :simple-python: Python Usage
 
 __HeartKit__ python package allows for more fine-grained control and customization. You can use the package to train, evaluate, and deploy models for both built-in taks and custom tasks. In addition, custom datasets and model architectures can be created and registered with corresponding factories.
 
@@ -39,7 +39,7 @@ num_classes = 4
 model_params = dict(...)
 
 model = hk.ModelFactory.get('tcn')(
-    x=inputs,
+    inputs=inputs,
     params=model_params,
     num_classes=num_classes
 )

@@ -1,4 +1,4 @@
-# Configuration Parameters
+# :material-code-json: Configuration Parameters
 
 For each mode, common configuration parameters, [HKTaskParams](#hktaskparams), are required to run the task. These parameters are used to define the task, datasets, model, and other settings. Rather than defining separate configuration files for each mode, a single configuration object is used to simplify configuration files and heavy re-use of parameters between modes.
 

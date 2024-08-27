@@ -1,4 +1,4 @@
-# CLI Usage
+# :octicons-terminal-24: HeartKit CLI
 
 <div class="termy">
 
@@ -102,7 +102,7 @@ The [train](../modes/train.md) command is used to train a HeartKit model for the
 
 ## [Evaluate](../modes/evaluate.md)
 
-The [evaluate](../modes/evaluate.md) command will test the performance of the model on the reserved test sets for the specified `task`. The routine can be customized via the configuration file.Please refer to [HKTaskParams](../modes/configuration.md#hktaskparams) to see supported options.
+The [evaluate](../modes/evaluate.md) command will test the performance of the model on the reserved test sets for the specified `task`. The routine can be customized via the configuration file. Please refer to [HKTaskParams](../modes/configuration.md#hktaskparams) to see supported options.
 
 !!! example "CLI"
 

@@ -39,7 +39,7 @@ The model factory can be extended to include custom models. This is useful when 
     ```py linenums="1"
     inputs = keras.Input(shape=(100,))
     model = hk.ModelFactory.get("custom-model")(
-        x=inputs,
+        inputs=inputs,
         params={
             "layers": [
                 {"units": 64, "activation": "relu"},

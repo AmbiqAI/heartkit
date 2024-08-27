@@ -1,18 +1,16 @@
-# SEG-2-TCN-SM
+# 2-Stage ECG Segmentation (SEG-2-TCN-SM)
 
 ## <span class="sk-h2-span">Overview</span>
 
-The following table provides the latest pre-trained models for 2-stage ECG segmentation. Below we also provide additional details including training configuration, accuracy metrics, and hardware performance results for the models.
+The following table provides the latest pre-trained model for 2-stage ECG segmentation. Below we also provide additional details including training configuration, performance metrics, and downloads.
 
 --8<-- "assets/zoo/seg-2-tcn-sm/results.md"
 
 ---
 
-## <span class="sk-h2-span">Model Details</span>
-
-The model is a 2-class ECG segmentation model that uses a Temporal Convolutional Network (TCN) architecture. The model is trained on raw ECG data and is able to delineate QRS complexes.
-
 ## <span class="sk-h2-span">Input</span>
+
+The model is trained on 2.5-second, raw ECG frames sampled at 100 Hz.
 
 - **Sensor**: ECG
 - **Location**: Wrist
@@ -23,7 +21,7 @@ The model is a 2-class ECG segmentation model that uses a Temporal Convolutional
 
 ## <span class="sk-h2-span">Class Mapping</span>
 
-Detect only QRS complexes
+The model is able to segment ECG signals into two classes: QRS complexes and none. The class mapping is as follows:
 
 | Base Class    | Target Class | Label     |
 | ------------- | ------------ | --------- |
@@ -43,7 +41,7 @@ The model is trained on the following datasets:
 
 ## <span class="sk-h2-span">Model Performance</span>
 
-The confusion matrix for the segmentation model is depicted below.
+The confusion matrix for the model is depicted below.
 
 <div class="sk-plotly-graph-div">
 --8<-- "assets/zoo/seg-2-tcn-sm/confusion_matrix_test.html"

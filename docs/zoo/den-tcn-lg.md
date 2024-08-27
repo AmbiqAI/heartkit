@@ -1,15 +1,16 @@
-# DEN-TCN-LG
+# ECG_based Denoising (DEN-TCN-LG)
 
 ## <span class="sk-h2-span">Overview</span>
 
-The following table provides the latest pre-trained models for ECG-based denoising. Below we also provide additional details including training configuration, accuracy metrics, and hardware performance results for the models.
-
+The following table provides the latest pre-trained model for ECG-based denoising. Below we also provide additional details including training configuration, performance metrics, and downloads.
 
 --8<-- "assets/zoo/den-tcn-lg/results.md"
 
 ---
 
 ## <span class="sk-h2-span">Input</span>
+
+The model is trained on 5-second, raw ECG frames sampled at 100 Hz.
 
 - **Sensor**: ECG
 - **Location**: Wrist

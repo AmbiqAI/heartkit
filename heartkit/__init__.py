@@ -6,7 +6,6 @@ The kit provides a variety of datasets, efficient model architectures, and heart
 In addition, HeartKit provides optimization and deployment routines to generate efficient inference models.
 Finally, the kit includes a number of pre-trained models and task-level demos to showcase the capabilities.
 
-
 """
 
 import os

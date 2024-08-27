@@ -1,4 +1,4 @@
-# Task-Level Demo
+# :material-hexagon-multiple: Task-Level Demo
 
 ## <span class="sk-h2-span">Introduction </span>
 
@@ -47,7 +47,6 @@ subgraph CF["Inference Engine"]
 end
 F ==> G
 ```
-
 
 ---
 

@@ -1,4 +1,4 @@
-# Tasks
+# :simple-task: Tasks
 
 ## <span class="sk-h2-span">Introduction</span>
 
@@ -8,6 +8,7 @@ HeartKit provides several built-in __heart-monitoring__ tasks. Each task is desi
   ![Task Diagram](../assets/tasks/heartkit-task-diagram.svg){ width="600" }
 </figure>
 
+---
 
 ## <span class="sk-h2-span">Available Tasks</span>
 
@@ -34,6 +35,8 @@ Multi-label diagnostic classification is the process of assigning diagnostic lab
 ### <span class="sk-h2-span">[Bring-Your-Own-Task (BYOT)](./byot.md)</span>
 
 [Bring-Your-Own-Task (BYOT)](./byot.md) is a feature that allows users to create custom tasks by extending the [HKTask](/heartkit/api/heartkit/tasks/task) base class and registering it with the `TaskFactory`. This feature is useful for addressing specific use cases that are not covered by the built-in tasks.
+
+---
 
 ## <span class="sk-h2-span">Task Factory</span>
 

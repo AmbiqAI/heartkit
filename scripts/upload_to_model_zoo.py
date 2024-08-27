@@ -58,14 +58,18 @@ def upload_to_model_zoo(
     # Create an S3 client
     s3 = boto3.client("s3")
 
-    dst_prefix = f"{adk}/{task}/{name}/{version}"
-    # Upload all assets
+    # Verify all assets exist
     for asset in assets:
         file_path = src / asset
         if not file_path.exists():
             logger.error(f"Asset {file_path} not found")
-            continue
+            return -1
         # END IF
+
+    dst_prefix = f"{adk}/{task}/{name}/{version}"
+    # Upload all assets
+    for asset in assets:
+        file_path = src / asset
         dst_key = f"{dst_prefix}/{asset}"
         logger.info(f"Uploading s3://{bucket}/{dst_key}")
         if not dryrun:
@@ -78,18 +82,23 @@ if __name__ == "__main__":
     parser()
 
 """
+# Rhythm models
 python ./scripts/upload_to_model_zoo.py -t rhythm -s ./results/arr-2-eff-sm -n arr-2-eff-sm -v v1.0
 python ./scripts/upload_to_model_zoo.py -t rhyhtm -s ./results/arr-4-eff-sm -n arr-4-eff-sm -v v1.0
 
+# Beat models
 python ./scripts/upload_to_model_zoo.py -t beat -s ./results/beat-2-eff-sm -n beat-2-eff-sm -v v1.0
 python ./scripts/upload_to_model_zoo.py -t beat -s ./results/beat-3-eff-sm -n beat-3-eff-sm -v v1.0
 
+# Denoise models
 python ./scripts/upload_to_model_zoo.py -t denoise -s ./results/den-ppg-tcn-sm -n den-ppg-tcn-sm -v v1.0
 python ./scripts/upload_to_model_zoo.py -t denoise -s ./results/den-tcn-sm -n den-tcn-sm -v v1.0
 python ./scripts/upload_to_model_zoo.py -t denoise -s ./results/den-tcn-lg -n den-tcn-lg -v v1.0
 
+# Foundation models
 python ./scripts/upload_to_model_zoo.py -t foundation -s ./results/fnd-eff-sm -n fnd-eff-sm -v v1.0
 
+# Segmentation models
 python ./scripts/upload_to_model_zoo.py -t segmentation -s ./results/seg-2-tcn-sm -n seg-2-tcn-sm -v v1.0
 python ./scripts/upload_to_model_zoo.py -t segmentation -s ./results/seg-4-tcn-sm -n seg-4-tcn-sm -v v1.0
 python ./scripts/upload_to_model_zoo.py -t segmentation -s ./results/seg-4-tcn-lg -n seg-4-tcn-lg -v v1.0

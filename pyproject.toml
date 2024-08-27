@@ -17,7 +17,7 @@ include = [
 ]
 
 [tool.poetry.scripts]
-heartkit = 'heartkit.cli:run'
+heartkit = 'heartkit.cli:main'
 
 [tool.taskipy.tasks]
 format = "ruff format"
@@ -58,7 +58,7 @@ orjson = "^3.9.13"
 physiokit = "^0.8.1"
 requests = "^2.31.0"
 argdantic = {extras = ["all"], version = "^1.0.0"}
-neuralspot-edge = "^0.1.5"
+neuralspot-edge = "~0.2.1"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.21.0"

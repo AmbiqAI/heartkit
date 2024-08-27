@@ -1,8 +1,9 @@
-# ARR-2-EFF-SM
+# 2-Class Arrhythmia Classification (ARR-2-EFF-SM)
+
 
 ## <span class="sk-h2-span">Overview</span>
 
-The following table provides the latest pre-trained models for 2-class arrhythmia classification. Below we also provide additional details including training configuration, accuracy metrics, and hardware performance results for the models.
+The following table provides the latest pre-trained model for 2-class arrhythmia classification. Below we also provide additional details including training configuration, performance metrics, and downloads.
 
 --8<-- "assets/zoo/arr-2-eff-sm/results.md"
 
@@ -17,7 +18,7 @@ The following table provides the latest pre-trained models for 2-class arrhythmi
 
 ## <span class="sk-h2-span">Class Mapping</span>
 
-The model is trained on raw ECG data and is able to discern normal sinus rhythm (NSR) from atrial fibrillation (AFIB) and atrial flutter (AFL).
+The model is trained on raw ECG data and is able to discern normal sinus rhythm (NSR) from atrial fibrillation (AFIB) and atrial flutter (AFL). The class mapping is as follows:
 
 
 | Base Class    | Target Class | Label     |
@@ -30,7 +31,6 @@ The model is trained on raw ECG data and is able to discern normal sinus rhythm 
 
 The model is trained on the following datasets:
 
-- **[Icentia11k](../datasets/icentia11k.md)**
 - **[PTB-XL](../datasets/ptbxl.md)**
 - **[LSAD](../datasets/lsad.md)**
 
@@ -38,7 +38,7 @@ The model is trained on the following datasets:
 
 ## <span class="sk-h2-span">Model Performance</span>
 
-The confusion matrix for the model is depicted below.
+The confusion matrix on the test set for the model is depicted below.
 
 <div class="sk-plotly-graph-div">
 --8<-- "assets/zoo/arr-2-eff-sm/confusion_matrix_test.html"

@@ -1,14 +1,16 @@
-# ARR-4-EFF-SM
+# 4-Class Arrhythmia Classification (ARR-4-EFF-SM)
 
 ## <span class="sk-h2-span">Overview</span>
 
-The following table provides the latest pre-trained models for 4-class arrhythmia classification. Below we also provide additional details including training configuration, accuracy metrics, and hardware performance results for the models.
+The following table provides the latest pre-trained model for 4-class arrhythmia classification. Below we also provide additional details including training configuration, performance metrics, and downloads.
 
 --8<-- "assets/zoo/rhythm/rhythm-model-zoo-table.md"
 
 ---
 
 ## <span class="sk-h2-span">Input</span>
+
+The model is trained on 5-second, raw ECG frames sampled at 100 Hz.
 
 - **Sensor**: ECG
 - **Location**: Wrist
@@ -19,7 +21,7 @@ The following table provides the latest pre-trained models for 4-class arrhythmi
 
 ## <span class="sk-h2-span">Class Mapping</span>
 
-Identify rhythm into one of four categories: SR, SBRAD, AFIB, GSVT.
+The model is trained on raw ECG data and is able to discern normal sinus rhythm (SR) from sinus bradycardia (SBRAD), atrial fibrillation (AFIB), atrial flutter (AFL), supraventricular tachycardia (STACH), and general supraventricular tachycardia (GSVT). The class mapping is as follows:
 
 | Base Class     | Target Class | Label                     |
 | -------------- | ------------ | ------------------------- |

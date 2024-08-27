@@ -17,11 +17,12 @@ The following table provides the latest performance and accuracy results for den
 
 The following table provides the latest performance and accuracy results for ECG segmentation models.
 
-| NAME                | DATASET           | FS    | DURATION | MODEL          | PARAMS | FLOPS   | METRIC      |
-| ------------------- | ----------------- | ----- | -------- | -------------- | ------ | ------- | ----------- |
-| __SEG-2-TCN-SM__ | LUDB, Synthetic          | 100Hz | 2.5s     | 2         | TCN           | 2K     | 0.42M   | 96.6% F1  |
-| __SEG-4-TCN-SM__ | LUDB, Synthetic          | 100Hz | 2.5s     | 4         | TCN           | 7K     | 2.1M    | 86.3% F1  |
-| __SEG-4-TCN-LG__ | LUDB, Synthetic          | 100Hz | 2.5s     | 4         | TCN           | 10K    | 3.9M    | 89.4% F1  |
+| NAME                 | DATASET                  | FS    | DURATION | # CLASSES | MODEL         | PARAMS | FLOPS   | METRIC    |
+| -------------------- | ------------------------ | ----- | -------- | --------- | ------------- | ------ | ------- | --------- |
+| __SEG-2-TCN-SM__     | LUDB, Synthetic          | 100Hz | 2.5s     | 2         | TCN           | 2K     | 0.42M   | 96.6% F1  |
+| __SEG-4-TCN-SM__     | LUDB, Synthetic          | 100Hz | 2.5s     | 4         | TCN           | 7K     | 2.1M    | 86.3% F1  |
+| __SEG-4-TCN-LG__     | LUDB, Synthetic          | 100Hz | 2.5s     | 4         | TCN           | 10K    | 3.9M    | 89.4% F1  |
+| __SEG-PPG-2-TCN-SM__ | Synthetic                | 100Hz | 2.5s     | 2         | TCN           | 4K     | 1.43M   | 98.6% F1  |
 
 
 ## <span class="sk-h2-span">[Rhythm Classification Task](./tasks/rhythm.md)</span>
@@ -38,8 +39,8 @@ The following table provides the latest performance and accuracy results for rhy
 
 The following table provides the latest performance and accuracy results for beat classification models.
 
-| NAME             | DATASET                  | FS    | DURATION | # CLASSES | MODEL          | PARAMS | FLOPS   | METRIC   |
-| ---------------- | ------------------------ | ----- | -------- | --------- | -------------- | ------ | ------- | -------- |
+| NAME            | DATASET    | FS    | DURATION | # CLASSES | MODEL          | PARAMS | FLOPS   | METRIC   |
+| --------------- | ---------- | ----- | -------- | --------- | -------------- | ------ | ------- | -------- |
 | __BC-2-EFF-SM__ | Icentia11k | 100Hz | 5s       | 2         | EfficientNetV2 | 28K    | 1.8M    | 97.7% F1 |
 | __BC-3-EFF-SM__ | Icentia11k | 100Hz | 5s       | 3         | EfficientNetV2 | 41K    | 2.1M    | 92.0% F1 |
 

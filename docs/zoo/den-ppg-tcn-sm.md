@@ -1,14 +1,16 @@
-# DEN-PPG-TCN-SM
+# PPG-Based Denoising (DEN-PPG-TCN-SM)
 
 ## <span class="sk-h2-span">Overview</span>
 
-The following table provides the latest pre-trained models for PPG denoising. Below we also provide additional details including training configuration, accuracy metrics, and hardware performance results for the models.
+The following table provides the latest pre-trained model for PPG-based denoising. Below we also provide additional details including training configuration, performance metrics, and downloads.
 
 --8<-- "assets/zoo/den-ppg-tcn-sm/results.md"
 
 ---
 
 ## <span class="sk-h2-span">Input</span>
+
+The model is trained on 5-second, raw PPG frames sampled at 100 Hz.
 
 - **Sensor**: PPG
 - **Location**: Wrist
@@ -26,7 +28,6 @@ The model is trained on synthetic PPG data.
 ---
 
 ## <span class="sk-h2-span">Model Performance</span>
-
 
 The following table provides the performance metrics for the PPG denoising model.
 

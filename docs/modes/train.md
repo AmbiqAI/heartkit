@@ -1,4 +1,4 @@
-# Model Training
+# :material-chart-ppf: Model Training
 
 ## <span class="sk-h2-span">Introduction </span>
 

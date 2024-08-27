@@ -28,7 +28,7 @@ B = TypeVar("B", bound=BaseModel)
 
 logger = nse.utils.setup_logger(__name__)
 
-cli = ArgParser()
+parser = ArgParser()
 
 
 def parse_content(cls: Type[B], content: str) -> B:
@@ -48,7 +48,7 @@ def parse_content(cls: Type[B], content: str) -> B:
     return cls.model_validate_json(json_data=content)
 
 
-@cli.command(name="run")
+@parser.command()
 def run(
     mode: HKMode = ArgField("-m", description="Mode", default=HKMode.train),
     task: str = ArgField("-t", description="Task", default="rhythm"),
@@ -94,5 +94,9 @@ def run(
     logger.info(f"#FINISHED MODE={mode} TASK={task}")
 
 
+def main():
+    parser()
+
+
 if __name__ == "__main__":
-    cli()
+    main()
