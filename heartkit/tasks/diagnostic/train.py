@@ -61,7 +61,7 @@ def train(params: HKTaskParams):
     if params.class_weights == "balanced":
         n_samples = np.sum(y_true)
         class_weights = n_samples / (params.num_classes * np.sum(y_true, axis=0))
-        class_weights = (class_weights + class_weights.mean()) / 2  # Smooth out
+        # class_weights = (class_weights + class_weights.mean()) / 2  # Smooth out
         class_weights = class_weights.tolist()
     # END IF
     logger.debug(f"Class weights: {class_weights}")
@@ -94,7 +94,9 @@ def train(params: HKTaskParams):
         m_mul=0.5,
     )
     optimizer = keras.optimizers.Adam(scheduler)
-    loss = keras.losses.BinaryCrossentropy(from_logits=True, label_smoothing=params.label_smoothing)
+    loss = keras.losses.CategoricalFocalCrossentropy(
+        alpha=class_weights, from_logits=params.use_logits, label_smoothing=params.label_smoothing
+    )
 
     metrics = [
         keras.metrics.BinaryAccuracy(name="acc"),
@@ -167,8 +169,11 @@ def train(params: HKTaskParams):
     y_pred = model.predict(val_ds)
     # y_pred = y_pred >= params.threshold
 
+    y_pred = np.argmax(y_pred, axis=-1)
+    y_true = np.argmax(y_true, axis=-1)
+
     cm_path = params.job_dir / "confusion_matrix.png"
-    nse.plotting.multilabel_confusion_matrix_plot(
+    nse.plotting.confusion_matrix_plot(
         y_true=y_true,
         y_pred=y_pred,
         labels=class_names,

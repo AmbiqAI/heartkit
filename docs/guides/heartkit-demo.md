@@ -58,7 +58,7 @@ The following items are needed to run the HeartKit demo:
 
 ### Flash Firmware
 
-If using a fresh Apollo 4 EVB, the EVB will need to be flashed with the HeartKit firmware. The firmware can be found in the `./evb` directory. The firmware is compiled using the Arm GNU Toolchain and flashed using the Segger J-Link.
+If using a fresh Apollo 4 EVB, the EVB will need to be flashed with the HeartKit firmware. The instructions to compile and flash the firmware can be found in [Tileio Demos](https://github.com/AmbiqAI/tileio-demos/tree/main/heartkit).
 
 ### Hardware Setup
 
@@ -90,7 +90,7 @@ In order to connect the MAX86150 breakout board to the EVB, we leverage the Qwii
 4. If this is a new device, click on the "+" icon on the top right corner to add a new device.
 
     1. Scan and select device.
-    2. Configure device manually or upload [configuration file]().
+    2. Configure device manually or upload [device configuration file](https://github.com/AmbiqAI/tileio-demos/blob/d4a6806e404dab04eaf30db92fa2ae1d6d474c79/assets/device-configs/hk-device-config.json).
     3. Review and select "ADD" to add device.
 
 5. On “Devices view”, scan for devices. The device should turn opaque and say "ONLINE".
@@ -99,7 +99,7 @@ In order to connect the MAX86150 breakout board to the EVB, we leverage the Qwii
 
 7. In the device dashboard, tap the BLE( :material-bluetooth: ) icon to connect to the device.
 
-8. If this is a new device, go to the "Settings" and configure the dashboard Tiles.
+8. If this is a new device, go to the "Settings" and configure the dashboard Tiles. Upload the [dashboard configuration file](https://github.com/AmbiqAI/tileio-demos/blob/d4a6806e404dab04eaf30db92fa2ae1d6d474c79/assets/dashboard-configs/hk-dashboard-config.json)
 
 9. After 5 seconds, live data should start streaming to the Tileio app.
 

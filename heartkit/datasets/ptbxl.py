@@ -422,7 +422,7 @@ class PtbxlDataset(HKDataset):
         # END IF
 
         # Target labels and mapping
-        tgt_labels = sorted(list(set((lbl for lbl in label_map.values() if lbl != -1))))
+        tgt_labels = sorted(set((lbl for lbl in label_map.values() if lbl != -1)))
         label_key = self.label_key(label_type)
         num_classes = len(tgt_labels)
 
@@ -471,7 +471,10 @@ class PtbxlDataset(HKDataset):
                 # y = np.expand_dims(y, axis=0)
                 num_samples = sum((samples_per_tgt[tgt_labels.index(i)] for i in pt_lbls))
             elif label_format == "one_hot":
-                raise NotImplementedError()
+                y = np.zeros(num_classes, dtype=np.int32)
+                pt_lbl = random.choices(pt_lbls, pt_lbl_weights, k=1)[0]
+                y[pt_lbl] = 1
+                num_samples = samples_per_tgt[tgt_labels.index(pt_lbl)]
             elif label_format is None:
                 # Its possible to have multiple labels, we assign based on weights
                 y = random.choices(pt_lbls, pt_lbl_weights, k=1)[0]
