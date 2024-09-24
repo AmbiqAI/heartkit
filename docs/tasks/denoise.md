@@ -44,7 +44,7 @@ Dataloaders are available for the following datasets:
 
 ## <span class="sk-h2-span">Pre-trained Models</span>
 
-The following table provides the latest performance and accuracy results of denoising models. Additional result details can be found in [Model Zoo → Denoise](../zoo/denoise.md).
+The following table provides the latest performance and accuracy results of denoising models. Additional result details can be found in [Model Zoo → Denoise](../zoo/index.md).
 
 
 --8<-- "assets/zoo/denoise/denoise-model-zoo-table.md"

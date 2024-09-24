@@ -565,7 +565,7 @@ class PtbxlDataset(HKDataset):
         patients_labels = self.get_patients_labels(patient_ids, label_map, label_type)
         # Find any patient with empty list
         label_mask = np.array([len(x) > 0 for x in patients_labels])
-        neg_mask = label_mask == -1
+        neg_mask = ~label_mask
         num_neg = neg_mask.sum()
         if num_neg > 0:
             logger.debug(f"Removed {num_neg} of {patient_ids.size} patients w/ no target class")

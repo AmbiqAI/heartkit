@@ -101,7 +101,7 @@ nav:
     - Hardware Guides:
       - EVB Setup: guides/evb-setup.md
       - Rhythm Demo: guides/rhythm-demo.md
-      - HeartKit Demo: guides/heartkit-demo.md
+      - HeartKit Tileio Demo →: https://ambiqai.github.io/tileio-docs/demos/heartkit/
 
   - API: api/
 

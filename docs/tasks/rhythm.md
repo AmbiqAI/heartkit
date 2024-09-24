@@ -77,7 +77,7 @@ Dataloaders are available for the following datasets:
 
 ## <span class="sk-h2-span">Pre-trained Models</span>
 
-The following table provides the latest performance and accuracy results for rhythm models. Additional result details can be found in [Model Zoo → Rhythm](../zoo/rhythm.md).
+The following table provides the latest performance and accuracy results for rhythm models. Additional result details can be found in [Model Zoo → Rhythm](../zoo/index.md).
 
 
 --8<-- "assets/zoo/rhythm/rhythm-model-zoo-table.md"
