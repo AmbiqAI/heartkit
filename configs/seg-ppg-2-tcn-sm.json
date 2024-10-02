@@ -62,7 +62,7 @@
         "qat": false,
         "mode": "INT8",
         "io_type": "int8",
-        "concrete": true,
+       "conversion": "CONCRETE",
         "debug": false
     },
 

@@ -1,11 +1,11 @@
 {
     "name": "Python 3",
-    "image": "mcr.microsoft.com/devcontainers/python:1-3.12",
+    "image": "mcr.microsoft.com/devcontainers/python:1-3.11",
 
     "features": {
         "ghcr.io/devcontainers/features/git:1": {
             "ppa": true,
-            "version": "latest"
+            "version": "system"
         },
         "ghcr.io/devcontainers-contrib/features/pipenv:2": {
             "version": "latest"
