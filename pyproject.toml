@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "heartkit"
-version = "1.5.0"
+version = "1.5.1"
 description = "AI driven heart monitoring kit for ultra low-power wearables."
 license = "BSD-3-Clause"
 authors = ["Ambiq AI <support.aitg@ambiq.com>"]
@@ -37,7 +37,7 @@ filterwarnings = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.13"
+python = ">=3.11,<3.12"
 tensorflow = {version = "^2.17.0"}
 tensorflow-metal = {version = "^1.1.0", markers = "sys_platform == 'darwin'"}
 numpy = "^1.26.4"
@@ -58,7 +58,7 @@ orjson = "^3.9.13"
 physiokit = "^0.8.1"
 requests = "^2.31.0"
 argdantic = {extras = ["all"], version = "^1.0.0"}
-neuralspot-edge = "~0.2.1"
+neuralspot-edge = "~0.2.2"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.21.0"

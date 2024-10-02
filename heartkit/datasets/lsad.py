@@ -390,7 +390,10 @@ class LsadDataset(HKDataset):
                 y[pt_lbls] = 1
                 num_samples = sum((samples_per_tgt[tgt_labels.index(i)] for i in pt_lbls))
             elif label_format == "one_hot":
-                raise NotImplementedError()
+                y = np.zeros(num_classes, dtype=np.int32)
+                pt_lbl = random.choices(pt_lbls, pt_lbl_weights, k=1)[0]
+                y[pt_lbl] = 1
+                num_samples = samples_per_tgt[tgt_labels.index(pt_lbl)]
             elif label_format is None:
                 # Its possible to have multiple labels, we assign based on weights
                 y = random.choices(pt_lbls, pt_lbl_weights, k=1)[0]
@@ -478,7 +481,7 @@ class LsadDataset(HKDataset):
         patients_labels = self.get_patients_labels(patient_ids, label_map, label_type)
         # Find any patient with empty list
         label_mask = np.array([len(x) > 0 for x in patients_labels])
-        neg_mask = label_mask == -1
+        neg_mask = ~label_mask
         num_neg = neg_mask.sum()
         if num_neg > 0:
             logger.debug(f"Removed {num_neg} of {patient_ids.size} patients w/ no target class")

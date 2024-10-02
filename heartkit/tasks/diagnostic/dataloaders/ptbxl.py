@@ -80,5 +80,5 @@ class PtbxlDataloader(HKDataloader):
             target_rate=self.sampling_rate,
             label_map=self.label_map,
             label_type=self.label_type,
-            label_format="multi_hot",
+            label_format="one_hot",
         )

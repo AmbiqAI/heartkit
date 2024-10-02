@@ -60,7 +60,8 @@ class EvbBackend(HKInferenceBackend):
         3. Send model to EVB via eRPC
 
         """
-        self._transport = get_serial_transport(vid_pid="51966:16385", baudrate=115200)
+
+        self._transport = get_serial_transport(vid_pid="51966:16401", baudrate=115200)
         client_manager = erpc.client.ClientManager(self._transport, erpc.basic_codec.BasicCodec)
         self._client = pc2evb.client.pc_to_evbClient(client_manager)
         self.send_model()

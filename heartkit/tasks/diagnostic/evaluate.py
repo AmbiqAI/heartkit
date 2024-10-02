@@ -52,10 +52,14 @@ def evaluate(params: HKTaskParams):
     logger.debug("Performing inference")
     y_true = test_y
     y_prob = model.predict(test_x)
-    y_pred = y_prob >= params.threshold
+
+    # y_pred = y_prob >= params.threshold
+
+    y_pred = np.argmax(y_prob, axis=-1)
+    y_true = np.argmax(y_true, axis=-1)
 
     cm_path = params.job_dir / "confusion_matrix_test.png"
-    nse.plotting.multilabel_confusion_matrix_plot(
+    nse.plotting.confusion_matrix_plot(
         y_true=y_true,
         y_pred=y_pred,
         labels=class_names,

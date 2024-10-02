@@ -41,6 +41,12 @@ def export(params: HKTaskParams):
     # Load model and set fixed batch size of 1
     logger.debug("Loading trained model")
     model = nse.models.load_model(params.model_file)
+
+    # Add softmax layer if required
+    if getattr(params, "flatten", False):
+        model = nse.models.append_layers(model, layers=[keras.layers.Flatten()], copy_weights=True)
+    # END IF
+
     inputs = keras.Input(shape=feat_shape, batch_size=1, name="input", dtype="float32")
     model(inputs)
 
@@ -89,8 +95,11 @@ def export(params: HKTaskParams):
 
     logger.info("Validating model results")
     y_true = test_y
+    if getattr(params, "flatten", False):
+        y_true = y_true.squeeze(axis=-1)
     y_pred_tf = model.predict(test_x)
     y_pred_tfl = tflite.predict(x=test_x)
+    print(y_true.shape, y_pred_tf.shape, y_pred_tfl.shape)
 
     tf_rst = nse.metrics.compute_metrics(metrics, y_true, y_pred_tf)
     tfl_rst = nse.metrics.compute_metrics(metrics, y_true, y_pred_tfl)

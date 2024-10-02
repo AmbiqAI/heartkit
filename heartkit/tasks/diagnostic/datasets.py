@@ -45,7 +45,7 @@ def create_data_pipeline(
         ds.map(
             lambda data, labels: {
                 "data": tf.cast(data, "float32"),
-                "labels": labels,  # Already multi-hot encoded
+                "labels": labels,  # Already encoded
             },
             num_parallel_calls=tf.data.AUTOTUNE,
         )

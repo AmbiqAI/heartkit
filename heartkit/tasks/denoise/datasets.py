@@ -43,8 +43,8 @@ def create_data_pipeline(
             drop_remainder=True,
             num_parallel_calls=tf.data.AUTOTUNE,
         )
-    ds = ds.map(lambda x: preprocessor(x), num_parallel_calls=tf.data.AUTOTUNE)
     ds = ds.map(lambda x: (augmenter(x), x), num_parallel_calls=tf.data.AUTOTUNE)
+    ds = ds.map(lambda x, y: (preprocessor(x), preprocessor(y)), num_parallel_calls=tf.data.AUTOTUNE)
     return ds.prefetch(tf.data.AUTOTUNE)
 
 

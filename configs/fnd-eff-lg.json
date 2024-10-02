@@ -52,7 +52,7 @@
         "qat": false,
         "mode": "FP32",
         "io_type": "float32",
-        "concrete": true,
+       "conversion": "CONCRETE",
         "debug": false
     },
 

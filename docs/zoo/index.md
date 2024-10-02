@@ -13,7 +13,7 @@ The following table provides the latest performance and accuracy results for den
 | __DEN-PPG-TCN-SM__  | Synthetic         | 100Hz | 2.5s     | TCN            | 3.5K   | 1.1M    | 92.1% COS   |
 
 
-## <span class="sk-h2-span">[Signal Segmentation Task](./tasks/segmentation.md)</span>
+## <span class="sk-h2-span">[Signal Segmentation Task](../tasks/segmentation.md)</span>
 
 The following table provides the latest performance and accuracy results for ECG segmentation models.
 
@@ -25,7 +25,7 @@ The following table provides the latest performance and accuracy results for ECG
 | __SEG-PPG-2-TCN-SM__ | Synthetic                | 100Hz | 2.5s     | 2         | TCN           | 4K     | 1.43M   | 98.6% F1  |
 
 
-## <span class="sk-h2-span">[Rhythm Classification Task](./tasks/rhythm.md)</span>
+## <span class="sk-h2-span">[Rhythm Classification Task](../tasks/rhythm.md)</span>
 
 The following table provides the latest performance and accuracy results for rhythm classification models.
 
@@ -35,7 +35,7 @@ The following table provides the latest performance and accuracy results for rhy
 | __ARR-4-EFF-SM__ | LSAD                     | 100Hz | 5s       | 4         | EfficientNetV2 | 27K    |  1.6M   | 95.9% F1 |
 
 
-## <span class="sk-h2-span">[Beat Classification Task](./tasks/beat.md)</span>
+## <span class="sk-h2-span">[Beat Classification Task](../tasks/beat.md)</span>
 
 The following table provides the latest performance and accuracy results for beat classification models.
 

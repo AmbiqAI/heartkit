@@ -56,7 +56,7 @@ Dataloaders are available for the following datasets:
 
 ## <span class="sk-h2-span">Pre-Trained Models</span>
 
-The following table provides the latest performance and accuracy results for segmentation models. Additional result details can be found in [Model Zoo → Segmentation](../zoo/segmentation.md).
+The following table provides the latest performance and accuracy results for segmentation models. Additional result details can be found in [Model Zoo → Segmentation](../zoo/index.md).
 
 --8<-- "assets/zoo/segmentation/segmentation-model-zoo-table.md"
 
