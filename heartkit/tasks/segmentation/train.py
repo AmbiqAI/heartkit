@@ -61,7 +61,11 @@ def train(params: HKTaskParams):
         val_ds.save(str(params.val_file))
 
     class_weights = 0.25
-    if params.class_weights == "balanced":
+    if isinstance(params.class_weights, list):
+        class_weights = np.array(params.class_weights)
+        class_weights = class_weights / class_weights.sum()
+        class_weights = class_weights.tolist()
+    elif params.class_weights == "balanced":
         class_weights = sklearn.utils.compute_class_weight("balanced", classes=np.array(classes), y=y_true)
         class_weights = (class_weights + class_weights.mean()) / 2  # Smooth out
         class_weights = class_weights.tolist()
