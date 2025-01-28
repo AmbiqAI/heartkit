@@ -29,5 +29,22 @@
         "LD_LIBRARY_PATH": "${containerEnv:LD_LIBRARY_PATH}:/usr/local/cuda/lib64",
         "PATH": "${containerEnv:PATH}:/usr/local/cuda/bin",
         "TF_FORCE_GPU_ALLOW_GROWTH": "true"
+    },
+
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "GitHub.copilot",
+                "GitHub.copilot-chat",
+                "ms-toolsai.jupyter",
+                "ms-toolsai.jupyter-renderers",
+                "ms-toolsai.tensorboard",
+                "tamasfe.even-better-toml",
+                "mechatroner.rainbow-csv",
+                "ms-python.python",
+                "charliermarsh.ruff"
+            ]
+        }
     }
+
 }

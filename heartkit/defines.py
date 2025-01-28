@@ -118,7 +118,7 @@ class HKTaskParams(BaseModel, extra="allow"):
     steps_per_epoch: int = Field(10, description="Number of steps per epoch")
     val_steps_per_epoch: int = Field(10, description="Number of validation steps")
     val_metric: Literal["loss", "acc", "f1"] = Field("loss", description="Performance metric")
-    class_weights: Literal["balanced", "fixed"] = Field("fixed", description="Class weights")
+    class_weights: list[float] | str = Field("fixed", description="Class weights")
 
     # Evaluation arguments
     threshold: float | None = Field(None, description="Model output threshold")

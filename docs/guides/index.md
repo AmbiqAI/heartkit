@@ -16,5 +16,4 @@ This section contains guides to help with various aspects of HeartKit. The guide
 
 ## <span class="sk-h2-span">Hardware Guides</span>
 
-- **[Run simple demo on EVB]()**: Running a demo using Ambiq SoC as backend inference engine.
-- **[HeartKit Tileio Demo](https://ambiqai.github.io/tileio-docs/demos/heartkit/)**: A guide to running a multi-headed model demo on Ambiq EVB.
+Several guides are available for running HeartKit models on Ambiq evaluation boards (EVBs) with ECG/PPG sensors connected via the Tileio App. Please check out the [Tileio Demos Page](https://ambiqai.github.io/tileio-docs/demos/) for more information.

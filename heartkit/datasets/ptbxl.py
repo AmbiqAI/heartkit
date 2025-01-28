@@ -506,6 +506,7 @@ class PtbxlDataset(HKDataset):
         test_size: float,
         label_map: dict[int, int] | None = None,
         label_type: str | None = None,
+        label_threshold: int | None = 2,
     ) -> list[list[int]]:
         """Perform train/test split on patients for given task.
         NOTE: We only perform inter-patient splits and not intra-patient.
@@ -515,6 +516,7 @@ class PtbxlDataset(HKDataset):
             test_size (float): Test size
             label_map (dict[int, int], optional): Label map. Defaults to None.
             label_type (str, optional): Label type. Defaults to None.
+            label_threshold (int, optional): Label threshold. Defaults to 2.
 
         Returns:
             list[list[int]]: Train and test sets of patient ids
@@ -524,6 +526,16 @@ class PtbxlDataset(HKDataset):
             patients_labels = self.get_patients_labels(patient_ids, label_map=label_map, label_type=label_type)
             # Select random label for stratification or -1 if no labels
             stratify = np.array([random.choice(x) if len(x) > 0 else -1 for x in patients_labels])
+
+            # Remove patients w/ label counts below threshold
+            for i, label in enumerate(sorted(set(label_map.values()))):
+                class_counts = np.sum(stratify == label)
+                if label_threshold is not None and class_counts < label_threshold:
+                    stratify[stratify == label] = -1
+                    logger.warning(f"Removed class {label} w/ only {class_counts} samples")
+                # END IF
+            # END FOR
+
             # Remove patients w/o labels
             neg_mask = stratify == -1
             stratify = stratify[~neg_mask]
@@ -532,6 +544,16 @@ class PtbxlDataset(HKDataset):
             if num_neg > 0:
                 logger.debug(f"Removed {num_neg} patients w/ no target class")
             # END IF
+        # END IF
+
+        # Get occurence of each class along with class index
+        if stratify is not None:
+            class_counts = np.zeros(len(label_map), dtype=np.int32)
+            logger.debug(f"[{self.name}] Stratify class counts:")
+            for i, label in enumerate(sorted(set(label_map.values()))):
+                class_counts = np.sum(stratify == label)
+                logger.debug(f"Class {label}: {class_counts}")
+            # END FOR
         # END IF
 
         return sklearn.model_selection.train_test_split(
