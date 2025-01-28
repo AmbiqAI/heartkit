@@ -98,10 +98,7 @@ nav:
       - Train ECG Denoiser: guides/train-ecg-denoiser.ipynb
       - ECG Foundation Model: guides/ecg-foundation-model.ipynb
       - ECG Segmentation Model: guides/train-ecg-segmentation.ipynb
-    - Hardware Guides:
-      - EVB Setup: guides/evb-setup.md
-      - Rhythm Demo: guides/rhythm-demo.md
-      - HeartKit Tileio Demo →: https://ambiqai.github.io/tileio-docs/demos/heartkit/
+    - Hardware Guides →: https://ambiqai.github.io/tileio-docs/demos/
 
   - API: api/
 
