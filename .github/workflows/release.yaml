@@ -1,13 +1,9 @@
 name: Release to PyPi
 
-# on:
-#   release:
-#     types:
-#       - created
-
 on:
-  push:
-    branches: [$default-branch]
+  release:
+    types:
+      - created
   workflow_dispatch:
 
 jobs:
