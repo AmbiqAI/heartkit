@@ -24,7 +24,7 @@ HeartKit is an AI Development Kit (ADK) that enables developers to easily train 
 ## <span class="sk-h2-span">Requirements
 
 * [Python ^3.11+](https://www.python.org)
-* [Poetry ^1.6.1+](https://python-poetry.org/docs/#installation)
+* [uv ^1.6.1+](https://docs.astral.sh/uv/getting-started/installation/)
 
 The following are also required to compile/flash the binary for the EVB demo:
 
@@ -47,7 +47,7 @@ Alternatively, you can install the package from source by cloning the repository
 ```bash
 git clone https://github.com/AmbiqAI/heartkit.git
 cd heartkit
-poetry install
+uv sync
 ```
 
 ---

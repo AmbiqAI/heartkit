@@ -84,7 +84,7 @@ def demo(params: HKTaskParams):
         cos_sim = np.dot(y, y_pred) / (np.linalg.norm(y) * np.linalg.norm(y_pred))
         cos_sim_diff = cos_sim - prev_cos_sim
         prev_cos_sim = cos_sim
-        logger.debug(f"Trial {trial+1}: Cosine Similarity: {cos_sim:.2%} (diff: {cos_sim_diff:.2%})")
+        logger.debug(f"Trial {trial + 1}: Cosine Similarity: {cos_sim:.2%} (diff: {cos_sim_diff:.2%})")
         if cos_sim_diff < 1e-3:
             break
     # END FOR

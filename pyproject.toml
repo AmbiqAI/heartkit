@@ -1,23 +1,79 @@
-[tool.poetry]
+[project]
 name = "heartkit"
 version = "1.5.1"
 description = "AI driven heart monitoring kit for ultra low-power wearables."
-license = "BSD-3-Clause"
-authors = ["Ambiq AI <support.aitg@ambiq.com>"]
 readme = "README.md"
-homepage = "https://ambiqai.github.io/heartkit"
-repository = "https://github.com/AmbiqAI/heartkit"
-packages = [
-    { include = "heartkit" },
+license = { text = "BSD-3-Clause" }
+authors = [
+  { name = "Ambiq AI", email = "support.aitg@ambiq.com" },
+]
+requires-python = ">=3.11,<3.12"
+
+dependencies = [
+  "tensorflow>=2.17.0,<3.0",
+  "tensorflow-metal>=1.1.0,<2.0; sys_platform == 'darwin'",
+  "numpy>=1.26.4,<2.0",
+  "scikit-learn>=1.4.0,<2.0",
+  "wfdb>=4.1.2,<5.0",
+  "fastparquet>=2023.10.1,<2024.0",
+  "plotly>=5.18.0,<6.0",
+  "tqdm>=4.66.1,<5.0",
+  "seaborn>=0.13.2,<1.0",
+  "matplotlib>=3.9.0,<4.0",
+  "pydantic>=2.5.3,<3.0",
+  "pyserial>=3.5,<4.0",
+  "rich>=13.7.0,<14.0",
+  "wandb>=0.17.0,<1.0",
+  "scipy>=1.12.0,<2.0",
+  "boto3>=1.34.36,<2.0",
+  "orjson>=3.9.13,<4.0",
+  "physiokit>=0.8.1,<1.0",
+  "requests>=2.31.0,<3.0",
+  "argdantic[all]>=1.0.0,<2.0",
+  "neuralspot-edge~=0.2.2",
 ]
 
-include = [
-    { path = "tests", format = "sdist" },
-    { path = "./heartkit/assets/**/*"},
+[project.scripts]
+heartkit = "heartkit.cli:main"
+
+[dependency-groups]
+dev = [
+  "ipython>=8.21.0,<9.0",
+  "pytest>=8.0.0,<9.0",
+  "taskipy>=1.12.0,<2.0",
+  "pre-commit>=3.6.0,<4.0",
+  "notebook>=7.0.2,<8.0",
+  "tensorboard-plugin-profile>=2.14.0,<=2.19.8",
+  "pydot>=2.0.0,<3.0",
+  "ruff>=0.5.1,<1.0",
+]
+docs = [
+  "mkdocs>=1.5.3,<2.0",
+  "mkdocs-material>=9.5.8,<10.0",
+  "mkdocstrings-python>=1.8.0,<2.0",
+  "markdown-include>=0.8.1,<1.0",
+  "mkdocs-exclude>=1.0.2,<2.0",
+  "mkdocs-jupyter>=0.24.8,<1.0",
+  "mkdocs-gen-files>=0.5.0,<1.0",
+  "mkdocs-section-index>=0.3.9,<1.0",
+  "mkdocs-literate-nav>=0.6.1,<1.0",
+  "black>=24.8.0,<25.0",
 ]
 
-[tool.poetry.scripts]
-heartkit = 'heartkit.cli:main'
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# packages = ["heartkit"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"heartkit" = ["assets/**/*"]
+
+[tool.setuptools.packages.find]
+where  = ["."]
+include = ["heartkit*"]
 
 [tool.taskipy.tasks]
 format = "ruff format"
@@ -27,74 +83,19 @@ test = "pytest tests/"
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-ra -q"
-testpaths = [
-    "tests",
-]
+testpaths = ["tests"]
 filterwarnings = [
-    "ignore:Call to deprecated create:DeprecationWarning",
-    "ignore:distutils Version:DeprecationWarning",
-    "ignore:The register_cmap function:PendingDeprecationWarning"
+  "ignore:Call to deprecated create:DeprecationWarning",
+  "ignore:distutils Version:DeprecationWarning",
+  "ignore:The register_cmap function:PendingDeprecationWarning",
 ]
-
-[tool.poetry.dependencies]
-python = ">=3.11,<3.12"
-tensorflow = {version = "^2.17.0"}
-tensorflow-metal = {version = "^1.1.0", markers = "sys_platform == 'darwin'"}
-numpy = "^1.26.4"
-scikit-learn = "^1.4.0"
-wfdb = "^4.1.2"
-fastparquet = "^2023.10.1"
-plotly = "^5.18.0"
-tqdm = "^4.66.1"
-seaborn = "^0.13.2"
-matplotlib = "^3.9.0"
-pydantic = "^2.5.3"
-pyserial = "^3.5"
-rich = "^13.7.0"
-wandb = "^0.16.3"
-scipy = "^1.12.0"
-boto3 = "^1.34.36"
-orjson = "^3.9.13"
-physiokit = "^0.8.1"
-requests = "^2.31.0"
-argdantic = {extras = ["all"], version = "^1.0.0"}
-neuralspot-edge = "~0.2.2"
-
-[tool.poetry.group.dev.dependencies]
-ipython = "^8.21.0"
-pytest = "^8.0.0"
-taskipy = "^1.12.0"
-pre-commit = "^3.6.0"
-notebook = "^7.0.2"
-tensorboard-plugin-profile = "^2.14.0"
-pydot = "^2.0.0"
-
-ruff = "^0.5.1"
-[tool.poetry.group.docs]
-optional = true
-
-[tool.poetry.group.docs.dependencies]
-mkdocs = "^1.5.3"
-mkdocs-material = "^9.5.8"
-mkdocstrings-python = "^1.8.0"
-markdown-include = "^0.8.1"
-mkdocs-exclude = "^1.0.2"
-mkdocs-jupyter = "^0.24.8"
-mkdocs-gen-files = "^0.5.0"
-mkdocs-section-index = "^0.3.9"
-mkdocs-literate-nav = "^0.6.1"
-black = "^24.8.0"
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 line-length = 120
 extend-exclude = [
-    "heartkit/backends/GenericDataOperations_EvbToPc",
-    "heartkit/backends/GenericDataOperations_PcToEvb",
-    "heartkit/backends/erpc"
+  "heartkit/backends/GenericDataOperations_EvbToPc",
+  "heartkit/backends/GenericDataOperations_PcToEvb",
+  "heartkit/backends/erpc",
 ]
 
 [tool.ruff.lint]
@@ -105,3 +106,6 @@ ignore = []
 
 [tool.pyright]
 reportShadowedImports = "none"
+
+[tool.uv]
+package = true

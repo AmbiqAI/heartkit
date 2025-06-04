@@ -766,7 +766,7 @@ class PtbxlDataset(HKDataset):
 
             # Grab ECG data
             with tempfile.TemporaryDirectory() as tmpdir:
-                zip_path = os.path.join(zp_root, "records500", f"{1000*(patient//1000):05d}", f"{pt_id}_hr")
+                zip_path = os.path.join(zp_root, "records500", f"{1000 * (patient // 1000):05d}", f"{pt_id}_hr")
                 rec_fpath = os.path.join(tmpdir, f"{pt_id}_hr")
                 with open(f"{rec_fpath}.hea", "wb") as fp:
                     fp.write(zp.read(f"{zip_path}.hea"))
