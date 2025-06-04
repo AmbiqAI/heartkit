@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import wandb
 from sklearn.metrics import classification_report
-from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
+from wandb.integration.keras import WandbMetricsLogger, WandbModelCheckpoint
 
 import neuralspot_edge as nse
 
@@ -116,7 +116,7 @@ def train(params: HKTaskParams):
 
     model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
     model.summary(print_fn=logger.info)
-    logger.debug(f"Model requires {flops/1e6:0.2f} MFLOPS")
+    logger.debug(f"Model requires {flops / 1e6:0.2f} MFLOPS")
 
     ModelCheckpoint = keras.callbacks.ModelCheckpoint
     if nse.utils.env_flag("WANDB"):

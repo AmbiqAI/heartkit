@@ -1,8 +1,9 @@
 name: Deploy to GitHub Pages
 
 on:
-  push:
-    branches: [$default-branch]
+  release:
+    types:
+      - created
   workflow_dispatch:
 
 permissions:
@@ -26,24 +27,21 @@ jobs:
 
     steps:
       - name: Checkout 🛎️
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v4
-      - name: Install Poetry
-        run: pipx install poetry
-      - name: Install Python
-        uses: actions/setup-python@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: '3.11'
-          cache: 'poetry'
+            enable-cache: true
       - name: Install and Build 🔧
         env:
           CI: ""
           PUBLIC_URL: "${{ steps.pages.outputs.base_url }}/"
         run: |
-          poetry install --no-root --only docs
-          poetry run mkdocs build
+          uv sync --only-group docs
+          uv run mkdocs build
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

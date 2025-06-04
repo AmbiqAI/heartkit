@@ -59,7 +59,7 @@ def export(params: HKTaskParams):
 
     flops = nse.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
     model.summary(print_fn=logger.debug)
-    logger.debug(f"Model requires {flops/1e6:0.2f} MFLOPS")
+    logger.debug(f"Model requires {flops / 1e6:0.2f} MFLOPS")
 
     logger.debug(f"Converting model to TFLite (quantization={params.quantization.format})")
     converter = nse.converters.tflite.TfLiteKerasConverter(model=model)

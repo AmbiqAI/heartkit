@@ -5,7 +5,7 @@ import neuralspot_edge as nse
 import numpy as np
 import sklearn.utils
 import wandb
-from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
+from wandb.integration.keras import WandbMetricsLogger, WandbModelCheckpoint
 
 from ...defines import HKTaskParams
 from ...datasets import DatasetFactory
@@ -102,7 +102,7 @@ def train(params: HKTaskParams):
     model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
     flops = nse.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
     model.summary(print_fn=logger.info)
-    logger.debug(f"Model requires {flops/1e6:0.2f} MFLOPS")
+    logger.debug(f"Model requires {flops / 1e6:0.2f} MFLOPS")
 
     ModelCheckpoint = keras.callbacks.ModelCheckpoint
     if nse.utils.env_flag("WANDB"):

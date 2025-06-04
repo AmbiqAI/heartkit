@@ -25,7 +25,7 @@ Please explore the HeartKit Docs, a comprehensive resource designed to help you 
 
 ## <span class="sk-h2-span">Getting Started</span>
 
-- **Install** `HeartKit` with pip/poetry and getting up and running in minutes. &nbsp; [:material-clock-fast: Install HeartKit](./quickstart.md/#install-heartkit){ .md-button }
+- **Install** `HeartKit` with pip/uv and getting up and running in minutes. &nbsp; [:material-clock-fast: Install HeartKit](./quickstart.md/#install-heartkit){ .md-button }
 - **Train** a model with a custom network &nbsp; [:fontawesome-solid-brain: Train a Model](modes/train.md){ .md-button }
 - **Tasks** `HeartKit` provides tasks like rhythm, segment, and denoising &nbsp; [:material-magnify-expand: Explore Tasks](tasks/index.md){ .md-button }
 - **Datasets** Several built-in datasets can be leveraged &nbsp; [:material-database-outline: Explore Datasets](./datasets/index.md){ .md-button }
@@ -57,7 +57,7 @@ To get started, first install the python package `heartkit` along with its depen
     Cloning into 'heartkit'...
     Resolving deltas: 100% (3491/3491), done.
     $ cd heartkit
-    $ poetry install
+    $ uv install
 
     ---> 100%
     ```

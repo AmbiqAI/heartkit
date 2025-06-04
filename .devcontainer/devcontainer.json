@@ -7,8 +7,20 @@
             "ppa": true,
             "version": "system"
         },
-        "ghcr.io/devcontainers-contrib/features/pipenv:2": {
+        "ghcr.io/devcontainers-extra/features/pipenv:2": {
             "version": "latest"
+        },
+        "ghcr.io/va-h/devcontainers-features/uv:1": {
+            "shellautocompletion": true,
+            "version": "latest"
+        },
+        "ghcr.io/devcontainers/features/nvidia-cuda:1": {
+            "installCudnn": true,
+            "installCudnnDev": true,
+            "installNvtx": true,
+            "installToolkit": true,
+            "cudaVersion": "12.5",
+            "cudnnVersion": "9.3.0.75"
         }
     },
 

@@ -3,7 +3,7 @@ import os
 import numpy as np
 import keras
 import wandb
-from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
+from wandb.integration.keras import WandbMetricsLogger, WandbModelCheckpoint
 
 import neuralspot_edge as nse
 from ...defines import HKTaskParams
@@ -95,7 +95,7 @@ def train(params: HKTaskParams):
     model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
     flops = nse.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
     model.summary(print_fn=logger.debug)
-    logger.debug(f"Model requires {flops/1e6:0.2f} MFLOPS")
+    logger.debug(f"Model requires {flops / 1e6:0.2f} MFLOPS")
 
     val_mode = "max" if params.val_metric in ("f1", "cos") else "auto"
     ModelCheckpoint = keras.callbacks.ModelCheckpoint
