@@ -24,7 +24,7 @@ jobs:
         with:
           enable-cache: true
       - name: Regenerate uv.lock
-        run: uv lock --locked
+        run: uv lock
       - name: Commit updated lockfile
         if: ${{ !cancelled() }}
         run: |
