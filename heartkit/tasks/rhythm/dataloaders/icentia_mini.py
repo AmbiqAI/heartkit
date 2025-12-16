@@ -4,7 +4,7 @@ from typing import Generator, Iterable
 import numpy as np
 import numpy.typing as npt
 import physiokit as pk
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from ....datasets import HKDataloader, IcentiaMiniDataset, IcentiaMiniRhythm
 from ..defines import HKRhythm
@@ -110,7 +110,7 @@ class IcentiaMiniDataloader(HKDataloader):
             num_per_tgt = int(max(1, samples_per_patient / num_classes))
             samples_per_tgt = num_per_tgt * [num_classes]
 
-        for pt_id in nse.utils.uniform_id_generator(patient_ids, shuffle=shuffle):
+        for pt_id in helia.utils.uniform_id_generator(patient_ids, shuffle=shuffle):
             for x, y in self.patient_data_generator(pt_id, samples_per_tgt):
                 yield x, y
             # END FOR

@@ -7,7 +7,7 @@ import wandb
 from sklearn.metrics import classification_report
 from wandb.integration.keras import WandbMetricsLogger, WandbModelCheckpoint
 
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from ...defines import HKTaskParams
 from ...datasets import DatasetFactory
@@ -22,18 +22,18 @@ def train(params: HKTaskParams):
         params (HKTaskParams): Task parameters
     """
     os.makedirs(params.job_dir, exist_ok=True)
-    logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "train.log")
+    logger = helia.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "train.log")
     logger.debug(f"Creating working directory in {params.job_dir}")
 
     params.threshold = params.threshold or 0.5
 
-    params.seed = nse.utils.set_random_seed(params.seed)
+    params.seed = helia.utils.set_random_seed(params.seed)
     logger.debug(f"Random seed {params.seed}")
 
     with open(params.job_dir / "configuration.json", "w", encoding="utf-8") as fp:
         fp.write(params.model_dump_json(indent=2))
 
-    if nse.utils.env_flag("WANDB"):
+    if helia.utils.env_flag("WANDB"):
         wandb.init(project=params.project, entity="ambiq", dir=params.job_dir)
         wandb.config.update(params.model_dump())
     # END IF
@@ -74,7 +74,7 @@ def train(params: HKTaskParams):
 
     if params.resume and params.model_file:
         logger.debug(f"Loading model from file {params.model_file}")
-        model = nse.models.load_model(params.model_file)
+        model = helia.models.load_model(params.model_file)
         params.model_file = None
     else:
         logger.debug("Creating model from scratch")
@@ -87,7 +87,7 @@ def train(params: HKTaskParams):
         )
     # END IF
 
-    flops = nse.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
+    flops = helia.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
 
     t_mul = 1
     first_steps = (params.steps_per_epoch * params.epochs) / (np.power(params.lr_cycles, t_mul) - t_mul + 1)
@@ -119,7 +119,7 @@ def train(params: HKTaskParams):
     logger.debug(f"Model requires {flops / 1e6:0.2f} MFLOPS")
 
     ModelCheckpoint = keras.callbacks.ModelCheckpoint
-    if nse.utils.env_flag("WANDB"):
+    if helia.utils.env_flag("WANDB"):
         ModelCheckpoint = WandbModelCheckpoint
     model_callbacks = [
         keras.callbacks.EarlyStopping(
@@ -138,19 +138,19 @@ def train(params: HKTaskParams):
         ),
         keras.callbacks.CSVLogger(params.job_dir / "history.csv"),
     ]
-    if nse.utils.env_flag("TENSORBOARD"):
+    if helia.utils.env_flag("TENSORBOARD"):
         model_callbacks.append(
             keras.callbacks.TensorBoard(
                 log_dir=params.job_dir,
                 write_steps_per_second=True,
             )
         )
-    if nse.utils.env_flag("WANDB"):
+    if helia.utils.env_flag("WANDB"):
         model_callbacks.append(WandbMetricsLogger())
     # Use minimal progress bar
     if params.verbose <= 1:
         model_callbacks.append(
-            nse.callbacks.TQDMProgressBar(
+            helia.callbacks.TQDMProgressBar(
                 show_epoch_progress=False,
             )
         )
@@ -177,7 +177,7 @@ def train(params: HKTaskParams):
     y_true = np.argmax(y_true, axis=-1)
 
     cm_path = params.job_dir / "confusion_matrix.png"
-    nse.plotting.confusion_matrix_plot(
+    helia.plotting.confusion_matrix_plot(
         y_true=y_true,
         y_pred=y_pred,
         labels=class_names,

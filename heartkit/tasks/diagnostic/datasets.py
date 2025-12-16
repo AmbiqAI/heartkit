@@ -1,5 +1,5 @@
 import tensorflow as tf
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from ...datasets import HKDataset, create_augmentation_pipeline
 from ..utils import load_train_dataloader_split, load_test_dataloader_split
@@ -7,7 +7,7 @@ from ...defines import HKTaskParams, NamedParams
 
 from .dataloaders import DiagnosticDataloaderFactory
 
-logger = nse.utils.setup_logger(__name__)
+logger = helia.utils.setup_logger(__name__)
 
 
 def create_data_pipeline(

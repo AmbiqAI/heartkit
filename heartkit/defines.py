@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-from neuralspot_edge.converters.tflite import QuantizationType, ConversionType
+from helia_edge.converters.tflite import QuantizationType, ConversionType
 
 
 class QuantizationParams(BaseModel, extra="allow"):

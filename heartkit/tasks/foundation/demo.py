@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from sklearn.manifold import TSNE
 from tqdm import tqdm
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from ...defines import HKTaskParams
 from ...backends import BackendFactory
@@ -22,7 +22,7 @@ def demo(params: HKTaskParams):
     Args:
         params (HKTaskParams): Task parameters
     """
-    logger = nse.utils.setup_logger(__name__, level=params.verbose)
+    logger = helia.utils.setup_logger(__name__, level=params.verbose)
     plot_theme = setup_plotting()
 
     feat_shape = (params.frame_size, 1)

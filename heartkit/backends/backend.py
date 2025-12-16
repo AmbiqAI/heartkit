@@ -1,11 +1,11 @@
 import abc
 
-import neuralspot_edge as nse
+import helia_edge as helia
 import numpy.typing as npt
 
 from ..defines import HKTaskParams
 
-logger = nse.utils.setup_logger(__name__)
+logger = helia.utils.setup_logger(__name__)
 
 
 class HKInferenceBackend(abc.ABC):

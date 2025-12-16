@@ -48,4 +48,4 @@ NA
 
 ## <span class="sk-h2-span">Licensing</span>
 
-The tool is available under BSD-3-Clause License.
+The tool is available under BSD-3-Clause Licehelia.

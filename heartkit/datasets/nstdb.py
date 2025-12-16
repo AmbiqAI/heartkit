@@ -5,9 +5,9 @@ import h5py
 import numpy as np
 import numpy.typing as npt
 import physiokit as pk
-import neuralspot_edge as nse
+import helia_edge as helia
 
-logger = nse.utils.setup_logger(__name__)
+logger = helia.utils.setup_logger(__name__)
 
 
 class NstdbNoise:

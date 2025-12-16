@@ -2,7 +2,7 @@ from typing import Generator
 
 import numpy as np
 import numpy.typing as npt
-import neuralspot_edge as nse
+import helia_edge as helia
 
 
 from ...datasets import HKDataloader
@@ -23,7 +23,7 @@ class DenoiseDataloader(HKDataloader):
         Leveraging the signal_generator method from the dataset class to generate data.
         """
         gen = self.ds.signal_generator(
-            patient_generator=nse.utils.uniform_id_generator(patient_ids, repeat=True, shuffle=shuffle),
+            patient_generator=helia.utils.uniform_id_generator(patient_ids, repeat=True, shuffle=shuffle),
             frame_size=self.frame_size,
             samples_per_patient=samples_per_patient,
             target_rate=self.sampling_rate,
@@ -34,7 +34,7 @@ class DenoiseDataloader(HKDataloader):
             yield x
 
 
-DenoiseTaskFactory = nse.utils.create_factory(factory="HKDenoiseTaskFactory", type=HKDataloader)
+DenoiseTaskFactory = helia.utils.create_factory(factory="HKDenoiseTaskFactory", type=HKDataloader)
 DenoiseTaskFactory.register("ecg-synthetic", DenoiseDataloader)
 DenoiseTaskFactory.register("ppg-synthetic", DenoiseDataloader)
 DenoiseTaskFactory.register("icentia11k", DenoiseDataloader)

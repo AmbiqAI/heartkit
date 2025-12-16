@@ -11,18 +11,18 @@ Functions:
 
 import numpy as np
 import tensorflow as tf
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from ..datasets import HKDataset, HKDataloader
 from ..defines import HKTaskParams
 
-logger = nse.utils.setup_logger(__name__)
+logger = helia.utils.setup_logger(__name__)
 
 
 def load_train_dataloader_split(
     datasets: list[HKDataset],
     params: HKTaskParams,
-    factory: nse.utils.ItemFactory[HKDataloader],
+    factory: helia.utils.ItemFactory[HKDataloader],
 ) -> tuple[tf.data.Dataset, tf.data.Dataset]:
     """Create dataloader pipeline for training and validation sets
 
@@ -69,7 +69,7 @@ def load_train_dataloader_split(
 def load_test_dataloader_split(
     datasets: list[HKDataset],
     params: HKTaskParams,
-    factory: nse.utils.ItemFactory[HKDataloader],
+    factory: helia.utils.ItemFactory[HKDataloader],
 ) -> tf.data.Dataset:
     """Create dataloader pipeline for test set
 

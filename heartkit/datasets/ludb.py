@@ -13,12 +13,12 @@ import numpy as np
 import numpy.typing as npt
 import physiokit as pk
 from tqdm.contrib.concurrent import process_map
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from .dataset import HKDataset
 from .defines import PatientGenerator, PatientData
 
-logger = nse.utils.setup_logger(__name__)
+logger = helia.utils.setup_logger(__name__)
 
 LudbSymbolMap = {
     "o": 0,  # Other
@@ -221,7 +221,7 @@ class LudbDataset(HKDataset):
         os.makedirs(self.path, exist_ok=True)
         zip_path = self.path / f"{self.name}.zip"
 
-        did_download = nse.utils.download_s3_file(
+        did_download = helia.utils.download_s3_file(
             key=f"{self.name}/{self.name}.zip",
             dst=zip_path,
             bucket="ambiq-ai-datasets",
@@ -250,7 +250,7 @@ class LudbDataset(HKDataset):
                 f"Zip file already exists. Please delete or set `force` flag to redownload. PATH={ds_zip_path}"
             )
         else:
-            nse.utils.download_file(ds_url, ds_zip_path, progress=True)
+            helia.utils.download_file(ds_url, ds_zip_path, progress=True)
 
         # 2. Extract and convert patient ECG data to H5 files
         logger.debug("Generating LUDB patient data")

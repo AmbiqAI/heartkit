@@ -4,7 +4,7 @@ import json
 import keras
 import numpy as np
 import tensorflow as tf
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from ...defines import HKTaskParams
 from ...datasets import DatasetFactory
@@ -18,10 +18,10 @@ def evaluate(params: HKTaskParams):
         params (HKTaskParams): Task parameters
     """
     os.makedirs(params.job_dir, exist_ok=True)
-    logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "test.log")
+    logger = helia.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "test.log")
     logger.debug(f"Creating working directory in {params.job_dir}")
 
-    params.seed = nse.utils.set_random_seed(params.seed)
+    params.seed = helia.utils.set_random_seed(params.seed)
     logger.debug(f"Random seed {params.seed}")
 
     class_names = params.class_names or [f"Class {i}" for i in range(params.num_classes)]
@@ -39,8 +39,8 @@ def evaluate(params: HKTaskParams):
     test_y = np.concatenate([y for _, y in test_ds.as_numpy_iterator()])
 
     logger.debug("Loading model")
-    model = nse.models.load_model(params.model_file)
-    flops = nse.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
+    model = helia.models.load_model(params.model_file)
+    flops = helia.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
 
     model.summary(print_fn=logger.debug)
     logger.debug(f"Model requires {flops / 1e6:0.2f} MFLOPS")
@@ -57,13 +57,13 @@ def evaluate(params: HKTaskParams):
 
     if params.num_classes == 2:
         roc_path = params.job_dir / "roc_auc_test.png"
-        nse.plotting.roc_auc_plot(y_true, y_prob[:, 1], labels=class_names, save_path=roc_path)
+        helia.plotting.roc_auc_plot(y_true, y_prob[:, 1], labels=class_names, save_path=roc_path)
     # END IF
 
     # If threshold given, only count predictions above threshold
     if params.threshold:
         prev_numel = len(y_true)
-        indices = nse.metrics.threshold.get_predicted_threshold_indices(y_prob, y_pred, params.threshold)
+        indices = helia.metrics.threshold.get_predicted_threshold_indices(y_prob, y_pred, params.threshold)
         test_x, test_y = test_x[indices], test_y[indices]
         y_true, y_pred = y_true[indices], y_pred[indices]
         rst = model.evaluate(test_x, test_y, verbose=params.verbose, return_dict=True)
@@ -72,8 +72,8 @@ def evaluate(params: HKTaskParams):
     # END IF
 
     cm_path = params.job_dir / "confusion_matrix_test.png"
-    nse.plotting.confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
-    nse.plotting.px_plot_confusion_matrix(
+    helia.plotting.confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
+    helia.plotting.px_plot_confusion_matrix(
         y_true,
         y_pred,
         labels=class_names,

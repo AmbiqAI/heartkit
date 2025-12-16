@@ -1,7 +1,7 @@
 import abc
 import os
 
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from ..datasets import DatasetFactory, HKDataset
 from ..defines import HKTaskParams
@@ -29,7 +29,7 @@ class HKTask(abc.ABC):
 
         """
         os.makedirs(params.job_dir, exist_ok=True)
-        logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "download.log")
+        logger = helia.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "download.log")
         logger.debug(f"Creating working directory in {params.job_dir}")
 
         for ds in params.datasets:

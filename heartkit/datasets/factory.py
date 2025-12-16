@@ -3,8 +3,8 @@ key (str): Dataset name slug (e.g. "ptbxl")
 value (HKDataset): Dataset class
 """
 
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from .dataset import HKDataset
 
-DatasetFactory = nse.utils.create_factory(factory="HKDatasetFactory", type=HKDataset)
+DatasetFactory = helia.utils.create_factory(factory="HKDatasetFactory", type=HKDataset)

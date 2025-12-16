@@ -7,13 +7,13 @@ import physiokit as pk
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from tqdm import tqdm
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from ...datasets import IcentiaDataset, PtbxlDataset, DatasetFactory, create_augmentation_pipeline
 from ...defines import HKTaskParams
 from ...backends import BackendFactory
 
-logger = nse.utils.setup_logger(__name__)
+logger = helia.utils.setup_logger(__name__)
 
 
 def get_ptbxl_patient_data(
@@ -139,7 +139,7 @@ def demo(params: HKTaskParams):
     else:
         # Need to manually locate peaks, compute
         ds_gen = ds.signal_generator(
-            patient_generator=nse.utils.uniform_id_generator(ds.get_test_patient_ids(), repeat=False),
+            patient_generator=helia.utils.uniform_id_generator(ds.get_test_patient_ids(), repeat=False),
             frame_size=params.demo_size,
             samples_per_patient=5,
             target_rate=params.sampling_rate,

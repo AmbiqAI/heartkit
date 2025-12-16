@@ -10,7 +10,7 @@ Classes:
 
 """
 
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from ....datasets import HKDataloader
 
@@ -20,7 +20,7 @@ from .ptbxl import PtbxlDataloader
 from .ecg_synthetic import EcgSyntheticDataloader
 from .ppg_synthetic import PPgSyntheticDataloader
 
-SegmentationDataloaderFactory = nse.utils.create_factory(factory="HKSegmentationDataloaderFactory", type=HKDataloader)
+SegmentationDataloaderFactory = helia.utils.create_factory(factory="HKSegmentationDataloaderFactory", type=HKDataloader)
 SegmentationDataloaderFactory.register("icentia11k", Icentia11kDataloader)
 SegmentationDataloaderFactory.register("ludb", LudbDataloader)
 SegmentationDataloaderFactory.register("ptbxl", PtbxlDataloader)

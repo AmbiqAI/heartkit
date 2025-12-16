@@ -14,12 +14,12 @@ import physiokit as pk
 import sklearn.model_selection
 import sklearn.preprocessing
 from tqdm.contrib.concurrent import process_map
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from .dataset import HKDataset
 from .defines import PatientGenerator
 
-logger = nse.utils.setup_logger(__name__)
+logger = helia.utils.setup_logger(__name__)
 
 
 class IcentiaRhythm(IntEnum):
@@ -193,7 +193,7 @@ class IcentiaDataset(HKDataset):
             num_workers (int | None, optional): # parallel workers. Defaults to None.
             force (bool, optional): Force redownload. Defaults to False.
         """
-        nse.utils.download_s3_objects(
+        helia.utils.download_s3_objects(
             bucket="ambiq-ai-datasets",
             prefix=self.path.stem,
             dst=self.path.parent,
@@ -342,7 +342,7 @@ class IcentiaDataset(HKDataset):
                 f"Zip file already exists. Please delete or set `force` flag to redownload. PATH={ds_zip_path}"
             )
         else:
-            nse.utils.download_file(ds_url, ds_zip_path, progress=True)
+            helia.utils.download_file(ds_url, ds_zip_path, progress=True)
 
         # 2. Extract and convert patient ECG data to H5 files
         logger.debug("Generating icentia11k patient data")

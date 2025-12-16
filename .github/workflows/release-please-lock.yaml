@@ -1,0 +1,39 @@
+name: Sync uv.lock for release PRs
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - ready_for_review
+      - reopened
+
+jobs:
+  update-uv-lock:
+    if: startsWith(github.head_ref, 'release-please--')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout release PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Regenerate uv.lock
+        run: uv lock --locked
+      - name: Commit updated lockfile
+        if: ${{ !cancelled() }}
+        run: |
+          if git diff --quiet -- uv.lock; then
+            echo "uv.lock already up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add uv.lock
+          git commit -m "chore: sync uv.lock after version bump"
+          git push

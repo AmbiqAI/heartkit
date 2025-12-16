@@ -10,7 +10,7 @@ Please visit [Physionet](https://doi.org/10.13026/C24K53) for more details.
 
     ```py linenums="1"
     from pathlib import Path
-    import neuralspot_edge as nse
+    import helia_edge as helia
     import heartkit as hk
 
     ds = hk.DatasetFactory.get('qtdb')(
@@ -22,7 +22,7 @@ Please visit [Physionet](https://doi.org/10.13026/C24K53) for more details.
 
     # Create signal generator
     data_gen = self.ds.signal_generator(
-        patient_generator=nse.utils.uniform_id_generator(ds.patient_ids, repeat=True, shuffle=True),
+        patient_generator=helia.utils.uniform_id_generator(ds.patient_ids, repeat=True, shuffle=True),
         frame_size=256,
         samples_per_patient=5,
         target_rate=100,

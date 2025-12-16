@@ -10,7 +10,7 @@ Classes:
 
 """
 
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from ....datasets import HKDataloader
 
@@ -19,7 +19,7 @@ from .icentia_mini import IcentiaMiniDataloader
 from .ptbxl import PtbxlDataloader
 from .lsad import LsadDataloader
 
-RhythmDataloaderFactory = nse.utils.create_factory(factory="HKRhythmDataloaderFactory", type=HKDataloader)
+RhythmDataloaderFactory = helia.utils.create_factory(factory="HKRhythmDataloaderFactory", type=HKDataloader)
 RhythmDataloaderFactory.register("icentia11k", Icentia11kDataloader)
 RhythmDataloaderFactory.register("icentia_mini", IcentiaMiniDataloader)
 RhythmDataloaderFactory.register("ptbxl", PtbxlDataloader)

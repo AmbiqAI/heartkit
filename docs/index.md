@@ -113,17 +113,17 @@ The ADK includes several built-in [datasets](./datasets/index.md) for training _
 
 ## <span class="sk-h2-span">[Models](./models/index.md)</span>
 
-__HeartKit__ provides a variety of model architectures geared towards efficient, real-time edge applications. These models are provided by Ambiq's [neuralspot-edge](https://ambiqai.github.io/neuralspot-edge/) and expose a set of parameters that can be used to fully customize the network for a given application. In addition, HeartKit includes a model factory, [ModelFactory](./models/index.md#model-factory), to register current models as well as allow new custom architectures to be added. Check out the [Models Guide](./models/index.md) to learn more about the available network architectures and model factory.
+__HeartKit__ provides a variety of model architectures geared towards efficient, real-time edge applications. These models are provided by Ambiq's [helia-edge](https://ambiqai.github.io/helia-edge/) and expose a set of parameters that can be used to fully customize the network for a given application. In addition, HeartKit includes a model factory, [ModelFactory](./models/index.md#model-factory), to register current models as well as allow new custom architectures to be added. Check out the [Models Guide](./models/index.md) to learn more about the available network architectures and model factory.
 
-- **[TCN](https://ambiqai.github.io/neuralspot-edge/models/tcn)**: A CNN leveraging dilated convolutions (key=`tcn`)
-- **[U-Net](https://ambiqai.github.io/neuralspot-edge/models/unet)**: A CNN with encoder-decoder architecture for segmentation tasks (key=`unet`)
-- **[U-NeXt](https://ambiqai.github.io/neuralspot-edge/models/unext)**: A U-Net variant leveraging MBConv blocks (key=`unext`)
-- **[EfficientNetV2](https://ambiqai.github.io/neuralspot-edge/models/efficientnet)**: A CNN leveraging MBConv blocks (key=`efficientnet`)
-- **[MobileOne](https://ambiqai.github.io/neuralspot-edge/models/mobileone)**: A CNN aimed at sub-1ms inference (key=`mobileone`)
-- **[ResNet](https://ambiqai.github.io/neuralspot-edge/models/resnet)**: A popular CNN often used for vision tasks (key=`resnet`)
-- **[Conformer](https://ambiqai.github.io/neuralspot-edge/models/conformer)**: A transformer composed of both convolutional and self-attention blocks (key=`conformer`)
-- **[MetaFormer](https://ambiqai.github.io/neuralspot-edge/models/metaformer)**: A transformer composed of both spatial mixing and channel mixing blocks (key=`metaformer`)
-- **[TSMixer](https://ambiqai.github.io/neuralspot-edge/models/tsmixer)**: An All-MLP Architecture for Time Series Classification (key=`tsmixer`)
+- **[TCN](https://ambiqai.github.io/helia-edge/api/helia_edge/models/tcn)**: A CNN leveraging dilated convolutions (key=`tcn`)
+- **[U-Net](https://ambiqai.github.io/helia-edge/api/helia_edge/models/unet)**: A CNN with encoder-decoder architecture for segmentation tasks (key=`unet`)
+- **[U-NeXt](https://ambiqai.github.io/helia-edge/api/helia_edge/models/unext)**: A U-Net variant leveraging MBConv blocks (key=`unext`)
+- **[EfficientNetV2](https://ambiqai.github.io/helia-edge/api/helia_edge/models/efficientnet)**: A CNN leveraging MBConv blocks (key=`efficientnet`)
+- **[MobileOne](https://ambiqai.github.io/helia-edge/api/helia_edge/models/mobileone)**: A CNN aimed at sub-1ms inference (key=`mobileone`)
+- **[ResNet](https://ambiqai.github.io/helia-edge/api/helia_edge/models/resnet)**: A popular CNN often used for vision tasks (key=`resnet`)
+- **[Conformer](https://ambiqai.github.io/helia-edge/api/helia_edge/models/conformer)**: A transformer composed of both convolutional and self-attention blocks (key=`conformer`)
+- **[MetaFormer](https://ambiqai.github.io/helia-edge/api/helia_edge/models/metaformer)**: A transformer composed of both spatial mixing and channel mixing blocks (key=`metaformer`)
+- **[TSMixer](https://ambiqai.github.io/helia-edge/api/helia_edge/models/tsmixer)**: An All-MLP Architecture for Time Series Classification (key=`tsmixer`)
 - **[Bring-Your-Own-Model (BYOM)](./models/byom.md)**: Register new SoTA model architectures w/ custom configurations
 
 ---

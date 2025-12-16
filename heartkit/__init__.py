@@ -22,10 +22,10 @@ from .defines import (
 from .models import ModelFactory
 from .tasks import HKBeat, HKRhythm, HKSegment, HKTask, TaskFactory
 from .backends import BackendFactory
-import neuralspot_edge as nse
+import helia_edge as helia
 
 __version__ = version(__name__)
 
 if "TF_CPP_MIN_LOG_LEVEL" not in os.environ:
     os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-nse.utils.setup_logger(__name__)
+helia.utils.setup_logger(__name__)

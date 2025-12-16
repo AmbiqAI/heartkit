@@ -7,11 +7,11 @@ Classes:
 
 """
 
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from ....datasets import HKDataloader
 
 from .bidmc import BidmcDataloader
 
-TranslateTaskFactory = nse.utils.create_factory(factory="HKTranslateTaskFactory", type=HKDataloader)
+TranslateTaskFactory = helia.utils.create_factory(factory="HKTranslateTaskFactory", type=HKDataloader)
 TranslateTaskFactory.register("bidmc", BidmcDataloader)

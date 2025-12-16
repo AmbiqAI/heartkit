@@ -1,20 +1,20 @@
 # :material-graph-outline: Models
 
-HeartKit provides a number of model architectures that can be used for training __heart-monitoring tasks__. While a number of off-the-shelf models exist, they are often not efficient nor optimized for real-time, edge applications. To address this, HeartKit provides a model factory that allows you to easily create and train customized models via [neuralspot-edge](https://ambiqai.github.io/neuralspot-edge/). `neuralspot-edge` includes a growing number of state-of-the-art models that can be easily configured and trained using high-level parameters. The models are designed to be efficient and well-suited for real-time, edge applications. Most of the models are based on state-of-the-art architectures that have been modified to allow for more fine-grain customization. In addition, the models support 1D variants to allow for training on time-series data. Please check [neuralspot-edge](https://ambiqai.github.io/neuralspot-edge/) for list of available models and their configurations.
+HeartKit provides a number of model architectures that can be used for training __heart-monitoring tasks__. While a number of off-the-shelf models exist, they are often not efficient nor optimized for real-time, edge applications. To address this, HeartKit provides a model factory that allows you to easily create and train customized models via [helia-edge](https://ambiqai.github.io/helia-edge/). `helia-edge` includes a growing number of state-of-the-art models that can be easily configured and trained using high-level parameters. The models are designed to be efficient and well-suited for real-time, edge applications. Most of the models are based on state-of-the-art architectures that have been modified to allow for more fine-grain customization. In addition, the models support 1D variants to allow for training on time-series data. Please check [helia-edge](https://ambiqai.github.io/helia-edge/) for list of available models and their configurations.
 
 ---
 
 ## <span class="sk-h2-span">Available Models</span>
 
-- **[TCN](https://ambiqai.github.io/neuralspot-edge/models/tcn)**: A CNN leveraging dilated convolutions (key=`tcn`)
-- **[U-Net](https://ambiqai.github.io/neuralspot-edge/models/unet)**: A CNN with encoder-decoder architecture for segmentation tasks (key=`unet`)
-- **[U-NeXt](https://ambiqai.github.io/neuralspot-edge/models/unext)**: A U-Net variant leveraging MBConv blocks (key=`unext`)
-- **[EfficientNetV2](https://ambiqai.github.io/neuralspot-edge/models/efficientnet)**: A CNN leveraging MBConv blocks (key=`efficientnet`)
-- **[MobileOne](https://ambiqai.github.io/neuralspot-edge/models/mobileone)**: A CNN aimed at sub-1ms inference (key=`mobileone`)
-- **[ResNet](https://ambiqai.github.io/neuralspot-edge/models/resnet)**: A popular CNN often used for vision tasks (key=`resnet`)
-- **[Conformer](https://ambiqai.github.io/neuralspot-edge/models/conformer)**: A transformer composed of both convolutional and self-attention blocks (key=`conformer`)
-- **[MetaFormer](https://ambiqai.github.io/neuralspot-edge/models/metaformer)**: A transformer composed of both spatial mixing and channel mixing blocks (key=`metaformer`)
-- **[TSMixer](https://ambiqai.github.io/neuralspot-edge/models/tsmixer)**: An All-MLP Architecture for Time Series Classification (key=`tsmixer`)
+- **[TCN](https://ambiqai.github.io/helia-edge/api/helia_edge/models/tcn)**: A CNN leveraging dilated convolutions (key=`tcn`)
+- **[U-Net](https://ambiqai.github.io/helia-edge/api/helia_edge/models/unet)**: A CNN with encoder-decoder architecture for segmentation tasks (key=`unet`)
+- **[U-NeXt](https://ambiqai.github.io/helia-edge/api/helia_edge/models/unext)**: A U-Net variant leveraging MBConv blocks (key=`unext`)
+- **[EfficientNetV2](https://ambiqai.github.io/helia-edge/api/helia_edge/models/efficientnet)**: A CNN leveraging MBConv blocks (key=`efficientnet`)
+- **[MobileOne](https://ambiqai.github.io/helia-edge/api/helia_edge/models/mobileone)**: A CNN aimed at sub-1ms inference (key=`mobileone`)
+- **[ResNet](https://ambiqai.github.io/helia-edge/api/helia_edge/models/resnet)**: A popular CNN often used for vision tasks (key=`resnet`)
+- **[Conformer](https://ambiqai.github.io/helia-edge/api/helia_edge/models/conformer)**: A transformer composed of both convolutional and self-attention blocks (key=`conformer`)
+- **[MetaFormer](https://ambiqai.github.io/helia-edge/api/helia_edge/models/metaformer)**: A transformer composed of both spatial mixing and channel mixing blocks (key=`metaformer`)
+- **[TSMixer](https://ambiqai.github.io/helia-edge/api/helia_edge/models/tsmixer)**: An All-MLP Architecture for Time Series Classification (key=`tsmixer`)
 * **[Bring-Your-Own-Model](./byom.md)**: Add a custom model architecture to HeartKit.
 
 ---

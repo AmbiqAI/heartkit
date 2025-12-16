@@ -19,14 +19,14 @@ from typing import Type, TypeVar
 
 from argdantic import ArgField, ArgParser
 from pydantic import BaseModel
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from .defines import HKMode, HKTaskParams
 from .tasks import TaskFactory
 
 B = TypeVar("B", bound=BaseModel)
 
-logger = nse.utils.setup_logger(__name__)
+logger = helia.utils.setup_logger(__name__)
 
 parser = ArgParser()
 

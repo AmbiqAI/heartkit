@@ -46,6 +46,7 @@
     "customizations": {
         "vscode": {
             "extensions": [
+                "openai.chatgpt",
                 "GitHub.copilot",
                 "GitHub.copilot-chat",
                 "ms-toolsai.jupyter",

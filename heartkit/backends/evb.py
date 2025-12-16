@@ -1,7 +1,7 @@
 import time
 from enum import IntEnum
 
-import neuralspot_edge as nse
+import helia_edge as helia
 import numpy as np
 import numpy.typing as npt
 
@@ -135,7 +135,7 @@ class EvbBackend(HKInferenceBackend):
 
         with open(self.params.model_file, "rb") as fp:
             model_content = fp.read()
-        self._interpreter = nse.converters.tflite.TfLiteKerasInterpreter(model_content=model_content)
+        self._interpreter = helia.converters.tflite.TfLiteKerasInterpreter(model_content=model_content)
         self._interpreter.compile()
         self._send_binary("MODEL", RpcCommands.SEND_MODEL, model_content)
 

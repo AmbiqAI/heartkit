@@ -10,7 +10,7 @@ flowchart LR
 In the first stage, 4 seconds of sensor data is collected- either directly from the MAX86150 sensor or test data from the PC. In stage 2, the data is preprocessed by bandpass filtering and standardizing. The data is then fed into the CNN network to perform inference. Finally, in stage 4, the ECG data will be classified as normal (NSR), rhythm (AFIB/AFL) or inconclusive. Inconclusive is assigned when the prediction confidence is less than a pre-defined threshold (e.g. 90%).
 
 !!! note
-    A reference rhythm model (`./evb/src/arrhythmia_model_buffer.h`) is included and can be used to quickly evaluate the hardware. The model is trained on Icentia11k dataset that has the associated [non-commercial license](https://physionet.org/content/icentia11k-continuous-ecg/1.0/LICENSE.txt). The model is intended for evaluation purposes only and cannot be used for commercial use without permission.
+    A reference rhythm model (`./evb/src/arrhythmia_model_buffer.h`) is included and can be used to quickly evaluate the hardware. The model is trained on Icentia11k dataset that has the associated [non-commercial license](https://physionet.org/content/icentia11k-continuous-ecg/1.0/LICEhelia.txt). The model is intended for evaluation purposes only and cannot be used for commercial use without permission.
 
 ## Demo Setup
 
