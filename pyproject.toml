@@ -1,6 +1,6 @@
 [project]
 name = "heartkit"
-version = "1.6.0"
+version = "1.7.0"
 description = "AI driven heart monitoring kit for ultra low-power wearables."
 readme = "README.md"
 license = { text = "BSD-3-Clause" }
