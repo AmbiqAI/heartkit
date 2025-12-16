@@ -4,7 +4,7 @@ from typing import Generator
 import numpy as np
 import numpy.typing as npt
 import physiokit as pk
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from ....datasets import HKDataloader, LsadDataset
 
@@ -57,7 +57,7 @@ class LsadDataloader(HKDataloader):
         samples_per_patient: int | list[int],
         shuffle: bool = False,
     ) -> Generator[tuple[npt.NDArray, npt.NDArray], None, None]:
-        for pt_id in nse.utils.uniform_id_generator(patient_ids, shuffle=shuffle):
+        for pt_id in helia.utils.uniform_id_generator(patient_ids, shuffle=shuffle):
             for x1, x2 in self.patient_data_generator(pt_id, samples_per_patient):
                 yield x1, x2
             # END FOR

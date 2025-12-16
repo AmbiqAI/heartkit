@@ -41,7 +41,7 @@ Classes:
 
 """
 
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from . import beat, denoise, diagnostic, foundation, rhythm, segmentation, utils
 
@@ -54,7 +54,7 @@ from .segmentation import HKSegment, SegmentationTask
 from .task import HKTask
 from .translate import HKTranslate, TranslateTask
 
-TaskFactory = nse.utils.create_factory(factory="HKTaskFactory", type=HKTask)
+TaskFactory = helia.utils.create_factory(factory="HKTaskFactory", type=HKTask)
 
 TaskFactory.register("rhythm", RhythmTask)
 TaskFactory.register("beat", BeatTask)

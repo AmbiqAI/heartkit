@@ -5,7 +5,7 @@ import keras
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
-import neuralspot_edge as nse
+import helia_edge as helia
 from sklearn.manifold import TSNE
 
 from ...defines import HKTaskParams
@@ -21,10 +21,10 @@ def evaluate(params: HKTaskParams):
         params (HKTaskParams): Task parameters
     """
     os.makedirs(params.job_dir, exist_ok=True)
-    logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "test.log")
+    logger = helia.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "test.log")
     logger.debug(f"Creating working directory in {params.job_dir}")
 
-    params.seed = nse.utils.set_random_seed(params.seed)
+    params.seed = helia.utils.set_random_seed(params.seed)
     logger.debug(f"Random seed {params.seed}")
 
     datasets = [DatasetFactory.get(ds.name)(**ds.params) for ds in params.datasets]
@@ -39,14 +39,14 @@ def evaluate(params: HKTaskParams):
     # Grab sets of augmented samples
     test_x1, test_x2 = [], []
     for inputs in test_ds.as_numpy_iterator():
-        test_x1.append(inputs[nse.trainers.SimCLRTrainer.AUG_SAMPLES_0])
-        test_x2.append(inputs[nse.trainers.SimCLRTrainer.AUG_SAMPLES_1])
+        test_x1.append(inputs[helia.trainers.SimCLRTrainer.AUG_SAMPLES_0])
+        test_x2.append(inputs[helia.trainers.SimCLRTrainer.AUG_SAMPLES_1])
     test_x1 = np.concatenate(test_x1)
     test_x2 = np.concatenate(test_x2)
 
     logger.debug("Loading model")
-    model = nse.models.load_model(params.model_file)
-    flops = nse.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
+    model = helia.models.load_model(params.model_file)
+    flops = helia.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
 
     model.summary(print_fn=logger.debug)
     logger.debug(f"Model requires {flops / 1e6:0.2f} MFLOPS")
@@ -61,7 +61,7 @@ def evaluate(params: HKTaskParams):
     ]
 
     setup_plotting()
-    rst = nse.metrics.compute_metrics(metrics, test_y1, test_y2)
+    rst = helia.metrics.compute_metrics(metrics, test_y1, test_y2)
     rst["flops"] = flops
     rst["parameters"] = model.count_params()
     rst = {k: float(v) for k, v in rst.items()}

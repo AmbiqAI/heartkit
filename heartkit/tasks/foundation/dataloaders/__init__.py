@@ -8,13 +8,13 @@ Classes:
 
 """
 
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from ....datasets import HKDataloader
 
 from .lsad import LsadDataloader
 from .ptbxl import PtbxlDataloader
 
-FoundationTaskFactory = nse.utils.create_factory(factory="FoundationTaskFactory", type=HKDataloader)
+FoundationTaskFactory = helia.utils.create_factory(factory="FoundationTaskFactory", type=HKDataloader)
 FoundationTaskFactory.register("lsad", LsadDataloader)
 FoundationTaskFactory.register("ptbxl", PtbxlDataloader)

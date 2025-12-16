@@ -6,7 +6,7 @@ from collections.abc import Iterable
 import numpy as np
 import numpy.typing as npt
 import tensorflow as tf
-import neuralspot_edge as nse
+import helia_edge as helia
 
 
 from .dataset import HKDataset
@@ -75,7 +75,7 @@ class HKDataloader:
                 samples_per_patient: int | list[int],
                 shuffle: bool = False,
             ) -> Generator[npt.NDArray, None, None]:
-                for pt_id in nse.utils.uniform_id_generator(patient_ids, shuffle=shuffle):
+                for pt_id in helia.utils.uniform_id_generator(patient_ids, shuffle=shuffle):
                     # Implement data generator
                     yield data
                 # END FOR
@@ -202,7 +202,7 @@ class HKDataloader:
             Generator[tuple[npt.NDArray, ...], None, None]: Data generator
 
         """
-        for pt_id in nse.utils.uniform_id_generator(patient_ids, shuffle=shuffle):
+        for pt_id in helia.utils.uniform_id_generator(patient_ids, shuffle=shuffle):
             for data in self.patient_data_generator(pt_id, samples_per_patient):
                 yield data
             # END FOR
@@ -229,7 +229,7 @@ class HKDataloader:
         )
 
         # Compute output signature from generator
-        sig = nse.utils.get_output_signature_from_gen(data_gen)
+        sig = helia.utils.get_output_signature_from_gen(data_gen)
 
         ds = tf.data.Dataset.from_generator(
             data_gen,

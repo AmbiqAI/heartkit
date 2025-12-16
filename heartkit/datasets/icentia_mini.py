@@ -14,12 +14,12 @@ import sklearn.model_selection
 import sklearn.preprocessing
 from tqdm.contrib.concurrent import process_map
 
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from .dataset import HKDataset
 from .defines import PatientGenerator, PatientData
 
-logger = nse.utils.setup_logger(__name__)
+logger = helia.utils.setup_logger(__name__)
 
 
 class IcentiaMiniRhythm(IntEnum):
@@ -202,7 +202,7 @@ class IcentiaMiniDataset(HKDataset):
         os.makedirs(self.path, exist_ok=True)
         zip_path = self.path / f"{self.name}.zip"
 
-        did_download = nse.utils.download_s3_file(
+        did_download = helia.utils.download_s3_file(
             key=f"{self.name}/{self.name}.zip",
             dst=zip_path,
             bucket="ambiq-ai-datasets",

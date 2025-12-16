@@ -1,7 +1,7 @@
 from typing import Generator
 
 import numpy.typing as npt
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from ....datasets import HKDataloader, LsadDataset, LsadScpCode
 from ..defines import HKRhythm
@@ -45,7 +45,7 @@ class LsadDataloader(HKDataloader):
         shuffle: bool = False,
     ) -> Generator[tuple[npt.NDArray, npt.NDArray], None, None]:
         return self.ds.signal_label_generator(
-            patient_generator=nse.utils.uniform_id_generator(patient_ids, repeat=True, shuffle=shuffle),
+            patient_generator=helia.utils.uniform_id_generator(patient_ids, repeat=True, shuffle=shuffle),
             frame_size=self.frame_size,
             samples_per_patient=samples_per_patient,
             target_rate=self.sampling_rate,

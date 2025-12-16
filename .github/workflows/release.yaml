@@ -1,9 +1,11 @@
-name: Release to PyPi
+name: Release to PyPI
 
 on:
   release:
-    types:
-      - created
+    types: [published]
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
 
 jobs:

@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.typing as npt
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from ..defines import HKTaskParams
 from .backend import HKInferenceBackend
@@ -28,11 +28,11 @@ class PcBackend(HKInferenceBackend):
     def open(self):
         """This method will simply load the keras or TFLite model"""
         if self._is_tf_model():
-            self._model = nse.models.load_model(self.params.model_file)
+            self._model = helia.models.load_model(self.params.model_file)
         else:
             with open(self.params.model_file, "rb") as fp:
                 model_content = fp.read()
-            self._model = nse.interpreters.tflite.TfLiteKerasInterpreter(model_content=model_content)
+            self._model = helia.interpreters.tflite.TfLiteKerasInterpreter(model_content=model_content)
 
     def close(self):
         """This method will unload the model"""

@@ -7,7 +7,7 @@ from matplotlib.gridspec import GridSpec
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from tqdm import tqdm
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from ...defines import HKTaskParams
 from ...backends import BackendFactory
@@ -22,7 +22,7 @@ def demo(params: HKTaskParams):
     Args:
         params (HKTaskParams): Demo parameters
     """
-    logger = nse.utils.setup_logger(__name__, level=params.verbose)
+    logger = helia.utils.setup_logger(__name__, level=params.verbose)
     plot_theme = setup_plotting()
 
     signal_type = getattr(params, "signal_type", "ECG").upper()  # ECG or PPG
@@ -41,7 +41,7 @@ def demo(params: HKTaskParams):
     ds = random.choice(datasets)
 
     ds_gen = ds.signal_generator(
-        patient_generator=nse.utils.uniform_id_generator(ds.get_test_patient_ids(), repeat=False),
+        patient_generator=helia.utils.uniform_id_generator(ds.get_test_patient_ids(), repeat=False),
         frame_size=params.demo_size,
         samples_per_patient=5,
         target_rate=params.sampling_rate,

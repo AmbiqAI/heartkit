@@ -4,7 +4,7 @@ import keras
 import wandb
 import numpy as np
 from wandb.integration.keras import WandbMetricsLogger, WandbModelCheckpoint
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from ...defines import HKTaskParams
 from ...models import ModelFactory
@@ -20,18 +20,18 @@ def train(params: HKTaskParams):
         params (HKTaskParams): Task parameters
     """
     os.makedirs(params.job_dir, exist_ok=True)
-    logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "train.log")
+    logger = helia.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "train.log")
     logger.debug(f"Creating working directory in {params.job_dir}")
 
     params.temperature = float(getattr(params, "temperature", 0.1))
 
-    params.seed = nse.utils.set_random_seed(params.seed)
+    params.seed = helia.utils.set_random_seed(params.seed)
     logger.debug(f"Random seed {params.seed}")
 
     with open(params.job_dir / "configuration.json", "w", encoding="utf-8") as fp:
         fp.write(params.model_dump_json(indent=2))
 
-    if nse.utils.env_flag("WANDB"):
+    if helia.utils.env_flag("WANDB"):
         wandb.init(project=params.project, entity="ambiq", dir=params.job_dir)
         wandb.config.update(params.model_dump())
     # END IF
@@ -56,7 +56,7 @@ def train(params: HKTaskParams):
         num_classes=None,
     )
 
-    flops = nse.metrics.flops.get_flops(encoder, batch_size=1, fpath=params.job_dir / "encoder_flops.log")
+    flops = helia.metrics.flops.get_flops(encoder, batch_size=1, fpath=params.job_dir / "encoder_flops.log")
     encoder.summary(print_fn=logger.info)
     logger.debug(f"Encoder requires {flops / 1e6:0.2f} MFLOPS")
 
@@ -67,14 +67,14 @@ def train(params: HKTaskParams):
     # projector_output = keras.layers.Dense(projection_width, activation="relu6")(projector_input)
     # projector_output = keras.layers.Dense(projection_width)(projector_output)
     # projector = keras.Model(inputs=projector_input, outputs=projector_output, name="projector")
-    # flops = nse.metrics.flops.get_flops(projector, batch_size=1, fpath=params.job_dir / "projector_flops.log")
+    # flops = helia.metrics.flops.get_flops(projector, batch_size=1, fpath=params.job_dir / "projector_flops.log")
     # projector.summary(print_fn=logger.info)
     # logger.debug(f"Projector requires {flops/1e6:0.2f} MFLOPS")
 
     if params.model_file is None:
         params.model_file = params.job_dir / "model.keras"
 
-    model = nse.trainers.SimCLRTrainer(
+    model = helia.trainers.SimCLRTrainer(
         encoder=encoder,
         projector=None,
     )
@@ -92,12 +92,12 @@ def train(params: HKTaskParams):
 
     model.compile(
         encoder_optimizer=keras.optimizers.Adam(get_scheduler()),
-        encoder_loss=nse.losses.simclr.SimCLRLoss(temperature=params.temperature),
+        encoder_loss=helia.losses.simclr.SimCLRLoss(temperature=params.temperature),
         encoder_metrics=[keras.metrics.MeanSquaredError(name="mse"), keras.metrics.CosineSimilarity(name="cos")],
     )
 
     ModelCheckpoint = keras.callbacks.ModelCheckpoint
-    if nse.utils.env_flag("WANDB"):
+    if helia.utils.env_flag("WANDB"):
         ModelCheckpoint = WandbModelCheckpoint
 
     model_callbacks = [
@@ -117,19 +117,19 @@ def train(params: HKTaskParams):
         ),
         keras.callbacks.CSVLogger(params.job_dir / "history.csv"),
     ]
-    if nse.utils.env_flag("TENSORBOARD"):
+    if helia.utils.env_flag("TENSORBOARD"):
         model_callbacks.append(
             keras.callbacks.TensorBoard(
                 log_dir=params.job_dir,
                 write_steps_per_second=True,
             )
         )
-    if nse.utils.env_flag("WANDB"):
+    if helia.utils.env_flag("WANDB"):
         model_callbacks.append(WandbMetricsLogger())
     # Use minimal progress bar
     if params.verbose <= 1:
         model_callbacks.append(
-            nse.callbacks.TQDMProgressBar(
+            helia.callbacks.TQDMProgressBar(
                 show_epoch_progress=False,
             )
         )
@@ -149,7 +149,7 @@ def train(params: HKTaskParams):
 
     setup_plotting()
     if history:
-        nse.plotting.plot_history_metrics(
+        helia.plotting.plot_history_metrics(
             history.history,
             metrics=["loss", "cos"],
             save_path=params.job_dir / "history.png",

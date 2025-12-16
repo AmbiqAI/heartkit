@@ -12,7 +12,7 @@ Please visit [Physionet](https://physionet.org/content/ludb/1.0.1/) for more det
 
     ```py linenums="1"
     from pathlib import Path
-    import neuralspot_edge as nse
+    import helia_edge as helia
     import heartkit as hk
 
     ds = hk.DatasetFactory.get('ludb')(
@@ -24,7 +24,7 @@ Please visit [Physionet](https://physionet.org/content/ludb/1.0.1/) for more det
 
     # Create signal generator
     data_gen = self.ds.signal_generator(
-        patient_generator=nse.utils.uniform_id_generator(ds.patient_ids, repeat=True, shuffle=True),
+        patient_generator=helia.utils.uniform_id_generator(ds.patient_ids, repeat=True, shuffle=True),
         frame_size=256,
         samples_per_patient=5,
         target_rate=100,

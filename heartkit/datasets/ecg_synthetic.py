@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 import physiokit as pk
 from pydantic import BaseModel, Field
-import neuralspot_edge as nse
+import helia_edge as helia
 from tqdm.contrib.concurrent import process_map
 
 
@@ -17,7 +17,7 @@ from .dataset import HKDataset
 from .defines import PatientGenerator, PatientData
 from .nstdb import NstdbNoise
 
-logger = nse.utils.setup_logger(__name__)
+logger = helia.utils.setup_logger(__name__)
 
 
 class EcgSyntheticParams(BaseModel, extra="allow"):

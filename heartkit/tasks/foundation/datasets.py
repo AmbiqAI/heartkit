@@ -1,5 +1,5 @@
 import tensorflow as tf
-import neuralspot_edge as nse
+import helia_edge as helia
 
 from ...datasets import HKDataset, create_augmentation_pipeline
 from ..utils import load_train_dataloader_split, load_test_dataloader_split
@@ -7,7 +7,7 @@ from ...defines import HKTaskParams, NamedParams
 
 from .dataloaders import FoundationTaskFactory
 
-logger = nse.utils.setup_logger(__name__)
+logger = helia.utils.setup_logger(__name__)
 
 
 def create_data_pipeline(
@@ -45,9 +45,9 @@ def create_data_pipeline(
         )
     ds = ds.map(
         lambda x1, x2: {
-            nse.trainers.SimCLRTrainer.SAMPLES: x1,
-            nse.trainers.SimCLRTrainer.AUG_SAMPLES_0: augmenter(x1),
-            nse.trainers.SimCLRTrainer.AUG_SAMPLES_1: augmenter(x2),
+            helia.trainers.SimCLRTrainer.SAMPLES: x1,
+            helia.trainers.SimCLRTrainer.AUG_SAMPLES_0: augmenter(x1),
+            helia.trainers.SimCLRTrainer.AUG_SAMPLES_1: augmenter(x2),
         },
         num_parallel_calls=tf.data.AUTOTUNE,
     )

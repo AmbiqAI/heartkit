@@ -3,7 +3,7 @@ import json
 
 import keras
 import tensorflow as tf
-import neuralspot_edge as nse
+import helia_edge as helia
 from ...defines import HKTaskParams
 
 from ...datasets import DatasetFactory
@@ -16,9 +16,9 @@ def evaluate(params: HKTaskParams):
     Args:
         params (HKTaskParams): Task parameters
     """
-    logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "test.log")
+    logger = helia.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "test.log")
 
-    params.seed = nse.utils.set_random_seed(params.seed)
+    params.seed = helia.utils.set_random_seed(params.seed)
     logger.debug(f"Random seed {params.seed}")
 
     os.makedirs(params.job_dir, exist_ok=True)
@@ -36,8 +36,8 @@ def evaluate(params: HKTaskParams):
     test_x, test_y = next(test_ds.batch(params.test_size).as_numpy_iterator())
 
     logger.debug("Loading model")
-    model = nse.models.load_model(params.model_file)
-    flops = nse.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
+    model = helia.models.load_model(params.model_file)
+    flops = helia.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
 
     model.summary(print_fn=logger.info)
     logger.debug(f"Model requires {flops / 1e6:0.2f} MFLOPS")

@@ -1,7 +1,7 @@
 import os
 
 import keras
-import neuralspot_edge as nse
+import helia_edge as helia
 import numpy as np
 import sklearn.utils
 import wandb
@@ -21,16 +21,16 @@ def train(params: HKTaskParams):
         params (HKTaskParams): Task parameters
     """
     os.makedirs(params.job_dir, exist_ok=True)
-    logger = nse.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "train.log")
+    logger = helia.utils.setup_logger(__name__, level=params.verbose, file_path=params.job_dir / "train.log")
     logger.debug(f"Creating working directory in {params.job_dir}")
 
-    params.seed = nse.utils.set_random_seed(params.seed)
+    params.seed = helia.utils.set_random_seed(params.seed)
     logger.debug(f"Random seed {params.seed}")
 
     with open(params.job_dir / "configuration.json", "w", encoding="utf-8") as fp:
         fp.write(params.model_dump_json(indent=2))
 
-    if nse.utils.env_flag("WANDB"):
+    if helia.utils.env_flag("WANDB"):
         wandb.init(project=params.project, entity="ambiq", dir=params.job_dir)
         wandb.config.update(params.model_dump())
     # END IF
@@ -100,12 +100,12 @@ def train(params: HKTaskParams):
     ]
 
     model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
-    flops = nse.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
+    flops = helia.metrics.flops.get_flops(model, batch_size=1, fpath=params.job_dir / "model_flops.log")
     model.summary(print_fn=logger.info)
     logger.debug(f"Model requires {flops / 1e6:0.2f} MFLOPS")
 
     ModelCheckpoint = keras.callbacks.ModelCheckpoint
-    if nse.utils.env_flag("WANDB"):
+    if helia.utils.env_flag("WANDB"):
         ModelCheckpoint = WandbModelCheckpoint
     model_callbacks = [
         keras.callbacks.EarlyStopping(
@@ -124,19 +124,19 @@ def train(params: HKTaskParams):
         ),
         keras.callbacks.CSVLogger(params.job_dir / "history.csv"),
     ]
-    if nse.utils.env_flag("TENSORBOARD"):
+    if helia.utils.env_flag("TENSORBOARD"):
         model_callbacks.append(
             keras.callbacks.TensorBoard(
                 log_dir=params.job_dir,
                 write_steps_per_second=True,
             )
         )
-    if nse.utils.env_flag("WANDB"):
+    if helia.utils.env_flag("WANDB"):
         model_callbacks.append(WandbMetricsLogger())
     # Use minimal progress bar
     if params.verbose <= 1:
         model_callbacks.append(
-            nse.callbacks.TQDMProgressBar(
+            helia.callbacks.TQDMProgressBar(
                 show_epoch_progress=False,
             )
         )
@@ -156,7 +156,7 @@ def train(params: HKTaskParams):
 
     setup_plotting()
     if history:
-        nse.plotting.plot_history_metrics(
+        helia.plotting.plot_history_metrics(
             history.history,
             metrics=["loss", "acc"],
             save_path=params.job_dir / "history.png",
@@ -170,8 +170,8 @@ def train(params: HKTaskParams):
     y_pred = np.argmax(model.predict(val_ds, verbose=params.verbose), axis=-1)
 
     cm_path = params.job_dir / "confusion_matrix.png"
-    nse.plotting.confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
-    nse.plotting.px_plot_confusion_matrix(
+    helia.plotting.confusion_matrix_plot(y_true, y_pred, labels=class_names, save_path=cm_path, normalize="true")
+    helia.plotting.px_plot_confusion_matrix(
         y_true,
         y_pred,
         labels=class_names,
