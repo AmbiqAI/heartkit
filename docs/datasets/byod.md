@@ -1,8 +1,8 @@
 # Bring-Your-Own-Dataset (BYOD)
 
-The Bring-Your-Own-Dataset (BYOD) feature allows users to add custom datasets for training and evaluating models. This feature is useful when working with proprietary or custom datasets that are not available in the HeartKit library.
+The Bring-Your-Own-Dataset (BYOD) feature allows users to add custom datasets for training and evaluating models. This feature is useful when working with proprietary or custom datasets that are not available in the heartKIT library.
 
-## <span class="sk-h2-span">How it Works</span>
+## How it Works
 
 1. **Create a Dataset**: Define a new dataset that inherits `HKDataset` and implements the required abstract methods.
 

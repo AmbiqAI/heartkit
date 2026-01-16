@@ -20,7 +20,7 @@ from .train import train
 
 
 class BeatTask(HKTask):
-    """HeartKit Beat Task"""
+    """heartKIT Beat Task"""
 
     @staticmethod
     def description() -> str:

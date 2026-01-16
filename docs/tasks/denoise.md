@@ -1,6 +1,6 @@
 # Signal Denoising Task
 
-## <span class="sk-h2-span">Overview</span>
+## Overview
 
 The objective of denoising is to remove noise and artifacts from physiological signals while preserving the underlying signal information. The dominant noise sources include baseline wander (BW), muscle noise (EMG), electrode movement artifacts (EM), and powerline interference (PLI). For physiological signals such as ECG and PPG, removing the artifacts is difficult due to the non-stationary nature of the noise and overlapping frequency bands with the signal. While traditional signal processing techniques such as filtering and wavelet denoising have been used to remove noise, deep learning models have shown great promise in enhanced denoising.
 
@@ -10,7 +10,7 @@ The objective of denoising is to remove noise and artifacts from physiological s
 
 ---
 
-## <span class="sk-h2-span">Noise Characteristics</span>
+## Noise Characteristics
 
 The following table summarizes the characteristics of common noise sources in ECG signals:
 
@@ -31,7 +31,7 @@ The following table summarizes the characteristics of common noise sources in PP
 
 ---
 
-## <span class="sk-h2-span">Dataloaders</span>
+## Dataloaders
 
 Dataloaders are available for the following datasets:
 
@@ -42,7 +42,7 @@ Dataloaders are available for the following datasets:
 
 ---
 
-## <span class="sk-h2-span">Pre-trained Models</span>
+## Pre-trained Models
 
 The following table provides the latest performance and accuracy results of denoising models. Additional result details can be found in [Model Zoo → Denoise](../zoo/index.md).
 
@@ -51,7 +51,7 @@ The following table provides the latest performance and accuracy results of deno
 
 ---
 
-## <span class="sk-h2-span">References</span>
+## References
 
 * [DeScoD-ECG: Deep Score-Based Diffusion Model for ECG Baseline Wander and Noise Removal](https://arxiv.org/pdf/2208.00542.pdf)
 * [DEEPFILTER: AN ECG BASELINE WANDER REMOVAL FILTER USING DEEP LEARNING TECHNIQUES](https://arxiv.org/pdf/2101.03423.pdf)

@@ -21,7 +21,7 @@ from .dataloaders import DenoiseTaskFactory
 
 
 class DenoiseTask(HKTask):
-    """HeartKit Denoise Task"""
+    """heartKIT Denoise Task"""
 
     @staticmethod
     def train(params: HKTaskParams):

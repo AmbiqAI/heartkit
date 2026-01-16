@@ -1,6 +1,6 @@
 # :material-export: Model Exporting
 
-## <span class="sk-h2-span">Introduction </span>
+## Introduction
 
 Export mode is used to convert the trained TensorFlow model into a format that can be used for deployment onto Ambiq's family of SoCs. Currently, the command will convert the TensorFlow model into both TensorFlow Lite (TFL) and TensorFlow Lite for micro-controller (TFLM) variants. The command will also verify the models' outputs match. The activations and weights can be quantized by configuring the `quantization` section in the configuration file or by setting the `quantization` parameter in the code.
 
@@ -57,7 +57,7 @@ F ==> G
 
 ---
 
-## <span class="sk-h2-span">Usage</span>
+## Usage
 
 ### CLI
 
@@ -86,6 +86,6 @@ task.export(params)
 
 ---
 
-## <span class="sk-h2-span">Arguments </span>
+## Arguments
 
 Please refer to [HKTaskParams](../modes/configuration.md#hktaskparams) for the list of arguments that can be used with the `export` command.

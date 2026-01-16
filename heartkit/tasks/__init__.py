@@ -1,7 +1,7 @@
 """
 # :simple-task: Tasks API
 
-HeartKit provides several built-in __heart-monitoring__ tasks.
+heartKIT provides several built-in __heart-monitoring__ tasks.
 Each task is designed to address a unique aspect such as ECG denoising, segmentation, and rhythm/beat classification.
 The tasks are designed to be modular and can be used independently or in combination to address specific use cases.
 

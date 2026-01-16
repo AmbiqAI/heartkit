@@ -2,7 +2,7 @@
 # Foundation Task API
 
 The objective of this task is to create a foundation model that can be used to build downstream models for other tasks.
-In HeartKit, the foundation model is trained using SimCLR- using two augmented leads as input.
+In heartKIT, the foundation model is trained using SimCLR- using two augmented leads as input.
 
 Classes:
     FoundationTask: Foundation task
@@ -20,7 +20,7 @@ from .train import train
 
 
 class FoundationTask(HKTask):
-    """HeartKit Foundation Task"""
+    """heartKIT Foundation Task"""
 
     @staticmethod
     def train(params: HKTaskParams):

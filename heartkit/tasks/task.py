@@ -8,7 +8,7 @@ from ..defines import HKTaskParams
 
 
 class HKTask(abc.ABC):
-    """HeartKit Task base class. All tasks should inherit from this class."""
+    """heartKIT Task base class. All tasks should inherit from this class."""
 
     @staticmethod
     def description() -> str:

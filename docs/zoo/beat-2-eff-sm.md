@@ -1,6 +1,6 @@
 # 2-Class Beat Classification (BEAT-2-EFF-SM)
 
-## <span class="sk-h2-span">Overview</span>
+## Overview
 
 The following table provides the latest pre-trained model for 2-class beat classification task. Below we also provide additional details including training configuration, performance metrics, and downloads.
 
@@ -8,7 +8,7 @@ The following table provides the latest pre-trained model for 2-class beat class
 
 ---
 
-## <span class="sk-h2-span">Input</span>
+## Input
 
 The model is trained on 5-second, raw ECG frames sampled at 100 Hz.
 
@@ -19,7 +19,7 @@ The model is trained on 5-second, raw ECG frames sampled at 100 Hz.
 
 ---
 
-## <span class="sk-h2-span">Class Mapping</span>
+## Class Mapping
 
 The model is able to classify normal sinus rhythm (NSR) and premature atrial/ventricular contractions (PAC/PVC).
 The class mapping is as follows:
@@ -31,7 +31,7 @@ The class mapping is as follows:
 
 ---
 
-## <span class="sk-h2-span">Datasets</span>
+## Datasets
 
 The model is trained on the following datasets:
 
@@ -39,7 +39,7 @@ The model is trained on the following datasets:
 
 ---
 
-## <span class="sk-h2-span">Model Performance</span>
+## Model Performance
 
 The confusion matrix for model is depicted below.
 
@@ -48,7 +48,7 @@ The confusion matrix for model is depicted below.
 </div>
 
 
-## <span class="sk-h2-span">Downloads</span>
+## Downloads
 
 | Asset                                                                | Description                   |
 | -------------------------------------------------------------------- | ----------------------------- |

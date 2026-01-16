@@ -37,7 +37,7 @@ class PpgSyntheticDataset(HKDataset):
         path: str = Path(tempfile.gettempdir()) / "ppg-synthetic",
         **kwargs,
     ) -> None:
-        """PPG synthetic dataset creates 1-lead PPG signal using PhysioKit.
+        """PPG synthetic dataset creates 1-lead PPG signal using physioKIT.
 
         Args:
             num_pts (int, optional): Number of patients. Defaults to 250.

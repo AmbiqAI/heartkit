@@ -1,12 +1,12 @@
 """
-# :octicons-terminal-24: HeartKit CLI API
+# :octicons-terminal-24: heartKIT CLI API
 
-The HeartKit CLI provides a command-line interface to interact with the HeartKit library.
+The heartKIT CLI provides a command-line interface to interact with the heartKIT library.
 
 ```bash
 $ heartkit --help
 
-HeartKit CLI Options:
+heartKIT CLI Options:
     --task [segmentation, rhythm, beat, denoise]
     --mode [download, feature, train, evaluate, export, demo]
     --config ["./path/to/config.json", or '{"raw: "json"}']
@@ -54,7 +54,7 @@ def run(
     task: str = ArgField("-t", description="Task", default="rhythm"),
     config: str = ArgField("-c", description="File path or JSON content", default="{}"),
 ):
-    """HeartKit CLI entry point.
+    """heartKIT CLI entry point.
 
     Args:
         mode (HKMode, optional): Mode. Defaults to HKMode.train.

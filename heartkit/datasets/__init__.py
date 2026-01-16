@@ -1,7 +1,7 @@
 """
 # :material-database: Datasets API
 
-HeartKit provides a number of datasets that can be used for training and evaluation of __heart-monitoring tasks__.
+heartKIT provides a number of datasets that can be used for training and evaluation of __heart-monitoring tasks__.
 
 ## Available Datasets
 
@@ -10,8 +10,8 @@ HeartKit provides a number of datasets that can be used for training and evaluat
 * **[LUDB](./ludb)**: Lobachevsky University Electrocardiography database consists of 200 10-second 12-lead records. The boundaries and peaks of P, T waves and QRS complexes were manually annotated by cardiologists. Each record is annotated with the corresponding diagnosis.
 * **[PTB-XL](./ptbxl)**: The PTB-XL is a large publicly available electrocardiography dataset. It contains 21837 clinical 12-lead ECGs from 18885 patients of 10 second length. The ECGs are sampled at 500 Hz and are annotated by up to two cardiologists.
 * **[QTDB](./qtdb)**: Over 100 fifteen-minute two-lead ECG recordings with onset, peak, and end markers for P, QRS, T, and (where present) U waves of from 30 to 50 selected beats in each recording.
-* **[ECG Synthetic](./ppg_synthetic)**: An ECG synthetic dataset generated using PhysioKit. The dataset enables the generation of 12-lead ECG signals with a variety of heart conditions and noise levels along with segmentations and fiducial points.
-* **[PPG Synthetic](./ecg_synthetic)**: A PPG synthetic dataset generated using PhysioKit. The dataset enables the generation of a 1-lead PPG signal with segmentations and fiducials.
+* **[ECG Synthetic](./ppg_synthetic)**: An ECG synthetic dataset generated using physioKIT. The dataset enables the generation of 12-lead ECG signals with a variety of heart conditions and noise levels along with segmentations and fiducial points.
+* **[PPG Synthetic](./ecg_synthetic)**: A PPG synthetic dataset generated using physioKIT. The dataset enables the generation of a 1-lead PPG signal with segmentations and fiducials.
 
 ## Dataset Factory
 

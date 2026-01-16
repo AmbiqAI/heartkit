@@ -1,6 +1,6 @@
 # 4-Class Arrhythmia Classification (ARR-4-EFF-SM)
 
-## <span class="sk-h2-span">Overview</span>
+## Overview
 
 The following table provides the latest pre-trained model for 4-class arrhythmia classification. Below we also provide additional details including training configuration, performance metrics, and downloads.
 
@@ -8,7 +8,7 @@ The following table provides the latest pre-trained model for 4-class arrhythmia
 
 ---
 
-## <span class="sk-h2-span">Input</span>
+## Input
 
 The model is trained on 5-second, raw ECG frames sampled at 100 Hz.
 
@@ -19,7 +19,7 @@ The model is trained on 5-second, raw ECG frames sampled at 100 Hz.
 
 ---
 
-## <span class="sk-h2-span">Class Mapping</span>
+## Class Mapping
 
 The model is trained on raw ECG data and is able to discern normal sinus rhythm (SR) from sinus bradycardia (SBRAD), atrial fibrillation (AFIB), atrial flutter (AFL), supraventricular tachycardia (STACH), and general supraventricular tachycardia (GSVT). The class mapping is as follows:
 
@@ -32,7 +32,7 @@ The model is trained on raw ECG data and is able to discern normal sinus rhythm 
 
 ---
 
-## <span class="sk-h2-span">Datasets</span>
+## Datasets
 
 The model is trained on the following datasets:
 
@@ -40,7 +40,7 @@ The model is trained on the following datasets:
 
 ---
 
-## <span class="sk-h2-span">Model Performance</span>
+## Model Performance
 
 
 The confusion matrix for the model is depicted below.
@@ -51,7 +51,7 @@ The confusion matrix for the model is depicted below.
 
 ---
 
-## <span class="sk-h2-span">Downloads</span>
+## Downloads
 
 
 | Asset                                                                | Description                   |

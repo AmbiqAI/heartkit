@@ -1,6 +1,6 @@
 # PPG-Based Denoising (DEN-PPG-TCN-SM)
 
-## <span class="sk-h2-span">Overview</span>
+## Overview
 
 The following table provides the latest pre-trained model for PPG-based denoising. Below we also provide additional details including training configuration, performance metrics, and downloads.
 
@@ -8,7 +8,7 @@ The following table provides the latest pre-trained model for PPG-based denoisin
 
 ---
 
-## <span class="sk-h2-span">Input</span>
+## Input
 
 The model is trained on 5-second, raw PPG frames sampled at 100 Hz.
 
@@ -19,7 +19,7 @@ The model is trained on 5-second, raw PPG frames sampled at 100 Hz.
 
 ---
 
-## <span class="sk-h2-span">Datasets</span>
+## Datasets
 
 The model is trained on synthetic PPG data.
 
@@ -27,7 +27,7 @@ The model is trained on synthetic PPG data.
 
 ---
 
-## <span class="sk-h2-span">Model Performance</span>
+## Model Performance
 
 The following table provides the performance metrics for the PPG denoising model.
 
@@ -39,7 +39,7 @@ The following table provides the performance metrics for the PPG denoising model
 
 ---
 
-## <span class="sk-h2-span">Downloads</span>
+## Downloads
 
 
 | Asset                                                                | Description                   |

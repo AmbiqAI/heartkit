@@ -1,8 +1,8 @@
 # :material-hexagon-multiple: Task-Level Demo
 
-## <span class="sk-h2-span">Introduction </span>
+## Introduction
 
-Each task in HeartKit has a corresponding demo mode that allows you to run a task-level demonstration using the specified backend inference engine (e.g. PC or EVB). This is useful to showcase the model's performance in real-time and to verify its accuracy in a real-world scenario. Similar to other modes, the demo can be invoked either via CLI or within `heartkit` python package. At a high level, the demo mode performs the following actions based on the provided configuration parameters:
+Each task in heartKIT has a corresponding demo mode that allows you to run a task-level demonstration using the specified backend inference engine (e.g. PC or EVB). This is useful to showcase the model's performance in real-time and to verify its accuracy in a real-world scenario. Similar to other modes, the demo can be invoked either via CLI or within `heartkit` python package. At a high level, the demo mode performs the following actions based on the provided configuration parameters:
 
 1. Load the configuration data (e.g. `configuration.json`)
 1. Load the desired datasets (e.g. `icentia11k`)
@@ -50,9 +50,9 @@ F ==> G
 
 ---
 
-## <span class="sk-h2-span">Backend Inference Engines</span>
+## Backend Inference Engines
 
-HeartKit includes two built-in backend inference engines: PC and EVB. Additional backends can be easily added to the HeartKit framework by creating a new backend class and registering it to the backend factory, `BackendFactory`.
+heartKIT includes two built-in backend inference engines: PC and EVB. Additional backends can be easily added to the heartKIT framework by creating a new backend class and registering it to the backend factory, `BackendFactory`.
 
 ### PC Backend Inference Engine
 
@@ -75,7 +75,7 @@ The EVB backend is used to run the task-level demo on an Ambiq EVB. This is usef
 
 ### Bring-Your-Own-Backend Engine
 
-Similar to datasets, dataloaders, tasks, and models, the demo mode can be customized to use your own backend inference engine. HeartKit includes a backend factory (`BackendFactory`) that is used to create and run the backend engine.
+Similar to datasets, dataloaders, tasks, and models, the demo mode can be customized to use your own backend inference engine. heartKIT includes a backend factory (`BackendFactory`) that is used to create and run the backend engine.
 
 #### How it Works
 
@@ -138,9 +138,9 @@ Similar to datasets, dataloaders, tasks, and models, the demo mode can be custom
 
 ---
 
-## <span class="sk-h2-span">Usage </span>
+## Usage
 
-The following is an example of a task-level demo report for the segmentation task. Upon running segmentation, the demo will extract inter-beat-intervals (IBIs) and report various HR and HRV metrics. These metrics are computed using Ambiq's [PhysioKit Python Package](https://ambiqai.github.io/physiokit)- a toolkit to process raw ambulatory bio-signals.
+The following is an example of a task-level demo report for the segmentation task. Upon running segmentation, the demo will extract inter-beat-intervals (IBIs) and report various HR and HRV metrics. These metrics are computed using Ambiq's [physioKIT Python Package](https://ambiqai.github.io/physiokit)- a toolkit to process raw ambulatory bio-signals.
 
 === "CLI"
 
@@ -159,7 +159,7 @@ The following is an example of a task-level demo report for the segmentation tas
 
 ---
 
-## <span class="sk-h2-span">Arguments </span>
+## Arguments
 
 Please refer to [HKTaskParams](../modes/configuration.md) for the list of arguments that can be used with the `demo` command.
 

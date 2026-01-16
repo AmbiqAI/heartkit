@@ -131,7 +131,7 @@ def demo(params: HKTaskParams):
         paper_bgcolor=bg_color,
         margin=dict(l=10, r=10, t=80, b=80),
         legend=dict(groupclick="toggleitem"),
-        title="HeartKit: Diagnostic Demo",
+        title="heartKIT: Diagnostic Demo",
     )
 
     fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=True)

@@ -1,9 +1,9 @@
 """
 # :material-graph: Models API
 
-HeartKit provides a number of model architectures that can be used for training __heart-monitoring tasks__.
+heartKIT provides a number of model architectures that can be used for training __heart-monitoring tasks__.
 While a number of off-the-shelf models exist, they are often not efficient nor optimized for real-time, edge applications.
-To address this, HeartKit provides a model factory that allows you to easily create and train customized models via [helia-edge](https://ambiqai.github.io/helia-edge/).
+To address this, heartKIT provides a model factory that allows you to easily create and train customized models via [helia-edge](https://ambiqai.github.io/helia-edge/).
 `helia-edge` includes a growing number of state-of-the-art models that can be easily configured and trained using high-level parameters.
 The models are designed to be efficient and well-suited for real-time, edge applications.
 Most of the models are based on state-of-the-art architectures that have been modified to allow for more fine-grain customization.

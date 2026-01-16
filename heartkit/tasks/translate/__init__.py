@@ -19,7 +19,7 @@ from .train import train
 
 
 class TranslateTask(HKTask):
-    """HeartKit Translate Task"""
+    """heartKIT Translate Task"""
 
     @staticmethod
     def train(params: HKTaskParams):

@@ -18,7 +18,7 @@ from .train import train
 
 
 class DiagnosticTask(HKTask):
-    """HeartKit Diagnostic Task"""
+    """heartKIT Diagnostic Task"""
 
     @staticmethod
     def train(params: HKTaskParams):

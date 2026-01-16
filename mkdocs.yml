@@ -1,7 +1,7 @@
-site_name: HeartKit
+site_name: heartKIT
 site_dir: "site"
 site_url: "https://ambiqai.github.io/heartkit"
-site_description: HeartKit, AI Development Kit for AI heart monitoring on the edge
+site_description: heartKIT, AI Development Kit for AI heart monitoring on the edge
 repo_name: AmbiqAI/hearkit
 repo_url: https://github.com/AmbiqAI/heartkit
 copyright: Copyright &copy; 2023 Ambiq
@@ -114,21 +114,21 @@ theme:
     code: Roboto Mono
   palette:
     - media: "(prefers-color-scheme)"
-      primary: blue
+      primary: red
       accent: indigo
       toggle:
         icon: material/brightness-auto
         name: Use system theme
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: blue
+      primary: red
       accent: indigo
       toggle:
         icon: material/brightness-7
         name: Switch to light theme
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: blue
+      primary: red
       accent: indigo
       toggle:
         icon: material/brightness-4

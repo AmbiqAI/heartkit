@@ -1,9 +1,9 @@
 # Quickstart
 <!-- # :octicons-heart-fill-24:{ .heart } Overview -->
 
-## <span class="sk-h2-span">Install HeartKit</span>
+## Install heartKIT
 
-We provide several installation methods including pip, uv, and Docker. Install __HeartKit__ via pip/uv for the latest stable release or by cloning the GitHub repo for the most up-to-date. Additionally, a [VSCode Dev Container](https://code.visualstudio.com/docs/devcontainers/containers) is available and defined in [./.devcontainer](https://github.com/AmbiqAI/heartkit/tree/main/.devcontainer) to run in an isolated Docker environment.
+We provide several installation methods including pip, uv, and Docker. Install __heartKIT__ via pip/uv for the latest stable release or by cloning the GitHub repo for the most up-to-date. Additionally, a [VSCode Dev Container](https://code.visualstudio.com/docs/devcontainers/containers) is available and defined in [./.devcontainer](https://github.com/AmbiqAI/heartkit/tree/main/.devcontainer) to run in an isolated Docker environment.
 
 !!! install
 
@@ -27,7 +27,7 @@ We provide several installation methods including pip, uv, and Docker. Install _
 
     === "PyPI install"
 
-        Install the HeartKit package using pip or uv.
+        Install the heartKIT package using pip or uv.
         Visit the Python Package Index (PyPI) for more details on the package: [https://pypi.org/project/heartkit/](https://pypi.org/project/heartkit/)
 
         ```bash
@@ -55,7 +55,7 @@ We provide several installation methods including pip, uv, and Docker. Install _
         ```
 
 
-## <span class="sk-h2-span">Requirements</span>
+## Requirements
 
 * [Python ^3.11+](https://www.python.org)
 * [uv ^0.7.10+](https://docs.astral.sh/uv/getting-started/installation/)
@@ -65,13 +65,13 @@ Check the project's [pyproject.toml](https://github.com/AmbiqAI/heartkit/blob/ma
 * [Arm GNU Toolchain ^12.2](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads)
 * [Segger J-Link ^7.92](https://www.segger.com/downloads/jlink/)
 
-Once installed, __HeartKit__ can be used as either a CLI-based tool or as a Python package to perform advanced experimentation.
+Once installed, __heartKIT__ can be used as either a CLI-based tool or as a Python package to perform advanced experimentation.
 
 ---
 
-## <span class="sk-h2-span">Use HeartKit with CLI</span>
+## Use heartKIT with CLI
 
-The HeartKit command line interface (CLI) allows for simple single-line commands to download datasets, train models, evaluate performance, and export models. The CLI requires no customization or Python code. You can simply run all the built-in tasks from the terminal with the __heartkit__ command. Check out the [CLI Guide](./usage/cli.md) to learn more about available options.
+The heartKIT command line interface (CLI) allows for simple single-line commands to download datasets, train models, evaluate performance, and export models. The CLI requires no customization or Python code. You can simply run all the built-in tasks from the terminal with the __heartkit__ command. Check out the [CLI Guide](./usage/cli.md) to learn more about available options.
 
 !!! example
 
@@ -122,11 +122,11 @@ The HeartKit command line interface (CLI) allows for simple single-line commands
         heartkit -m demo -t rhythm -c ./configuration.json
         ```
 
-## <span class="sk-h2-span">Use HeartKit with Python</span>
+## Use heartKIT with Python
 
-The __HeartKit__ Python package allows for more fine-grained control and customization. You can use the package to train, evaluate, and deploy models for a variety of tasks. You can create custom datasets, models, and tasks and register them with corresponding factories and use them like built-in tasks.
+The __heartKIT__ Python package allows for more fine-grained control and customization. You can use the package to train, evaluate, and deploy models for a variety of tasks. You can create custom datasets, models, and tasks and register them with corresponding factories and use them like built-in tasks.
 
-For example, you can create a custom task, train it, evaluate its performance on a validation set, and even export a quantized TensorFlow Lite model for deployment. Check out the [Python Guide](./usage/python.md) to learn more about using HeartKit as a Python package.
+For example, you can create a custom task, train it, evaluate its performance on a validation set, and even export a quantized TensorFlow Lite model for deployment. Check out the [Python Guide](./usage/python.md) to learn more about using heartKIT as a Python package.
 
 !!! Example
 

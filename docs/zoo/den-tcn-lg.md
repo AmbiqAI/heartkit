@@ -1,6 +1,6 @@
 # ECG_based Denoising (DEN-TCN-LG)
 
-## <span class="sk-h2-span">Overview</span>
+## Overview
 
 The following table provides the latest pre-trained model for ECG-based denoising. Below we also provide additional details including training configuration, performance metrics, and downloads.
 
@@ -8,7 +8,7 @@ The following table provides the latest pre-trained model for ECG-based denoisin
 
 ---
 
-## <span class="sk-h2-span">Input</span>
+## Input
 
 The model is trained on 5-second, raw ECG frames sampled at 100 Hz.
 
@@ -19,7 +19,7 @@ The model is trained on 5-second, raw ECG frames sampled at 100 Hz.
 
 ---
 
-## <span class="sk-h2-span">Datasets</span>
+## Datasets
 
 The model is trained on the following datasets:
 
@@ -28,7 +28,7 @@ The model is trained on the following datasets:
 
 ---
 
-## <span class="sk-h2-span">Model Performance</span>
+## Model Performance
 
 The following table provides the performance metrics for the ECG-based denoising model.
 
@@ -40,7 +40,7 @@ The following table provides the performance metrics for the ECG-based denoising
 
 ---
 
-## <span class="sk-h2-span">Downloads</span>
+## Downloads
 
 
 | Asset                                                                | Description                   |

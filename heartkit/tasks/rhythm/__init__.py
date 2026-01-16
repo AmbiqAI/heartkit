@@ -18,7 +18,7 @@ from .train import train
 
 
 class RhythmTask(HKTask):
-    """HeartKit Rhythm Task"""
+    """heartKIT Rhythm Task"""
 
     @staticmethod
     def description() -> str:

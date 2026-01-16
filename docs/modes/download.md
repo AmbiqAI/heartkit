@@ -1,10 +1,10 @@
 # :material-download: Download Datasets
 
-## <span class="sk-h2-span">Introduction</span>
+## Introduction
 
-The `download` command is used to download specified datasets. Please refer to [Datasets](../datasets/index.md) for details on the available datasets. Additional datasets can be added by creating a new dataset class and registering it with __HeartKit__ dataset factory, [DatasetFactory](../datasets/index.md#dataset-factory).
+The `download` command is used to download specified datasets. Please refer to [Datasets](../datasets/index.md) for details on the available datasets. Additional datasets can be added by creating a new dataset class and registering it with __heartKIT__ dataset factory, [DatasetFactory](../datasets/index.md#dataset-factory).
 
-## <span class="sk-h2-span">Usage</span>
+## Usage
 
 ### CLI
 
@@ -48,6 +48,6 @@ task.download(params)
 
 ```
 
-## <span class="sk-h2-span">Arguments </span>
+## Arguments
 
 Please refer to [HKTaskParams](../modes/configuration.md#hktaskparams) for the available configuration options for the `download` command.
