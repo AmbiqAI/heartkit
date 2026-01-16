@@ -1,7 +1,7 @@
 """
 # :material-database: Datasets API
 
-HeartKit provides a number of datasets that can be used for training and evaluation of __heart-monitoring tasks__.
+heartKIT provides a number of datasets that can be used for training and evaluation of __heart-monitoring tasks__.
 
 ## Available Datasets
 

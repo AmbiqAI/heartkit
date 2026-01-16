@@ -22,7 +22,7 @@ from .train import train
 
 
 class SegmentationTask(HKTask):
-    """HeartKit Segmentation Task"""
+    """heartKIT Segmentation Task"""
 
     @staticmethod
     def train(params: HKTaskParams):

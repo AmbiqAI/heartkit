@@ -1,9 +1,9 @@
 """
-# HeartKit API
+# heartKIT API
 
-HeartKit is an AI Development Kit (ADK) that enables developers to easily train and deploy real-time __heart-monitoring__ models onto [Ambiq's family of ultra-low power SoCs](https://ambiq.com/soc/).
+heartKIT is an AI Development Kit (ADK) that enables developers to easily train and deploy real-time __heart-monitoring__ models onto [Ambiq's family of ultra-low power SoCs](https://ambiq.com/soc/).
 The kit provides a variety of datasets, efficient model architectures, and heart-related tasks.
-In addition, HeartKit provides optimization and deployment routines to generate efficient inference models.
+In addition, heartKIT provides optimization and deployment routines to generate efficient inference models.
 Finally, the kit includes a number of pre-trained models and task-level demos to showcase the capabilities.
 
 """

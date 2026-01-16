@@ -1,6 +1,6 @@
 # QTDB Dataset
 
-## <span class="sk-h2-span">Overview</span>
+## Overview
 
 Over 100 fifteen-minute two-lead ECG recordings with onset, peak, and end markers for P, QRS, T, and (where present) U waves of from 30 to 50 selected beats in each recording.
 
@@ -33,14 +33,14 @@ Please visit [Physionet](https://doi.org/10.13026/C24K53) for more details.
 
     ```
 
-## <span class="sk-h2-span">Funding</span>
+## Funding
 
 The QT Database was created as part of a project funded by the National Library of Medicine.
 
-## <span class="sk-h2-span">License</span>
+## License
 
 The QT Database is available for commercial use. [Open Data Commons Attribution License v1.0](https://physionet.org/content/qtdb/view-license/1.0.0/)
 
-## <span class="sk-h2-span">Supported Tasks</span>
+## Supported Tasks
 
 * [Segmentation](../tasks/segmentation.md)

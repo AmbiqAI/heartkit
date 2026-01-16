@@ -1,4 +1,4 @@
-# HeartKit Rhythm Tutorial
+# heartKIT Rhythm Tutorial
 
 This tutorial shows running an end-to-end heart rhythm classifier on the Apollo 4 EVB. The basic flow chart is depicted below.
 

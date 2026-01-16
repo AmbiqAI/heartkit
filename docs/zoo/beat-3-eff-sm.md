@@ -1,6 +1,6 @@
 # 3-Clas Beat Classification (BEAT-3-EFF-SM)
 
-## <span class="sk-h2-span">Overview</span>
+## Overview
 
 The following table provides the latest pre-trained model for 3-class beat classification. Below we also provide additional details including training configuration, performance metrics, and downloads.
 
@@ -8,7 +8,7 @@ The following table provides the latest pre-trained model for 3-class beat class
 
 ---
 
-## <span class="sk-h2-span">Input</span>
+## Input
 
 The model is trained on 5-second, raw ECG frames sampled at 100 Hz.
 
@@ -19,7 +19,7 @@ The model is trained on 5-second, raw ECG frames sampled at 100 Hz.
 
 ---
 
-## <span class="sk-h2-span">Class Mapping</span>
+## Class Mapping
 
 The model is able to distinguish between normal sinus rhythm (NSR), premature/ectopic atrial contractions (PAC), and premature/ectopic ventricular contractions (PVC). The class mapping is as follows:
 
@@ -31,7 +31,7 @@ The model is able to distinguish between normal sinus rhythm (NSR), premature/ec
 
 ---
 
-## <span class="sk-h2-span">Dataset</span>
+## Dataset
 
 The model is trained on the following datasets:
 
@@ -39,7 +39,7 @@ The model is trained on the following datasets:
 
 ---
 
-## <span class="sk-h2-span">Model Performance</span>
+## Model Performance
 
 The confusion matrix for the model is depicted below.
 
@@ -50,7 +50,7 @@ The confusion matrix for the model is depicted below.
 
 ---
 
-## <span class="sk-h2-span">Downloads</span>
+## Downloads
 
 | Asset                                                                | Description                   |
 | -------------------------------------------------------------------- | ----------------------------- |

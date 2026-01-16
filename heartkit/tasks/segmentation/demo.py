@@ -270,7 +270,7 @@ def demo(params: HKTaskParams):
         plot_bgcolor=plot_theme.bg_color,
         paper_bgcolor=plot_theme.bg_color,
         margin=dict(l=10, r=10, t=80, b=80),
-        title="HeartKit: Segmentation Demo",
+        title="heartKIT: Segmentation Demo",
     )
 
     fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=False)

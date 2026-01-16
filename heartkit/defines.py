@@ -45,7 +45,7 @@ class NamedParams(BaseModel, extra="allow"):
 
 
 class HKMode(StrEnum):
-    """HeartKit task mode"""
+    """heartKIT task mode"""
 
     download = "download"
     train = "train"

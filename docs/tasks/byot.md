@@ -4,7 +4,7 @@ The Bring-Your-Own-Task (BYOT) feature allows users to create custom tasks for t
 
 For an in-depth guide check out the [BYOT Notebook Guide](../guides/byot.ipynb).
 
-## <span class="sk-h2-span">How it Works</span>
+## How it Works
 
 1. **Create a Task**: Define a new task that inherits from the [HKTask](/heartkit/api/heartkit/tasks/task) base class and implements the required methods: `train`, `evaluate`, `export`, and `demo`.
 

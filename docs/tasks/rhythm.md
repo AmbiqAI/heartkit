@@ -1,6 +1,6 @@
 # Rhythm Classification Task
 
-## <span class="sk-h2-span">Overview</span>
+## Overview
 
 The objective of rhythm classification is to detect and classify abnormal heart rhythms, also known as arrhythmias, directly from ECG signals.
 
@@ -10,7 +10,7 @@ The objective of rhythm classification is to detect and classify abnormal heart 
 
 ---
 
-## <span class="sk-h2-span">Characteristics</span>
+## Characteristics
 
 There are a variety of heart rhythms that can be detected using ECG signals. In this task, we predominantly focus on detecting arrhythmias such as atrial fibrillation (AFIB) and atrial flutter (AFL). The following table summarizes characteristics of a few rhythms:
 
@@ -65,7 +65,7 @@ There are a variety of heart rhythms that can be detected using ECG signals. In 
 
 ---
 
-## <span class="sk-h2-span">Dataloaders</span>
+## Dataloaders
 
 Dataloaders are available for the following datasets:
 
@@ -75,7 +75,7 @@ Dataloaders are available for the following datasets:
 
 ---
 
-## <span class="sk-h2-span">Pre-trained Models</span>
+## Pre-trained Models
 
 The following table provides the latest performance and accuracy results for rhythm models. Additional result details can be found in [Model Zoo → Rhythm](../zoo/index.md).
 
@@ -84,7 +84,7 @@ The following table provides the latest performance and accuracy results for rhy
 
 ---
 
-## <span class="sk-h2-span">Target Classes</span>
+## Target Classes
 
 Below outlines the classes available for rhythm classification. When training a model, the number of classes, mapping, and names must be provided.
 
@@ -109,7 +109,7 @@ Below outlines the classes available for rhythm classification. When training a 
 
 ---
 
-## <span class="sk-h2-span">References</span>
+## References
 
 * [ECG Heartbeat classification using deep transfer learning with Convolutional Neural Network and STFT technique](https://arxiv.org/abs/2206.14200)
 * [Classification of ECG based on Hybrid Features using CNNs for Wearable Applications](https://arxiv.org/pdf/2206.07648.pdf)

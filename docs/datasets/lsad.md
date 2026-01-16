@@ -1,12 +1,12 @@
 # Large Scale Arrhythmia Database (LSAD)
 
-## <span class="sk-h2-span">Overview</span>
+## Overview
 
 The large scale arrhythmia database (LSAD) is a large-scale, multi-center, multi-lead, and multi-class ECG dataset for arrhythmia detection. The dataset contains ECG recordings from 45,152 patients. The dataset is collected from 3 different centers: Shaoxing People's Hospital, the Second Affiliated Hospital of Zhejiang University, and the First Affiliated Hospital of Zhejiang University. The dataset contains 11 different arrhythmia classes and 1 normal class. The dataset is collected from 12-lead ECGs and is annotated by a team of expert cardiologists. The dataset includes over 100 scp codes.
 
 Please visit [Physionet](https://physionet.org/content/ecg-arrhythmia/1.0.0/) for more details.
 
-## <span class="sk-h2-span">Usage</span>
+## Usage
 
 !!! Example Python
 
@@ -35,7 +35,7 @@ Please visit [Physionet](https://physionet.org/content/ecg-arrhythmia/1.0.0/) fo
 
     ```
 
-## <span class="sk-h2-span">Statistics</span>
+## Statistics
 
 | Acronym Name | Full Name | Frequency, n(%) | Age, Mean ± SD |Male,n(%) |
 | --- | --- | --- | --- | --- |
@@ -51,10 +51,10 @@ Please visit [Physionet](https://physionet.org/content/ecg-arrhythmia/1.0.0/) fo
 | AVRT | Atrioventricular Reentrant Tachycardia | 7 (0.01) | 56.43 ± 17.89 | 5 (71.43%) |
 | WAP | Wandering Atrial Pacemaker | 7 (0.01) | 51.14 ± 31.83 | 6 (85.71%) |
 
-## <span class="sk-h2-span">Funding</span>
+## Funding
 
 This dataset received funding from the Kay Family Foundation Data Analytic Grant. This dataset received funding from 2018 Shaoxing Medical and Hygiene Research Grant, ID 2018C30070.
 
-## <span class="sk-h2-span">License</span>
+## License
 
 The dataset is available under [Creative Commons Attribution 4.0 International Public License](https://physionet.org/content/ecg-arrhythmia/view-license/1.0.0/)

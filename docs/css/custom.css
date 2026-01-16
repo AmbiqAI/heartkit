@@ -207,3 +207,7 @@ th, td {
   font-size: 24px;
   font-weight: 300;
 }
+
+.md-typeset h2 {
+  color: #F52543;
+}

@@ -8,12 +8,20 @@ on:
       - "v*"
   workflow_dispatch:
 
+env:
+  PACKAGE_NAME: heartkit
+  PYTHON_VERSION: "3.12"
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
+      - name: Setup Python 🐍
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -33,7 +41,7 @@ jobs:
       - build
     environment:
       name: pypi
-      url: https://pypi.org/p/heartkit
+      url: https://pypi.org/p/${{ env.PACKAGE_NAME }}
     permissions:
       id-token: write
     steps:

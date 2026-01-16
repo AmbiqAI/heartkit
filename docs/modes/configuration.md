@@ -2,7 +2,7 @@
 
 For each mode, common configuration parameters, [HKTaskParams](#hktaskparams), are required to run the task. These parameters are used to define the task, datasets, model, and other settings. Rather than defining separate configuration files for each mode, a single configuration object is used to simplify configuration files and heavy re-use of parameters between modes.
 
-## <span class="sk-h2-span">QuantizationParams</span>
+## QuantizationParams
 
 Quantization parameters define the quantization-aware training (QAT) and post-training quantization (PTQ) settings. This is used for modes: train, evaluate, export, and demo.
 
@@ -16,7 +16,7 @@ Quantization parameters define the quantization-aware training (QAT) and post-tr
 | debug | bool | Optional | False | Debug quantization |
 | fallback | bool | Optional | False | Fallback to float32 |
 
-## <span class="sk-h2-span">NamedParams</span>
+## NamedParams
 
 Named parameters are used to provide custom parameters for a given object or callable where parameter types are not known ahead of time. For example, a dataset, 'CustomDataset', may require custom parameters such as 'path', 'label', 'sampling_rate', etc. When a task loads the dataset using `name`, the task will then unpack the custom parameters and pass them to the dataset initializer.
 
@@ -48,7 +48,7 @@ params = hk.HKTaskParams(
 
 ```
 
-## <span class="sk-h2-span">HKTaskParams</span>
+## HKTaskParams
 
 These parameters are supplied to a [Task](../tasks/index.md) when running a given mode such as `train`, `evaluate`, `export`, or `demo`. A single configuration object is used to simplify configuration files and heavy re-use of parameters between modes.
 

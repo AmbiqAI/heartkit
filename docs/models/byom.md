@@ -2,7 +2,7 @@
 
 The model factory can be extended to include custom models. This is useful when you have a custom model architecture that you would like to use for training. The custom model can be registered with the model factory by defining a custom model function and registering it with the `ModelFactory`.
 
-## <span class="sk-h2-span">How it Works</span>
+## How it Works
 
 1. **Create a Model**: Define a new model function that takes a `keras.Input`, model parameters, and number of classes as arguments and returns a `keras.Model`.
 
@@ -53,7 +53,7 @@ The model factory can be extended to include custom models. This is useful when 
 
     ```
 
-## <span class="sk-h2-span">Better Model Params</span>
+## Better Model Params
 
 Rather than using a dictionary to define the model parameters, you can define a custom dataclass or [Pydantic](https://pydantic-docs.helpmanual.io/) model to enforce type checking and provide better documentation.
 

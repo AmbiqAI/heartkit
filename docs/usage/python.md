@@ -1,10 +1,10 @@
 # :simple-python: Python Usage
 
-__HeartKit__ python package allows for more fine-grained control and customization. You can use the package to train, evaluate, and deploy models for both built-in taks and custom tasks. In addition, custom datasets and model architectures can be created and registered with corresponding factories.
+__heartKIT__ python package allows for more fine-grained control and customization. You can use the package to train, evaluate, and deploy models for both built-in taks and custom tasks. In addition, custom datasets and model architectures can be created and registered with corresponding factories.
 
-## <span class="sk-h2-span">Overview</span>
+## Overview
 
-The main components of HeartKit include the following:
+The main components of heartKIT include the following:
 
 ### [Tasks](../tasks/index.md)
 
@@ -28,7 +28,7 @@ ds = hk.DatasetFactory.get('ecg-synthetic')(num_pts=100)
 
 ### [Models](../models/index.md)
 
-Lastly, HeartKit leverages [helia-edge's](https://ambiqai.github.io/helia-edge/) customizable model architectures. To enable creating custom network topologies from configuration files, HeartKit provides a `ModelFactory` that allows you to create models by specifying the model key and the model parameters. Each item in the factory is a callable that takes a `keras.Input`, model parameters, and number of classes as arguments and returns a `keras.Model`.
+Lastly, heartKIT leverages [helia-edge's](https://ambiqai.github.io/helia-edge/) customizable model architectures. To enable creating custom network topologies from configuration files, heartKIT provides a `ModelFactory` that allows you to create models by specifying the model key and the model parameters. Each item in the factory is a callable that takes a `keras.Input`, model parameters, and number of classes as arguments and returns a `keras.Model`.
 
 ```
 import keras
@@ -46,7 +46,7 @@ model = hk.ModelFactory.get('tcn')(
 
 ```
 
-## <span class="sk-h2-span">Usage</span>
+## Usage
 
 ### Running a built-in task w/ existing datasets
 

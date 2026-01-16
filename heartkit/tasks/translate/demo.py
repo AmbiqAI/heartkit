@@ -186,7 +186,7 @@ def demo(params: HKTaskParams):
         plot_bgcolor=bg_color,
         paper_bgcolor=bg_color,
         margin=dict(l=10, r=10, t=80, b=60),
-        title="HeartKit: Translate Demo",
+        title="heartKIT: Translate Demo",
     )
 
     fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=False)

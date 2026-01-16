@@ -1,11 +1,11 @@
-# :octicons-terminal-24: HeartKit CLI
+# :octicons-terminal-24: heartKIT CLI
 
 <div class="termy">
 
 ```console
 $ heartkit --help
 
-HeartKit CLI Options:
+heartKIT CLI Options:
     --task [segmentation, rhythm, beat, denoise]
     --mode [download, train, evaluate, export, demo]
     --config ["./path/to/config.json", or '{"raw: "json"}']
@@ -13,7 +13,7 @@ HeartKit CLI Options:
 
 </div>
 
-The HeartKit command line interface (CLI) makes it easy to run a variety of single-line commands without the need for writing any code. You can run all built-in tasks and modes from the terminal with the `heartkit` command. This is also useful to reproduce [Model Zoo](../zoo/index.md) results.
+The heartKIT command line interface (CLI) makes it easy to run a variety of single-line commands without the need for writing any code. You can run all built-in tasks and modes from the terminal with the `heartkit` command. This is also useful to reproduce [Model Zoo](../zoo/index.md) results.
 
 !!! example
 
@@ -88,7 +88,7 @@ The [download](../modes/download.md) command is used to download all datasets sp
 
 ## [Train](../modes/train.md)
 
-The [train](../modes/train.md) command is used to train a HeartKit model for the specified `task` and `dataset`. Each task provides a reference routine for training the model. The routine can be customized via the configuration file. Please refer to [HKTaskParams](../modes/configuration.md#hktaskparams) to see supported options.
+The [train](../modes/train.md) command is used to train a heartKIT model for the specified `task` and `dataset`. Each task provides a reference routine for training the model. The routine can be customized via the configuration file. Please refer to [HKTaskParams](../modes/configuration.md#hktaskparams) to see supported options.
 
 !!! Example "CLI"
 

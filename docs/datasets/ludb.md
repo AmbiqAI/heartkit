@@ -1,12 +1,12 @@
 # LUDB Dataset
 
-## <span class="sk-h2-span">Overview</span>
+## Overview
 
 The Lobachevsky University Electrocardiography database (LUDB) consists of 200 10-second 12-lead records. The boundaries and peaks of P, T waves and QRS complexes were manually annotated by cardiologists. Each record is annotated with the corresponding diagnosis.
 
 Please visit [Physionet](https://physionet.org/content/ludb/1.0.1/) for more details.
 
-## <span class="sk-h2-span">Usage</span>
+## Usage
 
 !!! Example Python
 
@@ -35,14 +35,14 @@ Please visit [Physionet](https://physionet.org/content/ludb/1.0.1/) for more det
 
     ```
 
-## <span class="sk-h2-span">Funding</span>
+## Funding
 
 The study was supported by the Ministry of Education of the Russian Federation (contract No. 02.G25.31.0157 of 01.12.2015).
 
-## <span class="sk-h2-span">License</span>
+## License
 
 The LUDB is available for commercial use.
 
-## <span class="sk-h2-span">Supported Tasks</span>
+## Supported Tasks
 
 * [Segmentation](../tasks/segmentation.md)

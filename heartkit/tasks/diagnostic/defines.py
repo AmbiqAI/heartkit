@@ -2,7 +2,7 @@ from enum import IntEnum
 
 
 class HKDiagnostic(IntEnum):
-    """HeartKit Diagnostic classes"""
+    """heartKIT Diagnostic classes"""
 
     NORM = 0
     STTC = 1

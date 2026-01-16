@@ -1,11 +1,11 @@
 
 # :material-database: Datasets
 
-HeartKit provides support for a number of datasets to facilitate training the __heart-monitoring tasks__. Most of the datasets are readily available and can be downloaded and used for training and evaluation. The datasets inherit from [HKDataset](/heartkit/api/heartkit/datasets/dataset) and can be accessed either directly or through the factory singleton [`DatasetFactory`](#dataset-factory).
+heartKIT provides support for a number of datasets to facilitate training the __heart-monitoring tasks__. Most of the datasets are readily available and can be downloaded and used for training and evaluation. The datasets inherit from [HKDataset](/heartkit/api/heartkit/datasets/dataset) and can be accessed either directly or through the factory singleton [`DatasetFactory`](#dataset-factory).
 
-## <span class="sk-h2-span">Available Datasets</span>
+## Available Datasets
 
-Below is a list of the currently available datasets in HeartKit. Please make sure to review each dataset's license for terms and limitations.
+Below is a list of the currently available datasets in heartKIT. Please make sure to review each dataset's license for terms and limitations.
 
 * **[Icentia11k](./icentia11k.md)**: This dataset consists of ECG recordings from 11,000 patients and 2 billion labelled beats. The data was collected by the CardioSTAT, a single-lead heart monitor device from Icentia. The raw signals were recorded with a 16-bit resolution and sampled at 250 Hz with the CardioSTAT in a modified lead 1 position.
 
@@ -21,9 +21,9 @@ Below is a list of the currently available datasets in HeartKit. Please make sur
 
 * **[PPG Synthetic](./synthetic.md)**: A PPG synthetic dataset generated using PhysioKit. The dataset enables the generation of a 1-lead PPG signal with segmentations and fiducials.
 
-* **[Bring-Your-Own-Data](./byod.md)**: Add new datasets to HeartKit by providing your own data. Subclass `HKDataset` and register it with the `DatasetFactory`.
+* **[Bring-Your-Own-Data](./byod.md)**: Add new datasets to heartKIT by providing your own data. Subclass `HKDataset` and register it with the `DatasetFactory`.
 
-## <span class="sk-h2-span">Dataset Factory</span>
+## Dataset Factory
 
 The dataset factory, `DatasetFactory`, provides a convenient way to access the datasets. The factory is a thread-safe singleton class that provides a single point of access to the datasets via the datasets' slug names. The benefit of using the factory is it allows registering new additional datasets that can then be leveraged by existing and new tasks.
 

@@ -1,5 +1,5 @@
 """
-# :material-tools: HeartKit Utilities API
+# :material-tools: heartKIT Utilities API
 
 """
 

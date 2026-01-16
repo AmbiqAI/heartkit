@@ -133,7 +133,7 @@ def demo(params: HKTaskParams):
         paper_bgcolor=plot_theme.bg_color,
         margin=dict(l=10, r=10, t=80, b=80),
         legend=dict(groupclick="toggleitem"),
-        title="HeartKit: Rhythm Demo",
+        title="heartKIT: Rhythm Demo",
     )
     fig.write_html(params.job_dir / "demo.html", include_plotlyjs="cdn", full_html=False)
     logger.debug(f"Report saved to {params.job_dir / 'demo.html'}")
@@ -151,7 +151,7 @@ def demo(params: HKTaskParams):
             label = f"{class_names[pred]} ({prob:0.0%})"
         color = plot_theme.colors[pred % len(plot_theme.colors)]
         ax.axvspan(ts[start], ts[stop], color=color, alpha=0.25, label=label)
-    ax.set_title("HeartKit: Rhythm Demo")
+    ax.set_title("heartKIT: Rhythm Demo")
     ax.set_xlabel("Time (sec)")
     ax.set_ylabel("ECG")
     ax.legend(loc="upper right", bbox_to_anchor=(1, 1), frameon=False)
