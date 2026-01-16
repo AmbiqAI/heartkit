@@ -81,14 +81,14 @@ __heartKIT__ provides a number of **modes** that can be invoked for a given task
 
 ## Datasets
 
-__heartKIT__ exposes several open-source datasets for training each of the heartKIT tasks via a __dataset factory__. For certain tasks, we also provide synthetic data provided by [PhysioKit](https://ambiqai.github.io/physiokit) to help improve model generalization. Each dataset has a corresponding Python class to aid in downloading and generating data for the given task. Additional datasets can be easily added to the heartKIT framework by creating a new dataset class and registering it to the dataset factory.
+__heartKIT__ exposes several open-source datasets for training each of the heartKIT tasks via a __dataset factory__. For certain tasks, we also provide synthetic data provided by [physioKIT](https://ambiqai.github.io/physiokit) to help improve model generalization. Each dataset has a corresponding Python class to aid in downloading and generating data for the given task. Additional datasets can be easily added to the heartKIT framework by creating a new dataset class and registering it to the dataset factory.
 
 * **Icentia11k**: 11-lead ECG data collected from 11,000 subjects captured continously over two weeks.
 * **LUDB**: 200 ten-second 12-lead ECG records w/ annotated P-wave, QRS, and T-wave boundaries.
 * **QTDB**: 100+ fifteen-minute two-lead ECG recordings w/ annotated P-wave, QRS, and T-wave boundaries.
 * **LSAD**: 10-second, 12-lead ECG dataset collected from 45,152 subjects w/ over 100 scp codes.
 * **PTB-XL**: 10-second, 12-lead ECG dataset collected from 18,885 subjects w/ 72 different diagnostic classes.
-* **Synthetic**: A synthetic dataset generator from [PhysioKit](https://ambiqai.github.io/physiokit).
+* **Synthetic**: A synthetic dataset generator from [physioKIT](https://ambiqai.github.io/physiokit).
 * **BYOD**: Bring-Your-Own-Dataset (BYOD) to add additional datasets.
 
 ---

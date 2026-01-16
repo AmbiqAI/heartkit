@@ -17,9 +17,9 @@ Below is a list of the currently available datasets in heartKIT. Please make sur
 
 * **[QTDB](./qtdb.md)**: Over 100 fifteen-minute two-lead ECG recordings with onset, peak, and end markers for P, QRS, T, and (where present) U waves of from 30 to 50 selected beats in each recording.
 
-* **[ECG Synthetic](./synthetic.md)**: An ECG synthetic dataset generated using PhysioKit. The dataset enables the generation of 12-lead ECG signals with a variety of heart conditions and noise levels along with segmentations and fiducial points.
+* **[ECG Synthetic](./synthetic.md)**: An ECG synthetic dataset generated using physioKIT. The dataset enables the generation of 12-lead ECG signals with a variety of heart conditions and noise levels along with segmentations and fiducial points.
 
-* **[PPG Synthetic](./synthetic.md)**: A PPG synthetic dataset generated using PhysioKit. The dataset enables the generation of a 1-lead PPG signal with segmentations and fiducials.
+* **[PPG Synthetic](./synthetic.md)**: A PPG synthetic dataset generated using physioKIT. The dataset enables the generation of a 1-lead PPG signal with segmentations and fiducials.
 
 * **[Bring-Your-Own-Data](./byod.md)**: Add new datasets to heartKIT by providing your own data. Subclass `HKDataset` and register it with the `DatasetFactory`.
 

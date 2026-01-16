@@ -140,7 +140,7 @@ Similar to datasets, dataloaders, tasks, and models, the demo mode can be custom
 
 ## Usage
 
-The following is an example of a task-level demo report for the segmentation task. Upon running segmentation, the demo will extract inter-beat-intervals (IBIs) and report various HR and HRV metrics. These metrics are computed using Ambiq's [PhysioKit Python Package](https://ambiqai.github.io/physiokit)- a toolkit to process raw ambulatory bio-signals.
+The following is an example of a task-level demo report for the segmentation task. Upon running segmentation, the demo will extract inter-beat-intervals (IBIs) and report various HR and HRV metrics. These metrics are computed using Ambiq's [physioKIT Python Package](https://ambiqai.github.io/physiokit)- a toolkit to process raw ambulatory bio-signals.
 
 === "CLI"
 

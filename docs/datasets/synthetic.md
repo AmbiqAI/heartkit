@@ -2,17 +2,17 @@
 
 ### Overview
 
-By leveraging [PhysioKit](https://ambiqai.github.io/physiokit/), we are able to generate synthetic data for a variety of physiological signals, including ECG, PPG, and respiration. In addition to the signals, the tool also provides corresponding landmark fiducials and segmentation annotations. While not a replacement for real-world data, synthetic data can be useful in conjunction with real-world data for training and testing the models.
+By leveraging [physioKIT](https://ambiqai.github.io/physiokit/), we are able to generate synthetic data for a variety of physiological signals, including ECG, PPG, and respiration. In addition to the signals, the tool also provides corresponding landmark fiducials and segmentation annotations. While not a replacement for real-world data, synthetic data can be useful in conjunction with real-world data for training and testing the models.
 
 ## Available Datasets
 
 ### ECG Synthetic
 
-An ECG synthetic dataset generated using PhysioKit. The dataset enables the generation of 12-lead ECG signals with a variety of heart conditions and noise levels along with segmentations and fiducial points.
+An ECG synthetic dataset generated using physioKIT. The dataset enables the generation of 12-lead ECG signals with a variety of heart conditions and noise levels along with segmentations and fiducial points.
 
 ### PPG Synthetic
 
-A PPG synthetic dataset generated using PhysioKit. The dataset enables the generation of a 1-lead PPG signal with segmentations and fiducials.
+A PPG synthetic dataset generated using physioKIT. The dataset enables the generation of a 1-lead PPG signal with segmentations and fiducials.
 
 ## Usage
 

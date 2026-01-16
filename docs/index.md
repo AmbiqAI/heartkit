@@ -101,7 +101,7 @@ The ADK includes several built-in [datasets](./datasets/index.md) for training _
 * **[QTDB](./datasets/qtdb.md)**: 100+ fifteen-minute two-lead ECG recordings w/ annotated P-wave, QRS, and T-wave boundaries.
 * **[LSAD](./datasets/lsad.md)**: 10-second, 12-lead ECG dataset collected from 45,152 subjects w/ over 100 scp codes.
 * **[PTB-XL](./datasets/ptbxl.md)**: 10-second, 12-lead ECG dataset collected from 18,885 subjects w/ 72 different diagnostic classes.
-* **[Synthetic](./datasets/synthetic.md)**: A synthetic dataset generator provided by [PhysioKit](https://ambiqai.github.io/physiokit).
+* **[Synthetic](./datasets/synthetic.md)**: A synthetic dataset generator provided by [physioKIT](https://ambiqai.github.io/physiokit).
 * **[Bring-Your-Own-Dataset (BYOD)](./datasets/byod.md)**: Add and register new datasets to the framework.
 
 ---

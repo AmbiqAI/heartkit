@@ -58,7 +58,7 @@ class EcgSyntheticDataset(HKDataset):
         path: str = Path(tempfile.gettempdir()) / "ecg-synthetic",
         **kwargs,
     ) -> None:
-        """ECG synthetic dataset creates 12-lead ECG signals using PhysioKit.
+        """ECG synthetic dataset creates 12-lead ECG signals using physioKIT.
 
         Args:
             num_pts (int, optional): Number of patients. Defaults to 250.
