@@ -10,7 +10,7 @@ Migrate public docs to Astro/Starlight using the sleepKIT layout and conversion 
 - Worktree: /Users/adam.page/Ambiq/adks/heartkit-docs
 - Branch: codex/heartkit-astro; baseline 64cd51b, version 1.8.0.
 - Preview: http://127.0.0.1:8777/heartkit/
-- Primary checkout untouched. Draft PR: https://github.com/AmbiqAI/heartkit/pull/44 (250c9e7). Both independent reviews complete; findings resolved. Python CI and documentation CI passed on 250c9e7; heartKIT merge remains for user approval.
+- Primary checkout untouched. PR: https://github.com/AmbiqAI/heartkit/pull/44 (250c9e7). Both independent reviews complete; findings resolved. Python CI and documentation CI passed on 250c9e7; heartKIT merge remains for user approval.
 
 ## Implemented
 
@@ -32,14 +32,14 @@ Latest browser feedback resolved: mobile section switcher with only active-secti
 
 Published-site audit: all 190 original sitemap routes now resolve; added 19 missing legacy redirects (API summary and standalone snippets). Checked 50 authored content tables and 348 public API names with no missing content. Original assets page was also empty; docstrings now explain bundled noise resources. Legacy route fixture guards URL coverage. See MIGRATION.md for evidence and review limits.
 
+## Review and release status
+
+Two independent content and delivery reviews completed. Fixed BYOT introduction loss from badge-cell skipping and preserved query/fragment on legacy redirects. Added two notebook regression tests and an eighth browser test. Delivery reviewer rechecked redirect security and JavaScript-disabled fallback; no remaining findings. Python behavior is unchanged; Ruff 0.11.12 passed.
+
+Shared UI #185 and release PR #186 are merged. Publication workflow 36793695398 passed; v0.1.0-alpha.22 points to a62e8d45505dd3bbcdf1c4a03dfd1ec863322ecf. heartKIT package.json and regenerated lockfile pin that exact released commit. This replaces the temporary local preview package. Compact terminals within tabs retain copy controls without redundant headers.
+
+Clean npm ci, Astro check, build, output checks and all eight browser tests pass on alpha.22. Rendered installation panel inspected; screenshot /tmp/heartkit-alpha22-terminal.png. CI on the dependency update is the remaining qualification step before final user merge approval.
+
 ## Next steps and limits
 
-Complete independent content and delivery reviews, resolve findings, publish the PR and get CI green before requesting user approval to merge. Keep package release workflows unchanged. Before publication, check GitHub Pages configuration and refresh validation if code changes. External links, runtime examples, dataset access, historical metrics and training were not revalidated. See astro-site/MIGRATION.md and README.md for coverage and commands.
-
-## Shared mobile navigation dependency
-
-Shared UI #183 and version bump #184 are merged. heartKIT pins alpha.21 commit 6cdbea0c594c955e6aeef232af1fbb15e395ab2d through package.json and its regenerated lockfile. User approved shared UI merge/release; publication follows main CI 36768496554. heartKIT merge remains for user approval. Rollout order: release shared UI, land heartKIT, then update the remaining product documentation sites.
-
-## PR readiness review
-
-Two independent reviews completed. Fixed BYOT introduction loss from badge-cell skipping and preserved query/fragment on legacy redirects. Added two notebook regression tests and an eighth browser test. Delivery reviewer rechecked redirect security and JavaScript-disabled fallback; no remaining review findings. Removed unused local SectionSidebar component and updated AGENTS documentation commands. Clean npm ci, type check, build, output checks and all eight browser tests pass with alpha.21. Earlier heartKIT CI passed on 250c9e7; requalify this dependency update before marking #44 ready.
+Push the dependency update and verify GitHub CI, then request final owner approval for heartKIT #44. Do not merge heartKIT without approval. Keep package release workflows unchanged. Other product consistency PRs follow heartKIT landing. Runtime updates, model refreshes and Hugging Face deployment are separate follow-ups. External links, runtime examples, dataset access, historical metrics and training were not revalidated. See astro-site/MIGRATION.md and README.md for coverage and commands.
