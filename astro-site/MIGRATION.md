@@ -32,4 +32,4 @@ Inspected original-site screenshots for the homepage, assets API, guide index an
 
 Content review identified two migration regressions: removing a Colab toolbar discarded BYOT prose in the same cell, and static redirects discarded API symbol fragments. The renderer now removes only toolbar markup; redirects preserve query strings and fragments with a meta-refresh fallback when JavaScript is disabled. Both changes have regression coverage. Delivery review checked Pages permissions and triggers, shared section matching, notebook assets, public API coverage and Python AST parity. No additional blocking findings remained after fix review.
 
-Dependency qualification: the PR provisionally pins shared UI commit `5e90c941670499bc85d4f56dc37876592c2b4e75` from AmbiqAI/helia-ui#183. Replace with its released version before merge.
+Dependency qualification: shared UI alpha.21 is pinned by immutable commit `6cdbea0c594c955e6aeef232af1fbb15e395ab2d` (AmbiqAI/helia-ui#183 and #184). Clean installation, type checks, build, output checks and all eight browser tests pass with this dependency.

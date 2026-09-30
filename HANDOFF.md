@@ -10,7 +10,7 @@ Migrate public docs to Astro/Starlight using the sleepKIT layout and conversion 
 - Worktree: /Users/adam.page/Ambiq/adks/heartkit-docs
 - Branch: codex/heartkit-astro; baseline 64cd51b, version 1.8.0.
 - Preview: http://127.0.0.1:8777/heartkit/
-- Primary checkout untouched. PR preparation/publication approved; heartKIT merge remains for user approval. Two independent reviews underway.
+- Primary checkout untouched. Draft PR: https://github.com/AmbiqAI/heartkit/pull/44 (250c9e7). Both independent reviews complete; findings resolved. Python CI and documentation CI passed on 250c9e7; heartKIT merge remains for user approval.
 
 ## Implemented
 
@@ -38,8 +38,8 @@ Complete independent content and delivery reviews, resolve findings, publish the
 
 ## Shared mobile navigation dependency
 
-Shared UI PR: https://github.com/AmbiqAI/helia-ui/pull/183. heartKIT uses provisional immutable commit 5e90c941670499bc85d4f56dc37876592c2b4e75 through package.json and its regenerated lockfile. Replace it with the released version before merge. Shared UI merge/release approval is pending; heartKIT merge remains for user approval. Rollout order: land shared UI, land heartKIT, then update the remaining product documentation sites.
+Shared UI #183 and version bump #184 are merged. heartKIT pins alpha.21 commit 6cdbea0c594c955e6aeef232af1fbb15e395ab2d through package.json and its regenerated lockfile. User approved shared UI merge/release; publication follows main CI 36768496554. heartKIT merge remains for user approval. Rollout order: release shared UI, land heartKIT, then update the remaining product documentation sites.
 
 ## PR readiness review
 
-Two independent reviews completed. Fixed BYOT introduction loss from badge-cell skipping and preserved query/fragment on legacy redirects. Added two notebook regression tests and an eighth browser test. Delivery reviewer rechecked redirect security and JavaScript-disabled fallback; no remaining review findings. Removed unused local SectionSidebar component and updated AGENTS documentation commands. Type check, build, output validation and all eight browser tests passed with local candidate. Clean npm ci from the provisional remote pin, type check, build, output validation and all eight browser tests pass.
+Two independent reviews completed. Fixed BYOT introduction loss from badge-cell skipping and preserved query/fragment on legacy redirects. Added two notebook regression tests and an eighth browser test. Delivery reviewer rechecked redirect security and JavaScript-disabled fallback; no remaining review findings. Removed unused local SectionSidebar component and updated AGENTS documentation commands. Clean npm ci, type check, build, output checks and all eight browser tests pass with alpha.21. Earlier heartKIT CI passed on 250c9e7; requalify this dependency update before marking #44 ready.
