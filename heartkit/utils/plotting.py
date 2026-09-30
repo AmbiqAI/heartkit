@@ -83,7 +83,8 @@ def setup_plotting(theme: PlotPallette = dark_theme) -> PlotPallette:
     ```python
     import heartkit as hk
 
-    plot_theme = hk.util.ssetup_plotting(hk.utils.light_theme)
+    plot_theme = hk.utils.setup_plotting(hk.utils.light_theme)
+    ```
     """
     SMALL_SIZE = 12
     MEDIUM_SIZE = 14

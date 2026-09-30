@@ -97,6 +97,7 @@ def create_augmentation_pipeline(
     ], sampling_rate=100)
 
     y = augmenter(x)
+    ```
     """
     if not augmentations:
         return keras.layers.Lambda(lambda x: x)

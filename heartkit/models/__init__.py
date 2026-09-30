@@ -40,36 +40,34 @@ for model in hk.ModelFactory.list():
 A model architecture can easily be instantied by providng a custom set of parameters to the model factory. Each model exposes a set of parameters defined using `Pydantic` to ensure type safety and consistency.
 
 
-!!! Example
+The following example demonstrates how to create a TCN model using the `Tcn` class. The model is defined using a set of parameters defined in the `TcnParams` and `TcnBlockParams` classes.
 
-    The following example demonstrates how to create a TCN model using the `Tcn` class. The model is defined using a set of parameters defined in the `TcnParams` and `TcnBlockParams` classes.
+```py linenums="1"
+import keras
+from helia_edge.models import TcnModel, TcnParams, TcnBlockParams
 
-    ```py linenums="1"
-    import keras
-    from helia_edge.models import TcnModel, TcnParams, TcnBlockParams
+inputs = keras.Input(shape=(800, 1))
+num_classes = 5
 
-    inputs = keras.Input(shape=(800, 1))
-    num_classes = 5
-
-    model = TcnModel.model_from_params(
-        x=inputs,
-        params=TcnParams(
-            input_kernel=(1, 3),
-            input_norm="batch",
-            blocks=[
-                TcnBlockParams(filters=8, kernel=(1, 3), dilation=(1, 1), dropout=0.1, ex_ratio=1, se_ratio=0, norm="batch"),
-                TcnBlockParams(filters=16, kernel=(1, 3), dilation=(1, 2), dropout=0.1, ex_ratio=1, se_ratio=0, norm="batch"),
-                TcnBlockParams(filters=24, kernel=(1, 3), dilation=(1, 4), dropout=0.1, ex_ratio=1, se_ratio=4, norm="batch"),
-                TcnBlockParams(filters=32, kernel=(1, 3), dilation=(1, 8), dropout=0.1, ex_ratio=1, se_ratio=4, norm="batch"),
-            ],
-            output_kernel=(1, 3),
-            include_top=True,
-            use_logits=True,
-            model_name="tcn",
-        ),
-        num_classes=num_classes,
-    )
-    ```
+model = TcnModel.model_from_params(
+    x=inputs,
+    params=TcnParams(
+        input_kernel=(1, 3),
+        input_norm="batch",
+        blocks=[
+            TcnBlockParams(filters=8, kernel=(1, 3), dilation=(1, 1), dropout=0.1, ex_ratio=1, se_ratio=0, norm="batch"),
+            TcnBlockParams(filters=16, kernel=(1, 3), dilation=(1, 2), dropout=0.1, ex_ratio=1, se_ratio=0, norm="batch"),
+            TcnBlockParams(filters=24, kernel=(1, 3), dilation=(1, 4), dropout=0.1, ex_ratio=1, se_ratio=4, norm="batch"),
+            TcnBlockParams(filters=32, kernel=(1, 3), dilation=(1, 8), dropout=0.1, ex_ratio=1, se_ratio=4, norm="batch"),
+        ],
+        output_kernel=(1, 3),
+        include_top=True,
+        use_logits=True,
+        model_name="tcn",
+    ),
+    num_classes=num_classes,
+)
+```
 
 """
 

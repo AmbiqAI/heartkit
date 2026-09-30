@@ -57,7 +57,7 @@ We provide several installation methods including pip, uv, and Docker. Install _
 
 ## Requirements
 
-* [Python ^3.11+](https://www.python.org)
+* [Python 3.12–3.13](https://www.python.org)
 * [uv ^0.7.10+](https://docs.astral.sh/uv/getting-started/installation/)
 
 Check the project's [pyproject.toml](https://github.com/AmbiqAI/heartkit/blob/main/pyproject.toml) file for a list of up-to-date Python dependencies. Note that the installation methods above install all required dependencies. The following are optional dependencies only needed when running `demo` command using Ambiq's evaluation board (`EVB`) backend:
@@ -134,7 +134,7 @@ For example, you can create a custom task, train it, evaluate its performance on
 
     import heartkit as hk
 
-    params = hk.HKTaskParams(...)  # Expand to see example (1)
+    params = hk.HKTaskParams(...)
 
     task = hk.TaskFactory.get("rhythm")
 
@@ -148,7 +148,7 @@ For example, you can create a custom task, train it, evaluate its performance on
 
     ```
 
-    1. Configuration parameters:
+    **Configuration parameters**
     --8<-- "assets/usage/python-configuration.md"
 
 

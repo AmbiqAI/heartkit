@@ -39,12 +39,11 @@ The model factory provides the following methods:
 
 A model can be created when invoking a command via the CLI by setting [architecture](../modes/configuration.md#hktaskparams) in the configuration file. The task will use the supplied name to get the registered model and instantiate with the provided parameters.
 
-Given the following configuration file `configuration.json`:
+Merge this architecture fragment into your task configuration:
 
-```json
+```json fragment
 {
-    ...
-    "architecture:" {
+    "architecture": {
         "name": "tcn",
         "params": {
             "input_kernel": [1, 3],

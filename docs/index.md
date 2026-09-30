@@ -1,22 +1,14 @@
-#
+# Turn heart signals into on-device intelligence
 
-[![](./assets/heartkit-logo-light.png#only-light)](https://ambiqai.github.io/heartkit/)
-[![](./assets/heartkit-logo-dark.png#only-dark)](https://ambiqai.github.io/heartkit/)
+<div class="heartkit-intro">
 
-*An AI Development Kit for real-time heart-monitoring on ultra-low power SoCs*
+heartKIT is a Python-based AI Development Kit for heart monitoring for Ambiq devices. Explore datasets, configurable models and task workflows for ECG and PPG signals, from training through model export.
 
-## Overview
+</div>
 
-Introducing heartKIT, an AI Development Kit (ADK) that enables developers to easily train and deploy real-time __heart-monitoring__ models onto [Ambiq's family of ultra-low power SoCs](https://ambiq.com/soc/). The kit provides a variety of datasets, efficient model architectures, and heart-related tasks out of the box. In addition, heartKIT provides optimization and deployment routines to generate efficient inference models. Finally, the kit includes a number of pre-trained models and task-level demos to showcase the capabilities.
+## Build your heart-monitoring workflow
 
-**Key Features:**
-
-* **Real-time**: Inference is performed in real-time on battery-powered, edge devices.
-* **Efficient**: Leverage Ambiq's ultra low-power SoCs for extreme energy efficiency.
-* **Extensible**: Easily add new tasks, models, and datasets to the framework.
-* **Open Source**: heartKIT is open source and available on GitHub.
-
-Please explore the heartKIT Docs, a comprehensive resource designed to help you understand and utilize all the built-in features and capabilities.
+heartKIT brings dataset integrations, model architectures, training, evaluation and export into one development kit. Start with the included examples and model configurations, or extend the framework with your own datasets, models and tasks. Use the command line for configured runs or the Python API to compose your workflow.
 
 ## Getting Started
 
@@ -29,35 +21,66 @@ Please explore the heartKIT Docs, a comprehensive resource designed to help you 
 
 ## Installation
 
-To get started, first install the python package `heartkit` along with its dependencies via `Git` or `PyPi`:
+Use **uv** for a Python project, **uvx** to run the CLI in an isolated environment, or **pipx** to keep the CLI installed. Choose **Git clone** when developing heartKIT itself.
 
-=== "PyPI install"
-    <br/>
-    <div class="termy">
+<div class="heartkit-install">
 
-    ```console
-    $ pip install heartkit
+=== "uv project"
 
-    ---> 100%
+    Create a project with Python 3.12, then add heartKIT. In an existing uv project, start with `uv add heartkit`.
+
+    ```bash
+    uv init --python 3.12 my-heart-project
+    cd my-heart-project
+    uv add heartkit
+    uv run heartkit --help
     ```
 
-    </div>
+=== "uvx"
+
+    Run the CLI without adding heartKIT to a project. The first invocation downloads heartKIT and its dependencies into an isolated environment.
+
+    ```bash
+    uvx --python 3.12 heartkit --help
+    ```
+
+    Use a project installation for Python imports and notebooks.
+
+=== "pipx"
+
+    Install the CLI in its own environment. This command uses an installed Python 3.12 interpreter.
+
+    ```bash
+    pipx install --python python3.12 heartkit
+    heartkit --help
+    ```
+
+    If the command is not on your PATH, run `pipx ensurepath` and reopen your terminal. Use a project installation for Python imports and notebooks.
+
+=== "pip"
+
+    Install into an activated virtual environment.
+
+    ```bash
+    python -m pip install heartkit
+    heartkit --help
+    ```
 
 === "Git clone"
-    <br/>
-    <div class="termy">
 
-    ```console
-    $ git clone https://github.com/AmbiqAI/heartkit.git
-    Cloning into 'heartkit'...
-    Resolving deltas: 100% (3491/3491), done.
-    $ cd heartkit
-    $ uv install
+    Work with the repository source and its development dependencies.
 
-    ---> 100%
+    ```bash
+    git clone https://github.com/AmbiqAI/heartkit.git
+    cd heartkit
+    uv sync --python 3.12
+    uv run heartkit --help
     ```
 
-    </div>
+</div>
+
+Need the package manager first? See the [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/) or [pipx installation guide](https://pipx.pypa.io/stable/installation/). The [Quickstart](./quickstart.md) covers configuration and your first workflow.
+
 
 ---
 

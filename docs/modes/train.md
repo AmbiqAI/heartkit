@@ -6,7 +6,7 @@ Each task provides a mode to train a model on the specified datasets and dataloa
 
 <div class="annotate" markdown>
 
-1. Load the configuration parameters (e.g. `configuration.json` (1))
+1. Load the configuration parameters (e.g. `configuration.json`)
 1. Load the desired datasets (e.g. `PtbxlDataset`)
 1. Load the corresponding task dataloaders (e.g. `PtbxlDataLoader`)
 1. Initialize custom model architecture (e.g. `tcn`)
@@ -16,49 +16,19 @@ Each task provides a mode to train a model on the specified datasets and dataloa
 
 </div>
 
-1. Example configuration:
+**Example configuration**
 --8<-- "assets/usage/json-configuration.md"
 
 <br/>
 
 ```mermaid
-graph LR
-A("`Load
-configuration
-__HKTaskParams__
-`")
-B("`Load
-datasets
-__DatasetFactory__
-`")
-C("`Load
-dataloaders
-__DataLoaderFactory__
-`")
-D("`Initialize
-model
-__ModelFactory__
-`")
-E("`Define
-_metrics_, _loss_,
-_optimizer_
-`")
-F("`Train
-__model__
-`")
-G("`Save
-__artifacts__
-`")
-A ==> B
-subgraph "Preprocess"
-    B ==> C
-end
-subgraph "Model Training"
-    C ==> D
-    D ==> E
-    E ==> F
-end
-F ==> G
+flowchart TD
+    A["Load configuration"] --> B
+    B["Load datasets and dataloaders"] --> C
+    C["Initialize model"] --> D
+    D["Set loss, metrics and optimizer"] --> E
+    E["Train model"] --> F
+    F["Save model and artifacts"]
 ```
 
 ---
@@ -81,13 +51,13 @@ The model can be trained using the following snippet:
 
 task = hk.TaskFactory.get("rhythm")
 
-params = hk.HKTaskParams(...)  # (1)
+params = hk.HKTaskParams(...)
 
 task.train(params)
 
 ```
 
-1. Example configuration:
+**Example configuration**
 --8<-- "assets/usage/python-configuration.md"
 
 

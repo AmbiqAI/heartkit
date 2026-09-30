@@ -1,4 +1,4 @@
-```javascript
+```json
 {
     "name": "arr-2-eff-sm",
     "project": "hk-rhythm-2",

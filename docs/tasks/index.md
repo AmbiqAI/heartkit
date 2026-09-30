@@ -66,42 +66,12 @@ task.train(hk.HKTrainParams(
 
 ---
 
-!!! Example "Recap"
+## Choose a task
 
-    === "Signal Denoise"
-
-        ### Signal Denoising
-
-        Remove noise from physiological signals. <br>
-        Refer to [Denoise Task](./denoise.md) for more details.
-
-    === "Signal Segmentation"
-
-        ### Signal Segmentation
-
-        Delineate physiological signal into constituent parts. <br>
-        Refer to [Segmentation Task](./segmentation.md) for more details.
-
-    === "Rhythm"
-
-        ### Rhythm Classification
-
-        Identify rhythm-level arrhythmias such as AFIB and AFL. <br>
-        Refer to [Rhythm Task](./rhythm.md) for more details.
-
-
-    === "Beat"
-
-        ### Beat Classification
-
-        Identify premature and escape beats. <br>
-        Refer to [Beat Task](./beat.md) for more details.
-
-    <!-- === "Diagnostic"
-
-        ### Diagnostic Classification
-
-        Assign diagnostic labels to an ECG signal. <br>
-        Refer to [Diagnostic Task](./diagnostic.md) for more details. -->
-
----
+| Task | Purpose |
+| --- | --- |
+| [Signal denoising](./denoise.md) | Remove noise from physiological signals. |
+| [Signal segmentation](./segmentation.md) | Delineate physiological signals into constituent parts. |
+| [Rhythm classification](./rhythm.md) | Identify rhythm-level arrhythmias such as AFIB and AFL. |
+| [Beat classification](./beat.md) | Identify premature and escape beats. |
+| [Bring your own task](./byot.md) | Create and register a custom task. |
