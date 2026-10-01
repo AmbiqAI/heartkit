@@ -1,0 +1,64 @@
+---
+title: "2-Class Beat Classification (BEAT-2-EFF-SM)"
+description: "The following table provides the latest pre-trained model for 2-class beat classification task. Below we also provide additional details including training…"
+---
+
+## Overview
+
+The following table provides the latest pre-trained model for 2-class beat classification task. Below we also provide additional details including training configuration, performance metrics, and downloads.
+
+| NAME            | DATASET    | FS    | DURATION | # CLASSES | MODEL          | PARAMS | FLOPS   | METRIC   |
+| --------------- | ---------- | ----- | -------- | --------- | -------------- | ------ | ------- | -------- |
+| __BC-2-EFF-SM__ | Icentia11k | 100Hz | 5s       | 2         | EfficientNetV2 | 28K    | 1.8M    | 97.7% F1 |
+
+---
+
+## Input
+
+The model is trained on 5-second, raw ECG frames sampled at 100 Hz.
+
+- **Sensor**: ECG
+- **Location**: Wrist
+- **Sampling Rate**: 100 Hz
+- **Frame Size**: 5 seconds
+
+---
+
+## Class Mapping
+
+The model is able to classify normal sinus rhythm (NSR) and premature atrial/ventricular contractions (PAC/PVC).
+The class mapping is as follows:
+
+| Base Class    | Target Class | Label     |
+| ------------- | ------------ | --------- |
+| 0-NSR         | 0            | NSR       |
+| 1-PAC, 2-PVC  | 1            | PAC|PVC   |
+
+---
+
+## Datasets
+
+The model is trained on the following datasets:
+
+- **[Icentia11k](/heartkit/datasets/icentia11k/)**
+
+---
+
+## Model Performance
+
+The confusion matrix for model is depicted below.
+
+<div class="sk-plotly-graph-div">
+<iframe title="Interactive example" src="/heartkit/assets/zoo/beat-2-eff-sm/confusion_matrix_test.html" loading="lazy" style={{width:'100%',height:'480px',border:0}} />
+</div>
+
+## Downloads
+
+| Asset                                                                | Description                   |
+| -------------------------------------------------------------------- | ----------------------------- |
+| [configuration.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/beat/beat-2-eff-sm/latest/configuration.json)   | Configuration file            |
+| [model.keras](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/beat/beat-2-eff-sm/latest/model.keras)            | Keras Model file              |
+| [model.tflite](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/beat/beat-2-eff-sm/latest/model.tflite)       | TFLite Model file             |
+| [metrics.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/beat/beat-2-eff-sm/latest/metrics.json)       | Metrics file                  |
+
+---

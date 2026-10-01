@@ -1,0 +1,63 @@
+---
+title: "Signal Denoising Task"
+description: "The objective of denoising is to remove noise and artifacts from physiological signals while preserving the underlying signal information. The dominant noise…"
+---
+
+## Overview
+
+The objective of denoising is to remove noise and artifacts from physiological signals while preserving the underlying signal information. The dominant noise sources include baseline wander (BW), muscle noise (EMG), electrode movement artifacts (EM), and powerline interference (PLI). For physiological signals such as ECG and PPG, removing the artifacts is difficult due to the non-stationary nature of the noise and overlapping frequency bands with the signal. While traditional signal processing techniques such as filtering and wavelet denoising have been used to remove noise, deep learning models have shown great promise in enhanced denoising.
+
+<div class="sk-plotly-graph-div">
+<iframe title="Interactive example" src="/heartkit/assets/tasks/denoise/denoise-example.html" loading="lazy" style={{width:'100%',height:'480px',border:0}} />
+</div>
+
+---
+
+## Noise Characteristics
+
+The following table summarizes the characteristics of common noise sources in ECG signals:
+
+| Type | Causes | Spectrum | Effects |
+| --- | --- | --- | --- |
+| Baseline Wander (BW) | Respiration, posture changes | 0-1.0 Hz | Distorts ST segment and other LF components |
+| Powerline Interference (PLI) | Electrical equipment | 50-60 Hz | Distorts P and T waves |
+| Muscle Noise (EMG) | Muscle activity | 0-100 Hz | Distorts local waves |
+| Electrode Movement (EM) | Electrode motion, skinimpedance | 0-100 Hz | Distorts local waves |
+
+The following table summarizes the characteristics of common noise sources in PPG signals:
+
+| Type | Causes | Spectrum | Effects |
+| --- | --- | --- | --- |
+| Motion Artifacts | Movement, pressure | 0-10 Hz | Distorts signal |
+| Ambient Light | Sunlight, artificial light | 0-100 Hz | Distorts signal |
+| Blood Pressure | Blood flow, pressure | 0-10 Hz | Distorts signal |
+
+---
+
+## Dataloaders
+
+Dataloaders are available for the following datasets:
+
+* **[LUDB](/heartkit/datasets/ludb/)**
+* **[PTB-XL](/heartkit/datasets/ptbxl/)**
+* **[ECG Synthetic](/heartkit/datasets/synthetic/)**
+* **[PPG Synthetic](/heartkit/datasets/synthetic/)**
+
+---
+
+## Pre-trained Models
+
+The following table provides the latest performance and accuracy results of denoising models. Additional result details can be found in [Model Zoo → Denoise](/heartkit/zoo/).
+
+| NAME                | DATASET           | FS    | DURATION | MODEL          | PARAMS | FLOPS   | METRIC      |
+| ------------------- | ----------------- | ----- | -------- | -------------- | ------ | ------- | ----------- |
+| __DEN-TCN-SM__      | Synthetic, PTB-XL | 100Hz | 2.5s     | TCN            | 3.3K   | 1.0M    | 18.1 SNR    |
+| __DEN-TCN-LG__      | Synthetic, PTB-XL | 100Hz | 2.5s     | TCN            | 6.3K   | 1.8M    | 19.5 SNR    |
+| __DEN-PPG-TCN-SM__  | Synthetic         | 100Hz | 2.5s     | TCN            | 3.5K   | 1.1M    | 92.1% COS   |
+
+---
+
+## References
+
+* [DeScoD-ECG: Deep Score-Based Diffusion Model for ECG Baseline Wander and Noise Removal](https://arxiv.org/pdf/2208.00542.pdf)
+* [DEEPFILTER: AN ECG BASELINE WANDER REMOVAL FILTER USING DEEP LEARNING TECHNIQUES](https://arxiv.org/pdf/2101.03423.pdf)

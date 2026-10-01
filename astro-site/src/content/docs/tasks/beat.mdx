@@ -1,0 +1,72 @@
+---
+title: "Beat Classification Task"
+description: "In beat classification, we classify individual beats as either normal or abnormal. Abnormal beats can be further classified as being either premature or escape…"
+---
+
+## Overview
+
+In beat classification, we classify individual beats as either normal or abnormal. Abnormal beats can be further classified as being either premature or escape beats as well as originating from the atria, junction, or ventricles. The objective of beat classification is to detect and classify these abnormal heart beats directly from ECG signals.
+
+<div class="sk-plotly-graph-div">
+<iframe title="Interactive example" src="/heartkit/assets/tasks/beat/beat-example.html" loading="lazy" style={{width:'100%',height:'480px',border:0}} />
+</div>
+
+---
+
+## Characteristics
+
+|     | Atrial | Junctional | Ventricular |
+| --- | --- | --- | --- |
+| Premature | __PAC__ <br /> P-wave: Different <br /> QRS: Narrow (normal) <br /> Aberrated: LBBB or RBBB | __PJC__ <br /> P-wave: None / retrograde <br /> QRS: Narrow (normal) <br /> Compensatory SA Pause | __PVC__ <br /> P-wave: None <br /> QRS: Wide (> 120 ms) <br /> Compensatory SA Pause |
+| Escape | Atrial Escape | P-wave: Abnormal <br /> QRS: Narrow (normal) <br /> Ventricular rate: < 60 bpm <br /> Junctional Escape <br /> | P-wave: None <br /> QRS: Narrow (normal) <br /> Bradycardia (40-60 bpm) <br /> Ventricular Escape | P-wave: None <br /> QRS: Wide <br /> Bradycardia (< 40 bpm) |
+
+---
+
+## Dataloaders
+
+Dataloaders are available for the following datasets:
+
+* **[Icentia11k](/heartkit/datasets/icentia11k/)**
+* **[PTB-XL](/heartkit/datasets/ptbxl/)**
+
+---
+
+## Pre-trained Models
+
+The following table provides the latest performance and accuracy results for pre-trained beat models. Additional result details can be found in [Model Zoo → Beat](/heartkit/zoo/).
+
+| NAME            | DATASET    | FS    | DURATION | # CLASSES | MODEL          | PARAMS | FLOPS   | METRIC   |
+| --------------- | ---------- | ----- | -------- | --------- | -------------- | ------ | ------- | -------- |
+| __BC-2-EFF-SM__ | Icentia11k | 100Hz | 5s       | 2         | EfficientNetV2 | 28K    | 1.8M    | 97.7% F1 |
+| __BC-3-EFF-SM__ | Icentia11k | 100Hz | 5s       | 3         | EfficientNetV2 | 41K    | 2.1M    | 92.0% F1 |
+
+---
+
+## Target Classes
+
+Below outlines the classes available for beat classification. When training a model, the number of classes, mapping, and names must be provided.
+
+| CLASS   | LABELS          |
+| ------- | --------------- |
+| 0       | Normal          |
+| 1       | PAC             |
+| 2       | PVC             |
+| 3       | Noise           |
+
+**Class Mapping**
+
+Below is an example of a class mapping for a 3-class beat model. The class map keys are the original class labels and the values are the new class labels. Any class not included will be skipped.
+
+```jsonc title="JSONC example"
+{
+    "num_classes": 3,
+    "class_names": ["QRS", "PAC", "PVC"],
+    "class_map": {
+        "0": 0,  // Map Normal to QRS
+        "1": 1,  // Map PAC to PAC
+        "2": 2,  // Map PVC to PVC
+    }
+}
+```
+
+---

@@ -48,18 +48,6 @@ dev = [
   "pydot>=2.0.0,<3.0",
   "ruff>=0.5.1,<1.0",
 ]
-docs = [
-  "mkdocs>=1.5.3,<2.0",
-  "mkdocs-material>=9.5.8,<10.0",
-  "mkdocstrings-python>=1.8.0,<2.0",
-  "markdown-include>=0.8.1,<1.0",
-  "mkdocs-exclude>=1.0.2,<2.0",
-  "mkdocs-jupyter>=0.24.8,<1.0",
-  "mkdocs-gen-files>=0.5.0,<1.0",
-  "mkdocs-section-index>=0.3.9,<1.0",
-  "mkdocs-literate-nav>=0.6.1,<1.0",
-  "black>=24.8.0,<25.0",
-]
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]

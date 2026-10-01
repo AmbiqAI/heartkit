@@ -1,0 +1,149 @@
+---
+title: "heartKIT CLI"
+description: "The heartKIT command line interface (CLI) makes it easy to run a variety of single-line commands without the need for writing any code. You can run all…"
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import AsciiTerminal from '@ambiqai/helia-ui/astro/AsciiTerminal';
+
+<AsciiTerminal
+  lines={[{"text":"heartkit --help","kind":"command"},{"text":"","kind":"output"},{"text":"heartKIT CLI Options:","kind":"output"},{"text":"    --task [segmentation, rhythm, beat, denoise]","kind":"output"},{"text":"    --mode [download, train, evaluate, export, demo]","kind":"output"},{"text":"    --config [\"./path/to/config.json\", or '{\"raw: \"json\"}']","kind":"output"}]}
+/>
+
+The heartKIT command line interface (CLI) makes it easy to run a variety of single-line commands without the need for writing any code. You can run all built-in tasks and modes from the terminal with the `heartkit` command. This is also useful to reproduce [Model Zoo](/heartkit/zoo/) results.
+
+<Tabs>
+<TabItem label="Syntax">
+
+Heartkit commands use the following syntax:
+
+```bash title="Terminal"
+heartkit --mode [MODE] --task [TASK] --config [CONFIG]
+```
+
+Or using short flags:
+
+```bash title="Terminal"
+heartkit -m [MODE] -t [TASK] -c [CONFIG]
+```
+
+Where:
+
+* `MODE` is one of `download`, `train`, `evaluate`, `export`, or `demo`
+* `TASK` is one of `segmentation`, `rhythm`, `beat`, or `denoise`
+* `CONFIG` is configuration as JSON content or file path
+
+</TabItem>
+<TabItem label="Download">
+
+Download datasets specified in the configuration file.
+
+```bash title="Terminal"
+heartkit -m download -c ./configs/download-datasets.json
+```
+
+</TabItem>
+<TabItem label="Train">
+
+Train a rhythm model using the supplied configuration file.
+
+```bash title="Terminal"
+heartkit -m train -t rhythm -c ./configuration.json
+```
+
+</TabItem>
+<TabItem label="Evaluate">
+
+Evaluate the rhythm model using the supplied configuration file.
+
+```bash title="Terminal"
+heartkit -m evaluate -t rhythm  -c ./configuration.json
+```
+
+</TabItem>
+<TabItem label="Demo">
+
+Run demo on trained rhythm model using the supplied configuration file.
+
+```bash title="Terminal"
+heartkit -m demo -t rhythm -c ./configuration.json
+```
+
+</TabItem>
+</Tabs>
+
+:::note[Configuration File]
+The configuration file is a JSON file that contains all the necessary parameters for the task. The configuration file can be passed as a file path or as a JSON string. In addition, a single configuration file can be used for all `modes`- only needed parameters will be extracted for the given `mode` running.  Please refer to the [Configuration](/heartkit/modes/configuration/) section for more details.
+:::
+
+---
+
+## [Download](/heartkit/modes/download/)
+
+The [download](/heartkit/modes/download/) command is used to download all datasets specified in the configuration file. Please refer to [Datasets](/heartkit/datasets/) for details on the available datasets.
+
+**CLI**
+
+The following command will download and prepare all datasets specified in configuration JSON file.
+
+```bash title="Terminal"
+heartkit --task rhythm --mode download --config ./configs/download-datasets.json
+```
+
+---
+
+## [Train](/heartkit/modes/train/)
+
+The [train](/heartkit/modes/train/) command is used to train a heartKIT model for the specified `task` and `dataset`. Each task provides a reference routine for training the model. The routine can be customized via the configuration file. Please refer to [HKTaskParams](/heartkit/modes/configuration/#hktaskparams) to see supported options.
+
+**CLI**
+
+The following command will train a rhythm model using the reference configuration:
+
+```bash title="Terminal"
+heartkit --task rhythm --mode train --config ./configuration.json
+```
+
+---
+
+## [Evaluate](/heartkit/modes/evaluate/)
+
+The [evaluate](/heartkit/modes/evaluate/) command will test the performance of the model on the reserved test sets for the specified `task`. The routine can be customized via the configuration file. Please refer to [HKTaskParams](/heartkit/modes/configuration/#hktaskparams) to see supported options.
+
+**CLI**
+
+The following command will test the rhythm model using the reference configuration:
+
+```bash title="Terminal"
+heartkit --task rhythm --mode evaluate --config ./configuration.json
+```
+
+---
+
+## [Export](/heartkit/modes/export/)
+
+The [export](/heartkit/modes/export/) command will convert the trained TensorFlow model into both TensorFlow Lite (TFL) and TensorFlow Lite for micro-controller (TFLM) variants. The command will also verify the models' outputs match. The activations and weights can be quantized by configuring the `quantization` section in the configuration file. Once converted, the TFLM header file will be copied to location specified by `tflm_file`.
+
+**CLI**
+
+The following command will export the rhythm model to TF Lite and TFLM:
+
+```bash title="Terminal"
+heartkit --task rhythm --mode export --config ./configuration.json
+```
+
+---
+
+## [Demo](/heartkit/modes/demo/)
+
+The [demo](/heartkit/modes/demo/) command is used to run a task-level demonstration using either the PC or EVB as backend inference engine.
+
+**CLI**
+
+The following command will run a demo on the trained rhythm model using the same supplied configuration file.
+
+```bash title="Terminal"
+heartkit --task rhythm --mode demo --config ./configuration.json
+```
+
+---

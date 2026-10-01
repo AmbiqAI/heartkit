@@ -1,0 +1,178 @@
+---
+title: "Python Usage"
+description: "heartKIT python package allows for more fine-grained control and customization. You can use the package to train, evaluate, and deploy models for both built-in…"
+---
+
+import ConfigExample from "../../../components/ConfigExample.astro";
+
+__heartKIT__ python package allows for more fine-grained control and customization. You can use the package to train, evaluate, and deploy models for both built-in taks and custom tasks. In addition, custom datasets and model architectures can be created and registered with corresponding factories.
+
+## Overview
+
+The main components of heartKIT include the following:
+
+### [Tasks](/heartkit/tasks/)
+
+A [Task](/heartkit/tasks/) inherits from the [HKTask](/heartkit/api/heartkit/tasks/task) class and provides implementations for each of the main modes: download, train, evaluate, export, and demo. Each mode is provided with a set of parameters defined by [HKTaskParams](/heartkit/api/heartkit/defines). Additional task-specific parameters can be extended to the `HKTaskParams` class. These tasks are then registered and accessed via the `TaskFactory` using a unique task name as the key and the custom Task class as the value.
+
+```py title="Python example" linenums="1"
+import heartkit as hk
+
+task = hk.TaskFactory.get('rhythm')
+```
+
+### [Datasets](/heartkit/datasets/)
+
+A dataset inherits from the [HKDataset](/heartkit/api/heartkit/datasets/dataset) class and provides implementations for downloading, preparing, and loading the dataset. Each dataset is provided with a set of custom parameters for initialization. Since each task will require specific transformations of the data, the dataset class provides only a general interface for loading the data. Each task must then provide a set of corresponding [HKDataloader](/heartkit/api/heartkit/datasets/dataloader) classes to transform the dataset into a format that can be used by the task. The datasets are registered and accessed via the [DatasetFactory](/heartkit/api/heartkit/datasets/factory) using a unique dataset name as the key and the Dataset class as the value. Each Task can then create its own `DataloaderFactory` that will provide a corresponding dataloader for each supported dataset. The Task's `DataloaderFactory` should use the same dataset names as the DatasetFactory to ensure that the correct dataloader is used for each dataset.
+
+```py title="Python example" linenums="1"
+import heartkit as hk
+
+ds = hk.DatasetFactory.get('ecg-synthetic')(num_pts=100)
+```
+
+### [Models](/heartkit/models/)
+
+Lastly, heartKIT leverages [helia-edge's](https://ambiqai.github.io/helia-edge/) customizable model architectures. To enable creating custom network topologies from configuration files, heartKIT provides a `ModelFactory` that allows you to create models by specifying the model key and the model parameters. Each item in the factory is a callable that takes a `keras.Input`, model parameters, and number of classes as arguments and returns a `keras.Model`.
+
+```
+import keras
+import heartkit as hk
+
+inputs = keras.Input((256, 1), dtype="float32")
+num_classes = 4
+model_params = dict(...)
+
+model = hk.ModelFactory.get('tcn')(
+    inputs=inputs,
+    params=model_params,
+    num_classes=num_classes
+)
+
+```
+
+## Usage
+
+### Running a built-in task w/ existing datasets
+
+1. Create a task configuration file defining the model, datasets, class labels, mode parameters, and so on. Have a look at the [HKTaskParams](/heartkit/modes/configuration/#hktaskparams) for more details on the available parameters.
+
+2. Leverage `TaskFactory` to get the desired built-in task.
+
+3. Run the task's main modes: `download`, `train`, `evaluate`, `export`, and/or `demo`.
+
+```py title="Python example" linenums="1"
+
+import heartkit as hk
+
+params = hk.HKTaskParams(...)
+
+task = hk.TaskFactory.get("rhythm")
+
+task.download(params)  # Download dataset(s)
+
+task.train(params)  # Train the model
+
+task.evaluate(params)  # Evaluate the model
+
+task.export(params)  # Export to TFLite
+
+```
+
+**Example configuration**
+<ConfigExample code={"\nhk.HKTaskParams(\n    name=\"arr-2-eff-sm\",\n    project=\"hk-rhythm-2\",\n    job_dir=\"./results/arr-2-eff-sm\",\n    verbose=2,\n    datasets=[hk.NamedParams(\n        name=\"ptbxl\",\n        params=dict(\n            path=\"./datasets/ptbxl\"\n        )\n    )],\n    num_classes=2,\n    class_map={\n        \"0\": 0,\n        \"7\": 1,\n        \"8\": 1\n    },\n    class_names=[\n        \"NORMAL\", \"AFIB/AFL\"\n    ],\n    class_weights=\"balanced\",\n    sampling_rate=100,\n    frame_size=512,\n    samples_per_patient=[10, 10],\n    val_samples_per_patient=[5, 5],\n    test_samples_per_patient=[5, 5],\n    val_patients=0.20,\n    val_size=20000,\n    test_size=20000,\n    batch_size=256,\n    buffer_size=20000,\n    epochs=100,\n    steps_per_epoch=50,\n    val_metric=\"loss\",\n    lr_rate=1e-3,\n    lr_cycles=1,\n    threshold=0.75,\n    val_metric_threshold=0.98,\n    tflm_var_name=\"g_rhythm_model\",\n    tflm_file=\"rhythm_model_buffer.h\",\n    backend=\"pc\",\n    demo_size=896,\n    display_report=True,\n    quantization=hk.QuantizationParams(\n        qat=False,\n        format=\"INT8\",\n        io_type=\"int8\",\n        conversion=\"CONCRETE\",\n        debug=False\n    ),\n    preprocesses=[\n        hk.NamedParams(\n            name=\"layer_norm\",\n            params=dict(\n                epsilon=0.01,\n                name=\"znorm\"\n            )\n        )\n    ],\n    augmentations=[\n    ],\n    model_file=\"model.keras\",\n    use_logits=False,\n    architecture=hk.NamedParams(\n        name=\"efficientnetv2\",\n        params=dict(\n            input_filters=16,\n            input_kernel_size=[1, 9],\n            input_strides=[1, 2],\n            blocks=[\n                {\"filters\": 24, \"depth\": 2, \"kernel_size\": [1, 9], \"strides\": [1, 2], \"ex_ratio\": 1,  \"se_ratio\": 2},\n                {\"filters\": 32, \"depth\": 2, \"kernel_size\": [1, 9], \"strides\": [1, 2], \"ex_ratio\": 1,  \"se_ratio\": 2},\n                {\"filters\": 40, \"depth\": 2, \"kernel_size\": [1, 9], \"strides\": [1, 2], \"ex_ratio\": 1,  \"se_ratio\": 2},\n                {\"filters\": 48, \"depth\": 1, \"kernel_size\": [1, 9], \"strides\": [1, 2], \"ex_ratio\": 1,  \"se_ratio\": 2}\n            ],\n            output_filters=0,\n            include_top=True,\n            use_logits=True\n        )\n    }\n)"} lang="python" filename="usage-python-4.py" download="/heartkit/examples/usage-python-4.py">
+
+```py title="usage-python-4.py"
+
+hk.HKTaskParams(
+    name="arr-2-eff-sm",
+    project="hk-rhythm-2",
+    job_dir="./results/arr-2-eff-sm",
+    verbose=2,
+    datasets=[hk.NamedParams(
+        name="ptbxl",
+        params=dict(
+            path="./datasets/ptbxl"
+        )
+    )],
+    num_classes=2,
+    class_map={
+        "0": 0,
+        "7": 1,
+        "8": 1
+    },
+    class_names=[
+        "NORMAL", "AFIB/AFL"
+    ],
+    class_weights="balanced",
+    sampling_rate=100,
+    frame_size=512,
+    samples_per_patient=[10, 10],
+    val_samples_per_patient=[5, 5],
+    test_samples_per_patient=[5, 5],
+    val_patients=0.20,
+    val_size=20000,
+    test_size=20000,
+    batch_size=256,
+    buffer_size=20000,
+    epochs=100,
+    steps_per_epoch=50,
+    val_metric="loss",
+    lr_rate=1e-3,
+    lr_cycles=1,
+    threshold=0.75,
+    val_metric_threshold=0.98,
+    tflm_var_name="g_rhythm_model",
+    tflm_file="rhythm_model_buffer.h",
+    backend="pc",
+    demo_size=896,
+    display_report=True,
+    quantization=hk.QuantizationParams(
+        qat=False,
+        format="INT8",
+        io_type="int8",
+        conversion="CONCRETE",
+        debug=False
+    ),
+    preprocesses=[
+        hk.NamedParams(
+            name="layer_norm",
+            params=dict(
+                epsilon=0.01,
+                name="znorm"
+            )
+        )
+    ],
+    augmentations=[
+    ],
+    model_file="model.keras",
+    use_logits=False,
+    architecture=hk.NamedParams(
+        name="efficientnetv2",
+        params=dict(
+            input_filters=16,
+            input_kernel_size=[1, 9],
+            input_strides=[1, 2],
+            blocks=[
+                {"filters": 24, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
+                {"filters": 32, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
+                {"filters": 40, "depth": 2, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2},
+                {"filters": 48, "depth": 1, "kernel_size": [1, 9], "strides": [1, 2], "ex_ratio": 1,  "se_ratio": 2}
+            ],
+            output_filters=0,
+            include_top=True,
+            use_logits=True
+        )
+    }
+)
+```
+
+</ConfigExample>
+
+### Running a custom task w/ custom datasets
+
+To create a custom task, check out the [Bring-Your-Own-Task Guide](/heartkit/tasks/byot/).
+
+To create a custom dataset, check out the [Bring-Your-Own-Dataset Guide](/heartkit/datasets/byod/).
+
+---

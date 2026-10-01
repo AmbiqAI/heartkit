@@ -1,0 +1,60 @@
+---
+title: "2-Class Arrhythmia Classification (ARR-2-EFF-SM)"
+description: "The following table provides the latest pre-trained model for 2-class arrhythmia classification. Below we also provide additional details including training…"
+---
+
+## Overview
+
+The following table provides the latest pre-trained model for 2-class arrhythmia classification. Below we also provide additional details including training configuration, performance metrics, and downloads.
+
+| NAME             | DATASET                  | FS    | DURATION | # CLASSES | MODEL          | PARAMS | FLOPS   | METRIC   |
+| ---------------- | ------------------------ | ----- | -------- | --------- | -------------- | ------ | ------- | -------- |
+| __ARR-2-EFF-SM__ | Icentia11K, PTB-XL, LSAD | 100Hz | 5s       | 2         | EfficientNetV2 | 18K    |  1.2M   | 99.5% F1 |
+
+---
+
+## Input
+
+- **Sensor**: ECG
+- **Location**: Wrist
+- **Sampling Rate**: 100 Hz
+- **Frame Size**: 5 seconds
+
+## Class Mapping
+
+The model is trained on raw ECG data and is able to discern normal sinus rhythm (NSR) from atrial fibrillation (AFIB) and atrial flutter (AFL). The class mapping is as follows:
+
+| Base Class    | Target Class | Label     |
+| ------------- | ------------ | --------- |
+| 0-Normal      | 0            | NSR       |
+| 7-AFIB, 8-AFL | 1            | AFIB      |
+
+## Datasets
+
+The model is trained on the following datasets:
+
+- **[PTB-XL](/heartkit/datasets/ptbxl/)**
+- **[LSAD](/heartkit/datasets/lsad/)**
+
+---
+
+## Model Performance
+
+The confusion matrix on the test set for the model is depicted below.
+
+<div class="sk-plotly-graph-div">
+<iframe title="Interactive example" src="/heartkit/assets/zoo/arr-2-eff-sm/confusion_matrix_test.html" loading="lazy" style={{width:'100%',height:'480px',border:0}} />
+</div>
+
+---
+
+## Downloads
+
+| Asset                                                                | Description                   |
+| -------------------------------------------------------------------- | ----------------------------- |
+| [configuration.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/rhythm/arr-2-eff-sm/latest/configuration.json)   | Configuration file            |
+| [model.keras](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/rhythm/arr-2-eff-sm/latest/model.keras)            | Keras Model file              |
+| [model.tflite](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/rhythm/arr-2-eff-sm/latest/model.tflite)       | TFLite Model file             |
+| [metrics.json](https://ambiqai-model-zoo.s3.us-west-2.amazonaws.com/heartkit/rhythm/arr-2-eff-sm/latest/metrics.json)       | Metrics file                  |
+
+---

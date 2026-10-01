@@ -1,0 +1,105 @@
+---
+title: "Signal Segmentation Task"
+description: "The objective of segmentation is to delineate key segments of the signal. In the context of ECG signals, this involves identifying the different components of…"
+---
+
+## Overview
+
+The objective of segmentation is to delineate key segments of the signal. In the context of ECG signals, this involves identifying the different components of the cardiac cycle, including the P-wave, QRS complex, and T-wave. These segments are used to compute a number of clinically relevant metrics, including heart rate, PR interval, QRS duration, QT interval, and QTc interval. For PPG, the task involves segmenting the systolic and diastolic phases of the cardiac cycle. Segmentation models are useful for detecting arrhythmias, heart rate variability, and other cardiac abnormalities.
+
+<div class="sk-plotly-graph-div">
+<iframe title="Interactive example" src="/heartkit/assets/tasks/segmentation/segmentation-example.html" loading="lazy" style={{width:'100%',height:'480px',border:0}} />
+</div>
+
+---
+
+## ECG Characteristics
+
+<div class="grid cards">
+
+- Annotated ECG Signal
+    <figure>
+    <img src="/heartkit/assets/tasks/segmentation/ecg-annotated.svg" alt="Annotated ECG Signal" width="380" />
+    </figure>
+
+- ECG Segments/Fiducials
+    * __P-Wave__: Reflects atrial depolarization
+    * __QRS Complex__: Reflects ventricular depolarization
+    * __T-Wave__: Reflects ventricular repolarization
+    * __U-Wave__: Reflects papillary muscle repolarization
+    * __PR Interval__: Time from atrial depolarization to ventricular depolarization
+    * __QT Interval__: Time from ventricular depolarization to repolarization
+    * __QTc Interval__: Corrected QT interval
+    * __ST Segment__: Time between ventricular depolarization and repolarization
+    * __J-Point__: Junction between QRS complex and ST segment
+</div>
+
+---
+
+## PPG Characteristics
+
+* __Systolic Phase__: Reflects the contraction of the heart
+* __Diastolic Phase__: Reflects the relaxation of the heart
+* __Dicrotic Notch__: Reflects the closure of the aortic valve
+
+---
+
+## Dataloaders
+
+Dataloaders are available for the following datasets:
+
+* **[LUDB](/heartkit/datasets/ludb/)**
+* **[QTDB](/heartkit/datasets/qtdb/)**
+* **[ECG Synthetic](/heartkit/datasets/synthetic/)**
+* **[PPG Synthetic](/heartkit/datasets/synthetic/)**
+
+---
+
+## Pre-Trained Models
+
+The following table provides the latest performance and accuracy results for segmentation models. Additional result details can be found in [Model Zoo → Segmentation](/heartkit/zoo/).
+
+| NAME                 | DATASET                  | FS    | DURATION | # CLASSES | MODEL         | PARAMS | FLOPS   | METRIC    |
+| -------------------- | ------------------------ | ----- | -------- | --------- | ------------- | ------ | ------- | --------- |
+| __SEG-2-TCN-SM__     | LUDB, Synthetic          | 100Hz | 2.5s     | 2         | TCN           | 2K     | 0.42M   | 96.6% F1  |
+| __SEG-4-TCN-SM__     | LUDB, Synthetic          | 100Hz | 2.5s     | 4         | TCN           | 7K     | 2.1M    | 86.3% F1  |
+| __SEG-4-TCN-LG__     | LUDB, Synthetic          | 100Hz | 2.5s     | 4         | TCN           | 10K    | 3.9M    | 89.4% F1  |
+| __SEG-PPG-2-TCN-SM__ | Synthetic                | 100Hz | 2.5s     | 2         | TCN           | 4K     | 1.43M   | 98.6% F1  |
+
+---
+
+## Target Classes
+
+Below outlines the classes available for segmentation. When training a model, the number of classes, mapping, and names must be provided. This allows for the most flexibility in the segmentation task.
+
+| CLASS   | LABELS          |
+| ------- | --------------- |
+| 0       | None            |
+| 1       | P-wave          |
+| 2       | QRS             |
+| 3       | T-wave          |
+| 4       | U-wave          |
+| 5       | Noise           |
+| 6       | Systolic        |
+| 7       | Diastolic       |
+
+**Class Mapping Example**
+
+Below is an example of a class mapping for a 3-class segmentation model. The class map keys are the original class labels, and the values are the new class labels. Any class not included will be skipped.
+
+```jsonc title="JSONC example"
+{
+    "num_classes": 3,
+    "class_names": ["None", "QRS", "Noise"],
+    "class_map": {
+        "0": 0,  // Map None to None
+        "1": 0,  // Map P-wave to None
+        "2": 1,  // Map QRS to QRS
+        "3": 0,  // Map T-wave to None
+        "4": 0,  // Map U-wave to None
+        "5": 2   // Map Noise to Noise
+    }
+}
+```
+
+---
