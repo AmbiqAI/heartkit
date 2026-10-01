@@ -33,6 +33,26 @@ class NotebookRenderingTest(unittest.TestCase):
             self.assertNotIn("View in Colab", rendered)
             self.assertIn("Open in Colab", rendered)
 
+    def test_removed_notebook_removes_only_its_generated_page(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            notebooks = root / "notebooks"
+            notebooks.mkdir()
+            source = notebooks / "removed.ipynb"
+            source.write_text(json.dumps({"cells": [{"cell_type": "markdown", "source": ["# Removed"]}]}))
+            site = root / "site"
+            pages = site / "src/content/docs/guides"
+            pages.mkdir(parents=True)
+            authored = pages / "authored.md"
+            authored.write_text("# Authored guide")
+            subprocess.run([sys.executable, str(SCRIPT)], cwd=site, check=True)
+            self.assertTrue((pages / "removed.md").exists())
+            source.unlink()
+            subprocess.run([sys.executable, str(SCRIPT)], cwd=site, check=True)
+            self.assertFalse((pages / "removed.md").exists())
+            self.assertFalse((site / "public/notebooks/removed.ipynb").exists())
+            self.assertEqual(authored.read_text(), "# Authored guide")
+
     def test_colab_mention_does_not_drop_ordinary_prose(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -159,3 +159,14 @@ const legacy = JSON.parse(readFileSync("scripts/legacy-routes.json", "utf8"));
 for (const route of legacy.routes)
   assert(existsSync(join(root, route, "index.html")), `Missing published route: ${route}`);
 console.log(`Verified all ${legacy.routes.length} original published routes remain available.`);
+
+for (const path of files(resolve("../notebooks")).filter((p) => p.endsWith(".ipynb"))) {
+  const notebook = JSON.parse(readFileSync(path, "utf8"));
+  for (const cell of notebook.cells) {
+    if (cell.cell_type !== "markdown") continue;
+    const source = Array.isArray(cell.source) ? cell.source.join("") : cell.source;
+    for (const match of source.matchAll(/(?:github\.com|github)\/AmbiqAI\/heartkit\/blob\/main\/([^\s)"<>]+)/g)) {
+      assert(existsSync(resolve("..", match[1])), `Notebook source link is missing: ${path} -> ${match[1]}`);
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # heartKIT documentation
 
-Astro/Starlight renders Markdown from `../docs`, five saved notebooks and a static Griffe Python API reference. Runtime training dependencies are not imported. Private implementation modules are excluded before rendering.
+Astro/Starlight renders Markdown/MDX from `src/content/docs/`, five saved notebooks and a static Griffe Python API reference. Runtime training dependencies are not imported. Private implementation modules are excluded before rendering.
 
 Use Node24, Python3.12 and uv. From this directory:
 

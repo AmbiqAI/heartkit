@@ -6,6 +6,13 @@ import re
 import shutil
 from pathlib import Path
 
+marker = "<!-- notebook-generated-page -->"
+pages = Path("src/content/docs/guides")
+pages.mkdir(parents=True, exist_ok=True)
+for page in pages.glob("*.md"):
+    if marker in page.read_text()[:500]:
+        page.unlink()
+
 assets = Path("public/notebooks")
 shutil.rmtree(assets, ignore_errors=True)
 assets.mkdir(parents=True)
@@ -22,6 +29,7 @@ for source in sorted(Path("../notebooks").glob("*.ipynb")):
     )
     parts = [
         f"---\ntitle: {json.dumps(title)}\ndescription: Saved heartKIT notebook example with code and outputs.\n---",
+        marker,
         f'<div class="heartkit-actions"><a class="md-button" href="/heartkit/notebooks/{source.name}">Download notebook</a> <a class="md-button" href="https://github.com/AmbiqAI/heartkit/blob/main/notebooks/{source.name}">View source</a> <a class="md-button" href="https://colab.research.google.com/github/AmbiqAI/heartkit/blob/main/notebooks/{source.name}">Open in Colab</a></div>',
         "This example displays saved outputs. Building the documentation does not run training. Check dataset paths for your notebook working directory before running.",
     ]
