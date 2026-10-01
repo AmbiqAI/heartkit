@@ -9,14 +9,14 @@ import unittest
 from pathlib import Path
 
 SCRIPT = Path(__file__).with_name("build-notebooks.py")
-GUIDES = SCRIPT.parents[2] / "docs" / "guides"
+GUIDES = SCRIPT.parents[2] / "notebooks"
 
 
 class NotebookRenderingTest(unittest.TestCase):
     def test_badge_toolbar_preserves_byot_introduction(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            shutil.copytree(GUIDES, root / "docs" / "guides")
+            shutil.copytree(GUIDES, root / "notebooks")
             site = root / "site"
             pages = site / "src" / "content" / "docs" / "guides"
             pages.mkdir(parents=True)
@@ -36,7 +36,7 @@ class NotebookRenderingTest(unittest.TestCase):
     def test_colab_mention_does_not_drop_ordinary_prose(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            guides = root / "docs" / "guides"
+            guides = root / "notebooks"
             guides.mkdir(parents=True)
             prose = "Choose View in Colab to run this example.\n\nKeep your dataset paths configured."
             (guides / "example.ipynb").write_text(json.dumps({

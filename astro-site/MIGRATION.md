@@ -33,3 +33,7 @@ Inspected original-site screenshots for the homepage, assets API, guide index an
 Content review identified two migration regressions: removing a Colab toolbar discarded BYOT prose in the same cell, and static redirects discarded API symbol fragments. The renderer now removes only toolbar markup; redirects preserve query strings and fragments with a meta-refresh fallback when JavaScript is disabled. Both changes have regression coverage. Delivery review checked Pages permissions and triggers, shared section matching, notebook assets, public API coverage and Python AST parity. No additional blocking findings remained after fix review.
 
 Dependency qualification: shared UI alpha.21 is pinned by immutable commit `6cdbea0c594c955e6aeef232af1fbb15e395ab2d` (AmbiqAI/helia-ui#183 and #184). Clean installation, type checks, build, output checks and all eight browser tests pass with this dependency.
+
+## Canonical sources
+
+The one-time MkDocs adapter has been retired. Authored pages are now in `src/content/docs/`, navigation in `src/navigation.mjs`, and static assets in `public/`. API and notebook generation remain. See README.md for source ownership.

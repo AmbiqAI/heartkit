@@ -71,18 +71,13 @@ console.log(
   `Verified internal links across ${cache.size} pages, ${index.rows.length} API symbols and discovery exports.`,
 );
 
-for (const path of files(resolve("../docs")).filter(
-  (p) => p.endsWith(".md") && !p.includes("/assets/"),
-)) {
-  const rel = relative(resolve("../docs"), path).replace(/(?:index)?\.md$/, "");
-  if (internalPages.has(relative(resolve("../docs"), path))) {
-    assert(!existsSync(join(root, rel, "index.html")), `Internal page published: ${rel}`);
-    continue;
-  }
-  assert(
-    existsSync(join(root, rel, "index.html")),
-    `Missing authored route: ${rel}`,
-  );
+for (const path of files(resolve("src/content/docs")).filter((p) => /\.mdx?$/.test(p))) {
+  const rel = relative(resolve("src/content/docs"), path).replace(/(?:index)?\.mdx?$/, "");
+  assert(existsSync(join(root, rel, "index.html")), `Missing authored route: ${rel}`);
+}
+for (const path of internalPages) {
+  const rel = path.replace(/(?:index)?\.md$/, "");
+  assert(!existsSync(join(root, rel, "index.html")), `Internal page published: ${rel}`);
 }
 const reference = readFileSync(
   "dist/reference/api/heartkit/defines/index.md",
@@ -150,8 +145,8 @@ for (const file of files(join(root, "examples")).filter((f) =>
   JSON.parse(readFileSync(file, "utf8"));
 }
 
-for (const name of readdirSync("../docs/guides").filter(n=>n.endsWith(".ipynb"))) {
- const original=readFileSync("../docs/guides/"+name);
+for (const name of readdirSync("../notebooks").filter(n=>n.endsWith(".ipynb"))) {
+ const original=readFileSync("../notebooks/"+name);
  assert.deepEqual(original,readFileSync("dist/notebooks/"+name));
  const notebook=JSON.parse(original);
  const expected=notebook.cells.flatMap(c=>c.outputs??[]).filter(o=>o.data?.["image/png"]).length;

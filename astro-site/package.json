@@ -9,7 +9,7 @@
     "npm": ">=11"
   },
   "scripts": {
-    "prepare:docs": "node scripts/build-content.mjs && python3 scripts/build-notebooks.py && node scripts/build-reference.mjs",
+    "prepare:docs": "node scripts/build-examples.mjs && python3 scripts/build-notebooks.py && node scripts/build-reference.mjs",
     "predev": "npm run prepare:docs",
     "dev": "astro dev",
     "prebuild": "npm run prepare:docs",
@@ -17,7 +17,7 @@
     "postbuild": "node scripts/publish-reference.mjs",
     "precheck": "npm run prepare:docs",
     "check": "astro check",
-    "check:output": "python3 scripts/test-build-notebooks.py && node --test scripts/normalize-markdown.test.mjs && node scripts/check-output.mjs",
+    "check:output": "node --test scripts/canonical-content.test.mjs && python3 scripts/test-build-notebooks.py && node scripts/check-output.mjs",
     "test": "playwright test"
   },
   "dependencies": {

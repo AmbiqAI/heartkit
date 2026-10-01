@@ -1,6 +1,6 @@
 import { isPrivateModule } from "./public-docs.mjs";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync, rmSync, readdirSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 const repo = resolve("..");
 const run = (cmd, args) =>
@@ -12,6 +12,8 @@ const run = (cmd, args) =>
 rmSync("public/reference", { recursive: true, force: true });
 const commit = run("git", ["rev-parse", "HEAD"]).trim();
 mkdirSync(".cache", { recursive: true });
+mkdirSync("src/data", { recursive: true });
+rmSync("src/content/docs/reference/api", { recursive: true, force: true });
 const dump = JSON.parse(
   run("uv", [
     "tool",
@@ -107,26 +109,13 @@ writeFileSync(
 );
 writeFileSync(
   "src/data/redirects.json",
-  JSON.stringify(
-    Object.fromEntries(
-      [...Object.entries({
-        "/api/summary": "/heartkit/reference/",
-        "/assets/modes/python-demo-snippet": "/heartkit/modes/demo/",
-        "/assets/tasks/beat/beat-classes": "/heartkit/tasks/beat/",
-        "/assets/tasks/rhythm/rhythm-classes": "/heartkit/tasks/rhythm/",
-        "/assets/tasks/segmentation/segmentation-classes": "/heartkit/tasks/segmentation/",
-        "/assets/usage/json-configuration": "/heartkit/modes/train/",
-        "/assets/usage/python-configuration": "/heartkit/usage/python/",
-        ...Object.fromEntries(readdirSync("../docs/assets/zoo", {withFileTypes:true})
-          .filter(entry => entry.isDirectory())
-          .filter(entry => readdirSync(`../docs/assets/zoo/${entry.name}`).includes("results.md"))
-          .map(entry => [`/assets/zoo/${entry.name}/results`, entry.name === "diagnostic" ? "/heartkit/tasks/diagnostic/" : `/heartkit/zoo/${entry.name}/`])),
-      }), ...modules.map((m) => [
-        "/api/" + m.path.replaceAll(".", "/"),
-        "/heartkit/" + route(m) + "/",
-      ]), ...readdirSync("../docs/guides").filter(name => name.endsWith(".ipynb")).map(name => ["/guides/" + name, "/heartkit/guides/" + name.replace(".ipynb", "") + "/"])],
-    ),
-  ),
+  JSON.stringify({
+    ...JSON.parse(readFileSync("src/redirects.json", "utf8")),
+    ...Object.fromEntries(modules.map((m) => [
+      "/api/" + m.path.replaceAll(".", "/"),
+      "/heartkit/" + route(m) + "/",
+    ])),
+  }),
 );
 writeFileSync(
   "src/content/docs/reference/index.mdx",

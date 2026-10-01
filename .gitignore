@@ -159,8 +159,6 @@ venv.bak/
 # Rope project settings
 .ropeproject
 
-# mkdocs documentation
-/site
 
 # mypy
 .mypy_cache/
@@ -186,8 +184,16 @@ cython_debug/
 
 astro-site/node_modules/
 astro-site/.astro/
-astro-site/src/content/docs/
 astro-site/src/data/
-astro-site/public/
 astro-site/test-results/
 astro-site/playwright-report/
+
+astro-site/src/content/docs/reference/
+astro-site/public/reference/
+astro-site/public/notebooks/
+astro-site/public/examples/
+astro-site/src/content/docs/guides/byot.md
+astro-site/src/content/docs/guides/train-ecg-segmentation.md
+astro-site/src/content/docs/guides/train-arrhythmia-model.md
+astro-site/src/content/docs/guides/ecg-foundation-model.md
+astro-site/src/content/docs/guides/train-ecg-denoiser.md

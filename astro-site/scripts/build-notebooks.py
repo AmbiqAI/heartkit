@@ -9,7 +9,7 @@ from pathlib import Path
 assets = Path("public/notebooks")
 shutil.rmtree(assets, ignore_errors=True)
 assets.mkdir(parents=True)
-for source in sorted(Path("../docs/guides").glob("*.ipynb")):
+for source in sorted(Path("../notebooks").glob("*.ipynb")):
     notebook = json.loads(source.read_text())
     shutil.copyfile(source, assets / source.name)
     title = next(
