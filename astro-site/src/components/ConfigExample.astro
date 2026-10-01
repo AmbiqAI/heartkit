@@ -1,0 +1,26 @@
+---
+interface Props { code: string; lang: string; filename: string; download: string; }
+const { code, lang, filename, download } = Astro.props;
+const lines = code.split('\n');
+const preview = lines.slice(0, 8).join('\n');
+---
+<section class="config-example" aria-label={filename}>
+  <header><span><strong>{filename}</strong><small>{lines.length} lines · {lang.toUpperCase()}</small></span><a href={download} download={filename}>Download</a></header>
+  <details>
+    <summary><span class="expand-label">Show full example</span><span class="collapse-label">Collapse example</span></summary>
+    <slot />
+  </details>
+  <div class="config-preview" aria-label="Preview"><pre><code>{preview}</code></pre><span>… {lines.length-8} more lines</span></div>
+</section>
+<style>
+.config-example { border:1px solid var(--sl-color-gray-4); border-radius:.8rem; overflow:hidden; margin-block:1.5rem; }
+.config-example header { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:1rem; background:var(--sl-color-gray-6); }
+.config-example header span { min-width:0; } strong { display:block; overflow-wrap:anywhere; font-size:.9rem; } small { color:var(--sl-color-gray-2); font-size:.75rem; }
+.config-example header a { flex-shrink:0; border:1px solid var(--sl-color-gray-4); border-radius:.45rem; padding:.3rem .7rem; text-decoration:none; font-size:.85rem; }
+.config-example details { border:0; border-radius:0; margin:0; padding:.75rem 1rem; }
+.config-example summary { cursor:pointer; font-size:.85rem; font-weight:600; }
+.config-preview { margin:0; padding:0 1rem 1rem; }
+.config-preview pre { border:0; padding:.75rem; margin:0; font-size:.82rem; background:var(--sl-color-gray-7,var(--sl-color-black)); }
+.config-preview > span { display:block; color:var(--sl-color-gray-2); padding:.5rem .75rem 0; font-size:.8rem; }
+details[open] + .config-preview, details[open] .expand-label, details:not([open]) .collapse-label { display:none; }
+</style>

@@ -6,7 +6,7 @@ Evaluate mode is used to test the performance of the model on the reserved test 
 
 <div class="annotate" markdown>
 
-1. Load the configuration data (e.g. `configuration.json` (1))
+1. Load the configuration data (e.g. `configuration.json`)
 1. Load the desired datasets (e.g. `PtbxlDataset`)
 1. Load the corresponding task dataloaders (e.g. `PtbxlDataLoader`)
 1. Load the trained model (e.g. `model.keras`)
@@ -16,47 +16,18 @@ Evaluate mode is used to test the performance of the model on the reserved test 
 
 </div>
 
-1. Example configuration:
+**Example configuration**
 --8<-- "assets/usage/json-configuration.md"
 
 
 ```mermaid
-graph LR
-A("`Load
-configuration
-__HKTaskParams__
-`")
-B("`Load
-datasets
-__DatasetFactory__
-`")
-C("`Load
-dataloaders
-__DataLoaderFactory__
-`")
-D("`Load trained
-__model__
-`")
-E("`Define
-__metrics__
-`")
-F("`Evaluate
-__model__
-`")
-G("`Generate
-__report__
-`")
-A ==> B
-subgraph AB["Preprocess"]
-    B ==> C
-end
-subgraph CF["Evaluate"]
-    C ==> D
-    D ==> E
-    E ==> F
-end
-F ==> G
-
+flowchart TD
+    A["Load configuration"] --> B
+    B["Load test datasets and dataloaders"] --> C
+    C["Load trained model"] --> D
+    D["Set evaluation metrics"] --> E
+    E["Evaluate model"] --> F
+    F["Generate report"]
 ```
 
 
@@ -80,13 +51,13 @@ The model can be evaluated using the following snippet:
 
 task = hk.TaskFactory.get("rhythm")
 
-params = hk.HKTaskParams(...)  # (1)
+params = hk.HKTaskParams(...)
 
 task.evaluate(params)
 
 ```
 
-1. Example configuration:
+**Example configuration**
 --8<-- "assets/usage/python-configuration.md"
 
 ---

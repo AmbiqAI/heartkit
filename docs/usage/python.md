@@ -61,7 +61,7 @@ model = hk.ModelFactory.get('tcn')(
 
 import heartkit as hk
 
-params = hk.HKTaskParams(...)  # (1)
+params = hk.HKTaskParams(...)
 
 task = hk.TaskFactory.get("rhythm")
 
@@ -75,7 +75,7 @@ task.export(params)  # Export to TFLite
 
 ```
 
-1. Example configuration:
+**Example configuration**
 --8<-- "assets/usage/python-configuration.md"
 
 ### Running a custom task w/ custom datasets

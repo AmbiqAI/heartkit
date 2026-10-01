@@ -30,7 +30,7 @@ Dataloaders are available for the following datasets:
 
 ## Pre-trained Models
 
-The following table provides the latest performance and accuracy results for pre-trained beat models. Additional result details can be found in [Model Zoo → Beat](../zoo/beat.md).
+The following table provides the latest performance and accuracy results for pre-trained beat models. Additional result details can be found in [Model Zoo → Beat](../zoo/index.md).
 
 
 --8<-- "assets/zoo/beat/beat-model-zoo-table.md"
@@ -47,7 +47,7 @@ Below outlines the classes available for beat classification. When training a mo
 
     Below is an example of a class mapping for a 3-class beat model. The class map keys are the original class labels and the values are the new class labels. Any class not included will be skipped.
 
-    ```json
+    ```jsonc
     {
         "num_classes": 3,
         "class_names": ["QRS", "PAC", "PVC"],

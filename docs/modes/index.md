@@ -1,4 +1,4 @@
-# heartKIT Task Modes
+# Workflow overview
 
 ## Introduction
 
@@ -8,13 +8,15 @@ Each `Task` implementes routines for each of the modes: [download](#download), [
 
 ---
 
-## Available Modes
+## Choose a workflow step
 
-- **[Download](./download.md)**: Download specified datasets
-- **[Train](./train.md)**: Train a model for specified task and datasets
-- **[Evaluate](./evaluate.md)**: Evaluate a model for specified task and datasets
-- **[Export](./export.md)**: Export a trained model to TensorFlow Lite and TFLM
-- **[Demo](./demo.md)**: Run task-level demo on PC or remotely on Ambiq EVB
+| Step | Use it to | Guide |
+| --- | --- | --- |
+| Download | Fetch datasets into your configured directory. | [Download datasets](./download.md) |
+| Train | Fit a model using your datasets, architecture and training settings. | [Train a model](./train.md) |
+| Evaluate | Measure the trained model on held-out data. | [Evaluate a model](./evaluate.md) |
+| Export | Convert a trained model for embedded inference. | [Export a model](./export.md) |
+| Demo | Run a task demonstration on a PC or supported evaluation board. | [Run a demo](./demo.md) |
 
 ---
 
@@ -37,37 +39,3 @@ Each `Task` implementes routines for each of the modes: [download](#download), [
 ## [Demo](./demo.md)
 
 [Demo mode](./demo.md) is used to run a task-level demonstration on the trained model using the specified backend inference engine (e.g. PC or EVB). This is useful to showcase the model's performance in real-time and to verify its accuracy in a real-world scenario.
-
----
-
-!!! Example "At-a-Glance"
-
-    === "Download"
-
-        <br>
-        Download specified datasets. <br>
-        Refer to [Download Mode](./download.md) for more details.
-
-    === "Train"
-
-        <br>
-        Train a model for specified task and dataset(s). <br>
-        Refer to [Train Mode](./train.md) for more details.
-
-    === "Evaluate"
-
-        <br>
-        Evaluate a model for specified task and dataset(s). <br>
-        Refer to [Evaluate Mode](./evaluate.md) for more details.
-
-    === "Export"
-
-        <br>
-        Export a trained model to TensorFlow Lite and TFLM. <br>
-        Refer to [Export Mode](./export.md) for more details.
-
-    === "Demo"
-
-        <br>
-        Run task-level demo on PC or EVB. <br>
-        Refer to [Demo Mode](./demo.md) for more details.

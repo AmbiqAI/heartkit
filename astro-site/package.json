@@ -1,0 +1,45 @@
+{
+  "name": "heartkit-site",
+  "description": "heartKIT documentation and Python API",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "engines": {
+    "node": ">=24",
+    "npm": ">=11"
+  },
+  "scripts": {
+    "prepare:docs": "node scripts/build-content.mjs && python3 scripts/build-notebooks.py && node scripts/build-reference.mjs",
+    "predev": "npm run prepare:docs",
+    "dev": "astro dev",
+    "prebuild": "npm run prepare:docs",
+    "build": "astro build",
+    "postbuild": "node scripts/publish-reference.mjs",
+    "precheck": "npm run prepare:docs",
+    "check": "astro check",
+    "check:output": "python3 scripts/test-build-notebooks.py && node --test scripts/normalize-markdown.test.mjs && node scripts/check-output.mjs",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "@ambiqai/helia-ui": "https://codeload.github.com/AmbiqAI/helia-ui/tar.gz/a62e8d45505dd3bbcdf1c4a03dfd1ec863322ecf",
+    "@astrojs/markdown-remark": "^7.3.1",
+    "@astrojs/react": "7.0.0",
+    "@astrojs/starlight": "^0.41.5",
+    "@fontsource-variable/inter": "5.3.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "astro": "7.3.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "rehype-katex": "^7.0.1",
+    "rehype-mermaid": "^3.0.0",
+    "remark-math": "^6.0.0",
+    "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.6",
+    "@playwright/test": "1.63.0",
+    "linkedom": "0.18.13",
+    "typescript": "^5.9.3"
+  }
+}

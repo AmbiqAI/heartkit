@@ -10,9 +10,9 @@ Quantization parameters define the quantization-aware training (QAT) and post-tr
 | --- | --- | --- | --- | --- |
 | enabled | bool | Optional | False | Enable quantization |
 | qat | bool | Optional | False | Enable quantization aware training (QAT) |
-| format | Literal["int8", "int16", "float16"] | Optional | int8 | Quantization mode |
+| format | `Literal["int8", "int16", "float16"]` | Optional | int8 | Quantization mode |
 | io_type | str | Optional | int8 | I/O type |
-| conversion | Literal["keras", "tflite"] | Optional | keras | Conversion method |
+| conversion | `Literal["keras", "tflite"]` | Optional | keras | Conversion method |
 | debug | bool | Optional | False | Debug quantization |
 | fallback | bool | Optional | False | Fallback to float32 |
 
@@ -91,8 +91,8 @@ These parameters are supplied to a [Task](../tasks/index.md) when running a give
 | epochs | int | Optional | 50 | Number of epochs | train |
 | steps_per_epoch | int | Optional | 10 | Number of steps per epoch | train |
 | val_steps_per_epoch | int | Optional | 10 | Number of validation steps | train |
-| val_metric | Literal["loss", "acc", "f1"] | Optional | loss | Performance metric | train |
-| class_weights | Literal["balanced", "fixed"] | Optional | fixed | Class weights | train |
+| val_metric | `Literal["loss", "acc", "f1"]` | Optional | loss | Performance metric | train |
+| class_weights | `Literal["balanced", "fixed"]` | Optional | fixed | Class weights | train |
 | threshold | float\|None | Optional | None | Model output threshold | evaluate, export |
 | val_metric_threshold | float\|None | Optional | 0.98 | Validation metric threshold | export |
 | test_metric_threshold | float\|None | Optional | 0.98 | Test metric threshold | export |

@@ -72,7 +72,7 @@ Below outlines the classes available for segmentation. When training a model, th
 
     Below is an example of a class mapping for a 3-class segmentation model. The class map keys are the original class labels, and the values are the new class labels. Any class not included will be skipped.
 
-    ```json
+    ```jsonc
     {
         "num_classes": 3,
         "class_names": ["None", "QRS", "Noise"],
