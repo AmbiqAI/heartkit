@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+# Every job declares its own permissions.
+permissions: {}
+
 jobs:
   release-please:
     runs-on: ubuntu-latest
