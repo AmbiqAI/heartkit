@@ -5,6 +5,9 @@ on: [push]
 env:
   PYTHON_VERSION: '3.12'
 
+permissions:
+  contents: read
+
 jobs:
   build:
 

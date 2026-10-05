@@ -8,6 +8,9 @@ on:
       - ready_for_review
       - reopened
 
+# Every job declares its own permissions.
+permissions: {}
+
 jobs:
   update-uv-lock:
     if: startsWith(github.head_ref, 'release-please--')
