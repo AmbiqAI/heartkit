@@ -30,7 +30,7 @@ dependencies = [
   "physiokit>=0.10.1,<1.0",
   "requests>=2.31.0,<3.0",
   "argdantic[all]>=1.0.0,<2.0",
-  "helia-edge>=0.4.1",
+  "helia-edge>=0.4.1,<0.8",
   "pysz>=1.0.2",
 ]
 
