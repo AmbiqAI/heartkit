@@ -59,6 +59,7 @@ export default defineConfig({
           sidebar: "always",
           header: {
             title: "heartKIT",
+            titleRegularPrefix: "heart",
             hub: {
               label: "HELIA",
               href: "https://ambiqai.github.io/helia-developer-hub/",

@@ -1,6 +1,7 @@
 ---
 import { readFileSync } from 'node:fs';
 import DefaultHero from '@astrojs/starlight/components/Hero.astro';
+import Button from '@ambiqai/helia-ui/astro/Button';
 const { data } = Astro.locals.starlightRoute.entry;
 const source = readFileSync('../pyproject.toml', 'utf8');
 const version = source.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
@@ -16,7 +17,7 @@ const capabilities = [
 ---
 {data.hero?.tagline ? <>
   <section class="heartkit-hero" aria-labelledby="_top">
-    <div class="hero-meta"><span class="product">heartKIT</span><span class="version">v{version}</span></div>
+    <div class="hero-meta"><span class="product"><img src={`${base}/assets/heartkit-icon-color.png`} alt="" width="28" height="28" />heartKIT</span><span class="version">v{version}</span></div>
     <div class="hero-layout">
       <div class="hero-copy">
         <h1 id="_top">Turn heart signals<br /><span>into on-device intelligence.</span></h1>
@@ -33,14 +34,14 @@ const capabilities = [
     </div>
   </section>
   <nav class="task-links" aria-label="Explore heart tasks">
-    {tasks.map(([label, slug]) => <a href={`${base}/tasks/${slug}/`}>{label}<span aria-hidden="true">↗</span></a>)}
+    {tasks.map(([label, slug]) => <Button variant="secondary" size="sm" href={`${base}/tasks/${slug}/`}>{label} <span aria-hidden="true">↗</span></Button>)}
   </nav>
 </> : <DefaultHero />}
 <style>
   .heartkit-hero { background: #101318; color: #d6d9e0; border: 1px solid #292f38; border-radius: 1.5rem; padding: clamp(1.5rem, 4vw, 3.5rem); }
   .hero-meta { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 2.25rem; }
-  .product { color: #f1f3f7; font-size: clamp(1.75rem, 3vw, 2.4rem); font-weight: 750; letter-spacing: -.04em; }
-  .product::before { content: ''; display: inline-block; width: .5rem; height: .5rem; background: #f05252; border-radius: 50%; margin: 0 .65rem .35rem 0; }
+  .product { display: inline-flex; align-items: center; gap: .6rem; color: #f1f3f7; font-size: clamp(1.75rem, 3vw, 2.4rem); font-weight: 750; letter-spacing: -.04em; }
+  .product img { display: block; width: 1.5rem; height: 1.5rem; object-fit: contain; }
   .version { border: 1px solid #525966; border-radius: 999px; padding: .35rem .8rem; color: #c1c7d1; white-space: nowrap; font-size: .9rem; font-variant-numeric: tabular-nums; }
   .hero-layout { display: grid; grid-template-columns: 1.3fr 1fr; gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; }
   h1 { color: #fff; font-size: clamp(2.25rem, 3.5vw, 3.5rem); line-height: 1.1; letter-spacing: -.04em; margin: 0 0 1.5rem; }
@@ -61,8 +62,6 @@ const capabilities = [
   li strong { display: block; color: #f0f2f6; font-size: .95rem; }
   li div > span { display: block; color: #bbc3d0; font-size: .8rem; margin-top: .2rem; line-height: 1.45; }
   .task-links { justify-content: center; margin: 1.75rem 0 .25rem; }
-  .task-links a { color: var(--heartkit-button-text); border-color: var(--heartkit-button-border); font-weight: 500; }
-  .task-links a:hover { background: color-mix(in srgb, var(--heartkit-button-border) 10%, transparent); }
   @media (max-width: 60rem) { .hero-layout { grid-template-columns: 1fr; } .hero-copy p { max-width: 65ch; } ol { grid-template-columns: 1fr 1fr; } }
-  @media (max-width: 34rem) { ol { grid-template-columns: 1fr; } .hero-meta { margin-bottom: 1.75rem; } .task-links { gap: .5rem; } .task-links a { font-size: .85rem; padding: .6rem .9rem; } }
+  @media (max-width: 34rem) { ol { grid-template-columns: 1fr; } .hero-meta { margin-bottom: 1.75rem; } .task-links { gap: .5rem; } }
 </style>
