@@ -90,12 +90,32 @@
   margin: 0;
   padding: 1.25rem;
   border: 1px solid var(--sl-color-gray-5);
-  border-top: 3px solid var(--heartkit-button-border);
   border-radius: 0.75rem;
   color: var(--sl-color-text);
   text-decoration: none;
 }
-.heartkit-task-card strong {
+.heartkit-card-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.heartkit-card-heading .helia-icon {
+  color: var(--heartkit-button-text);
+}
+.sl-markdown-content .helia-card-header .helia-icon__glyph {
+  color: var(--heartkit-button-text);
+}
+.sl-markdown-content .heartkit-card-cue {
+  color: var(--heartkit-button-text);
+  font-weight: 600;
+  margin-top: auto;
+}
+.sl-markdown-content .kit-home-nav .helia-card-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+.heartkit-card-heading strong {
   font-size: 1.1rem;
   color: var(--sl-color-white);
 }
@@ -111,7 +131,7 @@
 .heartkit-task-card:hover {
   background: var(--sl-color-gray-6);
 }
-@media (max-width: 50rem) {
+@media (max-width: 40rem) {
   .heartkit-task-grid {
     grid-template-columns: 1fr;
   }

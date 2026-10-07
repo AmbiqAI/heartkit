@@ -2,166 +2,72 @@
 title: "Turn heart signals into on-device intelligence"
 description: "AI development kit for heart monitoring on Ambiq devices."
 hero:
-  tagline: "heartKIT is a Python-based AI Development Kit for heart monitoring for Ambiq devices. Explore datasets, configurable models and task workflows for ECG and PPG signals, from training through model export."
+  tagline: "heartKIT is a Python AI development kit for building heart-monitoring applications on Ambiq devices. Train, evaluate and prepare ECG and PPG models for on-device use."
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components';
+import Card from '@ambiqai/helia-ui/astro/Card';
+import CardHeader from '@ambiqai/helia-ui/astro/CardHeader';
+import CardContent from '@ambiqai/helia-ui/astro/CardContent';
+import CardGrid from '@ambiqai/helia-ui/astro/CardGrid';
+import Icon from '@ambiqai/helia-ui/astro/Icon';
 
-## Build your heart-monitoring workflow
+## What is heartKIT?
 
-heartKIT brings dataset integrations, model architectures, training, evaluation and export into one development kit. Start with the included examples and model configurations, or extend the framework with your own datasets, models and tasks. Use the command line for configured runs or the Python API to compose your workflow.
+heartKIT brings signal preparation, model development, evaluation and export into one Python workflow for ECG and PPG applications. Start with a built-in task and configuration, then change the data or model to fit the question you are working on.
 
-## Getting Started
+You can run a configured workflow from the command line or use the Python API to assemble one yourself. The task pages explain each application; the guides walk through examples, and the API reference covers the underlying interfaces.
 
-- **Install** `heartKIT` with pip/uv and getting up and running in minutes. &nbsp; <a className="md-button" href="/heartkit/quickstart/#install-heartkit"> Install heartKIT</a>
-- **Train** a model with a custom network &nbsp; <a className="md-button" href="/heartkit/modes/train/"> Train a Model</a>
-- **Tasks** `heartKIT` provides tasks like rhythm, segment, and denoising &nbsp; <a className="md-button" href="/heartkit/tasks/"> Explore Tasks</a>
-- **Datasets** Several built-in datasets can be leveraged &nbsp; <a className="md-button" href="/heartkit/datasets/"> Explore Datasets</a>
-- **Model Zoo** Pre-trained models are available for each task &nbsp; <a className="md-button" href="/heartkit/zoo/"> Explore Models</a>
-- **Guides** Detailed guides on tasks, models, and datasets &nbsp; <a className="md-button" href="/heartkit/guides/"> Explore Guides</a>
+<span id="build-a-heart-monitoring-workflow"></span><span id="build-your-heart-monitoring-workflow"></span><span id="tasks"></span>
+
+## Explore heart tasks
+
+Choose a starting point for the signal or question you want to work with.
+
+<div class="heartkit-task-grid">
+  <a class="heartkit-task-card" href="/heartkit/tasks/denoise/">
+    <span class="heartkit-card-heading"><Icon name="filter" /><strong>Denoising</strong></span>
+    <span>Clean ECG and PPG recordings before analysis.</span>
+    <span class="heartkit-card-link">Explore denoising →</span>
+  </a>
+  <a class="heartkit-task-card" href="/heartkit/tasks/segmentation/">
+    <span class="heartkit-card-heading"><Icon name="wave-square" /><strong>Segmentation</strong></span>
+    <span>Locate regions and events in a waveform.</span>
+    <span class="heartkit-card-link">Explore segmentation →</span>
+  </a>
+  <a class="heartkit-task-card" href="/heartkit/tasks/rhythm/">
+    <span class="heartkit-card-heading"><Icon name="heart-pulse" /><strong>Rhythm</strong></span>
+    <span>Build an ECG rhythm-classification workflow.</span>
+    <span class="heartkit-card-link">Explore rhythm →</span>
+  </a>
+  <a class="heartkit-task-card" href="/heartkit/tasks/beat/">
+    <span class="heartkit-card-heading"><Icon name="chart-simple" /><strong>Beat classification</strong></span>
+    <span>Classify individual heartbeats in an ECG recording.</span>
+    <span class="heartkit-card-link">Explore beat classification →</span>
+  </a>
+</div>
+
+<span id="getting-started"></span>
 
 ## Installation
 
-Use **uv** for a Python project, **uvx** to run the CLI in an isolated environment, or **pipx** to keep the CLI installed. Choose **Git clone** when developing heartKIT itself.
+In a Python 3.12 project, add heartKIT and check that the command line tool is available:
 
-<div class="heartkit-install">
-
-<Tabs>
-<TabItem label="uv project">
-
-Create a project with Python 3.12, then add heartKIT. In an existing uv project, start with `uv add heartkit`.
-
-```bash title="Terminal"
+```bash
 uv init --python 3.12 my-heart-project
 cd my-heart-project
 uv add heartkit
 uv run heartkit --help
 ```
 
-</TabItem>
-<TabItem label="uvx">
+The [quickstart](/heartkit/quickstart/) covers other installation methods and your first workflow.
 
-Run the CLI without adding heartKIT to a project. The first invocation downloads heartKIT and its dependencies into an isolated environment.
+<span id="find-your-path"></span><span id="usage"></span><span id="modes"></span><span id="datasets"></span><span id="models"></span><span id="model-zoo"></span><span id="guides"></span>
 
-```bash title="Terminal"
-uvx --python 3.12 heartkit --help
-```
+## Explore the documentation
 
-Use a project installation for Python imports and notebooks.
-
-</TabItem>
-<TabItem label="pipx">
-
-Install the CLI in its own environment. This command uses an installed Python 3.12 interpreter.
-
-```bash title="Terminal"
-pipx install --python python3.12 heartkit
-heartkit --help
-```
-
-If the command is not on your PATH, run `pipx ensurepath` and reopen your terminal. Use a project installation for Python imports and notebooks.
-
-</TabItem>
-<TabItem label="pip">
-
-Install into an activated virtual environment.
-
-```bash title="Terminal"
-python -m pip install heartkit
-heartkit --help
-```
-
-</TabItem>
-<TabItem label="Git clone">
-
-Work with the repository source and its development dependencies.
-
-```bash title="Terminal"
-git clone https://github.com/AmbiqAI/heartkit.git
-cd heartkit
-uv sync --python 3.12
-uv run heartkit --help
-```
-
-</TabItem>
-</Tabs>
-
-</div>
-
-Need the package manager first? See the [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/) or [pipx installation guide](https://pipx.pypa.io/stable/installation/). The [Quickstart](/heartkit/quickstart/) covers configuration and your first workflow.
-
----
-
-## Usage
-
-__heartKIT__ can be used as either a CLI-based tool or as a Python package to perform advanced development. In both forms, heartKIT exposes a number of modes and tasks outlined below. In addition, by leveraging highly-customizable configurations and extendable factories, heartKIT can be used to create custom workflows for a given application with minimal coding. Refer to the [Quickstart](/heartkit/quickstart/) to quickly get up and running in minutes.
-
----
-
-## [Tasks](/heartkit/tasks/)
-
-__heartKIT__ includes a number of built-in [tasks](/heartkit/tasks/). Each task provides reference routines for training, evaluating, and exporting the model. The routines can be customized by providing highly flexibile configuration files/objects. Additionally, new tasks can be added to the __heartKIT__ framework by defining a new [Task class](/heartkit/tasks/byot/) and registering it to the [__Task Factory__](/heartkit/tasks/byot/).
-
-- **[Denoise](/heartkit/tasks/denoise/)**: Remove noise and artifacts from signals
-- **[Segmentation](/heartkit/tasks/segmentation/)**: Perform ECG/PPG based segmentation
-- **[Rhythm](/heartkit/tasks/rhythm/)**: Heart rhythm classification (AFIB, AFL)
-- **[Beat](/heartkit/tasks/beat/)**: Beat-level classification (NORM, PAC, PVC, NOISE)
-
-- **[Bring-Your-Own-Task (BYOT)](/heartkit/tasks/byot/)**: Create and register custom tasks
-
----
-
-## [Modes](/heartkit/modes/)
-
-__heartKIT__ provides a number of [modes](/heartkit/modes/) that can be invoked for a given task. These modes can be accessed via the CLI or directly from a [Task](/heartkit/tasks/). Each mode is accompanied by a set of [task parameters](/heartkit/modes/configuration/#hktaskparams) that can be customized to fit the user's needs.
-
-- **[Download](/heartkit/modes/download/)**: Download specified datasets
-- **[Train](/heartkit/modes/train/)**: Train a model for specified task and datasets
-- **[Evaluate](/heartkit/modes/evaluate/)**: Evaluate a model for specified task and datasets
-- **[Export](/heartkit/modes/export/)**: Export a trained model to TensorFlow Lite and TFLM
-- **[Demo](/heartkit/modes/demo/)**: Run task-level demo on PC or remotely on Ambiq EVB
-
----
-
-## [Datasets](/heartkit/datasets/)
-
-The ADK includes several built-in [datasets](/heartkit/datasets/) for training __heart-monitoring__ related tasks. We also provide synthetic dataset generators for signals such as ECG, PPG, and RSP along with segmentation and fiducials. Each included dataset inherits from [HKDataset](/heartkit/api/heartkit/datasets/dataset/) that provides consistent interface for downloading and accessing the data. Additional datasets can be added to the heartKIT framework by creating a new dataset class and registering it to the dataset factory, [DatasetFactory](/heartkit/models/#model-factory). Check out the [Datasets Guide](/heartkit/datasets/) to learn more about the available datasets along with their corresponding licenses and limitations.
-
-* **[Icentia11k](/heartkit/datasets/icentia11k/)**: 11-lead ECG data collected from 11,000 subjects captured continously over two weeks.
-* **[LUDB](/heartkit/datasets/ludb/)**: 200 ten-second 12-lead ECG records w/ annotated P-wave, QRS, and T-wave boundaries.
-* **[QTDB](/heartkit/datasets/qtdb/)**: 100+ fifteen-minute two-lead ECG recordings w/ annotated P-wave, QRS, and T-wave boundaries.
-* **[LSAD](/heartkit/datasets/lsad/)**: 10-second, 12-lead ECG dataset collected from 45,152 subjects w/ over 100 scp codes.
-* **[PTB-XL](/heartkit/datasets/ptbxl/)**: 10-second, 12-lead ECG dataset collected from 18,885 subjects w/ 72 different diagnostic classes.
-* **[Synthetic](/heartkit/datasets/synthetic/)**: A synthetic dataset generator provided by [physioKIT](https://ambiqai.github.io/physiokit).
-* **[Bring-Your-Own-Dataset (BYOD)](/heartkit/datasets/byod/)**: Add and register new datasets to the framework.
-
----
-
-## [Models](/heartkit/models/)
-
-__heartKIT__ provides a variety of model architectures geared towards efficient, real-time edge applications. These models are provided by Ambiq's [helia-edge](https://ambiqai.github.io/helia-edge/) and expose a set of parameters that can be used to fully customize the network for a given application. In addition, heartKIT includes a model factory, [ModelFactory](/heartkit/models/#model-factory), to register current models as well as allow new custom architectures to be added. Check out the [Models Guide](/heartkit/models/) to learn more about the available network architectures and model factory.
-
-- **[TCN](https://ambiqai.github.io/helia-edge/api/helia_edge/models/tcn)**: A CNN leveraging dilated convolutions (key=`tcn`)
-- **[U-Net](https://ambiqai.github.io/helia-edge/api/helia_edge/models/unet)**: A CNN with encoder-decoder architecture for segmentation tasks (key=`unet`)
-- **[U-NeXt](https://ambiqai.github.io/helia-edge/api/helia_edge/models/unext)**: A U-Net variant leveraging MBConv blocks (key=`unext`)
-- **[EfficientNetV2](https://ambiqai.github.io/helia-edge/api/helia_edge/models/efficientnet)**: A CNN leveraging MBConv blocks (key=`efficientnet`)
-- **[MobileOne](https://ambiqai.github.io/helia-edge/api/helia_edge/models/mobileone)**: A CNN aimed at sub-1ms inference (key=`mobileone`)
-- **[ResNet](https://ambiqai.github.io/helia-edge/api/helia_edge/models/resnet)**: A popular CNN often used for vision tasks (key=`resnet`)
-- **[Conformer](https://ambiqai.github.io/helia-edge/api/helia_edge/models/conformer)**: A transformer composed of both convolutional and self-attention blocks (key=`conformer`)
-- **[MetaFormer](https://ambiqai.github.io/helia-edge/api/helia_edge/models/metaformer)**: A transformer composed of both spatial mixing and channel mixing blocks (key=`metaformer`)
-- **[TSMixer](https://ambiqai.github.io/helia-edge/api/helia_edge/models/tsmixer)**: An All-MLP Architecture for Time Series Classification (key=`tsmixer`)
-- **[Bring-Your-Own-Model (BYOM)](/heartkit/models/byom/)**: Register new SoTA model architectures w/ custom configurations
-
----
-
-## [Model Zoo](/heartkit/zoo/)
-
-The ADK includes a number of pre-trained models and configurationn recipes for the built-in tasks. These models are trained on a variety of datasets and are optimized for deployment on Ambiq's ultra-low power SoCs. In addition to providing links to download the models, __heartKIT__ provides the corresponding configuration files and performance metrics. The configuration files allow you to easily recreate the models or use them as a starting point for custom solutions. Furthermore, the performance metrics provide insights into the trade-offs between model complexity and performance. Check out the [Model Zoo](/heartkit/zoo/) to learn more about the available models and their corresponding performance metrics.
-
----
-
-## [Guides](/heartkit/guides/)
-
-Checkout the [Guides](/heartkit/guides/) to see detailed examples and tutorials on how to use heartKIT for a variety of tasks. The guides provide step-by-step instructions on how to train, evaluate, and deploy models for a given task. In addition, the guides provide insights into the design choices and performance metrics for the models. The guides are designed to help you get up and running quickly and to provide a deeper understanding of the capabilities provided by heartKIT.
-
----
+<CardGrid columns={2} equalize class="kit-home-nav">
+  <Card as="article" interactive><CardHeader titleAs="h3" href="/heartkit/quickstart/"><Icon name="circle-play" text="Getting started" /></CardHeader><CardContent><p>Install heartKIT and run a first example.</p><p class="heartkit-card-cue">Start here →</p></CardContent></Card>
+  <Card as="article" interactive><CardHeader titleAs="h3" href="/heartkit/tasks/"><Icon name="heart-pulse" text="Tasks" /></CardHeader><CardContent><p>Choose an application and follow its workflow.</p><p class="heartkit-card-cue">Explore tasks →</p></CardContent></Card>
+  <Card as="article" interactive><CardHeader titleAs="h3" href="/heartkit/guides/"><Icon name="book-open" text="Guides" /></CardHeader><CardContent><p>Work through practical examples and notebooks.</p><p class="heartkit-card-cue">Follow a guide →</p></CardContent></Card>
+  <Card as="article" interactive><CardHeader titleAs="h3" href="/heartkit/reference/"><Icon name="code" text="Python API" /></CardHeader><CardContent><p>Look up packages, classes and function parameters.</p><p class="heartkit-card-cue">Browse the API →</p></CardContent></Card>
+</CardGrid>
