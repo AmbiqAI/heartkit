@@ -7,6 +7,7 @@ const source = readFileSync('../pyproject.toml', 'utf8');
 const version = source.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
 if (!version) throw new Error('Missing heartKIT version in pyproject.toml');
 const base = import.meta.env.BASE_URL;
+const isHome = Astro.url.pathname.replace(/\/+$/, '') === base.replace(/\/+$/, '');
 const tasks = [['Denoising', 'denoise'], ['Segmentation', 'segmentation'], ['Rhythm', 'rhythm'], ['Beat classification', 'beat']];
 const capabilities = [
   ['01', 'Prepare signals', 'ECG and PPG dataset integrations'],
@@ -15,7 +16,7 @@ const capabilities = [
   ['04', 'Prepare for the edge', 'Model export and task-level demos'],
 ];
 ---
-{data.hero?.tagline ? <>
+{isHome && data.hero?.tagline ? <>
   <section class="heartkit-hero" aria-labelledby="_top">
     <div class="hero-meta"><span class="product"><img src={`${base}/assets/heartkit-icon-color.png`} alt="" width="28" height="28" />heartKIT</span><span class="version">v{version}</span></div>
     <div class="hero-layout">

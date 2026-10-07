@@ -27,3 +27,10 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(page).toHaveURL(new URL(destination!, page.url()).href);
   });
 }
+
+
+test('unknown routes show the not-found page rather than the home hero', async ({ page }) => {
+  const response = await page.goto('/heartkit/this-route-does-not-exist/');
+  expect(response?.status()).toBe(404);
+  await expect(page.getByRole('heading', { name: '404', exact: true })).toBeVisible();
+});
