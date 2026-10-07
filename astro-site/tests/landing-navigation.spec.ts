@@ -10,7 +10,7 @@ for (const width of [390, 1280]) {
       const dropdown = page.locator('[data-helia-section-dropdown]');
       await expect(dropdown).toBeVisible();
       await dropdown.locator('summary').click();
-      await expect(dropdown.getByRole('link', { name: 'HELIA AI Developer Hub' })).toBeVisible();
+      await expect(dropdown.getByRole('link', { name: 'HELIA AI DEV Hub' })).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(dropdown).not.toHaveAttribute('open');
     }
