@@ -4,6 +4,15 @@ for (const theme of ['light', 'dark'] as const) {
   test(`landing buttons remain readable and cards navigate in ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 900 });
     await page.goto('/heartkit/');
+    const title = page.locator('.helia-site-header__title');
+    const prefix = title.locator('.helia-site-header__prefix');
+    await expect(prefix).toHaveText('heart');
+    const weights = await title.evaluate(node => ({
+      full: Number(getComputedStyle(node).fontWeight),
+      prefix: Number(getComputedStyle(node.querySelector('.helia-site-header__prefix')!).fontWeight),
+    }));
+    expect(weights.prefix).toBeLessThan(weights.full);
+    await expect(page.locator('.hero-meta img')).toBeVisible();
     await page.evaluate(value => document.documentElement.dataset.theme = value, theme);
     const button = page.locator('.task-links a').first();
     await expect(button).toBeVisible();
