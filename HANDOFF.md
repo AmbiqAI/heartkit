@@ -20,3 +20,5 @@ Next:
 3. Resolve review and CI findings, then ask Adam for approval. Do not merge without that approval.
 
 Gotcha: `npm ci` resets the preview-only helia-ui copy in `node_modules`; restore or use the released tag before rebuilding.
+
+Publication: final review fixes are pushed. Fresh CI and Copilot re-reviews requested; verify the final head before approval. Product PRs remain draft pending shared helia-ui approval, release and immutable dependency pins.
