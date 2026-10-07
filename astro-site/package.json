@@ -21,7 +21,7 @@
     "test": "playwright test"
   },
   "dependencies": {
-    "@ambiqai/helia-ui": "github:AmbiqAI/helia-ui#v0.1.0-alpha.24",
+    "@ambiqai/helia-ui": "github:AmbiqAI/helia-ui#v0.1.0-alpha.25",
     "@astrojs/markdown-remark": "^7.3.1",
     "@astrojs/react": "7.0.0",
     "@astrojs/starlight": "^0.41.5",
