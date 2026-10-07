@@ -3,6 +3,7 @@ const notebooks = ['byot','ecg-foundation-model','train-arrhythmia-model','train
 test('landing leads to installation on mobile',async({page})=>{
  await page.setViewportSize({width:390,height:844});await page.goto('');
  await expect(page.locator('h1')).toHaveCount(1);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
  await page.getByRole('link',{name:'Get started',exact:true}).first().click();
  await expect(page).toHaveURL(/\/heartkit\/quickstart\/$/);
  await page.getByRole('tab',{name:'Git clone',exact:true}).click();
